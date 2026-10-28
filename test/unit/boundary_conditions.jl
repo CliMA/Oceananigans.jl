@@ -64,6 +64,34 @@ end
         @test default_bcs.south isa ZFBC
     end
 
+    @testset "Boundary conditions on Closed and Open sides" begin
+        grid = RectilinearGrid(size=(4, 4), x=(0, 1), z=(0, 1), topology=((Closed, Open), Flat, Bounded))
+        open_u = NormalFlowBoundaryCondition(1; scheme=PerturbationAdvection())
+        open_c = ValueBoundaryCondition(1; scheme=NormalRadiation())
+
+        boundary_conditions = (u = FieldBoundaryConditions(east=open_u), c = FieldBoundaryConditions(east=open_c))
+        model = NonhydrostaticModel(grid; tracers=:c, boundary_conditions)
+        u, v, w = model.velocities
+        c = model.tracers.c
+        @test u.boundary_conditions.west isa typeof(ImpenetrableBoundaryCondition())
+        @test u.boundary_conditions.east.classification.scheme isa PerturbationAdvection
+        @test w.boundary_conditions.west isa ZFBC
+        @test w.boundary_conditions.east isa ZFBC
+        @test c.boundary_conditions.west isa ZFBC
+        @test c.boundary_conditions.east.classification.scheme isa NormalRadiation
+
+        # The boundary-normal velocity on an Open side needs an open boundary condition
+        @test_throws ArgumentError NonhydrostaticModel(grid)
+
+        # Open schemes need an Open side
+        closed_west_u = FieldBoundaryConditions(west=open_u, east=open_u)
+        @test_throws ArgumentError NonhydrostaticModel(grid; boundary_conditions=(; u=closed_west_u))
+
+        # Fluxes through an Open side come from its exterior state
+        flux_c = FieldBoundaryConditions(east=FluxBoundaryCondition(1))
+        @test_throws ArgumentError NonhydrostaticModel(grid; tracers=:c, boundary_conditions=(u=FieldBoundaryConditions(east=open_u), c=flux_c))
+    end
+
     @testset "Boundary condition instantiation" begin
         @info "  Testing boundary condition instantiation..."
 

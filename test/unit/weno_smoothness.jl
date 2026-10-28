@@ -1,7 +1,7 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Oceananigans: fully_supported_float_types
-using Oceananigans.Advection: beta_loop, biased_weno_weights, global_smoothness_indicator, weno_reconstruction,
+using Oceananigans.Advection: BFloat16, beta_loop, biased_weno_weights, global_smoothness_indicator, weno_reconstruction,
                               zweno_regularization, C★, ϵ
 using Oceananigans.Utils: NormalDivision, BackendOptimizedDivision
 
@@ -82,5 +82,17 @@ end
             # the β agree only to FT rounding, so τ ≠ 0 moves the weights off the optimal ones by O((τ / β)²)
             @test all(isapprox.(ω, optimal; rtol=4eps(eltype(ω)) + (τ / minimum(β))^2))
         end
+    end
+end
+
+# BFloat16 weights are Float32, which has a fast approximate reciprocal
+@testset "WENO weight type [$FT]" for FT in fully_supported_float_types
+    weight_type = FT === BFloat16 ? Float32 : FT
+    for order in (3, 5, 7, 9), weight_computation in (NormalDivision, BackendOptimizedDivision)
+        buffer = (order + 1) ÷ 2
+        S = jump_stencil(FT, buffer, 1, 256)
+        δ = ntuple(i -> S[i+1] - S[i], Val(2buffer - 2))
+        ω = biased_weno_weights(δ, nothing, WENO(FT; order, weight_computation))
+        @test eltype(ω) === weight_type
     end
 end
