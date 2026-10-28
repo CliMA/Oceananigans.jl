@@ -107,13 +107,14 @@ v_forcing = Forcing(v_bottom_drag, discrete_form=true, parameters=(; Cᴰ, U₀)
 ##### Biharmonic Smagorinsky viscosity ν₄ = Cˢ Δ⁴ |D| (Eq. 1)
 #####
 
-@inline shear_strainᶠᶠᶜ(i, j, k, grid, u, v) = ∂yᶠᶠᶜ(i, j, k, grid, u) + ∂xᶠᶠᶜ(i, j, k, grid, v)
+@inline squared_shear_strainᶠᶠᶜ(i, j, k, grid, u, v) = (∂yᶠᶠᶜ(i, j, k, grid, u) + ∂xᶠᶠᶜ(i, j, k, grid, v))^2
 
+# Average the squared shear: averaging the shear itself cancels 2Δ noise, which then has |D| = 0
 @inline function biharmonic_smagorinsky_viscosity(i, j, k, grid, clock, fields, p)
     tension = ∂xᶜᶜᶜ(i, j, k, grid, fields.u) - ∂yᶜᶜᶜ(i, j, k, grid, fields.v)
-    shear = ℑxyᶜᶜᵃ(i, j, k, grid, shear_strainᶠᶠᶜ, fields.u, fields.v)
+    shear² = ℑxyᶜᶜᵃ(i, j, k, grid, squared_shear_strainᶠᶠᶜ, fields.u, fields.v)
     Δ⁴ = (Δxᶜᶜᶜ(i, j, k, grid) * Δyᶜᶜᶜ(i, j, k, grid))^2
-    return p.Cˢ * Δ⁴ * sqrt(tension^2 + shear^2)
+    return p.Cˢ * Δ⁴ * sqrt(tension^2 + shear²)
 end
 
 biharmonic_viscosity = HorizontalScalarBiharmonicDiffusivity(ν=biharmonic_smagorinsky_viscosity, discrete_form=true,
