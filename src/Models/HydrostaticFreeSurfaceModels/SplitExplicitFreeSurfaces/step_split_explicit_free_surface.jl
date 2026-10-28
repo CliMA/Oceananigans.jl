@@ -86,27 +86,21 @@ end
     end
 
     TX, TY, _ = topology(grid)
-    accumulate_east_boundary_transport!(TX(), i, j, grid, transport_weight, Ũ, timestepper, U)
-    accumulate_north_boundary_transport!(TY(), i, j, grid, transport_weight, Ṽ, timestepper, V)
+    Nx, Ny, _ = size(grid)
+    accumulate_edge_U_transport!(TX(), i, j, Nx, Ũ, timestepper, grid, U)
+    accumulate_edge_V_transport!(TY(), i, j, Ny, Ṽ, timestepper, grid, U)
 end
 
-# The face at N+1 lies outside the kernel range, but on a closed right side it carries the open-boundary transport
-@inline function accumulate_east_boundary_transport!(::Sides{<:Any, Closed}, i, j, grid, transport_weight, Ũ, timestepper, U)
-    if i == grid.Nx
-        @inbounds Ũ[i+1, j, 1] += transport_weight * U★(i+1, j, 1, grid, timestepper, U)
+# Fallback...
+@inline accumulate_edge_U_transport!(TX, i, j, args...) = nothing
+@inline accumulate_edge_V_transport!(TY, i, j, args...) = nothing
+
+@inline function accumulate_edge_U_transport!(::Sides{<:Any, Open}, i, j, Nx, Ũ, timestepper, grid, U)
+    i == Nx ? @inbounds Ũ[i+1, j, 1] += transport_weight * U★(i+1, j, 1, grid, timestepper, U) : nothing
     end
-    return nothing
-end
 
-@inline function accumulate_north_boundary_transport!(::Sides{<:Any, Closed}, i, j, grid, transport_weight, Ṽ, timestepper, V)
-    if j == grid.Ny
-        @inbounds Ṽ[i, j+1, 1] += transport_weight * U★(i, j+1, 1, grid, timestepper, V)
-    end
-    return nothing
-end
-
-@inline accumulate_east_boundary_transport!(topology, args...)  = nothing
-@inline accumulate_north_boundary_transport!(topology, args...) = nothing
+@inline accumulate_edge_V_transport!(::Sides{<:Any, Open}, i, j, Ny, Ṽ, timestepper, grid, V) = 
+    j == Ny ? @inbounds Ṽ[i, j+1, 1] += transport_weight * V★(i, j+1, 1, grid, timestepper, U) : nothing
 
 # Change name
 const FNS = FixedSubstepNumber
@@ -249,11 +243,9 @@ end
 
 # Open boundaries read model fields while filling the barotropic halos; `ExtendedHalos` has none, so it
 # fills without threading them, which avoids a per-step allocation on distributed grids.
-@inline fill_barotropic_state_halos!(field, ::SplitExplicitFreeSurface{ExtendedHalos}, model) =
-    fill_halo_regions!(field; async=true)
+@inline fill_barotropic_state_halos!(field, ::SplitExplicitFreeSurface{ExtendedHalos}, model; kwargs...) = fill_halo_regions!(field; async=true, kwargs...)
 
-@inline fill_barotropic_state_halos!(field, ::FillHaloSplitExplicit, model) =
-    fill_halo_regions!(field, model.clock, fields(model); async=true)
+@inline fill_barotropic_state_halos!(field, ::FillHaloSplitExplicit, model; kwargs...) = fill_halo_regions!(field, model.clock, fields(model); async=true, kwargs...)
 
 function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroclinic_timestepper, Δt)
     # Note: free_surface.displacement.grid != model.grid for DistributedSplitExplicitFreeSurface since
@@ -302,8 +294,8 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
     # Update eta and velocities for the next timestep. The halos are updated in the `update_state!` function.
     @apply_regionally launch!(architecture(free_surface_grid), free_surface_grid, :xy, _update_split_explicit_state!, η, U, V, free_surface_grid, filtered_state)
 
-    # Fill all the barotropic state.
-    fill_barotropic_state_halos!((filtered_state.Ũ, filtered_state.Ṽ), free_surface, model)
+    # Fill all the barotropic state. Ũ and Ṽ accumulate their boundary faces, so their normal-flow sides stay in place.
+    fill_barotropic_state_halos!((filtered_state.Ũ, filtered_state.Ṽ), free_surface, model; fill_normal_flow_bcs = false)
     fill_barotropic_state_halos!((U, V), free_surface, model)
     fill_barotropic_state_halos!(η, free_surface, model)
 
@@ -311,7 +303,6 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
     arch = architecture(free_surface_grid)
     boundary_transport = free_surface.boundary_transport
     enforce_barotropic_transport_targets!(arch, free_surface_grid, U, V, boundary_transport)
-    enforce_barotropic_transport_targets!(arch, free_surface_grid, filtered_state.Ũ, filtered_state.Ṽ, boundary_transport)
 
     return nothing
 end

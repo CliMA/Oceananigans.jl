@@ -219,12 +219,12 @@ end
     transport_bc(F, p) = GravityWaveRadiationBoundaryCondition(F, discrete_form = true, parameters = p)
     one_bc = ValueBoundaryCondition(1)
 
-    north_south = (size = (Nb, Na, Nz), topology = (Periodic, Bounded, Bounded),
+    north_south = (size = (Nb, Na, Nz), topology = (Periodic, Open, Bounded),
                    boundary_conditions = (v = FieldBoundaryConditions(south = flow_bc(vᵉˣᵗ, left), north = flow_bc(vᵉˣᵗ, right)),
                                           V = FieldBoundaryConditions(south = transport_bc(Vᵉˣᵗ, left), north = transport_bc(Vᵉˣᵗ, right)),
                                           c = FieldBoundaryConditions(south = one_bc, north = one_bc)))
 
-    west_east = (size = (Na, Nb, Nz), topology = (Bounded, Periodic, Bounded),
+    west_east = (size = (Na, Nb, Nz), topology = (Open, Periodic, Bounded),
                  boundary_conditions = (u = FieldBoundaryConditions(west = flow_bc(uᵉˣᵗ, left), east = flow_bc(uᵉˣᵗ, right)),
                                         U = FieldBoundaryConditions(west = transport_bc(Uᵉˣᵗ, left), east = transport_bc(Uᵉˣᵗ, right)),
                                         c = FieldBoundaryConditions(west = one_bc, east = one_bc)))
