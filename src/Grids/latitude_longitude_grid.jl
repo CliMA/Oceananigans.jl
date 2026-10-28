@@ -36,6 +36,16 @@ struct LatitudeLongitudeGrid{FT, TX, TY, TZ, Z, DXF, DXC, XF, XC, DYF, DYC, YF, 
     Azᶠᶜᵃ :: DXFC
     Azᶜᶠᵃ :: DXCF
     Azᶠᶠᵃ :: DXFF
+    Δx⁻¹ᶜᶜᵃ :: DXCC
+    Δx⁻¹ᶠᶜᵃ :: DXFC
+    Δx⁻¹ᶜᶠᵃ :: DXCF
+    Δx⁻¹ᶠᶠᵃ :: DXFF
+    Δy⁻¹ᶠᶜᵃ :: DYFC
+    Δy⁻¹ᶜᶠᵃ :: DYCF
+    Az⁻¹ᶜᶜᵃ :: DXCC
+    Az⁻¹ᶠᶜᵃ :: DXFC
+    Az⁻¹ᶜᶠᵃ :: DXCF
+    Az⁻¹ᶠᶠᵃ :: DXFF
     # Spherical radius
     radius :: FT
 end
@@ -55,6 +65,11 @@ function LatitudeLongitudeGrid{TX, TY, TZ, SZ}(architecture::Arch,
                                                Δyᶠᶜᵃ :: DYFC, Δyᶜᶠᵃ :: DYCF,
                                                Azᶜᶜᵃ :: DXCC, Azᶠᶜᵃ :: DXFC,
                                                Azᶜᶠᵃ :: DXCF, Azᶠᶠᵃ :: DXFF,
+                                               Δx⁻¹ᶜᶜᵃ :: DXCC, Δx⁻¹ᶠᶜᵃ :: DXFC,
+                                               Δx⁻¹ᶜᶠᵃ :: DXCF, Δx⁻¹ᶠᶠᵃ :: DXFF,
+                                               Δy⁻¹ᶠᶜᵃ :: DYFC, Δy⁻¹ᶜᶠᵃ :: DYCF,
+                                               Az⁻¹ᶜᶜᵃ :: DXCC, Az⁻¹ᶠᶜᵃ :: DXFC,
+                                               Az⁻¹ᶜᶠᵃ :: DXCF, Az⁻¹ᶠᶠᵃ :: DXFF,
                                                radius :: FT,
                                                poles = find_poles(TY, Nφ, φᵃᶠᵃ)) where {SZ, Arch, FT, TX, TY, TZ, Z,
                                                                     DXF, DXC, XF, XC,
@@ -74,7 +89,28 @@ function LatitudeLongitudeGrid{TX, TY, TZ, SZ}(architecture::Arch,
                                                           Δφᵃᶠᵃ, Δφᵃᶜᵃ, φᵃᶠᵃ, φᵃᶜᵃ, z,
                                                           Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
                                                           Δyᶠᶜᵃ, Δyᶜᶠᵃ,
-                                                          Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, radius)
+                                                          Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ,
+                                                          Δx⁻¹ᶜᶜᵃ, Δx⁻¹ᶠᶜᵃ, Δx⁻¹ᶜᶠᵃ, Δx⁻¹ᶠᶠᵃ,
+                                                          Δy⁻¹ᶠᶜᵃ, Δy⁻¹ᶜᶠᵃ,
+                                                          Az⁻¹ᶜᶜᵃ, Az⁻¹ᶠᶜᵃ, Az⁻¹ᶜᶠᵃ, Az⁻¹ᶠᶠᵃ, radius)
+end
+
+function LatitudeLongitudeGrid{TX, TY, TZ, SZ}(architecture, Nλ, Nφ, Nz, Hλ, Hφ, Hz, Lλ, Lφ, Lz,
+                                               Δλᶠᵃᵃ, Δλᶜᵃᵃ, λᶠᵃᵃ, λᶜᵃᵃ,
+                                               Δφᵃᶠᵃ, Δφᵃᶜᵃ, φᵃᶠᵃ, φᵃᶜᵃ, z,
+                                               Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ,
+                                               Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, radius,
+                                               poles = find_poles(TY, Nφ, φᵃᶠᵃ)) where {TX, TY, TZ, SZ}
+
+    metrics = (Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ)
+
+    # metrics computed on the fly are `nothing`, and so are their reciprocals
+    reciprocal_metrics = map(m -> isnothing(m) ? nothing : on_architecture(architecture, 1 ./ on_architecture(CPU(), m)), metrics)
+
+    return LatitudeLongitudeGrid{TX, TY, TZ, SZ}(architecture, Nλ, Nφ, Nz, Hλ, Hφ, Hz, Lλ, Lφ, Lz,
+                                                 Δλᶠᵃᵃ, Δλᶜᵃᵃ, λᶠᵃᵃ, λᶜᵃᵃ,
+                                                 Δφᵃᶠᵃ, Δφᵃᶜᵃ, φᵃᶠᵃ, φᵃᶜᵃ, z,
+                                                 metrics..., reciprocal_metrics..., radius, poles)
 end
 
 struct Poles{S, N} end
@@ -490,6 +526,16 @@ function Adapt.adapt_structure(to, grid::LatitudeLongitudeGrid)
                                                       Adapt.adapt(to, grid.Azᶠᶜᵃ),
                                                       Adapt.adapt(to, grid.Azᶜᶠᵃ),
                                                       Adapt.adapt(to, grid.Azᶠᶠᵃ),
+                                                      Adapt.adapt(to, grid.Δx⁻¹ᶜᶜᵃ),
+                                                      Adapt.adapt(to, grid.Δx⁻¹ᶠᶜᵃ),
+                                                      Adapt.adapt(to, grid.Δx⁻¹ᶜᶠᵃ),
+                                                      Adapt.adapt(to, grid.Δx⁻¹ᶠᶠᵃ),
+                                                      Adapt.adapt(to, grid.Δy⁻¹ᶠᶜᵃ),
+                                                      Adapt.adapt(to, grid.Δy⁻¹ᶜᶠᵃ),
+                                                      Adapt.adapt(to, grid.Az⁻¹ᶜᶜᵃ),
+                                                      Adapt.adapt(to, grid.Az⁻¹ᶠᶜᵃ),
+                                                      Adapt.adapt(to, grid.Az⁻¹ᶜᶠᵃ),
+                                                      Adapt.adapt(to, grid.Az⁻¹ᶠᶠᵃ),
                                                       Adapt.adapt(to, grid.radius),
                                                       poles(grid))
 end
@@ -746,7 +792,7 @@ Construct a `LatitudeLongitudeGrid` from a `RectilinearGrid`. The horizontal coo
 rectilinear grid are transformed to longitude-latitude coordinates in degrees, accounting for
 spherical Earth geometry. The longitudes are computed approximately using the latitudinal origin.
 
-The vertical coordinate and architecture are inherited from the input grid.
+The topology, vertical coordinate and architecture are inherited from the input grid.
 
 Keyword Arguments
 ================
@@ -765,10 +811,10 @@ function LatitudeLongitudeGrid(rectilinear_grid::RectilinearGrid;
 
     TX, TY, TZ = topology(rectilinear_grid)
     tx, ty, tz = TX(), TY(), TZ()
-    triply_bounded = tx isa Bounded && ty isa Bounded && tz isa Bounded
+    triply_bounded = tx isa BoundaryTopology && ty isa BoundaryTopology && tz isa BoundaryTopology
     if !triply_bounded
         msg = string("The source RectilinearGrid for constructing LatitudeLongitudeGrid ",
-                     "must be triply-bounded, but has topology=($tx, $ty, $tz)!")
+                     "must be bounded by `Closed` or `Open` sides in every direction, but has topology=($tx, $ty, $tz)!")
         throw(ArgumentError(msg))
     end
 
@@ -789,7 +835,7 @@ function LatitudeLongitudeGrid(rectilinear_grid::RectilinearGrid;
     z = cpu_face_constructor_z(rectilinear_grid)
 
     return LatitudeLongitudeGrid(arch, eltype(rectilinear_grid); z, radius,
-                                 topology = (Bounded, Bounded, Bounded),
+                                 topology = (TX, TY, TZ),
                                  size = (Nx, Ny, Nz),
                                  halo = (Hx, Hy, Hz),
                                  longitude = λᶠ,

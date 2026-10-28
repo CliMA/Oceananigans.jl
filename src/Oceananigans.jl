@@ -11,7 +11,7 @@ export
     # Grids
     Center, Face,
     Periodic, Bounded, Flat,
-    CenterFolded, FaceFolded,
+    Closed, Open, CenterFolded, FaceFolded,
     slice,
     RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid,
     TripolarGrid, RotatedLatitudeLongitudeGrid, ConformalConicGrid, ConformalConic,
@@ -50,6 +50,7 @@ export
     Field, CenterField, XFaceField, YFaceField, ZFaceField,
     Average, Integral, CumulativeIntegral, Reduction, Accumulation, BackgroundField,
     interior, set!, compute!, regrid!, interpolate!, RegriddedOperation,
+    at_minimum, at_maximum,
 
     # Forcing functions
     Forcing, Relaxation, InflowOutflowRate, LinearTarget, GaussianMask, PiecewiseLinearMask, CosineRampMask, AdvectiveForcing,

@@ -107,7 +107,8 @@ _to_reactant(a::OffsetArray) = OffsetArray(Reactant.to_rarray(collect(parent(a))
 
 function _to_reactant(s::Oceananigans.Grids.StaticVerticalDiscretization)
     return Oceananigans.Grids.StaticVerticalDiscretization(
-        _to_reactant(s.cᵃᵃᶠ), _to_reactant(s.cᵃᵃᶜ), _to_reactant(s.Δᵃᵃᶠ), _to_reactant(s.Δᵃᵃᶜ))
+        _to_reactant(s.cᵃᵃᶠ), _to_reactant(s.cᵃᵃᶜ), _to_reactant(s.Δᵃᵃᶠ), _to_reactant(s.Δᵃᵃᶜ),
+        _to_reactant(s.Δ⁻¹ᵃᵃᶠ), _to_reactant(s.Δ⁻¹ᵃᵃᶜ))
 end
 
 # Build LLG on CPU (evaluating TwicePrecision + precomputing metrics in plain Julia),
@@ -134,7 +135,10 @@ function on_architecture(new_arch::Distributed{<:ReactantState}, old_grid::Latit
                       old_grid.z,
                       old_grid.Δxᶜᶜᵃ, old_grid.Δxᶠᶜᵃ, old_grid.Δxᶜᶠᵃ, old_grid.Δxᶠᶠᵃ,
                       old_grid.Δyᶠᶜᵃ, old_grid.Δyᶜᶠᵃ,
-                      old_grid.Azᶜᶜᵃ, old_grid.Azᶠᶜᵃ, old_grid.Azᶜᶠᵃ, old_grid.Azᶠᶠᵃ)
+                      old_grid.Azᶜᶜᵃ, old_grid.Azᶠᶜᵃ, old_grid.Azᶜᶠᵃ, old_grid.Azᶠᶠᵃ,
+                      old_grid.Δx⁻¹ᶜᶜᵃ, old_grid.Δx⁻¹ᶠᶜᵃ, old_grid.Δx⁻¹ᶜᶠᵃ, old_grid.Δx⁻¹ᶠᶠᵃ,
+                      old_grid.Δy⁻¹ᶠᶜᵃ, old_grid.Δy⁻¹ᶜᶠᵃ,
+                      old_grid.Az⁻¹ᶜᶜᵃ, old_grid.Az⁻¹ᶠᶜᵃ, old_grid.Az⁻¹ᶜᶠᵃ, old_grid.Az⁻¹ᶠᶠᵃ)
 
     sharding = Sharding.DimsSharding(new_arch.connectivity, (1, 2), (:x, :y))
     new_properties = Tuple(Reactant.to_rarray(p; sharding) for p in old_properties)
