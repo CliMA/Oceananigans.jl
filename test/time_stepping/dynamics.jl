@@ -29,6 +29,21 @@ function test_diffusion_simple(arch, fieldname, timestepper, time_discretization
     return !any(@. !isapprox(value, field_data))
 end
 
+function test_implicit_diffusion_through_open_side(arch, side)
+    c_bcs = FieldBoundaryConditions(; side => ValueBoundaryCondition(1))
+    open_topology = side == :bottom ? (Open, Closed) : (Closed, Open)
+
+    function tracer_profile(z_topology)
+        grid = RectilinearGrid(arch, size=16, z=(-1, 0), topology=(Flat, Flat, z_topology))
+        closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), κ=1)
+        model = HydrostaticFreeSurfaceModel(grid; closure, tracers=:c, buoyancy=nothing, boundary_conditions=(; c=c_bcs))
+        [time_step!(model, 1e-3) for n = 1:10]
+        return Array(interior(model.tracers.c))
+    end
+
+    return tracer_profile(open_topology) == tracer_profile(Bounded)
+end
+
 function test_diffusion_budget(field, model, κ, Δ, order=2)
     init_mean = mean(field)
     update_state!(model)
@@ -382,6 +397,12 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
             for time_discretization in (ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscretization())
                 @test test_diffusion_simple(arch, fieldname, timestepper, time_discretization)
             end
+        end
+    end
+
+    @testset "Vertically implicit diffusion through an Open side" begin
+        for arch in archs, side in (:bottom, :top)
+            @test test_implicit_diffusion_through_open_side(arch, side)
         end
     end
 
