@@ -12,6 +12,12 @@ runs = [replace(file, "_averages.jld2" => "") for file in readdir() if endswith(
 # The second averaging window holds the statistically steady state
 last_average(run, name) = FieldTimeSeries(run * "_averages.jld2", name)[end]
 
+# One color per resolution and backscatter setting; WENO runs are dashed
+without_weno(run) = replace(run, "_weno" => "")
+colors = Dict(run => color for (run, color) in zip(unique(without_weno.(runs)), Makie.wong_colors()))
+line_style(run) = (color = colors[without_weno(run)], linestyle = occursin("weno", run) ? :dash : :solid,
+                   label = replace(run, "jansen_2015_" => ""))
+
 #####
 ##### Fig. 5: overturning transport Ψ = [v₁h₁]
 #####
@@ -23,7 +29,8 @@ for run in runs
     V₁ = last_average(run, "V₁")
     Ψ = Field(Average(V₁, dims=1))
     y = ynodes(Ψ) ./ kilometers
-    lines!(ax, y, interior(Ψ, 1, :, 1), label=replace(run, "jansen_2015_" => ""))
+    lines!(ax, y, interior(Ψ, 1, :, 1); line_style(run)...)
+    println(run, ": peak |Ψ| = ", round(maximum(abs, interior(Ψ)), digits=2), " m² s⁻¹")
 end
 
 axislegend(ax)
@@ -33,18 +40,24 @@ save("jansen_2015_overturning.png", fig)
 ##### Figs. 4 and 8: time-mean EKE near the surface and near the bottom
 #####
 
-fig = Figure(size=(500, 300 * length(runs)))
-
-for (n, run) in enumerate(runs)
+ekes = map(runs) do run
     u, v = last_average(run, "u"), last_average(run, "v")
     uu, vv = last_average(run, "uu"), last_average(run, "vv")
     eke = Field((uu - u * u + vv - v * v) / 2)
+    println(run, ": mean upper EKE = ", round(mean(interior(eke, :, :, size(eke, 3))), sigdigits=2), " m² s⁻²")
+    eke
+end
 
-    Nz = size(eke, 3)
-    for (m, k, label) in ((1, Nz, "upper"), (2, 2, "lower"))
+fig = Figure(size=(550, 300 * length(runs)))
+
+Nz = size(first(ekes), 3)
+for (m, k, label) in ((1, Nz, "upper"), (2, 2, "lower"))
+    colorrange = (0, maximum(eke -> maximum(interior(eke, :, :, k)), ekes))
+    for (n, (run, eke)) in enumerate(zip(runs, ekes))
         eke_axis = Axis(fig[n, m], title=replace(run, "jansen_2015_" => "") * " $label", aspect=1)
-        heatmap!(eke_axis, view(eke, :, :, k), colormap=:viridis)
+        heatmap!(eke_axis, view(eke, :, :, k); colormap=:viridis, colorrange)
     end
+    Colorbar(fig[length(runs) + 1, m]; colormap=:viridis, colorrange, vertical=false, label="$label EKE (m² s⁻²)")
 end
 
 save("jansen_2015_eke.png", fig)
@@ -77,7 +90,7 @@ for run in runs
     K = [round(Int, sqrt(kᵢ^2 + lⱼ^2)) for kᵢ in k, lⱼ in l]
     spectrum = [sum(E[K .== n]) for n in 1:maximum(K)]
 
-    lines!(ax, 1:maximum(K), spectrum, label=replace(run, "jansen_2015_" => ""))
+    lines!(ax, 1:maximum(K), spectrum; line_style(run)...)
 end
 
 axislegend(ax, position=:lb)
