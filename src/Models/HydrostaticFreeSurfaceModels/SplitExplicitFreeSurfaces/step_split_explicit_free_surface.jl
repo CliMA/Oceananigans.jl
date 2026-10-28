@@ -148,9 +148,9 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
 
             substep_clock = (; time = add_time_interval(clock.time, Δτᴮ, substep - 1), iteration = clock.iteration, stage = 0, last_stage_Δt = Δτᴮ)
             only_local_halos = substep == 1 || (substep - 1) % exchange_interval != 0
-            @apply_regionally cache_boundary_conditions!((U, V, η), substep_clock, barotropic_model_fields)
 
             maybe_distributed_fill_halo_regions!(arch, η_halo_args[1:end-1]..., substep_clock, η_halo_args[end]; only_local_halos)
+            @apply_regionally cache_boundary_conditions!((U, V, η), substep_clock, barotropic_model_fields)
             @apply_regionally apply_barotropic_kernel!(velocity_kernel!, transport_weight, converted_U_args)
             @apply_regionally step_boundary_conditions!((U, V), substep_clock, barotropic_model_fields, Δτᴮ)
 
