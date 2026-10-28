@@ -1,4 +1,4 @@
-using Oceananigans.BoundaryConditions: DistributedFillHalo
+using Oceananigans.BoundaryConditions: DistributedFillHalo, extract_bc
 
 import Oceananigans.DistributedComputations: synchronize_communication!
 
@@ -93,7 +93,7 @@ end
 #####   synchronize_communication! later waits for comm_stream and unpacks.
 #####
 
-# Storage for pending async unpacks: (data, buffers, side, event) tuples
+# Storage for pending async unpacks: (data, sides, event) tuples
 const pending_unpacks = Vector{Any}()
 const pending_unpacks_lock = ReentrantLock()
 
@@ -105,16 +105,16 @@ function DC.distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, l
 
     communicator = arch.communicator
     nccl_comm = communicator.nccl
-    buffer_side = kernel!.side
+    sides = extract_bc(buffers, kernel!.side)
 
     # Pack send buffers, then make comm_stream wait for the pack to complete.
-    DC.fill_send_buffers!(c, buffers, buffer_side)
+    DC.fill_send_buffers!(c, sides)
     pack_done = CUDA.CuEvent(CUDA.EVENT_DISABLE_TIMING)
     CUDA.record(pack_done)
     CUDA.wait(pack_done, communicator.comm_stream)
 
     NCCL.groupStart()
-    enqueue_nccl_send_recv!(buffer_side, nccl_comm, buffers; stream=communicator.comm_stream)
+    enqueue_nccl_send_recv!(sides, nccl_comm; stream=communicator.comm_stream)
     NCCL.groupEnd()
 
     comm_done = CUDA.CuEvent(CUDA.EVENT_DISABLE_TIMING)
@@ -122,14 +122,14 @@ function DC.distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, l
 
     if async
         lock(pending_unpacks_lock) do
-            push!(pending_unpacks, (; c, buffers, side=buffer_side, event=comm_done))
+            push!(pending_unpacks, (; c, sides, event=comm_done))
         end
         return nothing
     end
 
     # Sync: have the default stream wait for this fill's NCCL ops, then unpack.
     CUDA.wait(comm_done, CUDA.stream())
-    DC.recv_from_buffers!(c, buffers, buffer_side)
+    DC.recv_from_buffers!(c, sides)
     return nothing
 end
 
@@ -151,7 +151,7 @@ function synchronize_communication!(field::NCCLDistributedField)
             # fences the next iteration's packs behind the finished transfers.
             for pending in pending_unpacks
                 CUDA.wait(pending.event, CUDA.stream())
-                DC.recv_from_buffers!(pending.c, pending.buffers, pending.side)
+                DC.recv_from_buffers!(pending.c, pending.sides)
             end
             empty!(pending_unpacks)
         end
@@ -168,16 +168,15 @@ nccl_buffer(a::AbstractArray{Bool}) = reinterpret(UInt8, a)
 nccl_buffer(a) = a
 
 # NCCL matches Send/Recv by post order per peer, not by tag: both ranks post the messages to a peer in tag order
-function enqueue_nccl_send_recv!(side, nccl_comm, buffers; stream_kw...)
-    messages = DC.side_messages(buffers, side)
-    sends = sort!([segment for m in messages for segment in m.sends], by = segment -> (segment.rank, segment.tag))
-    receives = sort!([segment for m in messages for segment in m.receives], by = segment -> (segment.rank, segment.tag))
+function enqueue_nccl_send_recv!(sides, nccl_comm; stream_kw...)
+    send = sort!([buffer for side in sides for buffer in side.send], by = buffer -> (buffer.rank, buffer.tag))
+    recv = sort!([buffer for side in sides for buffer in side.recv], by = buffer -> (buffer.rank, buffer.tag))
 
-    for segment in sends
-        NCCL.Send(nccl_buffer(segment.buffer), nccl_comm; dest=segment.rank, stream_kw...)
+    for buffer in send
+        NCCL.Send(nccl_buffer(buffer.data), nccl_comm; dest=buffer.rank, stream_kw...)
     end
-    for segment in receives
-        NCCL.Recv!(nccl_buffer(segment.buffer), nccl_comm; source=segment.rank, stream_kw...)
+    for buffer in recv
+        NCCL.Recv!(nccl_buffer(buffer.data), nccl_comm; source=buffer.rank, stream_kw...)
     end
 
     return nothing

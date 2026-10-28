@@ -92,8 +92,9 @@ $(TYPEDSIGNATURES)
 complete the halo passing of `field` among processors.
 """
 function synchronize_communication!(field::DistributedField)
-    wait_for_messages!(field)
-    recv_from_buffers!(field.data, field.communication_buffers)
+    buffers = field.communication_buffers
+    wait_for_messages!(buffers)
+    recv_from_buffers!(field.data, (buffers.west, buffers.east, buffers.south, buffers.north))
     return nothing
 end
 

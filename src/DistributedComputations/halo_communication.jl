@@ -5,7 +5,8 @@ using Oceananigans.Fields: instantiated_location
 using Oceananigans.BoundaryConditions
 using Oceananigans.BoundaryConditions:
     DistributedFillHalo,
-    get_boundary_kernels
+    get_boundary_kernels,
+    extract_bc
 
 import Oceananigans.BoundaryConditions: fill_halo_event!, fill_halo_regions!
 
@@ -13,7 +14,7 @@ import Oceananigans.BoundaryConditions: fill_halo_event!, fill_halo_regions!
 const halo_tag_slots = 32
 
 #####
-##### Filling halos for halo communication BCs
+##### Filling halos for halo communication boundary conditions
 #####
 
 fill_halo_regions!(field::DistributedField, args::Vararg{Any, N}; kwargs...) where N =
@@ -69,30 +70,31 @@ function distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, loc,
 
     only_local_halos && return nothing # No need to do anything here
 
-    side = kernel!.side
+    # The buffers of the sides of this fill, picked like their boundary conditions
+    sides = extract_bc(buffers, kernel!.side)
 
-    fill_send_buffers!(c, buffers, side)
+    fill_send_buffers!(c, sides)
     record_event!(buffers.state.pack_event, arch)
 
     if async && (arch isa AsynchronousDistributed)
-        post_messages!(arch, buffers, side)
+        post_messages!(arch, buffers.state, sides)
     else
         # The main thread waits for these messages anyway
-        post_messages!(arch, posted_by_main_thread(buffers), side)
+        post_messages!(arch, posted_by_main_thread(buffers.state), sides)
         wait_for_messages!(buffers)
-        recv_from_buffers!(c, buffers, side)
+        recv_from_buffers!(c, sides)
     end
 
     return nothing
 end
 
-function post_messages!(arch, buffers, side)
-    for messages in side_messages(buffers, side)
-        for segment in messages.receives
-            irecv!(buffers.state, segment.buffer, segment.rank, segment.tag, arch.communicator, segment.requests)
+function post_messages!(arch, state, sides)
+    for side in sides
+        for buffer in side.recv
+            irecv!(state, buffer.data, buffer.rank, buffer.tag, arch.communicator, buffer.requests)
         end
-        for segment in messages.sends
-            isend!(buffers.state, segment.buffer, segment.rank, segment.tag, arch.communicator, segment.requests)
+        for buffer in side.send
+            isend!(state, buffer.data, buffer.rank, buffer.tag, arch.communicator, buffer.requests)
         end
     end
     return nothing

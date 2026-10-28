@@ -387,28 +387,34 @@ function rank2index(r, Rx, Ry, Rz)
 end
 
 #####
-##### Rank layout
+##### Rank connectivity
 #####
 
 """
-    RankLayout(partition, global_size, topology, pivot_shift = 0)
+    RankConnectivity(partition, global_size, topology, halo)
 
 Global index ranges of every rank (in rank order) on a grid of `global_size` and `topology` divided by `partition`.
-`pivot_shift` places the pivot of a tripolar fold.
+In the directions that are partitioned, every rank must be at least as large as the `halo`.
 """
-struct RankLayout{T}
+struct RankConnectivity{T}
     ranges :: Vector{NTuple{3, UnitRange{Int}}}
     size :: NTuple{3, Int}
     topology :: T
-    pivot_shift :: Int
 end
 
-function RankLayout(partition, global_size, topology, pivot_shift = 0)
+function RankConnectivity(partition, global_size, topology, halo)
     Rx, Ry, Rz = ranks(partition)
     Nx, Ny, Nz = global_size
 
-    x = [index_ranges(Nx, line_partition(partition.x, j)) for j in 1:Ry]
-    y = [index_ranges(Ny, line_partition(partition.y, i)) for i in 1:Rx]
+    # The index ranges of the ranks that divide `N` cells according to `p`
+    function index_ranges(N, p)
+        n = [local_size(N, p, r) for r in 1:ranks(p)]
+        return [sum(n[1:r-1]) + 1 : sum(n[1:r]) for r in eachindex(n)]
+    end
+
+    # A tuple partitions every row (in x) or column (in y) of ranks separately
+    x = [index_ranges(Nx, partition.x isa Tuple ? partition.x[j] : partition.x) for j in 1:Ry]
+    y = [index_ranges(Ny, partition.y isa Tuple ? partition.y[i] : partition.y) for i in 1:Rx]
     z = index_ranges(Nz, partition.z)
 
     ranges = map(0:Rx*Ry*Rz-1) do rank
@@ -416,15 +422,14 @@ function RankLayout(partition, global_size, topology, pivot_shift = 0)
         return (x[j][i], y[i][j], z[k])
     end
 
-    return RankLayout(ranges, (Nx, Ny, Nz), topology, pivot_shift)
-end
+    for d in 1:3
+        n = minimum(r -> length(r[d]), ranges)
+        if n < global_size[d] && n < halo[d]
+            throw(ArgumentError("halo=$(halo[d]) must be ≤ the size of every rank, found a rank of size $n in dimension $d"))
+        end
+    end
 
-line_partition(p::Tuple, n) = p[n]
-line_partition(p, n) = p
-
-function index_ranges(N, p)
-    sizes = [local_size(N, p, r) for r in 1:ranks(p)]
-    return [e - n + 1 : e for (n, e) in zip(sizes, cumsum(sizes))]
+    return RankConnectivity(ranges, (Nx, Ny, Nz), topology)
 end
 
 #####

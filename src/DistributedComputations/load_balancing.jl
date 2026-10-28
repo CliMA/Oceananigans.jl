@@ -14,44 +14,43 @@ struct JaggedBlockDistribution <: BalancingStrategy end
 
 create_balanced_partition(strategy, partition, cost_map) = partition
 
-# Number of contiguous parts of `costs` that cost at most `B` each
-function count_parts(costs, B)
-    parts = 1
-    part_cost = zero(eltype(costs))
-    for c in costs
-        if part_cost + c > B
-            parts += 1
-            part_cost = zero(part_cost)
-        end
-        part_cost += c
-    end
-    return parts
-end
-
 """
-    balanced_ranges(costs, R)
+    partition_1d(costs, R)
 
 Split `costs` into `R` contiguous nonempty ranges, minimizing the cost of the most expensive one.
 """
-function balanced_ranges(costs, R)
+function partition_1d(costs, R)
+    N = length(costs)
+
+    # Bisect on the cost of the most expensive range, counting the ranges of a greedy split below that cost
     lower, upper = maximum(costs), sum(costs)
     for bisection in 1:64
-        middle = (lower + upper) / 2
-        count_parts(costs, middle) ≤ R ? (upper = middle) : (lower = middle)
+        maximum_cost = (lower + upper) / 2
+        count = 1
+        cost = zero(eltype(costs))
+        for c in costs
+            if cost + c > maximum_cost
+                count += 1
+                cost = zero(cost)
+            end
+            cost += c
+        end
+        count ≤ R ? (upper = maximum_cost) : (lower = maximum_cost)
     end
 
+    # Split greedily below that cost, leaving at least one entry to every range still to come
     ranges = UnitRange{Int}[]
     first_index = 1
-    part_cost = zero(eltype(costs))
-    N = length(costs)
+    cost = zero(eltype(costs))
     for n in 1:N
-        open_parts = R - length(ranges)
-        if n > first_index && open_parts > 1 && (part_cost + costs[n] > upper || N - n < open_parts - 1)
+        ranges_to_come = R - length(ranges) - 1
+        entries_to_come = N - n + 1
+        if n > first_index && ranges_to_come > 0 && (cost + costs[n] > upper || entries_to_come ≤ ranges_to_come)
             push!(ranges, first_index:n-1)
             first_index = n
-            part_cost = zero(part_cost)
+            cost = zero(cost)
         end
-        part_cost += costs[n]
+        cost += costs[n]
     end
     push!(ranges, first_index:N)
 
@@ -63,8 +62,8 @@ function create_balanced_partition(strategy::SimplifiedGeneralizedBlockDistribut
     costs = on_architecture(CPU(), cost_map)
 
     # Partition each direction independently
-    x = balanced_ranges(vec(sum(costs; dims=(2, 3))), Rx)
-    y = balanced_ranges(vec(sum(costs; dims=(1, 3))), Ry)
+    x = partition_1d(vec(sum(costs; dims=(2, 3))), Rx)
+    y = partition_1d(vec(sum(costs; dims=(1, 3))), Ry)
 
     return Partition(; x=Sizes(length.(x)...), y=Sizes(length.(y)...))
 end
@@ -77,16 +76,16 @@ function create_balanced_partition(strategy::GeneralizedBlockDistribution, unbal
     x_costs(y) = vec(maximum([sum(costs[i, j, :]) for i in axes(costs, 1), j in y]; dims=2))
     y_costs(x) = vec(maximum([sum(costs[i, j, :]) for i in x, j in axes(costs, 2)]; dims=1))
 
-    x = balanced_ranges(vec(sum(costs; dims=(2, 3))), Rx)
-    y = balanced_ranges(y_costs(x), Ry)
+    x = partition_1d(vec(sum(costs; dims=(2, 3))), Rx)
+    y = partition_1d(y_costs(x), Ry)
 
+    # Alternate until a partition repeats: a (local) optimum, or a cycle between partitions
+    visited = Set([(x, y)])
     while true
-        new_x = balanced_ranges(x_costs(y), Rx)
-        new_y = balanced_ranges(y_costs(new_x), Ry)
-
-        # If the partition stays the same, we have reached a (local) optimum
-        (new_x, new_y) == (x, y) && break
-        x, y = new_x, new_y
+        x = partition_1d(x_costs(y), Rx)
+        y = partition_1d(y_costs(x), Ry)
+        (x, y) ∈ visited && break
+        push!(visited, (x, y))
     end
 
     return Partition(; x=Sizes(length.(x)...), y=Sizes(length.(y)...))
@@ -98,8 +97,8 @@ function create_balanced_partition(strategy::JaggedBlockDistribution, unbalanced
 
     column_costs(i) = vec(sum(costs[i, :, :]; dims=(1, 3)))
 
-    x = balanced_ranges(vec(sum(costs; dims=(2, 3))), Rx)
-    y = Tuple(Sizes(length.(balanced_ranges(column_costs(i), Ry))...) for i in x)
+    x = partition_1d(vec(sum(costs; dims=(2, 3))), Rx)
+    y = Tuple(Sizes(length.(partition_1d(column_costs(i), Ry))...) for i in x)
 
     return Partition(; x=Sizes(length.(x)...), y)
 end

@@ -85,8 +85,8 @@ function rotation_with_shear_test(grid, closure=nothing; timestepper=:QuasiAdams
     return model
 end
 
-Nx = 32
-Ny = 32
+Nx = 40
+Ny = 40
 
 for arch in archs
     # We do not test on `Fractional` partitions where we cannot easily ensure that H ≤ N

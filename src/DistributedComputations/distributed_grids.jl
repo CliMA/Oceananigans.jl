@@ -37,13 +37,13 @@ const DistributedLatitudeLongitudeGrid{FT, TX, TY, TZ, Z,
                                                 DXCC, DXFC, DXCF,
                                                 DXFF, DYFC, DYCF}
 
-# The architecture of a local grid holds the layout of all ranks on that grid
-with_rank_layout(arch::Distributed{<:Any, S}, layout) where S = Distributed{S}(arch.child_architecture, arch.partition, arch.ranks,
-                                                                               arch.local_rank, arch.local_index, layout,
-                                                                               arch.communicator, arch.field_count, arch.devices)
+# The architecture of a local grid holds the connectivity of all ranks on that grid
+function with_connectivity(connectivity, arch::Distributed{<:Any, S}) where S
+    return Distributed{S}(arch.child_architecture, arch.partition, arch.ranks, arch.local_rank, arch.local_index,
+                          connectivity, arch.communicator, arch.field_count, arch.devices)
+end
 
 local_ranges(arch::Distributed) = arch.connectivity.ranges[arch.local_rank + 1]
-local_size(arch::Distributed) = map(length, local_ranges(arch))
 
 # Individual, per-direction local size
 function local_size(N, R, local_index)
@@ -90,8 +90,8 @@ function RectilinearGrid(arch::Distributed,
     topology, global_sz, halo, x, y, z =
         validate_rectilinear_grid_args(topology, size, halo, FT, extent, x, y, z)
 
-    arch = with_rank_layout(arch, RankLayout(arch.partition, global_sz, topology))
-    local_sz = local_size(arch)
+    arch = with_connectivity(RankConnectivity(arch.partition, global_sz, topology, halo), arch)
+    local_sz = map(length, local_ranges(arch))
 
     nx, ny, nz = local_sz
     Hx, Hy, Hz = halo
@@ -141,8 +141,8 @@ function LatitudeLongitudeGrid(arch::Distributed,
     topology, global_sz, halo, latitude, longitude, z, precompute_metrics =
         validate_lat_lon_grid_args(topology, size, halo, FT, latitude, longitude, z, precompute_metrics)
 
-    arch = with_rank_layout(arch, RankLayout(arch.partition, global_sz, topology))
-    local_sz = local_size(arch)
+    arch = with_connectivity(RankConnectivity(arch.partition, global_sz, topology, halo), arch)
+    local_sz = map(length, local_ranges(arch))
 
     nλ, nφ, nz = local_sz
     Hλ, Hφ, Hz = halo

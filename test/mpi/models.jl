@@ -119,7 +119,7 @@ end
 
 function test_triply_periodic_local_grid_with_411_ranks()
     arch = Distributed(CPU(), partition=Partition(4))
-    local_grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3))
+    local_grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(16, 8, 8), extent=(1, 2, 3))
 
     local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
     nx, ny, nz = size(local_grid)
@@ -136,7 +136,7 @@ end
 
 function test_triply_periodic_local_grid_with_141_ranks()
     arch = Distributed(CPU(), partition=Partition(1, 4))
-    local_grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3))
+    local_grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 16, 8), extent=(1, 2, 3))
 
     local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
     nx, ny, nz = size(local_grid)
@@ -183,7 +183,7 @@ function test_complex_boundary_conditions(Rx, Ry, child_arch)
     end
 
     # A grid with unity spacings in all directions
-    grid  = RectilinearGrid(arch, topology=(Bounded, Bounded, Bounded), size=(2*Rx, 2*Ry, 1), extent=(2*Rx, 2*Ry, 1))
+    grid  = RectilinearGrid(arch, topology=(Bounded, Bounded, Bounded), size=(3*Rx, 3*Ry, 1), extent=(3*Rx, 3*Ry, 1))
     c_bc  = FluxBoundaryCondition(clock_field_dependent_boundary_condition, discrete_form=true)
     c_bcs = FieldBoundaryConditions(top=c_bc)
 
@@ -218,7 +218,7 @@ end
 
 function test_triply_periodic_bc_injection_with_411_ranks()
     arch = Distributed(partition=Partition(4))
-    grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3))
+    grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(16, 8, 8), extent=(1, 2, 3))
     model = NonhydrostaticModel(grid)
 
     for field in merge(fields(model))
@@ -234,7 +234,7 @@ end
 
 function test_triply_periodic_bc_injection_with_141_ranks()
     arch = Distributed(partition=Partition(1, 4))
-    grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3))
+    grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 16, 8), extent=(1, 2, 3))
     model = NonhydrostaticModel(grid)
 
     for field in merge(fields(model))
@@ -270,7 +270,7 @@ end
 
 function test_triply_periodic_halo_communication_with_411_ranks(halo, child_arch)
     arch = Distributed(child_arch; partition=Partition(4))
-    grid = RectilinearGrid(arch; topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3), halo)
+    grid = RectilinearGrid(arch; topology=(Periodic, Periodic, Periodic), size=(12, 8, 8), extent=(1, 2, 3), halo)
     model = NonhydrostaticModel(grid)
 
     for field in merge(fields(model))
@@ -292,7 +292,7 @@ end
 
 function test_triply_periodic_halo_communication_with_141_ranks(halo, child_arch)
     arch = Distributed(child_arch; partition=Partition(1, 4))
-    grid  = RectilinearGrid(arch; topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3), halo)
+    grid  = RectilinearGrid(arch; topology=(Periodic, Periodic, Periodic), size=(8, 12, 8), extent=(1, 2, 3), halo)
     model = NonhydrostaticModel(grid)
 
     for field in (fields(model)..., model.pressures.pNHS)
@@ -352,7 +352,8 @@ function test_jagged_halo_communication(partition, child_arch)
 
         x, y, _ = nodes(field; with_halos=true)
         expected = [periodic_function(xᵢ, yⱼ, zₖ) for xᵢ in x, yⱼ in y, zₖ in znodes(field)]
-        @test Array(view(parent(field), :, :, grid.Hz+1:grid.Hz+size(grid, 3))) ≈ expected
+        data = on_architecture(CPU(), field.data)
+        @test view(data, :, :, 1:size(grid, 3)) ≈ expected
     end
 
     return nothing
@@ -545,7 +546,7 @@ end
         for partition in [Partition(1, 4), Partition(2, 2), Partition(4, 1)]
             @info "Time-stepping a distributed NonhydrostaticModel with partition $partition..."
             arch = Distributed(child_arch; partition)
-            grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 1), extent=(1, 2, 3))
+            grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(16, 16, 1), extent=(1, 2, 3))
             c = CenterField(grid)
             set!(c, arch.local_rank+1)
 
@@ -608,7 +609,7 @@ end
         for partition in [Partition(1, 4), Partition(2, 2), Partition(4, 1)]
             @info "Time-stepping a distributed NonhydrostaticModel with partition $partition..."
             arch = Distributed(child_arch; partition)
-            grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3))
+            grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(16, 16, 8), extent=(1, 2, 3))
             model = NonhydrostaticModel(grid)
 
             time_step!(model, 1)
@@ -625,7 +626,7 @@ end
     @testset "Time stepping ShallowWaterModel" begin
         child_arch = get(ENV, "TEST_ARCHITECTURE", "CPU") == "GPU" ? GPU() : CPU()
         arch = Distributed(child_arch; partition=Partition(1, 4))
-        grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Flat), size=(8, 8), extent=(1, 2), halo=(3, 3))
+        grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Flat), size=(8, 16), extent=(1, 2), halo=(3, 3))
         model = ShallowWaterModel(grid; momentum_advection=nothing, mass_advection=nothing,
                                   tracer_advection=nothing, gravitational_acceleration=1)
 

@@ -16,7 +16,7 @@ barrier(arch::Distributed) = barrier(arch.communicator)
 $(TYPEDSIGNATURES)
 
 Return a 3-Tuple of vectors, where each vector contains the value of
-`local_size[d]` for every rank in dimension `d` of `arch`.
+`local_size[d]` for every rank in dimension `d` of `arch` that shares the other indices of the local rank.
 """
 concatenate_local_sizes(local_size, arch::Distributed) =
     Tuple(concatenate_local_sizes(local_size, arch, d) for d in 1:length(local_size))
@@ -24,19 +24,18 @@ concatenate_local_sizes(local_size, arch::Distributed) =
 concatenate_local_sizes(sz, arch, dim) = concatenate_local_sizes(sz[dim], arch, dim)
 
 function concatenate_local_sizes(n::Number, arch::Distributed, dim)
-    R = arch.ranks[dim]
-    r = arch.local_index[dim]
-    N = zeros(Int, R)
+    sizes = zeros(Int, arch.ranks...)
+    sizes[arch.local_index...] = n
+    MPI.Allreduce!(sizes, +, arch.communicator)
 
-    r1, r2 = arch.local_index[[1, 2, 3] .!= dim]
-
-    if r1 == 1 && r2 == 1
-        N[r] = n
+    i, j, k = arch.local_index
+    if dim == 1
+        return sizes[:, j, k]
+    elseif dim == 2
+        return sizes[i, :, k]
+    else
+        return sizes[i, j, :]
     end
-
-    MPI.Allreduce!(N, +, arch.communicator)
-
-    return N
 end
 
 """
@@ -47,31 +46,32 @@ local length `n` and is distributed on `arch`itecture
 in the x-, y-, or z- `dim`ension.
 """
 function partition_coordinate(c::AbstractVector, n, arch, dim)
-    range = local_ranges(arch)[dim]
-    return c[first(range):last(range)+1]
+    nl = concatenate_local_sizes(n, arch, dim)
+    r  = arch.local_index[dim]
+
+    start_idx = sum(nl[1:r-1]) + 1 # sum of all previous rank's dimension + 1
+    end_idx   = if r == ranks(arch)[dim]
+        length(c)
+    else
+        sum(nl[1:r]) + 1
+    end
+
+    return c[start_idx:end_idx]
 end
 
 function partition_coordinate(c::Tuple, n, arch, dim)
-    sizes = line_sizes(arch, dim)
-    Δl = (c[2] - c[1]) / sum(sizes)
+    nl = concatenate_local_sizes(n, arch, dim)
+    N  = sum(nl)
+    R  = arch.ranks[dim]
+    Δl = (c[2] - c[1]) / N
 
-    l = Tuple{Float64, Float64}[(c[1], c[1] + Δl * sizes[1])]
-    for i in 2:length(sizes)
+    l = Tuple{Float64, Float64}[(c[1], c[1] + Δl * nl[1])]
+    for i in 2:R
         lp = l[i-1][2]
-        push!(l, (lp, lp + Δl * sizes[i]))
+        push!(l, (lp, lp + Δl * nl[i]))
     end
 
     return l[arch.local_index[dim]]
-end
-
-# Sizes along `dim` of the ranks that share the other two indices of the local rank
-function line_sizes(arch, dim)
-    Rx, Ry, Rz = arch.ranks
-    i, j, k = arch.local_index
-    ranges = arch.connectivity.ranges
-    dim == 1 && return [length(ranges[index2rank(r, j, k, Rx, Ry, Rz) + 1][1]) for r in 1:Rx]
-    dim == 2 && return [length(ranges[index2rank(i, r, k, Rx, Ry, Rz) + 1][2]) for r in 1:Ry]
-    return [length(ranges[index2rank(i, j, r, Rx, Ry, Rz) + 1][3]) for r in 1:Rz]
 end
 
 """
@@ -139,11 +139,40 @@ Partition the globally-sized `A` into local arrays with `local_size` on `arch`it
 function partition(A::AbstractArray, arch::Distributed, local_size)
     A = on_architecture(CPU(), A)
 
-    i, j, _ = first.(local_ranges(arch))
-    nx, ny, nz = local_size
+    ri, rj, rk = arch.local_index
+    dims = length(size(A))
+
+    # Vectors with the local size for every rank
+    nxs, nys, nzs = concatenate_local_sizes(local_size, arch)
+
+    # The local size
+    nx = nxs[ri]
+    ny = nys[rj]
+    nz = nzs[1]
+    # @assert (nx, ny, nz) == local_size
+
+    up_to = nxs[1:ri-1]
+    including = nxs[1:ri]
+    i₁ = sum(up_to) + 1
+    i₂ = sum(including)
+
+    up_to = nys[1:rj-1]
+    including = nys[1:rj]
+    j₁ = sum(up_to) + 1
+    j₂ = sum(including)
+
+    ii = UnitRange(i₁, i₂)
+    jj = UnitRange(j₁, j₂)
+    kk = 1:nz # no partitioning in z
 
     # TODO: undo this toxic assumption that all 2D arrays span x, y.
-    a = ndims(A) == 2 ? A[i:i+nx-1, j:j+ny-1] : A[i:i+nx-1, j:j+ny-1, 1:nz]
+    if dims == 2
+        a = zeros(eltype(A), nx, ny)
+        a .= A[ii, jj]
+    else
+        a = zeros(eltype(A), nx, ny, nz)
+        a .= A[ii, jj, 1:nz]
+    end
 
     return on_architecture(child_architecture(arch), a)
 end
@@ -161,19 +190,32 @@ construct_global_array(c_local::Function, arch,  N)     = c_local
 function construct_global_array(c_local::AbstractArray, arch::Distributed, n)
     c_local = on_architecture(CPU(), c_local)
 
-    Nx, Ny, Nz = global_size(arch, n)
-    i, j, _ = first.(local_ranges(arch))
-    nx, ny, _ = n
+    ri, rj, rk = arch.local_index
 
-    if ndims(c_local) == 2
+    dims = length(size(c_local))
+
+    nx, ny, nz = concatenate_local_sizes(n, arch)
+
+    Nx = sum(nx)
+    Ny = sum(ny)
+    Nz = nz[1]
+
+    if dims == 2
         c_global = zeros(eltype(c_local), Nx, Ny)
-        c_global[i:i+nx-1, j:j+ny-1] .= c_local[1:nx, 1:ny]
+
+        c_global[1 + sum(nx[1:ri-1]) : sum(nx[1:ri]),
+                 1 + sum(ny[1:rj-1]) : sum(ny[1:rj])] .= c_local[1:nx[ri], 1:ny[rj]]
+
+        MPI.Allreduce!(c_global, +, arch.communicator)
     else
         c_global = zeros(eltype(c_local), Nx, Ny, Nz)
-        c_global[i:i+nx-1, j:j+ny-1, 1:Nz] .= c_local[1:nx, 1:ny, 1:Nz]
-    end
 
-    MPI.Allreduce!(c_global, +, arch.communicator)
+        c_global[1 + sum(nx[1:ri-1]) : sum(nx[1:ri]),
+                 1 + sum(ny[1:rj-1]) : sum(ny[1:rj]),
+                 1:Nz] .= c_local[1:nx[ri], 1:ny[rj], 1:Nz]
+
+        MPI.Allreduce!(c_global, +, arch.communicator)
+    end
 
     return on_architecture(child_architecture(arch), c_global)
 end

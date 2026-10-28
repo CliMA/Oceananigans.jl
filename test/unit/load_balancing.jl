@@ -1,7 +1,7 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Oceananigans.Utils: get_active_cells_map
-using Oceananigans.DistributedComputations: balanced_ranges, create_cost_map, Sizes,
+using Oceananigans.DistributedComputations: partition_1d, create_cost_map, Sizes,
                                             GeneralizedBlockDistribution, SimplifiedGeneralizedBlockDistribution, JaggedBlockDistribution
 
 sizes = [ (60, 60, 30) ]
@@ -82,20 +82,20 @@ end
 @testset "Partitioning consistent" begin
 
     @testset "1d - len:$len, ranks:$ranks" for (len, ranks) in Iterators.product((10, 100, 1000), (2,4,8))
-        ranges = balanced_ranges(rand(len), ranks)
+        ranges = partition_1d(rand(len), ranks)
         @test length(ranges) == ranks
         @test vcat(ranges...) == 1:len
     end
 
     @testset "1d - zero costs at a cut" begin
-        @test vcat(balanced_ranges([1, 1, 0, 1, 1], 2)...) == 1:5
+        @test vcat(partition_1d([1, 1, 0, 1, 1], 2)...) == 1:5
     end
 
     @testset "1d - optimal against all cuts" for trial in 1:10
         costs = rand(0:9, 8)
         most_expensive(ranges) = maximum(r -> sum(costs[r]), ranges)
         optimum = minimum(most_expensive([1:a, a+1:b, b+1:8]) for a in 1:6 for b in a+1:7)
-        @test most_expensive(balanced_ranges(costs, 3)) == optimum
+        @test most_expensive(partition_1d(costs, 3)) == optimum
     end
 
     @testset "2d - $arch, $gridc, $ibc, $strategy, $partition" for (arch, gridc, ibc, strategy, partition) in

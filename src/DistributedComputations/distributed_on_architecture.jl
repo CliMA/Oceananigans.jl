@@ -15,6 +15,7 @@ DisambiguationTypes = Union{Array,
 on_architecture(arch::Distributed, a::DisambiguationTypes) = on_architecture(child_architecture(arch), a)
 
 function on_architecture(new_arch::Distributed, old_grid::LatitudeLongitudeGrid)
+    new_arch = with_connectivity(architecture(old_grid).connectivity, new_arch)
     child_arch = child_architecture(new_arch)
     old_properties = (old_grid.Δλᶠᵃᵃ, old_grid.Δλᶜᵃᵃ, old_grid.λᶠᵃᵃ,  old_grid.λᶜᵃᵃ,
                       old_grid.Δφᵃᶠᵃ, old_grid.Δφᵃᶜᵃ, old_grid.φᵃᶠᵃ,  old_grid.φᵃᶜᵃ,
@@ -36,6 +37,7 @@ function on_architecture(new_arch::Distributed, old_grid::LatitudeLongitudeGrid)
 end
 
 function on_architecture(new_arch::Distributed, old_grid::RectilinearGrid)
+    new_arch = with_connectivity(architecture(old_grid).connectivity, new_arch)
     child_arch = child_architecture(new_arch)
     old_properties = (old_grid.Δxᶠᵃᵃ, old_grid.Δxᶜᵃᵃ, old_grid.xᶠᵃᵃ, old_grid.xᶜᵃᵃ,
                       old_grid.Δyᵃᶠᵃ, old_grid.Δyᵃᶜᵃ, old_grid.yᵃᶠᵃ, old_grid.yᵃᶜᵃ,
@@ -53,6 +55,7 @@ function on_architecture(new_arch::Distributed, old_grid::RectilinearGrid)
 end
 
 function on_architecture(new_arch::Distributed, old_grid::OrthogonalSphericalShellGrid)
+    new_arch = with_connectivity(architecture(old_grid).connectivity, new_arch)
     child_arch = child_architecture(new_arch)
 
     coordinates = (:λᶜᶜᵃ, :λᶠᶜᵃ, :λᶜᶠᵃ, :λᶠᶠᵃ, :φᶜᶜᵃ, :φᶠᶜᵃ, :φᶜᶠᵃ, :φᶠᶠᵃ, :z)
