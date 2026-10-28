@@ -21,10 +21,10 @@ using Statistics: mean
     end
 
     configs = [
-        (topology = (Periodic, Periodic, Periodic), size = (4, 4, 4), extent = (1, 1, 1),
+        (topology = (Periodic, Periodic, Periodic), size = (16, 16, 16), extent = (1, 1, 1),
          timestepper = :RungeKutta3, name = "3D (Periodic, Periodic, Periodic) — RK3"),
-        (topology = (Periodic, Periodic, Flat), size = (4, 4), extent = (1, 1),
-         timestepper = :QuasiAdamsBashforth2, name = "2D (Periodic, Periodic, Flat) — QB2"),
+        (topology = (Bounded, Bounded, Bounded), size = (16, 16, 16), extent = (1, 1, 1),
+         timestepper = :QuasiAdamsBashforth2, name = "3D (Bounded, Bounded, Bounded) — QB2"),
     ]
 
     for config in configs
@@ -49,7 +49,7 @@ using Statistics: mean
                 dmodel = Enzyme.make_zero(model)
 
                 T_init  = CenterField(grid)
-                set!(T_init, (x, y, z...) -> 0.01 * x + 0.01 * y)
+                set!(T_init, (x, y, z) -> 0.01 * x + 0.01 * y)
                 dT_init = CenterField(grid)
                 set!(dT_init, 0.0)
 
