@@ -7,7 +7,7 @@
 # same environment variables (the plot script needs CairoMakie and FFTW). Each run saves surface snapshots every 5 days
 # and the overturning averaged over the second half of the run to baroclinic_channel_<settings>_<case>_*.jld2.
 #
-# Environment variables: TRUTH_DEGREES (default 1/32), COARSE_DEGREES (1/4), BIHARMONIC_DAYS (0.1), STOP_YEARS (4),
+# Environment variables: TRUTH_DEGREES (default 1/32), COARSE_DEGREES (1/4), BIHARMONIC_DAYS (0.3), STOP_YEARS (4),
 # WENO (false: WENO=true swaps the energy-conserving momentum advection for WENO).
 
 using Oceananigans
@@ -25,7 +25,7 @@ arch = get(ENV, "ARCH", "CPU") == "GPU" ? GPU() : CPU()
 parse_degrees(s) = prod(parse(Float64, n)^p for (n, p) in zip(split(s, "/"), (1, -1)))
 truth_degrees = parse_degrees(get(ENV, "TRUTH_DEGREES", "1/32"))
 coarse_degrees = parse_degrees(get(ENV, "COARSE_DEGREES", "1/4"))
-τ₄ = parse(Float64, get(ENV, "BIHARMONIC_DAYS", "0.1")) * day   # biharmonic damping time of the grid-scale wave
+τ₄ = parse(Float64, get(ENV, "BIHARMONIC_DAYS", "0.3")) * day   # biharmonic damping time of the grid-scale wave
 stop_time = parse(Float64, get(ENV, "STOP_YEARS", "4")) * 365days
 weno = parse(Bool, get(ENV, "WENO", "false"))
 prefix = @sprintf("baroclinic_channel_%gday", τ₄ / day) * (weno ? "_weno" : "")

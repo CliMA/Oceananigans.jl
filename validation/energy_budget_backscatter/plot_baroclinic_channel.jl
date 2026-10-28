@@ -10,7 +10,7 @@ using FFTW
 using Printf
 using Statistics
 
-τ₄ = parse(Float64, get(ENV, "BIHARMONIC_DAYS", "0.1")) * day
+τ₄ = parse(Float64, get(ENV, "BIHARMONIC_DAYS", "0.3")) * day
 weno = parse(Bool, get(ENV, "WENO", "false"))
 prefix = @sprintf("baroclinic_channel_%gday", τ₄ / day) * (weno ? "_weno" : "")
 
