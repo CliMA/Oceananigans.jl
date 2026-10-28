@@ -22,13 +22,15 @@ The closure applies a negative horizontal Laplacian viscosity
 fed by a prognostic, vertically-averaged sub-grid eddy kinetic energy `e` that obeys
 
 ```
-∂t e = - (1/H) ∫ ∑ᵢⱼ τᵢⱼ ∂ⱼuᵢ dz + (1/H) ∇ₕ⋅(H κₑ ∇ₕe),
+∂t e = (1/H) ∫ (wᵇ - ∑ᵢⱼ τᵢⱼ ∂ⱼuᵢ) dz + (1/H) ∇ₕ⋅(H κₑ ∇ₕe),
 ```
 
 where `Δ = √(Δx Δy)`, `H` is the column depth, and the sum runs over the horizontal viscous fluxes
 `τᵢⱼ`, which force momentum as `-∂ⱼτᵢⱼ`, of every closure in the model's closure tuple. Energy removed from the resolved flow by
 horizontal viscosity therefore enters `e`, and the backscatter returns it to the resolved flow.
-Vertical viscosities contribute nothing to the sum.
+Vertical viscosities contribute nothing to the sum. `wᵇ` is the upward skew buoyancy flux, `κ |∇ₕb|² / ∂z b`,
+of any `IsopycnalSkewSymmetricDiffusivity` in the tuple: the potential energy released by
+Gent-McWilliams also enters `e`.
 
 Keyword arguments
 =================
@@ -104,6 +106,31 @@ end
     Ay_qᶠᶠᶜ(i, j, k, grid, _viscous_flux_uy, closure, K, clock, fields, b) * δyᵃᶠᵃ(i, j, k, grid, fields.u) +
     Ax_qᶠᶠᶜ(i, j, k, grid, _viscous_flux_vx, closure, K, clock, fields, b) * δxᶠᵃᵃ(i, j, k, grid, fields.v)
 
+# Rate of potential energy release by mesoscale closures, at the locations of vertical buoyancy fluxes
+@inline potential_energy_releaseᶜᶜᶠ(i, j, k, grid, closure, K, clock, fields, buoyancy) = zero(grid)
+
+@inline potential_energy_releaseᶜᶜᶠ(i, j, k, grid, closures::Tuple, Ks, clock, fields, buoyancy) =
+    potential_energy_releaseᶜᶜᶠ(i, j, k, grid, first(closures), first(Ks), clock, fields, buoyancy) +
+    potential_energy_releaseᶜᶜᶠ(i, j, k, grid, Base.tail(closures), Base.tail(Ks), clock, fields, buoyancy)
+
+@inline potential_energy_releaseᶜᶜᶠ(i, j, k, grid, ::Tuple{}, ::Tuple{}, clock, fields, buoyancy) = zero(grid)
+
+# Upward skew buoyancy flux, κ |∇ₕb|² / ∂z b for small slopes
+@inline function potential_energy_releaseᶜᶜᶠ(i, j, k, grid, closure::ISSD, K, clock, fields, buoyancy)
+    κ_skew = κᶜᶜᶠ(i, j, k, grid, issd_coefficient_loc, closure.κ_skew, clock, fields)
+
+    bx = ℑxzᶜᵃᶠ(i, j, k, grid, ∂xᵣ_b, buoyancy, fields)
+    by = ℑyzᵃᶜᶠ(i, j, k, grid, ∂yᵣ_b, buoyancy, fields)
+
+    R₃₁ = isopycnal_rotation_tensor_xz_ccf(i, j, k, grid, buoyancy, fields, closure.isopycnal_tensor)
+    R₃₂ = isopycnal_rotation_tensor_yz_ccf(i, j, k, grid, buoyancy, fields, closure.isopycnal_tensor)
+
+    ϵ = tapering_factorᶜᶜᶠ(i, j, k, grid, closure, fields, buoyancy)
+    release = - ϵ * κ_skew * (R₃₁ * bx + R₃₂ * by)
+
+    return ifelse(peripheral_node(i, j, k, grid, Center(), Center(), Face()), zero(grid), release)
+end
+
 @inline subgrid_energy_fluxᶠᶜᶜ(i, j, k, grid, κₑ, e) = κₑ * static_column_depthᶠᶜᵃ(i, j, grid) * Δy_qᶠᶜᶜ(i, j, k, grid, ∂xᵣᶠᶜᶜ, e)
 @inline subgrid_energy_fluxᶜᶠᶜ(i, j, k, grid, κₑ, e) = κₑ * static_column_depthᶜᶠᵃ(i, j, grid) * Δx_qᶜᶠᶜ(i, j, k, grid, ∂yᵣᶜᶠᶜ, e)
 
@@ -116,12 +143,17 @@ end
              ℑxyᶜᶜᵃ(i, j, k, grid, viscous_energy_transferᶠᶠᶜ, closure, K, clock, fields, b)
     end
 
+    P = zero(grid)
+    for k in 2:grid.Nz
+        P += potential_energy_releaseᶜᶜᶠ(i, j, k, grid, closure, K, clock, fields, b) * Δzᶜᶜᶠ(i, j, k, grid)
+    end
+
     ∇F = δxᶜᵃᵃ(i, j, 1, grid, subgrid_energy_fluxᶠᶜᶜ, κₑ, e) +
          δyᵃᶜᵃ(i, j, 1, grid, subgrid_energy_fluxᶜᶠᶜ, κₑ, e)
 
     H = static_column_depthᶜᶜᵃ(i, j, grid)
 
-    @inbounds Ge[i, j, 1] = ifelse(H > 0, Az⁻¹ᶜᶜᶜ(i, j, 1, grid) * (∇F - ε) / H, zero(grid))
+    @inbounds Ge[i, j, 1] = ifelse(H > 0, (Az⁻¹ᶜᶜᶜ(i, j, 1, grid) * (∇F - ε) + P) / H, zero(grid))
 end
 
 function step_closure_prognostics!(closure_fields, closure::EnergyBudgetBackscatter, model, Δt)
