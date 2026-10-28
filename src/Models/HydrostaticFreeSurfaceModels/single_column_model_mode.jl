@@ -69,6 +69,11 @@ compute_free_surface_tendency!(::SingleColumnGrid, model, ::SplitExplicitFreeSur
 
 function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGrid, callbacks)
 
+    mask_immersed_field!(model.tracers)
+    update_model_field_time_series!(model, model.clock)
+    compute_forcing!(model.forcing)
+    update_boundary_conditions!(fields(model), model)
+
     fill_halo_regions!(prognostic_fields(model), model.clock, fields(model))
 
     # Compute auxiliaries

@@ -373,8 +373,8 @@ const Lᶜᶜᶠ = Tuple{Center, Center, Face}
 @inline νᶜᶠᶠ(i, j, k, grid, ::Lᶜᶜᶠ, ν::AbstractArray, clk, fields) = ℑyᵃᶠᵃ(i, j, k, grid, ν)
 @inline νᶠᶠᶜ(i, j, k, grid, ::Lᶜᶜᶠ, ν::AbstractArray, clk, fields) = ℑxyzᶠᶠᶜ(i, j, k, grid, ν)
 
-@inline κᶠᶜᶜ(i, j, k, grid, ::Lᶜᶜᶠ, κ::AbstractArray, clk, fields) = ℑxzᶠᵃᶠ(i, j, k, grid, κ)
-@inline κᶜᶠᶜ(i, j, k, grid, ::Lᶜᶜᶠ, κ::AbstractArray, clk, fields) = ℑyzᵃᶠᶠ(i, j, k, grid, κ)
+@inline κᶠᶜᶜ(i, j, k, grid, ::Lᶜᶜᶠ, κ::AbstractArray, clk, fields) = ℑxzᶠᵃᶜ(i, j, k, grid, κ)
+@inline κᶜᶠᶜ(i, j, k, grid, ::Lᶜᶜᶠ, κ::AbstractArray, clk, fields) = ℑyzᵃᶠᶜ(i, j, k, grid, κ)
 @inline κᶜᶜᶠ(i, j, k, grid, ::Lᶜᶜᶠ, κ::AbstractArray, clk, fields) = @inbounds κ[i, j, k]
 @inline κᶠᶜᶠ(i, j, k, grid, ::Lᶜᶜᶠ, κ::AbstractArray, clk, fields) = ℑxᶠᵃᵃ(i, j, k, grid, κ)
 @inline κᶜᶠᶠ(i, j, k, grid, ::Lᶜᶜᶠ, κ::AbstractArray, clk, fields) = ℑyᵃᶠᵃ(i, j, k, grid, κ)

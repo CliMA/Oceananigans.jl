@@ -11,9 +11,9 @@ using Oceananigans.TurbulenceClosures: ExplicitTimeDiscretization
     δᶻc★ = δzᶜᶜᶠ(i, j, k, grid, c★, cⁿ⁺¹, cⁿ)
 
     @inbounds begin
-        vx₁ = C₁ * Vⁿ.x[i, j, k] / σⁿ(i, j, k, grid, f, c, c)
-        vy₁ = C₁ * Vⁿ.y[i, j, k] / σⁿ(i, j, k, grid, c, f, c)
-        vz₁ = C₁ * Vⁿ.z[i, j, k] / σⁿ(i, j, k, grid, c, c, f)
+        vx₁ = C₁ * Vⁿ.x[i, j, k] * σ⁻¹ⁿ(i, j, k, grid, f, c, c)
+        vy₁ = C₁ * Vⁿ.y[i, j, k] * σ⁻¹ⁿ(i, j, k, grid, c, f, c)
+        vz₁ = C₁ * Vⁿ.z[i, j, k] * σ⁻¹ⁿ(i, j, k, grid, c, c, f)
 
         vx₂ = C₂ * Vⁿ⁻¹.x[i, j, k] / σ⁻(i, j, k, grid, f, c, c)
         vy₂ = C₂ * Vⁿ⁻¹.y[i, j, k] / σ⁻(i, j, k, grid, c, f, c)
@@ -33,9 +33,9 @@ end
     δᶻc★ = δzᶜᶜᶠ(i, j, k, grid, c★, cⁿ⁺¹, cⁿ)
 
     @inbounds begin
-        vx₁ = Vⁿ.x[i, j, k] / σⁿ(i, j, k, grid, f, c, c)
-        vy₁ = Vⁿ.y[i, j, k] / σⁿ(i, j, k, grid, c, f, c)
-        vz₁ = Vⁿ.z[i, j, k] / σⁿ(i, j, k, grid, c, c, f)
+        vx₁ = Vⁿ.x[i, j, k] * σ⁻¹ⁿ(i, j, k, grid, f, c, c)
+        vy₁ = Vⁿ.y[i, j, k] * σ⁻¹ⁿ(i, j, k, grid, c, f, c)
+        vz₁ = Vⁿ.z[i, j, k] * σ⁻¹ⁿ(i, j, k, grid, c, c, f)
 
         K.x[i, j, k] = 2 * δˣc★ * vx₁
         K.y[i, j, k] = 2 * δʸc★ * vy₁

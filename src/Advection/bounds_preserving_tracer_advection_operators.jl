@@ -1,6 +1,6 @@
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Fields: CenterField
-using Oceananigans.BoundaryConditions: fill_halo_regions!
+using Oceananigans.BoundaryConditions: fill_bottom_and_top_halo!
 using Oceananigans.Utils: launch!
 using KernelAbstractions: @index, @kernel
 
@@ -36,6 +36,10 @@ const _ε₂ = 1e-20
 
 # Note: this can probably be generalized to include UpwindBiased
 const BoundsPreservingWENO = WENO{<:Any, <:Any, <:Any, <:Any, <:BoundsPreservation}
+
+# The limiter is also computed in the first horizontal halo layer, whose reconstructions reach one cell further
+@inline Grids.required_halo_size_x(::WENO{N, <:Any, <:Any, <:Any, <:BoundsPreservation}) where N = N + 1
+@inline Grids.required_halo_size_y(::WENO{N, <:Any, <:Any, <:Any, <:BoundsPreservation}) where N = N + 1
 
 #####
 ##### Cell-wise rescaling factor, from cᵢ = ω̂₁ c⁻ + ω̂₁ c⁺ + (1 - 2ω̂₁) p̃ in each direction
@@ -101,16 +105,21 @@ end
 
 update_bounds_preserving_limiter!(scheme, grid, c) = nothing
 
+update_bounds_preserving_limiter!(scheme::FluxFormAdvection, grid, c) = update_bounds_preserving_limiter!(scheme.z, grid, c)
+
 """
 $(TYPEDSIGNATURES)
 
 Fill the rescaling factor ``θ`` carried by a bounds-preserving `scheme` from the tracer `c`.
+``θ`` is computed in the first horizontal halo layer too, from the halos of `c`, so that
+only its bottom and top halos are filled afterwards and no halo is communicated.
 """
 function update_bounds_preserving_limiter!(scheme::BoundsPreservingWENO, grid, c)
     isnothing(c) && return nothing # the `momentum` entry has no tracer to limit
     θ = scheme.bounds.limiter
-    launch!(architecture(grid), grid, :xyz, _compute_bounds_preserving_limiter!, θ, grid, scheme, c)
-    fill_halo_regions!(θ)
+    parameters = horizontally_extended_interior_kernel_parameters(grid)
+    launch!(architecture(grid), grid, parameters, _compute_bounds_preserving_limiter!, θ, grid, scheme, c)
+    fill_bottom_and_top_halo!(θ.data, θ.boundary_conditions, θ.indices, (Center(), Center(), Center()), grid)
     return nothing
 end
 
@@ -142,7 +151,7 @@ end
     div_y = bounded_tracer_flux_divergence_y(i, j, k, grid, advection, 1, U.v, c)
     div_z = bounded_tracer_flux_divergence_z(i, j, k, grid, advection, 1, U.w, c)
 
-    return 1/Vᶜᶜᶜ(i, j, k, grid) * (div_x + div_y + div_z)
+    return V⁻¹ᶜᶜᶜ(i, j, k, grid) * (div_x + div_y + div_z)
 end
 
 # Support for Flat directions

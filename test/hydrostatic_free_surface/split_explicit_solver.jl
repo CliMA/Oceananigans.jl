@@ -339,7 +339,7 @@ end
     bottom_height(λ, φ) = max(cosine_of_pole_distance(λ, φ, 70), cosine_of_pole_distance(λ, φ, 250)) > cosd(3) ? 0 : -Lz
 
     for arch in archs, timestepper in (ForwardBackwardScheme(), RungeKutta3Scheme()),
-        (fold_topology, pivot) in ((RightCenterFolded, UPivot), (RightCenterFolded, TPivot), (RightFaceFolded, FPivot))
+        (fold_topology, pivot) in ((CenterFolded, UPivot), (CenterFolded, TPivot), (FaceFolded, FPivot))
 
         underlying_grid = TripolarGrid(arch; size = (16, 10, 1), z = (-Lz, 0), north_poles_latitude = 55, first_pole_longitude = 70,
                                        fold_topology, pivot)

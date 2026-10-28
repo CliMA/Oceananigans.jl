@@ -1,4 +1,5 @@
 using Oceananigans.Grids: ξnodes, ηnodes, rnodes
+using Oceananigans.ImmersedBoundaries: underlying_grid
 
 #####
 ##### WENO on stretched directions: reconstruction coefficients, smoothness indicators and optimal weights computed
@@ -52,7 +53,7 @@ materialize_coefficients(coefficients, scheme, grid) = coefficients
 
 function materialize_coefficients(directions::Tuple, ::WENO{N, FT}, grid) where {N, FT}
     arch = architecture(grid)
-    cpu_grid = on_architecture(CPU(), grid)
+    cpu_grid = on_architecture(CPU(), underlying_grid(grid))
 
     # Flat and uniform directions, and the curvilinear horizontal ones (without ξnodes and ηnodes), keep the constants
     function direction_coefficients(direction, nodes)

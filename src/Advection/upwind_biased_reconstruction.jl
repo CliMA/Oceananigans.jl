@@ -20,9 +20,9 @@ function UpwindBiased(FT::DataType = Oceananigans.defaults.FloatType;
     mod(order, 2) == 0 && throw(ArgumentError("UpwindBiased reconstruction scheme is defined only for odd orders"))
 
     N = Int((order + 1) ÷ 2)
+    advecting_velocity_scheme = Centered(FT; order = 2)
 
     if N > 1
-        advecting_velocity_scheme = Centered(FT; order = order - 1)
         if buffer_scheme isa DecreasingOrderAdvectionScheme
             if order ≤ minimum_buffer_upwind_order
                 # At minimum order, switch to Centered scheme
@@ -32,7 +32,6 @@ function UpwindBiased(FT::DataType = Oceananigans.defaults.FloatType;
             end
         end
     else
-        advecting_velocity_scheme = Centered(FT; order = 2)
         buffer_scheme  = nothing
     end
 
