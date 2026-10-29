@@ -1,10 +1,12 @@
 using Oceananigans.Utils: prettysummary
 
-struct ScalarDiffusivity{TD, F, N, V, K} <: AbstractScalarDiffusivity{TD, F, N}
+struct ScalarDiffusivity{TD, F, N, V, K, O} <: AbstractScalarDiffusivity{TD, F, N}
     ν :: V
     κ :: K
-    ScalarDiffusivity{TD, F, N}(ν::V, κ::K) where {TD, F, N, V, K} = new{TD, F, N, V, K}(ν, κ)
+    ScalarDiffusivity{TD, F, N}(ν::V, κ::K, ::Val{O}=Val(2)) where {TD, F, N, V, K, O} = new{TD, F, N, V, K, O}(ν, κ)
 end
+
+@inline diffusion_order(::ScalarDiffusivity{TD, F, N, V, K, O}) where {TD, F, N, V, K, O} = Val(O)
 
 """
     ScalarDiffusivity(time_discretization = ExplicitTimeDiscretization(),
@@ -13,7 +15,8 @@ end
                       κ = nothing,
                       discrete_form = false,
                       loc = (nothing, nothing, nothing),
-                      parameters = nothing)
+                      parameters = nothing,
+                      order = 2)
 
 Return `ScalarDiffusivity` turbulence closure with viscosity `ν` and tracer diffusivities `κ`
 for each tracer field in `tracers`. If a single `κ` is provided, it is applied to all tracers.
@@ -68,6 +71,19 @@ value of keyword argument `discrete_form`, the constructor expects:
 * `parameters`: `NamedTuple` with parameters used by the functions
   that compute viscosity and/or diffusivity; default: `nothing`.
 
+* `order`: order of accuracy of the discrete Laplacian, either `2` (default) or `4`.
+  With `order = 4`, diffusive fluxes use the face derivative
+  `(15 (φᵢ - φᵢ₋₁) - (φᵢ₊₁ - φᵢ₋₂)) / 12Δ`, whose flux divergence is the fourth-order
+  five-point Laplacian. Fourth-order fluxes are used only in directions in which the grid is a
+  regularly-spaced `RectilinearGrid`, and fall back to second order next to `Bounded` walls and
+  immersed boundaries (where the four-point stencil would include inactive nodes), and in directions
+  with variable spacing. Viscous fluxes compute `∂ⱼuᵢ` at fourth order and the transpose term `∂ᵢuⱼ`
+  of the strain rate at second order, so that the viscous term reduces to the fourth-order Laplacian
+  `ν ∇²uᵢ` for constant `ν` and a velocity field that is discretely divergence-free.
+  Diffusivities stored in arrays or `Field`s are interpolated to faces at second order.
+  `order = 4` requires a halo size of at least 2 and is supported for `ThreeDimensionalFormulation`
+  and `VerticalFormulation` with `ExplicitTimeDiscretization`.
+
 Examples
 ========
 
@@ -76,6 +92,11 @@ julia> using Oceananigans
 
 julia> ScalarDiffusivity(ν=1000, κ=2000)
 ScalarDiffusivity{ExplicitTimeDiscretization}(ν=1000.0, κ=2000.0)
+```
+
+```jldoctest ScalarDiffusivity
+julia> ScalarDiffusivity(ν=1e-6, κ=1e-7, order=4)
+ScalarDiffusivity{ExplicitTimeDiscretization}(ν=1.0e-6, κ=1.0e-7, order=4)
 ```
 
 ```jldoctest ScalarDiffusivity
@@ -119,11 +140,24 @@ function ScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(),
                            discrete_form = false,
                            loc = (nothing, nothing, nothing),
                            parameters = nothing,
-                           required_halo_size::Int = 1)
+                           required_halo_size::Int = 1,
+                           order::Int = 2)
 
     if formulation == HorizontalFormulation() && time_discretization == VerticallyImplicitTimeDiscretization()
       throw(ArgumentError("VerticallyImplicitTimeDiscretization is only supported for \
           `VerticalFormulation` or `ThreeDimensionalFormulation`"))
+    end
+
+    order ∈ (2, 4) || throw(ArgumentError("ScalarDiffusivity order must be 2 or 4; got order = $order"))
+
+    if order == 4
+        formulation isa Union{ThreeDimensionalFormulation, VerticalFormulation} ||
+            throw(ArgumentError("order = 4 is only supported for ThreeDimensionalFormulation and VerticalFormulation"))
+
+        time_discretization isa ExplicitTimeDiscretization ||
+            throw(ArgumentError("order = 4 is only supported with ExplicitTimeDiscretization"))
+
+        required_halo_size = max(required_halo_size, 2)
     end
 
     κ = convert_diffusivity(FT, κ; discrete_form, loc, parameters)
@@ -133,10 +167,11 @@ function ScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(),
     # This particular short-circuiting of the required_halo_size kwargs is necessary to perform parameter
     # estimation of the diffusivity coefficients using autodiff.
     if ν isa Number && κ isa Number
-      return ScalarDiffusivity{typeof(time_discretization), typeof(formulation), 1}(ν, κ)
+      N = order == 4 ? 2 : 1
+      return ScalarDiffusivity{typeof(time_discretization), typeof(formulation), N}(ν, κ, Val(order))
     end
 
-    return ScalarDiffusivity{typeof(time_discretization), typeof(formulation), required_halo_size}(ν, κ)
+    return ScalarDiffusivity{typeof(time_discretization), typeof(formulation), required_halo_size}(ν, κ, Val(order))
 end
 
 # Explicit default
@@ -188,7 +223,7 @@ HorizontalDivergenceScalarDiffusivity(FT::DataType; kwargs...) = ScalarDiffusivi
 
 @inline function Utils.with_tracers(tracers, closure::ScalarDiffusivity{TD, F, N}) where {TD, F, N}
     κ = tracer_diffusivities(tracers, closure.κ)
-    return ScalarDiffusivity{TD, F, N}(closure.ν, κ)
+    return ScalarDiffusivity{TD, F, N}(closure.ν, κ, diffusion_order(closure))
 end
 
 @inline viscosity(closure::ScalarDiffusivity, K) = closure.ν
@@ -207,6 +242,10 @@ function Base.summary(closure::ScalarDiffusivity)
         summary_str = string(prefix, "ScalarDiffusivity{$TD}(ν=", prettysummary(closure.ν), ", κ=", prettysummary(closure.κ), ")")
     end
 
+    if diffusion_order(closure) == Val(4)
+        summary_str = summary_str[1:end-1] * ", order=4)"
+    end
+
     return summary_str
 end
 
@@ -215,13 +254,13 @@ Base.show(io::IO, closure::ScalarDiffusivity) = print(io, summary(closure))
 function Adapt.adapt_structure(to, closure::ScalarDiffusivity{TD, F, N}) where {TD, F, N}
     ν = Adapt.adapt(to, closure.ν)
     κ = Adapt.adapt(to, closure.κ)
-    return ScalarDiffusivity{TD, F, N}(ν, κ)
+    return ScalarDiffusivity{TD, F, N}(ν, κ, diffusion_order(closure))
 end
 
 function Architectures.on_architecture(to, closure::ScalarDiffusivity{TD, F, N}) where {TD, F, N}
     ν = on_architecture(to, closure.ν)
     κ = on_architecture(to, closure.κ)
-    return ScalarDiffusivity{TD, F, N}(ν, κ)
+    return ScalarDiffusivity{TD, F, N}(ν, κ, diffusion_order(closure))
 end
 
 #####
