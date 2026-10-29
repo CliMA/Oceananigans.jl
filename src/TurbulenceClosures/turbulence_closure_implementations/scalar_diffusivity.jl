@@ -1,12 +1,39 @@
 using Oceananigans.Utils: prettysummary
 
-struct ScalarDiffusivity{TD, F, N, V, K, O} <: AbstractScalarDiffusivity{TD, F, N}
+"""
+    SecondOrderDiffusion()
+
+Second-order (three-point Laplacian) discretization of diffusive fluxes. Default for `ScalarDiffusivity`.
+"""
+struct SecondOrderDiffusion end
+
+"""
+    FourthOrderDiffusion()
+
+Fourth-order (five-point Laplacian) discretization of diffusive fluxes, with second-order fallback
+next to walls and immersed boundaries. See [`ScalarDiffusivity`](@ref).
+"""
+struct FourthOrderDiffusion end
+
+diffusion_discretization(order::Int) = order == 2 ? SecondOrderDiffusion() :
+                                       order == 4 ? FourthOrderDiffusion() :
+                                       throw(ArgumentError("ScalarDiffusivity order must be 2 or 4; got order = $order"))
+
+@inline diffusion_order(::SecondOrderDiffusion) = Val(2)
+@inline diffusion_order(::FourthOrderDiffusion) = Val(4)
+
+discretization_halo_size(::SecondOrderDiffusion) = 1
+discretization_halo_size(::FourthOrderDiffusion) = 2
+
+struct ScalarDiffusivity{TD, F, N, V, K, D} <: AbstractScalarDiffusivity{TD, F, N}
     ν :: V
     κ :: K
-    ScalarDiffusivity{TD, F, N}(ν::V, κ::K, ::Val{O}=Val(2)) where {TD, F, N, V, K, O} = new{TD, F, N, V, K, O}(ν, κ)
+    discretization :: D
+    ScalarDiffusivity{TD, F, N}(ν::V, κ::K, discretization::D=SecondOrderDiffusion()) where {TD, F, N, V, K, D} =
+        new{TD, F, N, V, K, D}(ν, κ, discretization)
 end
 
-@inline diffusion_order(::ScalarDiffusivity{TD, F, N, V, K, O}) where {TD, F, N, V, K, O} = Val(O)
+@inline diffusion_order(closure::ScalarDiffusivity) = diffusion_order(closure.discretization)
 
 """
     ScalarDiffusivity(time_discretization = ExplicitTimeDiscretization(),
@@ -148,17 +175,18 @@ function ScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(),
           `VerticalFormulation` or `ThreeDimensionalFormulation`"))
     end
 
-    order ∈ (2, 4) || throw(ArgumentError("ScalarDiffusivity order must be 2 or 4; got order = $order"))
+    discretization = diffusion_discretization(order)
 
-    if order == 4
+    if discretization isa FourthOrderDiffusion
         formulation isa Union{ThreeDimensionalFormulation, VerticalFormulation} ||
             throw(ArgumentError("order = 4 is only supported for ThreeDimensionalFormulation and VerticalFormulation"))
 
         time_discretization isa ExplicitTimeDiscretization ||
             throw(ArgumentError("order = 4 is only supported with ExplicitTimeDiscretization"))
 
-        required_halo_size = max(required_halo_size, 2)
     end
+
+    required_halo_size = max(required_halo_size, discretization_halo_size(discretization))
 
     κ = convert_diffusivity(FT, κ; discrete_form, loc, parameters)
     ν = convert_diffusivity(FT, ν; discrete_form, loc, parameters)
@@ -167,11 +195,11 @@ function ScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(),
     # This particular short-circuiting of the required_halo_size kwargs is necessary to perform parameter
     # estimation of the diffusivity coefficients using autodiff.
     if ν isa Number && κ isa Number
-      N = order == 4 ? 2 : 1
-      return ScalarDiffusivity{typeof(time_discretization), typeof(formulation), N}(ν, κ, Val(order))
+      N = discretization_halo_size(discretization)
+      return ScalarDiffusivity{typeof(time_discretization), typeof(formulation), N}(ν, κ, discretization)
     end
 
-    return ScalarDiffusivity{typeof(time_discretization), typeof(formulation), required_halo_size}(ν, κ, Val(order))
+    return ScalarDiffusivity{typeof(time_discretization), typeof(formulation), required_halo_size}(ν, κ, discretization)
 end
 
 # Explicit default
@@ -223,7 +251,7 @@ HorizontalDivergenceScalarDiffusivity(FT::DataType; kwargs...) = ScalarDiffusivi
 
 @inline function Utils.with_tracers(tracers, closure::ScalarDiffusivity{TD, F, N}) where {TD, F, N}
     κ = tracer_diffusivities(tracers, closure.κ)
-    return ScalarDiffusivity{TD, F, N}(closure.ν, κ, diffusion_order(closure))
+    return ScalarDiffusivity{TD, F, N}(closure.ν, κ, closure.discretization)
 end
 
 @inline viscosity(closure::ScalarDiffusivity, K) = closure.ν
@@ -254,13 +282,13 @@ Base.show(io::IO, closure::ScalarDiffusivity) = print(io, summary(closure))
 function Adapt.adapt_structure(to, closure::ScalarDiffusivity{TD, F, N}) where {TD, F, N}
     ν = Adapt.adapt(to, closure.ν)
     κ = Adapt.adapt(to, closure.κ)
-    return ScalarDiffusivity{TD, F, N}(ν, κ, diffusion_order(closure))
+    return ScalarDiffusivity{TD, F, N}(ν, κ, closure.discretization)
 end
 
 function Architectures.on_architecture(to, closure::ScalarDiffusivity{TD, F, N}) where {TD, F, N}
     ν = on_architecture(to, closure.ν)
     κ = on_architecture(to, closure.κ)
-    return ScalarDiffusivity{TD, F, N}(ν, κ, diffusion_order(closure))
+    return ScalarDiffusivity{TD, F, N}(ν, κ, closure.discretization)
 end
 
 #####
