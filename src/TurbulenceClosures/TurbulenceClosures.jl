@@ -27,7 +27,9 @@ export
     VerticallyImplicitTimeDiscretization,
 
     build_closure_fields,
-    compute_diffusivities!,
+    compute_closure_fields!,
+    step_closure_prognostics!,
+    initialize_closure_fields!,
 
     viscosity, diffusivity,
 
@@ -39,30 +41,37 @@ export
     cell_diffusion_timescale,
     closure_required_tracers
 
-using KernelAbstractions: @index, @kernel
 using Adapt: Adapt, adapt
+using DocStringExtensions: TYPEDSIGNATURES
+using KernelAbstractions: @index, @kernel
 
 using Oceananigans: Oceananigans, fields
 using Oceananigans.Architectures: Architectures, on_architecture
-using Oceananigans.Grids: AbstractGrid, Bounded, Center, Face, znode
+using Oceananigans.TimeSteppers: TimeSteppers,
+                                 AbstractTimeDiscretization,
+                                 ExplicitTimeDiscretization,
+                                 VerticallyImplicitTimeDiscretization
+using Oceananigans.Grids: AbstractGrid, BoundaryTopology, Center, Face, znode
 using Oceananigans.Operators: Operators,
     Ax_qᶜᶜᶜ, Ax_qᶠᶜᶜ, Ax_qᶠᶜᶠ, Ax_qᶠᶠᶜ, Ay_qᶜᶜᶜ, Ay_qᶜᶠᶜ, Ay_qᶜᶠᶠ, Ay_qᶠᶠᶜ, Az_qᶜᶜᶜ, Az_qᶜᶜᶠ, Az_qᶜᶠᶠ, Az_qᶠᶜᶠ, Az⁻¹ᶜᶜᶜ, Az⁻¹ᶜᶜᶠ, Az⁻¹ᶜᶠᶜ, Az⁻¹ᶠᶜᶜ, Az⁻¹ᶠᶠᶜ,
     V⁻¹ᶜᶜᶜ, V⁻¹ᶜᶜᶠ, V⁻¹ᶜᶠᶜ, V⁻¹ᶠᶜᶜ,
     Δx_qᶜᶜᶜ, Δx_qᶜᶠᶜ, Δx_qᶜᶠᶠ, Δx_qᶠᶜᶜ, Δxᶜᶜᶜ, Δy_qᶜᶜᶜ, Δy_qᶜᶠᶜ, Δy_qᶠᶜᶜ, Δy_qᶠᶜᶠ, Δyᶜᶜᶜ, Δzᶜᶜᶜ, Δz⁻¹ᶜᶠᶜ, Δz⁻¹ᶠᶜᶜ,
+    Δx⁻¹ᶜᶜᶜ, Δy⁻¹ᶜᶜᶜ, Δz⁻¹ᶜᶜᶜ,
     δxᶜᵃᵃ, δxᶜᶜᶜ, δxᶜᶠᶜ, δxᶠᵃᵃ, δxᶠᶜᶜ, δxᶠᶠᶜ, δyᵃᶜᵃ, δyᵃᶠᵃ, δyᶜᶜᶜ, δyᶜᶠᶜ, δyᶠᶜᶜ, δzᵃᵃᶜ, δzᵃᵃᶠ,
     ζ₃ᶠᶠᶜ,
     ℑxyzᶠᶠᶜ, ℑxyᶜᶜᵃ, ℑxyᶜᶠᵃ, ℑxyᶠᶜᵃ, ℑxzᶜᵃᶜ, ℑxzᶜᵃᶠ, ℑxzᶠᵃᶜ, ℑxᶜᵃᵃ, ℑxᶠᵃᵃ, ℑyzᵃᶜᶜ, ℑyzᵃᶜᶠ, ℑyzᵃᶠᶜ, ℑyᵃᶜᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶠ,
-    ∂xᶜᶜᶜ, ∂xᶜᶠᶜ, ∂xᶠᶜᶜ, ∂xᶠᶜᶠ, ∂xᶠᶠᶜ, ∂yᶜᶜᶜ, ∂yᶜᶠᶜ, ∂yᶜᶠᶠ, ∂yᶠᶜᶜ, ∂yᶠᶠᶜ, ∂zᶜᶜᶜ, ∂zᶜᶜᶠ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ, ∂²zᶜᶜᶠ, ∂²zᶜᶠᶜ, ∂²zᶠᶜᶜ, ∂³zᶜᶜᶠ,
+    ∂xᵣᶜᶜᶜ, ∂xᵣᶜᶠᶜ, ∂xᵣᶠᶜᶜ, ∂xᵣᶠᶜᶠ, ∂xᵣᶠᶠᶜ, ∂yᵣᶜᶜᶜ, ∂yᵣᶜᶠᶜ, ∂yᵣᶜᶠᶠ, ∂yᵣᶠᶜᶜ, ∂yᵣᶠᶠᶜ, ∂zᶜᶜᶜ, ∂zᶜᶜᶠ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ, ∂²zᶜᶜᶠ, ∂²zᶜᶠᶜ, ∂²zᶠᶜᶜ, ∂³zᶜᶜᶠ,
+    ∂x_zᶠᶜᶜ, ∂x_zᶠᶜᶠ, ∂x_zᶜᶠᶜ, ∂x_zᶜᶜᶠ, ∂x_zᶜᶠᶠ,
+    ∂y_zᶜᶠᶜ, ∂y_zᶜᶠᶠ, ∂y_zᶠᶜᶜ, ∂y_zᶜᶜᶠ, ∂y_zᶠᶜᶠ,
     ∇²hᶜᶜᶜ, ∇²hᶜᶠᶜ, ∇²hᶠᶜᶜ, ∇²ᶜᶜᶜ, ∇²ᶜᶜᶠ, ∇²ᶜᶠᶜ, ∇²ᶠᶜᶜ
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions, fill_halo_regions!
-using Oceananigans.Utils: Utils, launch!, prettysummary, with_tracers
-
+using Oceananigans.Utils: Utils, launch!, prettysummary, with_tracers, named_tuple
 using Oceananigans.Fields: Field, CenterField, FunctionField, ZFaceField
-using Oceananigans.ImmersedBoundaries: AbstractGridFittedBottom, ImmersedBoundaryGrid
+using Oceananigans.ImmersedBoundaries: AbstractGridFittedBottom, ImmersedBoundaryGrid, bottom_height
 
 import Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_halo_size_z
 
-const VerticallyBoundedGrid{FT} = AbstractGrid{FT, <:Any, <:Any, <:Bounded}
+const VerticallyBoundedGrid{FT} = AbstractGrid{FT, <:Any, <:Any, <:BoundaryTopology}
 
 #####
 ##### Abstract types
@@ -79,7 +88,30 @@ abstract type AbstractTurbulenceClosure{TimeDiscretization, RequiredHalo} end
 validate_closure(closure) = closure
 closure_summary(closure) = summary(closure)
 Utils.with_tracers(tracers, closure::AbstractTurbulenceClosure) = closure
-compute_diffusivities!(K, closure::AbstractTurbulenceClosure, args...; kwargs...) = nothing
+compute_closure_fields!(K, closure::AbstractTurbulenceClosure, args...; kwargs...) = nothing
+
+import Oceananigans.TimeSteppers: step_closure_prognostics!
+step_closure_prognostics!(K, closure::AbstractTurbulenceClosure, args...) = nothing
+step_closure_prognostics!(K, closure::AbstractArray{<:AbstractTurbulenceClosure}, args...) = nothing
+
+# Reset closure fields that carry state between time steps
+import Oceananigans.TimeSteppers: reset!
+reset!(K, closure::AbstractTurbulenceClosure) = nothing
+reset!(K, closure::AbstractArray{<:AbstractTurbulenceClosure}) = nothing
+reset!(K, ::Nothing) = nothing
+
+# Initialize closure fields when simulation starts (after velocities are properly set)
+initialize_closure_fields!(K, closure::AbstractTurbulenceClosure, args...) = nothing
+initialize_closure_fields!(K, closure::AbstractArray{<:AbstractTurbulenceClosure}, args...) = nothing
+initialize_closure_fields!(K, ::Nothing, args...) = nothing
+
+# Handle tuple of closures (iterate through each closure and its fields)
+function initialize_closure_fields!(closure_fields_tuple::Tuple, closures::Tuple, args...)
+    for (fields, closure) in zip(closure_fields_tuple, closures)
+        initialize_closure_fields!(fields, closure, args...)
+    end
+    return nothing
+end
 
 # Tracer names that a closure requires (eg TKE-based closures)
 # Fallbacks: by default closures do not require extra tracers.
@@ -157,7 +189,7 @@ const AGFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Abstra
 
 @inline z_top(i, j, grid) = znode(i, j, grid.Nz+1, grid, c, c, f)
 @inline z_bottom(i, j, grid) = znode(i, j, 1, grid, c, c, f)
-@inline z_bottom(i, j, ibg::AGFBIBG) = @inbounds ibg.immersed_boundary.bottom_height[i, j, 1]
+@inline z_bottom(i, j, ibg::AGFBIBG) = bottom_height(i, j, ibg)
 
 @inline depthᶜᶜᶠ(i, j, k, grid) = clip(z_top(i, j, grid) - znode(i, j, k, grid, c, c, f))
 @inline depthᶜᶜᶜ(i, j, k, grid) = clip(z_top(i, j, grid) - znode(i, j, k, grid, c, c, c))

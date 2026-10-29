@@ -31,7 +31,6 @@
 <!-- counts downloads from individual IPs excluding bots (eg, CI) -->
 <!-- see https://discourse.julialang.org/t/announcing-package-download-stats/69073 -->
 <p align="center">
-
   <a href="https://clima.github.io/OceananigansDocumentation/stable">
     <img alt="Stable documentation" src="https://img.shields.io/badge/documentation-stable%20release-blue?style=flat-square">
   </a>
@@ -44,10 +43,21 @@
   <a href="https://juliapkgstats.com/pkg/Oceananigans">
     <img alt="Downloads per month" src="https://img.shields.io/badge/dynamic/json?url=http%3A%2F%2Fjuliapkgstats.com%2Fapi%2Fv1%2Ftotal_downloads%2FOceananigans&query=total_requests&&label=Total%20Downloads&style=flat-square">
   </a>
+</p>
+
+<!-- Testing and Coverage -->
+<p align="center">
   <a href="https://github.com/JuliaTesting/Aqua.jl" >
     <img src="https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg?style=flat-square"/>
   </a>
+  <a href="https://codecov.io/gh/CliMA/Oceananigans.jl" >
+    <img src="https://codecov.io/gh/CliMA/Oceananigans.jl/graph/badge.svg?token=1eev6VdKD0"/>
+  </a>
+  <a href="https://numericalearth.github.io/OceananigansBenchmarks/">
+    <img alt="Performance dashboard" src="https://img.shields.io/badge/Performance-Dashboard-informational?style=flat-square&logo=github"/>
+  </a>
 </p>
+
 
 Oceananigans is a fast, friendly, flexible software package for finite volume simulations of the nonhydrostatic
 and hydrostatic Boussinesq equations on CPUs and GPUs.
@@ -66,17 +76,13 @@ Testing infrastructure is provided by [atdepth](https://www.atdepth.org) and the
 - [Citing and otherwise spreading the word](#citing-and-otherwise-spreading-the-word)
 - [Contributing](#contributing)
 - [Movies](#movies)
-  - [Deep convection](#deep-convection)
-  - [Free convection](#free-convection)
-  - [Winds blowing over the ocean](#winds-blowing-over-the-ocean)
-  - [Free convection with wind stress](#free-convection-with-wind-stress)
 - [Performance benchmarks](#performance-benchmarks)
 
 ## Installation instructions
 
 Oceananigans is a [registered Julia package](https://julialang.org/packages/). So to install it,
 
-1. [Download Julia](https://julialang.org/downloads/) (version 1.9 or later).
+1. [Download Julia](https://julialang.org/downloads/) (version 1.10 or later).
 
 2. Launch Julia and type
 
@@ -107,10 +113,10 @@ simulation = Simulation(model; Δt=0.01, stop_time=4)
 run!(simulation)
 ```
 
-But there's more: changing `CPU()` to `GPU()` makes this code run on a CUDA-enabled Nvidia GPU.
+But there's more: loading CUDA.jl (via `using CUDA`) and changing `CPU()` to `GPU()` makes this code run on a CUDA-enabled Nvidia GPU.
 
 Dive into [the documentation](https://clima.github.io/OceananigansDocumentation/stable/) for more code examples and tutorials.
-Below, you'll find movies from GPU simulations along with CPU and GPU [performance benchmarks](https://github.com/clima/Oceananigans.jl#performance-benchmarks).
+Below, you'll find [movies](#movies) from GPU simulations and a link to our [performance benchmarks](#performance-benchmarks).
 
 ## The Oceananigans knowledge base
 
@@ -128,7 +134,7 @@ It's _deep_ and includes:
 
     If you've got a question or something, anything! to talk about, don't hesitate to [start a new discussion](https://github.com/CliMA/Oceananigans.jl/discussions/new?).
 * The [Oceananigans wiki](https://github.com/CliMA/Oceananigans.jl/wiki) contains practical tips for [getting started with Julia](https://github.com/CliMA/Oceananigans.jl/wiki/Installation-and-getting-started-with-Oceananigans), [accessing and using GPUs](https://github.com/CliMA/Oceananigans.jl/wiki/Accessing-GPUs-and-using-Oceananigans-on-GPUs), and [productive workflows when using Oceananigans](https://github.com/CliMA/Oceananigans.jl/wiki/Productive-Oceananigans-workflows-and-Julia-environments).
-* The [NumericalEarth slack](https://join.slack.com/t/numericalearth/shared_invite/zt-3kjcowmpg-B0s3nalWkvZg8IBc~BIJEA) where one may access institutional knowledge stored in the minds of the Oceananigans community!
+* The [NumericalEarth slack](https://join.slack.com/t/numericalearth/shared_invite/zt-3pwpvky4k-XX7RkgQgHLIUt~wtwGXN~Q) where one may access institutional knowledge stored in the minds of the Oceananigans community!
 * Consider also joining the [Julia Slack](https://julialang.org/slack/), yet another powerful community resource for the Julia package ecosystem, using GPUs, writing great Julia code, and hanging out.
 * [Issues](https://github.com/CliMA/Oceananigans.jl/issues) and [pull requests](https://github.com/CliMA/Oceananigans.jl/pulls) also contain lots of information about problems we've found, solutions we're trying to implement, and dreams we're dreaming to make tomorrow better 🌈.
 
@@ -166,7 +172,16 @@ Please cite this 👆 overview paper if you use Oceananigans in published work.
 We've also published/submitted several model development papers. Please cite these below 👇 if you use
 the features they describe! Also, if you have developed a new feature in Oceananigans and describe it in a paper, make sure to open a pull request to add it to this list:
 
-* **Moses et al. (2025), ["DJ4Earth: Differentiable, and performance-portable Earth System Modeling via program transformations"](https://doi.org/10.22541/essoar.176314951.18114616/v1).**
+* **Lee et al. (2026), ["NORi: An ML-augmented ocean boundary layer parameterization"](https://doi.org/10.1029/2025MS005667).**
+
+  *This paper describes the development of NORi, a machine-learning-augmented parameterization for ocean boundary layer mixing,
+  trained and validated using large eddy simulations with Oceananigans and tested in a centennial double-gyre simulation.*
+
+* **Silvestri et al. (2026), ["A low-storage Runge-Kutta framework for nonlinear free-surface ocean models"](https://doi.org/10.22541/essoar.15002225/v1).**
+
+  *This paper describes the development of a Runge-Kutta timestepping scheme for the `HydrostaticFreeSurfaceModel`.*
+
+* **Moses et al. (2026), ["DJ4Earth: Differentiable, and performance-portable Earth system modeling via program transformations"](https://doi.org/10.1029/2025MS005615).**
 
   *This paper describes the development and advantages of a strategy that leverages Enzyme.jl and Reactant.jl for building differentiable Oceananigans workflows.*
 
@@ -190,7 +205,7 @@ the features they describe! Also, if you have developed a new feature in Oceanan
 
   *This article in the Journal of Open Source Software describes an early version of Oceananigans' `NonhydrostaticModel`.*
 
-We also maintain a [list of publications using Oceananigans.jl](https://clima.github.io/OceananigansDocumentation/stable/#Papers-and-preprints-using-Oceananigans).
+We also maintain a [list of publications using Oceananigans.jl](https://clima.github.io/OceananigansDocumentation/stable/#Publications-using-Oceananigans).
 If you have work using Oceananigans that you would like to have listed there, please open a pull request to add it or let us know!
 
 ## Contributing
@@ -200,37 +215,51 @@ Cause we're all in this together.
 
 If you'd like to work on a new feature, or if you're new to open source and want to crowd-source neat projects that fit your interests, you should [start a discussion](https://github.com/CliMA/Oceananigans.jl/discussions/new?) right away.
 
-For more information check out our [contributor's guide](https://clima.github.io/OceananigansDocumentation/stable/contributing/).
+For more information check out our [contributor's guide](https://clima.github.io/OceananigansDocumentation/stable/developer_docs/contributing).
 
 ## Movies
 
-### [Deep convection](https://www.youtube.com/watch?v=kpUrxnKKMjI)
+Click on a thumbnail to watch the movie on YouTube.
+Descriptions of these simulations, and more movies, can be found in the
+[gallery](https://clima.github.io/OceananigansDocumentation/stable/gallery) and the
+[examples](https://clima.github.io/OceananigansDocumentation/stable/) of the documentation.
 
-[![Watch deep convection in action](https://raw.githubusercontent.com/ali-ramadhan/ali-ramadhan.Github.io/master/img/surface_temp_3d_00130_halfsize.png)](https://www.youtube.com/watch?v=kpUrxnKKMjI)
-
-### [Free convection](https://www.youtube.com/watch?v=yq4op9h3xcU)
-
-[![Watch free convection in action](https://raw.githubusercontent.com/ali-ramadhan/ali-ramadhan.Github.io/master/img/free_convection_0956.png)](https://www.youtube.com/watch?v=yq4op9h3xcU)
-
-### [Winds blowing over the ocean](https://www.youtube.com/watch?v=IRncfbvuiy8)
-
-[![Watch winds blowing over the ocean](https://raw.githubusercontent.com/ali-ramadhan/ali-ramadhan.Github.io/master/img/wind_stress_0400.png)](https://www.youtube.com/watch?v=IRncfbvuiy8)
-
-### [Free convection with wind stress](https://www.youtube.com/watch?v=ob6OMQgPfI4)
-
-[![Watch free convection with wind stress in action](https://raw.githubusercontent.com/ali-ramadhan/ali-ramadhan.Github.io/master/img/wind_stress_unstable_7500.png)](https://www.youtube.com/watch?v=ob6OMQgPfI4)
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <a href="https://www.youtube.com/watch?v=kpUrxnKKMjI">
+        <img alt="Deep convection" src="https://img.youtube.com/vi/kpUrxnKKMjI/hqdefault.jpg" width="100%">
+      </a>
+      <br><a href="https://www.youtube.com/watch?v=kpUrxnKKMjI"><strong>Deep convection</strong></a>
+    </td>
+    <td align="center" width="50%">
+      <a href="https://www.youtube.com/watch?v=yq4op9h3xcU">
+        <img alt="Free convection" src="https://img.youtube.com/vi/yq4op9h3xcU/hqdefault.jpg" width="100%">
+      </a>
+      <br><a href="https://www.youtube.com/watch?v=yq4op9h3xcU"><strong>Free convection</strong></a>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <a href="https://www.youtube.com/watch?v=IRncfbvuiy8">
+        <img alt="Winds blowing over the ocean" src="https://img.youtube.com/vi/IRncfbvuiy8/hqdefault.jpg" width="100%">
+      </a>
+      <br><a href="https://www.youtube.com/watch?v=IRncfbvuiy8"><strong>Winds blowing over the ocean</strong></a>
+    </td>
+    <td align="center" width="50%">
+      <a href="https://www.youtube.com/watch?v=ob6OMQgPfI4">
+        <img alt="Free convection with wind stress" src="https://img.youtube.com/vi/ob6OMQgPfI4/hqdefault.jpg" width="100%">
+      </a>
+      <br><a href="https://www.youtube.com/watch?v=ob6OMQgPfI4"><strong>Free convection with wind stress</strong></a>
+    </td>
+  </tr>
+</table>
 
 ## Performance benchmarks
 
-We perform some performance benchmarks (see the [performance benchmarks](https://clima.github.io/OceananigansDocumentation/stable/appendix/benchmarks/) section of the documentation) by initializing models of various sizes and measuring the wall clock time taken per model iteration (or time step).
+We continuously measure the performance of Oceananigans by initializing models of various sizes with different schemes and closures
+and measuring the wall clock time taken per model iteration (or time step).
+These benchmarks are run on every commit to `main` and tracked on our [performance dashboard](https://numericalearth.github.io/OceananigansBenchmarks/).
 
-To make full use of or fully saturate the computing power of a GPU such as an Nvidia Tesla V100 or
-a Titan V, the model should have around ~10 million grid points or more.
-
-Sometimes counter-intuitively running with `Float32` is slower than `Float64`. This is likely due
-to type mismatches causing slowdowns as floats have to be converted between 32-bit and 64-bit, an
-issue that needs to be addressed meticulously. Due to other bottlenecks such as memory accesses and
-GPU register pressure, `Float32` models may not provide much of a speedup so the main benefit becomes
-lower memory costs (by around a factor of 2).
-
-![Performance benchmark plots](https://user-images.githubusercontent.com/20099589/89906791-d2c85b00-dbb9-11ea-969a-4b8db2c31680.png)
+For performance of large-scale, realistic ocean simulations on multiple GPUs, see
+[Silvestri et al. (2025)](https://doi.org/10.1029/2024MS004465).

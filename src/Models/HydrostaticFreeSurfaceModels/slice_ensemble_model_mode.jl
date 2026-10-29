@@ -1,9 +1,10 @@
-using Oceananigans.Grids: Flat, Bounded, y_domain
+using Oceananigans.Grids: Flat, Bounded, BoundaryTopology, y_domain
+using Oceananigans.TimeSteppers: time_discretization
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: _top_tke_flux, CATKEVDArray
 
 import Oceananigans.Grids: validate_size, validate_halo, XYRegularRG
-import Oceananigans.TurbulenceClosures: time_discretization, compute_diffusivities!, with_tracers
+import Oceananigans.TurbulenceClosures: compute_closure_fields!, with_tracers
 import Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∇_dot_qᶜ
 import Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: top_tke_flux
 import Oceananigans.Coriolis: x_f_cross_U, y_f_cross_U, z_f_cross_U
@@ -12,7 +13,7 @@ import Oceananigans.Coriolis: x_f_cross_U, y_f_cross_U, z_f_cross_U
 ##### Implements a "slice ensemble model mode" for HydrostaticFreeSurfaceModel
 #####
 
-const YZSliceGrid = Union{AbstractGrid{<:AbstractFloat, <:Flat, <:Bounded, <:Bounded},
+const YZSliceGrid = Union{AbstractGrid{<:AbstractFloat, <:Flat, <:BoundaryTopology, <:Bounded},
                           AbstractGrid{<:AbstractFloat, <:Flat, <:Periodic, <:Bounded}}
 
 @inline function ∂ⱼ_τ₁ⱼ(i, j, k, grid::YZSliceGrid, closure_array::ClosureArray, args...)

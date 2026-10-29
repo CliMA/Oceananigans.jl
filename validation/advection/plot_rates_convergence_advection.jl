@@ -168,4 +168,3 @@ plt = plot_solutions!(
     pnorm,
     ROC)
 savefig(plt, "convergence_rates")
-

@@ -13,8 +13,6 @@ Oceananigans.defaults.FloatType = Float32
 filename = "baroclinic_adjustment"
 
 # Architecture
-using Metal
-metal = Metal.MetalBackend()
 # arch = GPU(metal)
 arch = CPU()
 
@@ -131,13 +129,13 @@ for side in keys(slicers)
                                                  schedule = TimeInterval(save_fields_interval),
                                                  indices,
                                                  filename = filename * "_$(side)_slice",
-                                                 overwrite_existing = true)
+                                                 overwrite_files = true)
 end
 
 simulation.output_writers[:fields] = JLD2Writer(model, fields(model),
                                                 schedule = TimeInterval(save_fields_interval),
                                                 filename = filename * "_fields",
-                                                overwrite_existing = true)
+                                                overwrite_files = true)
 
 B = Field(Average(model.tracers.b, dims=1))
 C = Field(Average(model.tracers.c, dims=1))
@@ -148,7 +146,7 @@ W = Field(Average(model.velocities.w, dims=1))
 simulation.output_writers[:zonal] = JLD2Writer(model, (b=B, c=C, u=U, v=V, w=W),
                                                schedule = TimeInterval(save_fields_interval),
                                                filename = filename * "_zonal_average",
-                                               overwrite_existing = true)
+                                               overwrite_files = true)
 =#
 
 @info "Running the simulation..."

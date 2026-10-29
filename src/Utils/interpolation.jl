@@ -1,0 +1,157 @@
+#####
+##### Lagrange basis functions for linear/bilinear/trilinear interpolation
+#####
+
+# Trilinear Lagrange polynomials (also used for 1D and 2D with η=0, ζ=0)
+@inline ϕ₁(ξ, η, ζ) = (1 - ξ) * (1 - η) * (1 - ζ)
+@inline ϕ₂(ξ, η, ζ) = (1 - ξ) * (1 - η) *      ζ
+@inline ϕ₃(ξ, η, ζ) = (1 - ξ) *      η  * (1 - ζ)
+@inline ϕ₄(ξ, η, ζ) = (1 - ξ) *      η  *      ζ
+@inline ϕ₅(ξ, η, ζ) =      ξ  * (1 - η) * (1 - ζ)
+@inline ϕ₆(ξ, η, ζ) =      ξ  * (1 - η) *      ζ
+@inline ϕ₇(ξ, η, ζ) =      ξ  *      η  * (1 - ζ)
+@inline ϕ₈(ξ, η, ζ) =      ξ  *      η  *      ζ
+
+#####
+##### Interpolator tuple helper
+#####
+
+"""
+$(TYPEDSIGNATURES)
+
+Return an "interpolator tuple" from the fractional index `fractional_idx`,
+defined as the 3-tuple `(i⁻, i⁺, ξ)` where:
+
+- `i⁻` is the index to the left (floor of fractional_idx)
+- `i⁺` is the index to the right (i⁻ + 1)
+- `ξ` is the fractional distance from `i⁻`, such that `ξ ∈ [0, 1)`
+
+This function is used for linear interpolation in lookup tables and fields.
+
+Note: Uses `Base.unsafe_trunc` instead of `trunc` for GPU compatibility.
+See https://github.com/CliMA/Oceananigans.jl/issues/828
+"""
+@inline function interpolator(fractional_idx)
+    # For why we use Base.unsafe_trunc instead of trunc see:
+    # https://github.com/CliMA/Oceananigans.jl/issues/828
+    # https://github.com/CliMA/Oceananigans.jl/pull/997
+    i⁻ = Base.unsafe_trunc(Int, fractional_idx)
+    i⁺ = i⁻ + 1
+    ξ = mod(fractional_idx, 1)
+    return (i⁻, i⁺, ξ)
+end
+
+@inline interpolator(::Nothing) = (1, 1, 0)
+
+#####
+##### Generic interpolation functions
+#####
+
+"""
+$(TYPEDSIGNATURES)
+
+Perform trilinear interpolation on 3D (or higher-dimensional) `data` using
+interpolator tuples `ix`, `iy`, `iz` of the form `(i⁻, i⁺, ξ)`.
+
+Additional indices `in...` are passed through for higher-dimensional arrays.
+"""
+@inline function _interpolate(data, ix, iy, iz, in...)
+    i⁻, i⁺, ξ = ix
+    j⁻, j⁺, η = iy
+    k⁻, k⁺, ζ = iz
+
+    return @inbounds ϕ₁(ξ, η, ζ) * getindex(data, i⁻, j⁻, k⁻, in...) +
+                     ϕ₂(ξ, η, ζ) * getindex(data, i⁻, j⁻, k⁺, in...) +
+                     ϕ₃(ξ, η, ζ) * getindex(data, i⁻, j⁺, k⁻, in...) +
+                     ϕ₄(ξ, η, ζ) * getindex(data, i⁻, j⁺, k⁺, in...) +
+                     ϕ₅(ξ, η, ζ) * getindex(data, i⁺, j⁻, k⁻, in...) +
+                     ϕ₆(ξ, η, ζ) * getindex(data, i⁺, j⁻, k⁺, in...) +
+                     ϕ₇(ξ, η, ζ) * getindex(data, i⁺, j⁺, k⁻, in...) +
+                     ϕ₈(ξ, η, ζ) * getindex(data, i⁺, j⁺, k⁺, in...)
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Perform quadrilinear interpolation on 4D `data` using
+interpolator tuples `ix`, `iy`, `iz`, `iw` of the form `(i⁻, i⁺, ξ)`.
+"""
+@inline function _interpolate(data, ix, iy, iz, iw::Tuple{Any, Any, Any})
+    i⁻, i⁺, ξ = ix
+    j⁻, j⁺, η = iy
+    k⁻, k⁺, ζ = iz
+    l⁻, l⁺, θ = iw
+
+    return @inbounds (
+        ϕ₁(ξ, η, ζ) * (1 - θ) * data[i⁻, j⁻, k⁻, l⁻] + ϕ₁(ξ, η, ζ) * θ * data[i⁻, j⁻, k⁻, l⁺] +
+        ϕ₂(ξ, η, ζ) * (1 - θ) * data[i⁻, j⁻, k⁺, l⁻] + ϕ₂(ξ, η, ζ) * θ * data[i⁻, j⁻, k⁺, l⁺] +
+        ϕ₃(ξ, η, ζ) * (1 - θ) * data[i⁻, j⁺, k⁻, l⁻] + ϕ₃(ξ, η, ζ) * θ * data[i⁻, j⁺, k⁻, l⁺] +
+        ϕ₄(ξ, η, ζ) * (1 - θ) * data[i⁻, j⁺, k⁺, l⁻] + ϕ₄(ξ, η, ζ) * θ * data[i⁻, j⁺, k⁺, l⁺] +
+        ϕ₅(ξ, η, ζ) * (1 - θ) * data[i⁺, j⁻, k⁻, l⁻] + ϕ₅(ξ, η, ζ) * θ * data[i⁺, j⁻, k⁻, l⁺] +
+        ϕ₆(ξ, η, ζ) * (1 - θ) * data[i⁺, j⁻, k⁺, l⁻] + ϕ₆(ξ, η, ζ) * θ * data[i⁺, j⁻, k⁺, l⁺] +
+        ϕ₇(ξ, η, ζ) * (1 - θ) * data[i⁺, j⁺, k⁻, l⁻] + ϕ₇(ξ, η, ζ) * θ * data[i⁺, j⁺, k⁻, l⁺] +
+        ϕ₈(ξ, η, ζ) * (1 - θ) * data[i⁺, j⁺, k⁺, l⁻] + ϕ₈(ξ, η, ζ) * θ * data[i⁺, j⁺, k⁺, l⁺])
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Perform quadrilinear interpolation on 5D `data` at fixed fifth index `m`,
+using interpolator tuples `ix`, `iy`, `iz`, `iw` of the form `(i⁻, i⁺, ξ)`.
+Not inlined to prevent the quintilinear call site from seeing a 32-term expression,
+which causes excessive GPU JIT compilation time.
+"""
+function _interpolate(data, ix, iy, iz, iw::Tuple{Any, Any, Any}, m::Integer)
+    i⁻, i⁺, ξ = ix
+    j⁻, j⁺, η = iy
+    k⁻, k⁺, ζ = iz
+    l⁻, l⁺, θ = iw
+
+    return @inbounds (
+        ϕ₁(ξ, η, ζ) * (1 - θ) * data[i⁻, j⁻, k⁻, l⁻, m] + ϕ₁(ξ, η, ζ) * θ * data[i⁻, j⁻, k⁻, l⁺, m] +
+        ϕ₂(ξ, η, ζ) * (1 - θ) * data[i⁻, j⁻, k⁺, l⁻, m] + ϕ₂(ξ, η, ζ) * θ * data[i⁻, j⁻, k⁺, l⁺, m] +
+        ϕ₃(ξ, η, ζ) * (1 - θ) * data[i⁻, j⁺, k⁻, l⁻, m] + ϕ₃(ξ, η, ζ) * θ * data[i⁻, j⁺, k⁻, l⁺, m] +
+        ϕ₄(ξ, η, ζ) * (1 - θ) * data[i⁻, j⁺, k⁺, l⁻, m] + ϕ₄(ξ, η, ζ) * θ * data[i⁻, j⁺, k⁺, l⁺, m] +
+        ϕ₅(ξ, η, ζ) * (1 - θ) * data[i⁺, j⁻, k⁻, l⁻, m] + ϕ₅(ξ, η, ζ) * θ * data[i⁺, j⁻, k⁻, l⁺, m] +
+        ϕ₆(ξ, η, ζ) * (1 - θ) * data[i⁺, j⁻, k⁺, l⁻, m] + ϕ₆(ξ, η, ζ) * θ * data[i⁺, j⁻, k⁺, l⁺, m] +
+        ϕ₇(ξ, η, ζ) * (1 - θ) * data[i⁺, j⁺, k⁻, l⁻, m] + ϕ₇(ξ, η, ζ) * θ * data[i⁺, j⁺, k⁻, l⁺, m] +
+        ϕ₈(ξ, η, ζ) * (1 - θ) * data[i⁺, j⁺, k⁺, l⁻, m] + ϕ₈(ξ, η, ζ) * θ * data[i⁺, j⁺, k⁺, l⁺, m])
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Perform quintilinear interpolation on 5D `data` using
+interpolator tuples `ix`, `iy`, `iz`, `iw`, `iv` of the form `(i⁻, i⁺, ξ)`.
+Factored as two quadrilinear interpolations at fixed fifth index to limit IR size.
+"""
+@inline function _interpolate(data, ix, iy, iz, iw::Tuple{Any, Any, Any}, iv::Tuple{Any, Any, Any})
+    m⁻, m⁺, ψ = iv
+    return (1 - ψ) * _interpolate(data, ix, iy, iz, iw, m⁻) +
+                ψ  * _interpolate(data, ix, iy, iz, iw, m⁺)
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Perform bilinear interpolation on 2D `data` using interpolator tuples `ix`, `iy`.
+"""
+@inline function _interpolate(data, ix, iy)
+    i⁻, i⁺, ξ = ix
+    j⁻, j⁺, η = iy
+
+    return @inbounds (1 - ξ) * (1 - η) * data[i⁻, j⁻] +
+                          ξ  * (1 - η) * data[i⁺, j⁻] +
+                     (1 - ξ) *      η  * data[i⁻, j⁺] +
+                          ξ  *      η  * data[i⁺, j⁺]
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Perform linear interpolation on 1D `data` using interpolator tuple `ix`.
+"""
+@inline function _interpolate(data, ix)
+    i⁻, i⁺, ξ = ix
+    return @inbounds (1 - ξ) * data[i⁻] + ξ * data[i⁺]
+end

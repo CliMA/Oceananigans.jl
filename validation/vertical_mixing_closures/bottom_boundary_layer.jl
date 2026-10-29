@@ -55,7 +55,7 @@ outputs = merge(model.velocities, model.tracers, diffusivities)
 simulation.output_writers[:fields] = JLD2Writer(model, outputs,
                                                 schedule = TimeInterval(20minutes),
                                                 filename = "bottom_boundary_layer.jld2",
-                                                overwrite_existing = true)
+                                                overwrite_files = true)
 
 function progress(sim)
     msg = @sprintf("Iter: %d, time: %s, max(u): %.2f",
@@ -113,4 +113,3 @@ display(fig)
 record(fig, "bottom_boundary_layer.mp4", 1:Nt, framerate=12) do nn
     n[] = nn
 end
-

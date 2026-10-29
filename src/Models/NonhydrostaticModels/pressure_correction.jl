@@ -1,16 +1,16 @@
-import Oceananigans.TimeSteppers: compute_pressure_correction!, make_pressure_correction!
+using Oceananigans.Utils: KernelParameters
 
 """
-    compute_pressure_correction!(model::NonhydrostaticModel, Δt)
+$(TYPEDSIGNATURES)
 
 Calculate the (nonhydrostatic) pressure correction associated `tendencies`, `velocities`, and step size `Δt`.
 """
 function compute_pressure_correction!(model::NonhydrostaticModel, Δt)
 
     # Mask immersed velocities
-    foreach(mask_immersed_field!, model.velocities)
+    mask_immersed_field!(model.velocities)
     fill_halo_regions!(model.velocities, model.clock, fields(model))
-    enforce_open_boundary_mass_conservation!(model, model.boundary_mass_fluxes)
+    enforce_net_zero_transport!(model.velocities, model.boundary_transport)
 
     p_Δt = model.pressures.pNHS
     solve_for_pressure!(p_Δt, model.pressure_solver, model.free_surface, model.velocities, Δt)
@@ -48,9 +48,9 @@ end
     @inbounds bc_rhs[i, j, 1] = η[i, j, Nz+1] / Δt + w̃[i, j, Nz+1]
 
     # Compute ηⁿ⁺¹
-    Δzᶠ = Δzᵃᵃᶠ(i, j, Nz+1, grid)
-    a = 1 / Δzᶠ - 1 / (2g * Δt^2)
-    b = 1 / Δzᶠ + 1 / (2g * Δt^2)
+    Δz⁻¹ᶠ = Δz⁻¹ᵃᵃᶠ(i, j, Nz+1, grid)
+    a = Δz⁻¹ᶠ - 1 / (2g * Δt^2)
+    b = Δz⁻¹ᶠ + 1 / (2g * Δt^2)
     @inbounds begin
         η★ = η[i, j, Nz+1] + Δt * w̃[i, j, Nz+1]
         η[i, j, Nz+1] = (p_Δt[i, j, Nz] / Δt + (p_Δt[i, j, Nz] * a / (b * Δt) + η★ / (b * Δt^2))) / 2g
@@ -102,7 +102,13 @@ function make_pressure_correction!(model::NonhydrostaticModel, Δt)
 
     ϵ = eps(eltype(model.pressures.pNHS))
     Δt⁺ = max(ϵ, Δt)
-    model.pressures.pNHS ./= Δt⁺
+    pNHS = model.pressures.pNHS
+    launch!(arch, grid, KernelParameters(size(pNHS), (0, 0, 0)), _divide_by!, pNHS, Δt⁺)
 
     return nothing
+end
+
+@kernel function _divide_by!(p, a)
+    i, j, k = @index(Global, NTuple)
+    @inbounds p[i, j, k] /= a
 end

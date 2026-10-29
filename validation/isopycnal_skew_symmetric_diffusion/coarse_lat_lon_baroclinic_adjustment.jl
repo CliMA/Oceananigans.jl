@@ -120,7 +120,7 @@ simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterv
 simulation.output_writers[:fields] = JLD2Writer(model, merge(model.velocities, model.tracers),
                                                 schedule = TimeInterval(save_fields_interval),
                                                 filename = filename * "_fields",
-                                                overwrite_existing = true)
+                                                overwrite_files = true)
 
 @info "Running the simulation..."
 
@@ -191,4 +191,3 @@ record(fig, filename * ".mp4", 1:Nt, framerate=8) do i
     @info "Plotting frame $i of $Nt"
     n[] = i
 end
-

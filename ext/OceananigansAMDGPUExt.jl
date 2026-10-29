@@ -1,9 +1,11 @@
 module OceananigansAMDGPUExt
 
 using Oceananigans
-using InteractiveUtils
-using AMDGPU, AMDGPU.rocSPARSE, AMDGPU.rocFFT
+using AMDGPU, AMDGPU.rocSPARSE
+using AbstractFFTs: plan_fft!, plan_ifft!
+
 using Oceananigans.Utils: linear_expand, __linear_ndrange, MappedCompilerMetadata
+using InteractiveUtils
 using KernelAbstractions: __dynamic_checkbounds, __iterspace
 using KernelAbstractions
 using SparseArrays
@@ -12,13 +14,15 @@ import Oceananigans.Architectures as AC
 import Oceananigans.BoundaryConditions as BC
 import Oceananigans.DistributedComputations as DC
 import Oceananigans.Fields as FD
+import Oceananigans.MultiRegion as MR
+import Oceananigans.Utils: apply_regionally!
 import Oceananigans.Grids as GD
 import Oceananigans.Solvers as SO
 import Oceananigans.Utils as UT
-import SparseArrays: SparseMatrixCSC
+import Oceananigans.DistributedComputations: Distributed
 import KernelAbstractions: __iterspace, __groupindex, __dynamic_checkbounds,
                            __validindex, CompilerMetadata
-import Oceananigans.DistributedComputations: Distributed
+import SparseArrays: SparseMatrixCSC
 
 const GPUVar = Union{ROCArray, Ptr}
 
@@ -35,7 +39,7 @@ const ROCGPU = AC.GPU{ROCBackend}
 ROCGPU() = AC.GPU(AMDGPU.ROCBackend())
 
 Base.summary(::ROCGPU) = "ROCGPU"
-AC.device!(::ROCGPU, i) = AMDGPU.device_id!(id+1) # AMD devices are numbered 1..ndevices
+AC.device!(::ROCGPU, i) = AMDGPU.device_id!(i + 1) # AMD devices are numbered 1..ndevices
 
 AC.architecture(::ROCArray) = ROCGPU()
 AC.architecture(::Type{ROCArray}) = ROCGPU()
@@ -47,12 +51,8 @@ AC.on_architecture(::AC.CPU, a::ROCArray) = Array(a)
 AC.on_architecture(::ROCGPU, a::Array) = ROCArray(a)
 AC.on_architecture(::ROCGPU, a::ROCArray) = a
 AC.on_architecture(::ROCGPU, a::BitArray) = ROCArray(a)
-AC.on_architecture(::ROCGPU, a::SubArray{<:Any, <:Any, <:ROCArray}) = a
-AC.on_architecture(::ROCGPU, a::SubArray{<:Any, <:Any, <:Array}) = ROCArray(a)
-AC.on_architecture(::AC.CPU, a::SubArray{<:Any, <:Any, <:ROCArray}) = Array(a)
 AC.on_architecture(::ROCGPU, a::StepRangeLen) = a
 AC.on_architecture(arch::Distributed, a::ROCArray) = AC.on_architecture(AC.child_architecture(arch), a)
-AC.on_architecture(arch::Distributed, a::SubArray{<:Any, <:Any, <:ROCArray}) = AC.on_architecture(child_architecture(arch), a)
 
 @inline AC.sparse_matrix_constructors(::AC.GPU{ROCBackend}, A::SparseMatrixCSC) = (ROCArray(A.colptr), ROCArray(A.rowval), ROCArray(A.nzval),  (A.m, A.n))
 @inline AC.sparse_matrix_constructors(::AC.CPU, A::ROCSparseMatrixCSC) = (A.dims[1], A.dims[2], Int64.(Array(A.colPtr)), Int64.(Array(A.rowVal)), Array(A.nzVal))
@@ -77,8 +77,6 @@ end
     return dst
 end
 
-@inline AC.unsafe_free!(a::ROCArray) = AMDGPU.unsafe_free!(a)
-
 @inline convert_to_device(::ROCGPU, args) = AMDGPU.rocconvert(args)
 @inline convert_to_device(::ROCGPU, args::Tuple) = map(AMDGPU.rocconvert, args)
 
@@ -87,23 +85,24 @@ BC.validate_boundary_condition_architecture(::ROCArray, ::AC.GPU, bc, side) = no
 BC.validate_boundary_condition_architecture(::ROCArray, ::AC.CPU, bc, side) =
     throw(ArgumentError("$side $bc must use `Array` rather than `ROCArray` on CPU architectures!"))
 
-function SO.plan_forward_transform(A::ROCArray, ::Union{GD.Bounded, GD.Periodic}, dims, planner_flag)
+function SO.plan_forward_transform(A::ROCArray, ::Union{GD.BoundaryTopology, GD.Periodic}, dims, planner_flag)
     length(dims) == 0 && return nothing
-    return AMDGPU.rocFFT.plan_fft!(A, dims)
+    return plan_fft!(A, dims)
 end
 
 FD.set!(v::Field, a::ROCArray) = FD.set_to_array!(v, a)
 DC.set!(v::DC.DistributedField, a::ROCArray) = DC.set_to_array!(v, a)
+FD.set!(v::MR.MultiRegionField, a::ROCArray) = apply_regionally!(FD.set!, v, a)
 
-function SO.plan_backward_transform(A::ROCArray, ::Union{GD.Bounded, GD.Periodic}, dims, planner_flag)
+function SO.plan_backward_transform(A::ROCArray, ::Union{GD.BoundaryTopology, GD.Periodic}, dims, planner_flag)
     length(dims) == 0 && return nothing
-    return AMDGPU.rocFFT.plan_ifft!(A, dims)
+    return plan_ifft!(A, dims)
 end
 
 AMDGPU.Device.@device_override @inline function __validindex(ctx::MappedCompilerMetadata)
     if __dynamic_checkbounds(ctx)
-        I = @inbounds linear_expand(__iterspace(ctx), AMDGPU.Device.blockIdx().x, AMDGPU.Device.threadIdx().x)
-        return I in __linear_ndrange(ctx)
+        index = @inbounds linear_expand(__iterspace(ctx), AMDGPU.Device.blockIdx().x, AMDGPU.Device.threadIdx().x)
+        return index ≤ __linear_ndrange(ctx)
     else
         return true
     end

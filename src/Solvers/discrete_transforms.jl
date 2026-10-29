@@ -1,4 +1,4 @@
-import Oceananigans.Architectures: architecture, child_architecture
+using Oceananigans.Architectures: child_architecture
 
 abstract type AbstractTransformDirection end
 
@@ -17,7 +17,7 @@ struct DiscreteTransform{P, D, G, Δ, Ω, N, T, Σ}
 end
 
 # Includes support for distributed architectures
-architecture(transform::DiscreteTransform) = child_architecture(architecture(transform.grid))
+Architectures.architecture(transform::DiscreteTransform) = child_architecture(architecture(transform.grid))
 
 #####
 ##### Normalization factors
@@ -26,12 +26,12 @@ architecture(transform::DiscreteTransform) = child_architecture(architecture(tra
 normalization_factor(arch, topo, direction, N) = 1
 
 """
-    normalization_factor(::CPU, ::Bounded, ::Backward, N)
+$(TYPEDSIGNATURES)
 
 `FFTW.REDFT01` needs to be normalized by 1/2N.
 See: http://www.fftw.org/fftw3_doc/1d-Real_002deven-DFTs-_0028DCTs_0029.html#g_t1d-Real_002deven-DFTs-_0028DCTs_0029
 """
-normalization_factor(::CPU, ::Bounded, ::Backward, N) = 1 / 2N
+normalization_factor(::CPU, ::BoundaryTopology, ::Backward, N) = 1 / 2N
 
 #####
 ##### Twiddle factors
@@ -40,7 +40,7 @@ normalization_factor(::CPU, ::Bounded, ::Backward, N) = 1 / 2N
 twiddle_factors(arch, grid, dim) = nothing
 
 """
-    twiddle_factors(arch::GPU, grid, dims)
+$(TYPEDSIGNATURES)
 
 Twiddle factors are needed to perform DCTs on the GPU. See equations (19a) and (22) of [Makhoul80](@citet)
 for the forward and backward twiddle factors respectively.
@@ -51,7 +51,7 @@ function twiddle_factors(arch::GPU, grid, dims)
     dim = dims[1]
 
     topo = topology(grid)
-    topo[dim] != Bounded && return nothing
+    topo[dim] <: BoundaryTopology || return nothing
 
     Ns = size(grid)
     N = Ns[dim]
@@ -59,8 +59,11 @@ function twiddle_factors(arch::GPU, grid, dims)
     inds⁺ = reshape(0:N-1, reshaped_size(N, dim)...)
     inds⁻ = reshape(0:-1:-(N-1), reshaped_size(N, dim)...)
 
-    ω_4N⁺ = ω.(4N, inds⁺)
-    ω_4N⁻ = ω.(4N, inds⁻)
+    # Match the grid's precision: not all backends can store ComplexF64 (e.g. Metal),
+    # and mixed-precision broadcasts would promote the transformed array anyway.
+    C = complex(eltype(grid))
+    ω_4N⁺ = C.(ω.(4N, inds⁺))
+    ω_4N⁻ = C.(ω.(4N, inds⁻))
 
     # The zeroth coefficient of the IDCT (DCT-III or FFTW.REDFT01)
     # is not multiplied by 2.
@@ -89,21 +92,32 @@ function DiscreteTransform(plan, direction, grid, dims)
     topo = topology(grid)
     normalization = prod(normalization_factor(arch, topo[d](), direction, N[d]) for d in dims)
     twiddle = twiddle_factors(arch, grid, dims)
+    # Always transpose for dim-2 GPU transforms: reshape to (Ny, Nx, Nz) so the
+    # FFT operates along contiguous dim 1. cuFFT decomposes strided dim-2 FFTs
+    # into many small kernels (one per z-level); permutedims + dim-1 is 3.4× faster.
     transpose = arch isa GPU && dims == [2] ? (2, 1, 3) : nothing
 
-    topo = [topology(grid)[d]() for d in dims]
-    topo = length(topo) == 1 ? topo[1] : topo
+    topos = [topology(grid)[d]() for d in dims]
+    topos = length(topos) == 1 ? topos[1] : topos
 
     dims = length(dims) == 1 ? dims[1] : dims
 
-    return DiscreteTransform(plan, grid, direction, dims, topo, normalization, twiddle, transpose)
+    return DiscreteTransform(plan, grid, direction, dims, topos, normalization, twiddle, transpose)
 end
 
 #####
 ##### Applying discrete transforms
 #####
 
-(transform::DiscreteTransform{<:Nothing})(A, buffer) = nothing
+(transform::DiscreteTransform{<:Nothing, <:Nothing})(A, buffer) = nothing
+
+apply_transforms!(::Tuple{}, A, buffer) = nothing
+
+function apply_transforms!(transforms::Tuple, A, buffer)
+    first(transforms)(A, buffer)
+    apply_transforms!(Base.tail(transforms), A, buffer)
+    return nothing
+end
 
 function (transform::DiscreteTransform{P, <:Forward})(A, buffer) where P
     maybe_permute_indices!(A, buffer, architecture(transform), transform.grid, transform.dims, transform.topology)
@@ -123,7 +137,7 @@ end
 
 maybe_permute_indices!(A, B, arch, grid, dim, dim_topo) = nothing
 
-function maybe_permute_indices!(A, B, arch::GPU, grid, dim, ::Bounded)
+function maybe_permute_indices!(A, B, arch::GPU, grid, dim, ::BoundaryTopology)
     permute_indices!(B, A, arch, grid, dim)
     copyto!(A, B)
     return nothing
@@ -131,7 +145,7 @@ end
 
 maybe_unpermute_indices!(A, B, arch, grid, dim, dim_topo) = nothing
 
-function maybe_unpermute_indices!(A, B, arch::GPU, grid, dim, ::Bounded)
+function maybe_unpermute_indices!(A, B, arch::GPU, grid, dim, ::BoundaryTopology)
     unpermute_indices!(B, A, arch, grid, dim)
     copyto!(A, B)
     @. A = real(A)

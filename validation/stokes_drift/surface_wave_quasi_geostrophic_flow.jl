@@ -93,7 +93,7 @@ outputs = merge(outputs, (; e))
 
 simulation.output_writers[:jld2] = JLD2Writer(model, outputs; filename,
                                               schedule = IterationInterval(3),
-                                              overwrite_existing = true)
+                                              overwrite_files = true)
 
 run!(simulation)
 
@@ -161,4 +161,3 @@ contour!(axw, xc, yc, An, color=:gray, levels=5)
 record(fig, "surface_wave_quasi_geostrophic_induced_flow.mp4", 1:Nt, framerate=8) do nn
     n[] = nn
 end
-

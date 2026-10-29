@@ -25,20 +25,14 @@ function partition_extent(p::YPartition, grid)
     y = cpu_face_constructor_y(grid)
     z = cpu_face_constructor_z(grid)
 
-    y = divide_direction(y, p)
-    return Tuple((x, y = y[i], z = z) for i in 1:length(p))
+    divided_y = divide_direction(y, p)
+    return Tuple((x, y = yi, z = z) for yi in divided_y)
 end
 
 function partition_topology(p::YPartition, grid)
     TX, TY, TZ = topology(grid)
 
-    return Tuple((TX, (TY == Periodic ?
-                       FullyConnected :
-                       i == 1 ?
-                       RightConnected :
-                       i == length(p) ?
-                       LeftConnected :
-                       FullyConnected), TZ) for i in 1:length(p))
+    return Tuple((TX, (TY == Periodic ? TwoSided{Connected, Connected} : insert_connected_topology(TY, length(p), i)), TZ) for i in 1:length(p))
 end
 
 divide_direction(x::Tuple, p::EqualYPartition) =

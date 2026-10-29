@@ -1,13 +1,12 @@
-using Oceananigans.OutputWriters: WindowedTimeAverage
-using Oceananigans.TimeSteppers: update_state!, unit_time
-
-using Oceananigans: AbstractModel, run_diagnostic!
-
-import Oceananigans: initialize!
-import Oceananigans.Fields: set!
-import Oceananigans.OutputWriters: checkpoint_path
-import Oceananigans.TimeSteppers: time_step!
-import Oceananigans.Utils: schedule_aligned_time_step
+using Dates: unix2datetime
+using Oceananigans: AbstractModel, run_diagnostic!, restore_prognostic_state!, initialize!
+using Oceananigans.Architectures: architecture
+using Oceananigans.Diagnostics: nan_detected, reset_nan_checker!
+using Oceananigans.DistributedComputations: all_reduce, check_field_tags
+using Oceananigans.Fields: set!
+using Oceananigans.OutputWriters: WindowedTimeAverage, TimeFilteredOutput, TimeDerivative, checkpoint_path, load_checkpoint_state
+using Oceananigans.TimeSteppers: time_step!, update_state!, unit_time
+using Oceananigans.Utils: PrecedingIterations, schedule_aligned_time_step
 
 # Simulations are for running
 
@@ -21,7 +20,7 @@ function collect_scheduled_activities(sim)
     return tuple(writers..., callbacks...)
 end
 
-function schedule_aligned_time_step(sim, aligned_Δt)
+function Oceananigans.Utils.schedule_aligned_time_step(sim, aligned_Δt)
     clock = sim.model.clock
     activities = collect_scheduled_activities(sim)
 
@@ -33,7 +32,7 @@ function schedule_aligned_time_step(sim, aligned_Δt)
 end
 
 """
-    aligned_time_step(sim, Δt)
+$(TYPEDSIGNATURES)
 
 Return a time step 'aligned' with `sim.stop_time`, output writer schedules,
 and callback schedules. Alignment with `sim.stop_time` takes precedence.
@@ -56,53 +55,128 @@ function aligned_time_step(sim::Simulation, Δt)
     return aligned_Δt
 end
 
-function set!(sim::Simulation, pickup::Union{Bool, Integer, String})
-    checkpoint_file_path = checkpoint_path(pickup, sim.output_writers)
-    set!(sim.model, checkpoint_file_path)
+"""
+    set!(simulation; checkpoint=nothing, iteration=nothing)
+
+Restore `simulation` state from a checkpoint file.
+
+Keyword arguments
+=================
+
+- `checkpoint`: Specifies the checkpoint source. Can be:
+  - `:recent_time_stamp` to restore from the most recently modified checkpoint associated with
+    the [`Checkpointer`](@ref) in `simulation.output_writers`.
+  - `:highest_iteration` to restore from the checkpoint with the largest iteration number
+    associated with the [`Checkpointer`](@ref) in `simulation.output_writers`.
+  - `:latest` as an alias for `:recent_time_stamp`.
+  - A `String` filepath to restore from checkpointer data in that file.
+
+- `iteration`: An `Integer` specifying the iteration number to restore from.
+  Uses the `Checkpointer` in `simulation.output_writers` to locate the file.
+
+!!! note
+    Only one of `checkpoint` or `iteration` should be specified.
+    The `iteration` keyword and symbolic `checkpoint` modes (`:recent_time_stamp`, `:highest_iteration`,
+    and `:latest`) require that
+    `simulation.output_writers` contains exactly one checkpointer.
+
+See also [`run!`](@ref), which accepts a `pickup` keyword argument.
+"""
+function Oceananigans.Fields.set!(sim::Simulation; checkpoint=nothing, iteration=nothing)
+    nargs = count(!isnothing, (checkpoint, iteration))
+
+    nargs == 0 && return nothing
+    nargs > 1 && throw(ArgumentError("Only one of `checkpoint` or `iteration` should be specified."))
+
+    checkpoint_filepath = if !isnothing(iteration)
+        checkpoint_path(iteration, sim.output_writers)
+    elseif checkpoint isa Symbol
+        checkpoint_path(checkpoint, sim.output_writers)
+    elseif checkpoint isa String
+        checkpoint_path(checkpoint, sim.output_writers)
+    else
+        throw(ArgumentError("Invalid checkpoint=$checkpoint. Expected :recent_time_stamp, :highest_iteration, :latest, or a String filepath."))
+    end
+
+    if checkpoint_filepath !== nothing
+        last_modified_utc = unix2datetime(round(Int, stat(checkpoint_filepath).mtime))
+        @info "Picking up simulation from checkpoint file $(abspath(checkpoint_filepath)); last modified (UTC): $(last_modified_utc)"
+    end
+
+    state = load_checkpoint_state(checkpoint_filepath)
+    restore_prognostic_state!(sim, state)
     return nothing
 end
 
 """
-    run!(simulation; pickup=false)
+    run!(simulation; pickup=false, checkpoint_at_end=false)
 
-Run a `simulation` until one of `simulation.stop_criteria` evaluates `true`.
-The simulation will then stop.
+Run a [`simulation`](@ref Oceananigans.Simulation) until one of `simulation.callbacks`
+such as `stop_time` or `wall_time_limit` are exceeded, sets `simulation.running` to `false`.
+The simulation will the stop.
 
 # Picking simulations up from a checkpoint
 
-Simulations are "picked up" from a checkpoint if `pickup` is either `true`, a `String`, or an
-`Integer` greater than 0.
+Simulations are "picked up" from a checkpoint if `pickup` is `true`, a `Symbol`, a `String`,
+or an `Integer` greater than 0.
 
-Picking up a simulation sets field and tendency data to the specified checkpoint,
-leaving all other model properties unchanged.
+Picking up a simulation restores the simulation's prognostic state to the specified checkpoint,
+leaving all other simulation properties unchanged.
 
 Possible values for `pickup` are:
 
   * `pickup=true` picks a simulation up from the latest checkpoint associated with
-    the `Checkpointer` in `simulation.output_writers`.
+    the [`Checkpointer`](@ref) in `simulation.output_writers`, chosen by most recent file timestamp.
+
+  * `pickup=:recent_time_stamp` picks a simulation up from the most recently modified checkpoint
+    associated with the [`Checkpointer`](@ref) in `simulation.output_writers`.
+
+  * `pickup=:highest_iteration` picks a simulation up from the checkpoint with the largest iteration
+    associated with the [`Checkpointer`](@ref) in `simulation.output_writers`.
 
   * `pickup=iteration::Int` picks a simulation up from the checkpointed file associated
      with `iteration` and the `Checkpointer` in `simulation.output_writers`.
 
   * `pickup=filepath::String` picks a simulation up from checkpointer data in `filepath`.
 
-Note that `pickup=true` and `pickup=iteration` fails if `simulation.output_writers` contains
-more than one checkpointer.
-"""
-function run!(sim; pickup=false)
+Note that `pickup=true`, `pickup=:recent_time_stamp`, `pickup=:highest_iteration`, and `pickup=iteration`
+fail if `simulation.output_writers` contains more than one checkpointer.
 
-    start_run = time_ns()
+# Checkpointing at end
+
+Set `checkpoint_at_end=true` to automatically checkpoint the simulation when it stops running.
+This ensures the final state is saved even if the simulation stops due to wall time limits (i.e.,
+`wall_time_limit`).
+"""
+function run!(sim; pickup=false, checkpoint_at_end=false)
 
     if we_want_to_pickup(pickup)
-        set!(sim, pickup)
+        if pickup === true
+            set!(sim; checkpoint=:recent_time_stamp)
+        elseif pickup isa Integer
+            set!(sim; iteration=pickup)
+        elseif pickup isa Symbol
+            set!(sim; checkpoint=pickup)
+        elseif pickup isa String
+            set!(sim; checkpoint=pickup)
+        end
     end
 
     sim.initialized = false
     sim.running = true
     sim.run_wall_time = 0.0
+    reset_nan_checker!(sim)
 
     while sim.running
         time_step!(sim)
+    end
+
+    if checkpoint_at_end
+        if nan_checker_detected_nan(sim)
+            @info "NaNs were detected during this run. Skipping end-of-run checkpoint despite checkpoint_at_end=true."
+        else
+            checkpoint(sim)
+        end
     end
 
     for callback in values(sim.callbacks)
@@ -112,17 +186,34 @@ function run!(sim; pickup=false)
     return nothing
 end
 
+nan_checker(sim::Simulation) = get(sim.callbacks, :nan_checker, nothing)
+
+function nan_checker_detected_nan(sim::Simulation)
+    cb = nan_checker(sim)
+    local_nan_detected = !isnothing(cb) && nan_detected(cb.func)
+    # Reduce per-rank NaN flags so this is true when any rank detected a NaN.
+    global_nan_detected = all_reduce(max, Int(local_nan_detected), architecture(sim.model)) == 1
+    return global_nan_detected
+end
+
+function Oceananigans.Diagnostics.reset_nan_checker!(sim::Simulation)
+    cb = nan_checker(sim)
+    isnothing(cb) && return nothing
+    reset_nan_checker!(cb.func)
+    return nothing
+end
+
 const ModelCallsite = Union{TendencyCallsite, UpdateStateCallsite}
 
 """ Step `sim`ulation forward by Δt. """
-function time_step!(sim::Simulation, Δt)
+function Oceananigans.TimeSteppers.time_step!(sim::Simulation, Δt)
     sim.Δt = Δt
     sim.align_time_step = false # ensure Δt
     return time_step!(sim)
 end
 
 """ Step `sim`ulation forward by one time step. """
-function time_step!(sim::Simulation)
+function Oceananigans.TimeSteppers.time_step!(sim::Simulation)
 
     start_time_step = time_ns()
 
@@ -135,9 +226,11 @@ function time_step!(sim::Simulation)
         sim.Δt
     end
 
-    if initial_time_step && sim.verbose
+    start_time = if initial_time_step && sim.verbose
         @info "Executing initial time step..."
-        start_time = time_ns()
+        time_ns()
+    else
+        zero(UInt64)
     end
 
     if Δt < sim.minimum_relative_step * sim.Δt
@@ -179,19 +272,56 @@ end
 ##### Simulation initialization
 #####
 
-add_dependency!(diagnostics, output) = nothing # fallback
-add_dependency!(diags, wta::WindowedTimeAverage) = wta ∈ values(diags) || push!(diags, wta)
+add_dependency!(sim, output, schedule) = nothing # fallback
 
-add_dependencies!(diags, writer) = [add_dependency!(diags, out) for out in values(writer.outputs)]
+# One past the largest index in use, so a deleted dependency's name is never reassigned
+function next_dependency_name(prefix, existing_names)
+    pattern = Regex(string("^", prefix, raw"(\d+)$"))
+    largest = 0
+
+    for name in existing_names
+        matched = match(pattern, string(name))
+        isnothing(matched) || (largest = max(largest, parse(Int, matched.captures[1])))
+    end
+
+    return Symbol(prefix, largest + 1)
+end
+
+function add_dependency!(sim, wta::WindowedTimeAverage, schedule)
+    diags = sim.diagnostics
+    if wta ∉ values(diags)
+        diags[next_dependency_name("WindowedTimeAverage", keys(diags))] = wta
+    end
+end
+
+function add_dependency!(sim, output::TimeFilteredOutput, schedule)
+    diags = sim.diagnostics
+    if output ∉ values(diags)
+        diags[next_dependency_name("TimeFilteredOutput", keys(diags))] = output
+    end
+end
+
+# Update the derivative when the writer writes and on the iteration before, which is all that
+# a difference across one time step needs
+function add_dependency!(sim, derivative::TimeDerivative, schedule)
+    callbacks = sim.callbacks
+    if !any(cb -> cb.func === derivative, values(callbacks))
+        name = next_dependency_name("TimeDerivative", keys(callbacks))
+        callbacks[name] = Callback(derivative, PrecedingIterations(schedule; derivative.expected_max_time_step_growth))
+    end
+end
+
+add_dependencies!(sim, writer) = [add_dependency!(sim, out, writer.schedule) for out in values(writer.outputs)]
 add_dependencies!(sim, ::Checkpointer) = nothing # Checkpointer does not have "outputs"
 
 we_want_to_pickup(pickup::Bool) = pickup
 we_want_to_pickup(pickup::Integer) = true
+we_want_to_pickup(pickup::Symbol) = true
 we_want_to_pickup(pickup::String) = true
 we_want_to_pickup(pickup) = throw(ArgumentError("Cannot run! with pickup=$pickup"))
 
 """
-    initialize!(sim::Simulation, pickup=false)
+$(TYPEDSIGNATURES)
 
 Initialize a simulation:
 
@@ -199,41 +329,50 @@ Initialize a simulation:
 - Evaluate all diagnostics, callbacks, and output writers if sim.model.clock.iteration == 0
 - Add diagnostics that "depend" on output writers
 """
-function initialize!(sim::Simulation)
-    if sim.verbose
+function Oceananigans.initialize!(sim::Simulation)
+    start_time = if sim.verbose
         @info "Initializing simulation..."
-        start_time = time_ns()
+        time_ns()
+    else
+        zero(UInt64)
     end
 
     model = sim.model
-    initialize!(model)
+    check_field_tags(architecture(model))
+
+    # Only initialize for fresh simulations, not after restoring from a checkpoint.
+    if model.clock.iteration == 0
+        initialize!(model)
+    end
+
+    # After restoring from a checkpoint, skip tendency computation since the restored
+    # tendencies are already correct. We still need to call update_state! to fill halos,
+    # compute w from continuity, etc. though.
     update_state!(model)
 
     # Output and diagnostics initialization
-    [add_dependencies!(sim.diagnostics, writer) for writer in values(sim.output_writers)]
-
-    # Initialize schedules
-    scheduled_activities = Iterators.flatten((values(sim.diagnostics),
-                                              values(sim.callbacks),
-                                              values(sim.output_writers)))
-
-    for activity in scheduled_activities
-        initialize!(activity.schedule, sim.model)
-    end
-
-    for callback in values(sim.callbacks)
-        initialize!(callback, sim)
-    end
+    [add_dependencies!(sim, writer) for writer in values(sim.output_writers)]
 
     for writer in values(sim.output_writers)
         initialize!(writer, model)
     end
 
-    # Reset! the model time-stepper, evaluate all diagnostics, and write all output at first iteration
+    # Things to do for fresh simulations (not after checkpoint restore)
     if model.clock.iteration == 0
+        scheduled_activities = Iterators.flatten((values(sim.diagnostics),
+                                                  values(sim.callbacks),
+                                                  values(sim.output_writers)))
+
+        for activity in scheduled_activities
+            initialize!(activity.schedule, sim.model)
+        end
+
+        for callback in values(sim.callbacks)
+            initialize!(callback, sim)
+        end
+
         reset!(timestepper(model))
 
-        # Initialize schedules and run diagnostics, callbacks, and output writers
         for diag in values(sim.diagnostics)
             run_diagnostic!(diag, model)
         end
@@ -257,4 +396,3 @@ function initialize!(sim::Simulation)
 
     return nothing
 end
-

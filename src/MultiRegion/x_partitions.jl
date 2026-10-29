@@ -25,17 +25,14 @@ function partition_extent(p::XPartition, grid)
     y = cpu_face_constructor_y(grid)
     z = cpu_face_constructor_z(grid)
 
-    x = divide_direction(x, p)
-    return Tuple((x = x[i], y = y, z = z) for i in 1:length(p))
+    divided_x = divide_direction(x, p)
+    return Tuple((x = xi, y = y, z = z) for xi in divided_x)
 end
 
 function partition_topology(p::XPartition, grid)
     TX, TY, TZ = topology(grid)
 
-    return Tuple(((TX == Periodic ? FullyConnected : i == 1 ?
-                                    RightConnected : i == length(p) ?
-                                    LeftConnected :
-                                    FullyConnected), TY, TZ) for i in 1:length(p))
+    return Tuple(((TX == Periodic ? TwoSided{Connected, Connected} : insert_connected_topology(TX, length(p), i)), TY, TZ) for i in 1:length(p))
 end
 
 divide_direction(x::Tuple, p::EqualXPartition) =
@@ -87,7 +84,7 @@ function reconstruct_extent(mrg, p::XPartition)
              cpu_face_constructor_x(mrg.region_grids.regional_objects[length(p)])[end])
     else
         x = [cpu_face_constructor_x(mrg.region_grids.regional_objects[1])...]
-        for (idx, grid) in enumerate(mrg.region_grids.regional_objects[2:end])
+        for grid in mrg.region_grids.regional_objects[2:end]
             x = [x..., cpu_face_constructor_x(grid)[2:end]...]
         end
     end
@@ -95,8 +92,8 @@ function reconstruct_extent(mrg, p::XPartition)
     return (; x, y, z)
 end
 
-const FunctionMRO    = MultiRegionObject{<:Tuple{Vararg{T}}} where T<:Function
-const ArrayMRO{T, N} = MultiRegionObject{<:Tuple{Vararg{A}}} where A<:AbstractArray{T, N} where {T, N}
+const FunctionMRO    = MultiRegionObject{<:Tuple{T, Vararg{T}}} where T<:Function
+const ArrayMRO{T, N} = MultiRegionObject{<:Tuple{A, Vararg{A}}} where A<:AbstractArray{T, N} where {T, N}
 
 reconstruct_global_array(ma::FunctionMRO, args...) = ma.regional_objects[1]
 

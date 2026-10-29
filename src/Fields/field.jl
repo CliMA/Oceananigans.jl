@@ -1,20 +1,19 @@
-using Oceananigans.BoundaryConditions: OBC, MCBC, Zipper, construct_boundary_conditions_kernels
-using Oceananigans.BoundaryConditions: BoundaryCondition, materialize_default_boundary_conditions
-using Oceananigans.Grids: parent_index_range, default_indices, validate_indices
-using Oceananigans.Grids: index_range_contains
-using Oceananigans.Architectures: convert_to_device
+import Oceananigans: prognostic_state, restore_prognostic_state!
+using Oceananigans.BoundaryConditions:  construct_boundary_conditions_kernels, halo_fill_args, NFBC, MCBC,
+    BoundaryCondition, AbstractBoundaryConditionClassification, LeftBoundary, RightBoundary,
+    Zipper, validate_boundary_condition_architecture, validate_boundary_condition_topology,
+    materialize_default_boundary_conditions
+using Oceananigans.Grids: parent_index_range, default_indices, validate_indices,
+    index_range_contains, halo_size, offset_data, interior_parent_indices
+using Oceananigans.Utils: @apply_regionally, getregion
+using Oceananigans.Architectures: CPU, convert_to_device, on_architecture
 
-using Adapt
-using LinearAlgebra
+using LinearAlgebra: LinearAlgebra
 using KernelAbstractions: @kernel, @index
 using Base: @propagate_inbounds
 using GPUArraysCore: @allowscalar
-
-import Oceananigans: boundary_conditions
-import Oceananigans.Architectures: on_architecture
-import Oceananigans.BoundaryConditions: fill_halo_regions!, getbc
-import Statistics: mean
-import Base: ==
+using ReactantCore: ReactantCore
+using Statistics: Statistics
 
 #####
 ##### The bees knees
@@ -30,10 +29,10 @@ struct Field{LX, LY, LZ, O, G, I, D, T, B, S, F} <: AbstractField{LX, LY, LZ, G,
     communication_buffers :: F
 
     # Inner constructor that does not validate _anything_!
-    function Field{LX, LY, LZ}(grid::G, data::D, bcs::B, indices::I, op::O, status::S, buffers::F) where {LX, LY, LZ, G, D, B, O, S, I, F}
+    Base.@constprop :aggressive function Field{LX, LY, LZ}(grid::G, data::D, bcs::B, indices::I, op::O, status::S, buffers::F) where {LX, LY, LZ, G, D, B, O, S, I, F}
         T = eltype(data)
-        @apply_regionally new_bcs = construct_boundary_conditions_kernels(bcs, data, grid, (LX(), LY(), LZ()), indices) # Adding the kernels to the bcs
-        return new{LX, LY, LZ, O, G, I, D, T, typeof(new_bcs), S, F}(grid, data, new_bcs, indices, op, status, buffers)
+        @apply_regionally local_bcs = construct_boundary_conditions_kernels(bcs, data, grid, (LX(), LY(), LZ()), indices) # Adding the kernels to the bcs
+        return new{LX, LY, LZ, O, G, I, D, T, typeof(local_bcs), S, F}(grid, data, local_bcs, indices, op, status, buffers)
     end
 end
 
@@ -57,7 +56,7 @@ end
 validate_boundary_condition_location(bc, ::Center, side) = nothing          # anything goes for centers
 validate_boundary_condition_location(::Nothing, ::Nothing, side) = nothing  # its nothing or nothing
 
-const ValidFaceBCS = Union{OBC, Nothing, Missing, MCBC}
+const ValidFaceBCS = Union{NFBC, Nothing, Missing, MCBC}
 validate_boundary_condition_location(::ValidFaceBCS, ::Face, side) = nothing  # only open, connected or nothing on faces
 validate_boundary_condition_location(bc, loc, side) = # everything else is wrong!
     throw(ArgumentError("Cannot specify $side boundary condition $bc on a field at $(loc)!"))
@@ -78,7 +77,7 @@ function validate_boundary_conditions(loc, grid, bcs)
         validate_boundary_condition_topology(bc, topo, side)
 
         # Check that boundary condition is valid given field location
-        topo isa Bounded && validate_boundary_condition_location(bc, ℓ, side)
+        topo isa BoundaryTopology && validate_boundary_condition_location(bc, ℓ, side)
 
         # Check that boundary condition arrays, if used, are on the right architecture
         validate_boundary_condition_architecture(bc, architecture(grid), side)
@@ -100,13 +99,11 @@ validate_boundary_condition_location(bc::Zipper, loc::Face, side) =
 #####
 
 # Common outer constructor for all field flavors that performs input validation
-function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::AbstractGrid, data, bcs, indices, op=nothing, status=nothing) where {LX, LY, LZ}
-    @apply_regionally begin
-        bcs = materialize_default_boundary_conditions(bcs, grid, loc)
-        indices = validate_indices(indices, loc, grid)
-        validate_field_data(loc, data, grid, indices)
-        validate_boundary_conditions(loc, grid, bcs)
-    end
+Base.@constprop :aggressive function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::AbstractGrid, data, bcs, indices, op=nothing, status=nothing) where {LX, LY, LZ}
+    @apply_regionally bcs = materialize_default_boundary_conditions(bcs, grid, loc)
+    @apply_regionally indices = validate_indices(indices, loc, grid)
+    @apply_regionally validate_field_data(loc, data, grid, indices)
+    @apply_regionally validate_boundary_conditions(loc, grid, bcs)
     buffers = communication_buffers(grid, data, bcs)
     return Field{LX, LY, LZ}(grid, data, bcs, indices, op, status, buffers)
 end
@@ -117,7 +114,7 @@ communication_buffers(grid, data, bcs) = nothing
 
 """
     Field{LX, LY, LZ}(grid::AbstractGrid,
-                      T::DataType=eltype(grid); kw...) where {LX, LY, LZ}
+                      ::Type{T}=eltype(grid); kw...) where {LX, LY, LZ, T}
 
 Construct a `Field` on `grid` with data type `T` at the location `(LX, LY, LZ)`.
 Each of `(LX, LY, LZ)` is either `Center` or `Face` and determines the field's
@@ -159,6 +156,8 @@ at the fluid's surface ``z = 0``, which for `Center` corresponds to `k = Nz`.
 ```jldoctest fields
 julia> u = XFaceField(grid); v = YFaceField(grid);
 
+julia> set!(u, (x, y, z) -> x * y); set!(v, (x, y, z) -> x^2 * y);
+
 julia> ωₛ = Field(∂x(v) - ∂y(u), indices=(:, :, grid.Nz))
 2×3×1 Field{Face, Face, Center} on RectilinearGrid on CPU
 ├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
@@ -168,35 +167,24 @@ julia> ωₛ = Field(∂x(v) - ∂y(u), indices=(:, :, grid.Nz))
 ├── operand: BinaryOperation at (Face, Face, Center)
 ├── status: time=0.0
 └── data: 6×9×1 OffsetArray(::Array{Float64, 3}, -1:4, -2:6, 4:4) with eltype Float64 with indices -1:4×-2:6×4:4
-    └── max=0.0, min=0.0, mean=0.0
-
-julia> compute!(ωₛ)
-2×3×1 Field{Face, Face, Center} on RectilinearGrid on CPU
-├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
-├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: Nothing, top: Nothing, immersed: Nothing
-├── indices: (:, :, 4:4)
-├── operand: BinaryOperation at (Face, Face, Center)
-├── status: time=0.0
-└── data: 6×9×1 OffsetArray(::Array{Float64, 3}, -1:4, -2:6, 4:4) with eltype Float64 with indices -1:4×-2:6×4:4
-    └── max=0.0, min=0.0, mean=0.0
+    └── max=0.166667, min=-0.25, mean=-0.0208333
 ```
 """
-function Field{LX, LY, LZ}(grid::AbstractGrid,
-                           T::DataType=eltype(grid);
-                           kw...) where {LX, LY, LZ}
+Base.@constprop :aggressive function Field{LX, LY, LZ}(grid::AbstractGrid,
+                                                       ::Type{T}=eltype(grid);
+                                                       kw...) where {LX, LY, LZ, T}
 
     return Field((LX(), LY(), LZ()), grid, T; kw...)
 end
 
-function Field(loc::Tuple, # These are instantiated locations, e.g. (Center(), Face(), nothing)
-               grid::AbstractGrid,
-               T::DataType = eltype(grid);
-               indices = default_indices(3),
-               data = new_data(T, grid, loc, validate_indices(indices, loc, grid)),
-               boundary_conditions = FieldBoundaryConditions(grid, loc, validate_indices(indices, loc, grid)),
-               operand = nothing,
-               status = nothing)
+Base.@constprop :aggressive function Field(loc::Tuple, # These are instantiated locations, e.g. (Center(), Face(), nothing)
+                                           grid::AbstractGrid,
+                                           ::Type{T} = eltype(grid);
+                                           indices = default_indices(3),
+                                           data = new_data(T, grid, loc, validate_indices(indices, loc, grid)),
+                                           boundary_conditions = FieldBoundaryConditions(grid, loc, validate_indices(indices, loc, grid)),
+                                           operand = nothing,
+                                           status = nothing) where T
 
     return Field(loc, grid, data, boundary_conditions, indices, operand, status)
 end
@@ -210,7 +198,7 @@ Field(f::Field; indices=f.indices) = view(f, indices...) # hmm...
 Return a `Field{Center, Center, Center}` on `grid`.
 Additional keyword arguments are passed to the `Field` constructor.
 """
-CenterField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Center(), Center(), Center()), grid, T; kw...)
+CenterField(grid::AbstractGrid, ::Type{T}=eltype(grid); kw...) where T = Field((Center(), Center(), Center()), grid, T; kw...)
 
 """
     XFaceField(grid, T=eltype(grid); kw...)
@@ -218,7 +206,7 @@ CenterField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Center
 Return a `Field{Face, Center, Center}` on `grid`.
 Additional keyword arguments are passed to the `Field` constructor.
 """
-XFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Face(), Center(), Center()), grid, T; kw...)
+XFaceField(grid::AbstractGrid, ::Type{T}=eltype(grid); kw...) where T = Field((Face(), Center(), Center()), grid, T; kw...)
 
 """
     YFaceField(grid, T=eltype(grid); kw...)
@@ -226,7 +214,7 @@ XFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Face(),
 Return a `Field{Center, Face, Center}` on `grid`.
 Additional keyword arguments are passed to the `Field` constructor.
 """
-YFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Center(), Face(), Center()), grid, T; kw...)
+YFaceField(grid::AbstractGrid, ::Type{T}=eltype(grid); kw...) where T = Field((Center(), Face(), Center()), grid, T; kw...)
 
 """
     ZFaceField(grid, T=eltype(grid); kw...)
@@ -234,14 +222,14 @@ YFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Center(
 Return a `Field{Center, Center, Face}` on `grid`.
 Additional keyword arguments are passed to the `Field` constructor.
 """
-ZFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Center(), Center(), Face()), grid, T; kw...)
+ZFaceField(grid::AbstractGrid, ::Type{T}=eltype(grid); kw...) where T = Field((Center(), Center(), Face()), grid, T; kw...)
 
 #####
 ##### Field utils
 #####
 
 # Canonical `similar` for Field (doesn't transfer boundary conditions)
-function Base.similar(f::Field, grid=f.grid)
+function Base.similar(f::Field, grid::AbstractGrid=f.grid)
     loc = instantiated_location(f)
     return Field(loc,
                  grid,
@@ -253,7 +241,7 @@ function Base.similar(f::Field, grid=f.grid)
 end
 
 """
-    offset_windowed_data(data, data_indices, loc, grid, view_indices)
+$(TYPEDSIGNATURES)
 
 Return an `OffsetArray` of `parent(data)`.
 
@@ -279,7 +267,7 @@ end
 convert_colon_indices(view_indices, field_indices) = view_indices
 convert_colon_indices(::Colon, field_indices) = field_indices
 """
-    view(f::Field, indices...)
+$(TYPEDSIGNATURES)
 
 Returns a `Field` with `indices`, whose `data` is
 a view into `f`, offset to preserve index meaning.
@@ -377,10 +365,10 @@ Base.view(f::Field, I::Vararg{Colon}) = f
 Base.view(f::Field, i) = view(f, i, :, :)
 Base.view(f::Field, i, j) = view(f, i, j, :)
 
-boundary_conditions(not_field) = nothing
+Oceananigans.boundary_conditions(not_field) = nothing
 
-@inline boundary_conditions(f::Field) = f.boundary_conditions
-@inline boundary_conditions(w::WindowedField) = FieldBoundaryConditions(w.indices, w.boundary_conditions)
+@inline Oceananigans.boundary_conditions(f::Field) = f.boundary_conditions
+@inline Oceananigans.boundary_conditions(w::WindowedField) = FieldBoundaryConditions(w.indices, w.boundary_conditions)
 
 immersed_boundary_condition(f::Field) = f.boundary_conditions.immersed
 data(field::Field) = field.data
@@ -422,13 +410,16 @@ function interior(a::OffsetArray,
 end
 
 """
-    interior(f::Field)
+$(TYPEDSIGNATURES)
 
 Return a view of `f` that excludes halo points.
 """
 interior(f::Field) = interior(f.data, location(f), f.grid, f.indices)
 interior(a::OffsetArray, loc, grid, indices) = interior(a, loc, topology(grid), size(grid), halo_size(grid), indices)
 interior(f::Field, I...) = view(interior(f), I...)
+
+ReactantCore.materialize_traced_array(f::Field) =
+    ReactantCore.materialize_traced_array(interior(f))
 
 # Don't use axes(f) to checkbounds; use axes(f.data)
 Base.checkbounds(f::Field, I...) = Base.checkbounds(f.data, I...)
@@ -444,13 +435,13 @@ Base.checkbounds(f::Field, I...) = Base.checkbounds(f.data, I...)
 Adapt.adapt_structure(to, f::Field) = Adapt.adapt(to, f.data)
 Adapt.parent_type(::Type{<:Field{LX, LY, LZ, O, G, I, D}}) where {LX, LY, LZ, O, G, I, D} = D
 
-total_size(f::Field) = total_size(f.grid, location(f), f.indices)
+Grids.total_size(f::Field) = total_size(f.grid, location(f), f.indices)
 @inline Base.size(f::Field)  = size(f.grid, location(f), f.indices)
 
-==(f::Field, a) = interior(f) == a
-==(a, f::Field) = a == interior(f)
+Base.:(==)(f::Field, a::AbstractArray) = interior(f) == a
+Base.:(==)(a::AbstractArray, f::Field) = a == interior(f)
 
-function ==(a::Field, b::Field)
+function Base.:(==)(a::Field, b::Field)
     if architecture(a) == architecture(b)
         return interior(a) == interior(b)
     elseif architecture(a) isa CPU && architecture(b) isa GPU
@@ -468,7 +459,7 @@ end
 ##### Move Fields between architectures
 #####
 
-on_architecture(arch, field::Field{LX, LY, LZ}) where {LX, LY, LZ} =
+Architectures.on_architecture(arch, field::Field{LX, LY, LZ}) where {LX, LY, LZ} =
     Field{LX, LY, LZ}(on_architecture(arch, field.grid),
                       on_architecture(arch, field.data),
                       on_architecture(arch, field.boundary_conditions),
@@ -525,14 +516,14 @@ struct FixedTime{T}
 end
 
 """
-    compute_at!(field, time)
+$(TYPEDSIGNATURES)
 
 Computes `field.data` at `time`. Falls back to compute!(field).
 """
 compute_at!(field, time) = compute!(field)
 
 """
-    compute_at!(field, time)
+$(TYPEDSIGNATURES)
 
 Computes `field.data` if `time != field.status.time`.
 """
@@ -594,14 +585,82 @@ const ReducedField = Union{XReducedField,
 @propagate_inbounds Base.setindex!(r::XYZReducedField, v, i, j, k) = setindex!(r.data, v, 1, 1, 1)
 
 # Boundary conditions reduced in one direction --- drop boundary-normal index
-@inline getbc(condition::XReducedField, j::Integer, k::Integer, grid::AbstractGrid, args...) = @inbounds condition[1, j, k]
-@inline getbc(condition::YReducedField, i::Integer, k::Integer, grid::AbstractGrid, args...) = @inbounds condition[i, 1, k]
-@inline getbc(condition::ZReducedField, i::Integer, j::Integer, grid::AbstractGrid, args...) = @inbounds condition[i, j, 1]
+@inline BoundaryConditions.getbc(condition::XReducedField, j::Integer, k::Integer, grid::AbstractGrid, args...) = @inbounds condition[1, j, k]
+@inline BoundaryConditions.getbc(condition::YReducedField, i::Integer, k::Integer, grid::AbstractGrid, args...) = @inbounds condition[i, 1, k]
+@inline BoundaryConditions.getbc(condition::ZReducedField, i::Integer, j::Integer, grid::AbstractGrid, args...) = @inbounds condition[i, j, 1]
 
-# Boundary conditions reduced in two directions are ambiguous, so that's hard...
+# Boundary conditions reduced in two directions --- the surviving index sits in the same slot on both admissible boundaries
+@inline BoundaryConditions.getbc(condition::XYReducedField, ::Integer, k::Integer, grid::AbstractGrid, args...) = @inbounds condition[1, 1, k]
+@inline BoundaryConditions.getbc(condition::YZReducedField, i::Integer, ::Integer, grid::AbstractGrid, args...) = @inbounds condition[i, 1, 1]
+# A field reduced in x and z is ambiguous: the surviving index is the first one on x boundaries and the second one on z boundaries
 
 # 0D boundary conditions --- easy case
-@inline getbc(condition::XYZReducedField, ::Integer, ::Integer, ::AbstractGrid, args...) = @inbounds condition[1, 1, 1]
+@inline BoundaryConditions.getbc(condition::XYZReducedField, ::Integer, ::Integer, ::AbstractGrid, args...) = @inbounds condition[1, 1, 1]
+
+#####
+##### Fields windowed to a single plane act as boundary conditions on the parallel boundary
+#####
+
+# A field windowed with `indices` stores its data offset to the window (for example the k-axis of
+# `Field(op, indices=(:, :, Nz))` is `Nz:Nz`), so the boundary-normal index of a boundary condition
+# is the window's own slot rather than 1 (which is what reduced fields and plain 2D arrays use).
+# The locations are restricted to `Face`/`Center` so these do not overlap with the reduced fields above.
+const FaceOrCenter = Union{Face, Center}
+const XPlaneField = Field{<:FaceOrCenter, <:FaceOrCenter, <:FaceOrCenter, <:Any, <:Any, <:Tuple{<:AbstractRange, Colon, Colon}}
+const YPlaneField = Field{<:FaceOrCenter, <:FaceOrCenter, <:FaceOrCenter, <:Any, <:Any, <:Tuple{Colon, <:AbstractRange, Colon}}
+const ZPlaneField = Field{<:FaceOrCenter, <:FaceOrCenter, <:FaceOrCenter, <:Any, <:Any, <:Tuple{Colon, Colon, <:AbstractRange}}
+
+const PlaneField = Union{XPlaneField, YPlaneField, ZPlaneField}
+
+@inline BoundaryConditions.getbc(condition::XPlaneField, j::Integer, k::Integer, grid::AbstractGrid, args...) = @inbounds condition[first(condition.indices[1]), j, k]
+@inline BoundaryConditions.getbc(condition::YPlaneField, i::Integer, k::Integer, grid::AbstractGrid, args...) = @inbounds condition[i, first(condition.indices[2]), k]
+@inline BoundaryConditions.getbc(condition::ZPlaneField, i::Integer, j::Integer, grid::AbstractGrid, args...) = @inbounds condition[i, j, first(condition.indices[3])]
+
+function Adapt.adapt_structure(to, bc::BoundaryCondition{<:AbstractBoundaryConditionClassification, <:PlaneField})
+    plane_field = bc.condition
+    LX, LY, LZ = location(plane_field)
+    condition = Field{LX, LY, LZ}(nothing,
+                                  adapt(to, plane_field.data),
+                                  nothing,
+                                  plane_field.indices,
+                                  nothing,
+                                  nothing,
+                                  nothing)
+    return BoundaryCondition(adapt(to, bc.classification), condition)
+end
+
+# A `Field` used as a boundary condition on dimension `dim` is indexed directly with the tangential
+# indices of the boundary (`getbc(condition, j, k, grid)` for the west and east boundaries, and so on),
+# so it must span the whole boundary: it may not be windowed along the tangential dimensions. Along
+# the boundary-normal dimension `dim` it may be reduced, windowed to a single plane (the `getbc`
+# methods above read it there), or neither, in which case it is windowed to its plane on (`Face`) or
+# adjacent to (`Center`) the boundary.
+function BoundaryConditions.regularize_boundary_condition(condition::Field, grid, loc, dim, side, args...)
+    indices = condition.indices
+    tangential_dims = filter(!=(dim), (1, 2, 3))
+
+    all(indices[d] isa Colon for d in tangential_dims) ||
+        throw(ArgumentError("A Field used as a boundary condition on dimension $dim must span the whole boundary, " *
+                            "so it may not be windowed along dimensions $tangential_dims, but has indices $indices."))
+
+    location(condition)[dim] === Nothing || indices[dim] isa Colon || length(indices[dim]) == 1 ||
+        throw(ArgumentError("A Field used as a boundary condition on dimension $dim must be reduced along dimension $dim, " *
+                            "or windowed along it to a single plane if at all, but has location $(location(condition)) " *
+                            "and indices $indices."))
+
+    return window_to_boundary(condition, dim, side)
+end
+
+boundary_plane(::Type{LeftBoundary},  condition, dim) = 1
+boundary_plane(::Type{RightBoundary}, condition, dim) = size(condition, dim)
+
+function window_to_boundary(condition, dim, side)
+    windowed = !(condition.indices[dim] isa Colon)
+    reduced = location(condition)[dim] === Nothing
+    (windowed || reduced) && return condition
+    window = ntuple(d -> d == dim ? boundary_plane(side, condition, dim) : Colon(), 3)
+    return view(condition, window...)
+end
 
 # Preserve location when adapting fields reduced on one or more dimensions
 function Adapt.adapt_structure(to, reduced_field::ReducedField)
@@ -637,21 +696,36 @@ const ReducedAbstractField = Union{XReducedAbstractField,
                                    XYReducedAbstractField,
                                    XYZReducedAbstractField}
 
-# TODO: needs test
-function LinearAlgebra.dot(a::AbstractField, b::AbstractField; condition=nothing)
+"""
+    dot!(r, a::AbstractField, b::AbstractField; condition = nothing)
+
+Store the dot product of `a` and `b` in the one-element array `r`, which lives on the same
+architecture as `a` and `b`, and return `r`. Unlike `LinearAlgebra.dot`, `dot!` does not copy
+the result to the host, so on a GPU it does not make the host wait for the device.
+"""
+dot!(r, a::AbstractField, b::AbstractField; condition = nothing) = local_dot!(r, a, b; condition)
+
+# The dot product over the cells of `a` and `b` that live on this rank; distributed fields
+# extend `dot!` to reduce it across ranks
+function local_dot!(r, a::AbstractField, b::AbstractField; condition = nothing)
     ca = condition_operand(a, condition, 0)
     cb = condition_operand(b, condition, 0)
 
     B = ca * cb # Binary operation
-    r = zeros(a.grid, 1)
+    fill!(r, 0)
 
-    Base.mapreducedim!(identity, +, r, B)
+    Base.mapreducedim!(identity, +, r, reduction_operand(B))
+    return r
+end
+
+function LinearAlgebra.dot(a::AbstractField, b::AbstractField; condition = nothing)
+    r = dot!(zeros(a.grid, 1), a, b; condition)
     return @allowscalar r[1]
 end
 
 function LinearAlgebra.norm(a::AbstractField; condition = nothing)
     r = zeros(a.grid, 1)
-    Base.mapreducedim!(x -> x * x, +, r, condition_operand(a, condition, 0))
+    Base.mapreducedim!(x -> x * x, +, r, reduction_operand(condition_operand(a, condition, 0)))
     return @allowscalar sqrt(r[1])
 end
 
@@ -664,12 +738,26 @@ const MinimumReduction = typeof(Base.minimum!)
 const AllReduction     = typeof(Base.all!)
 const AnyReduction     = typeof(Base.any!)
 
-initialize_reduced_field!(::SumReduction,     f, r::ReducedAbstractField, c) = Base.initarray!(interior(r), f, Base.add_sum, true, interior(c))
-initialize_reduced_field!(::ProdReduction,    f, r::ReducedAbstractField, c) = Base.initarray!(interior(r), f, Base.mul_prod, true, interior(c))
-initialize_reduced_field!(::AllReduction,     f, r::ReducedAbstractField, c) = Base.initarray!(interior(r), f, &, true, interior(c))
-initialize_reduced_field!(::AnyReduction,     f, r::ReducedAbstractField, c) = Base.initarray!(interior(r), f, |, true, interior(c))
-initialize_reduced_field!(::MaximumReduction, f, r::ReducedAbstractField, c) = Base.mapfirst!(f, interior(r), interior(c))
-initialize_reduced_field!(::MinimumReduction, f, r::ReducedAbstractField, c) = Base.mapfirst!(f, interior(r), interior(c))
+# Neutral element the in-place reduction starts from (it runs with `init=false`)
+reduction_init(::SumReduction,  T) = zero(T)
+reduction_init(::ProdReduction, T) = one(T)
+reduction_init(::AllReduction,  T) = true
+reduction_init(::AnyReduction,  T) = false
+
+initialize_reduced_field!(reduction, f, r::ReducedAbstractField, c) = fill!(interior(r), reduction_init(reduction, eltype(r)))
+
+# `maximum` and `minimum` start from `f` of the operand's first slice along the reduced dimensions
+function initialize_reduced_field!(::Union{MaximumReduction, MinimumReduction}, f::F, r::ReducedAbstractField, c) where F
+    R, A = interior(r), interior(c)
+    return map!(f, R, view(A, first_slice(axes(R), axes(A))...))
+end
+
+# Axes of the first slice of `A` along the dimensions reduced in `R`, keeping the axis types
+@inline first_slice(::Tuple{}, ::Tuple{}) = ()
+@inline first_slice(R::Tuple, A::Tuple) = (length(R[1]) == 1 ? first_index(A[1]) : A[1], first_slice(Base.tail(R), Base.tail(A))...)
+
+first_index(::Base.OneTo) = Base.OneTo(1)
+first_index(ax::AbstractUnitRange) = first(ax):first(ax)
 
 filltype(f, c) = eltype(c)
 filltype(::Union{AllReduction, AnyReduction}, grid) = Bool
@@ -700,16 +788,16 @@ function reduced_dimension(loc)
     return dims
 end
 
-get_neutral_mask(::Union{AllReduction, AnyReduction})  = true
+get_neutral_mask(::AllReduction) = true
+get_neutral_mask(::AnyReduction) = false
 get_neutral_mask(::Union{SumReduction, MeanReduction}) = 0
 get_neutral_mask(::ProdReduction)    = 1
 
-# TODO make this Float32 friendly
 get_neutral_mask(::MinimumReduction) = +Inf
 get_neutral_mask(::MaximumReduction) = -Inf
 
 """
-    condition_operand(f::Function, op::AbstractField, condition, mask)
+$(TYPEDSIGNATURES)
 
 Wrap `f(op)` in `ConditionedOperand` with `condition` and `mask`. `f` defaults to `identity`.
 
@@ -723,19 +811,36 @@ Otherwise return `ConditionedOperand`, even when `isnothing(condition)` but `!(f
 # All non-trivial conditioning is found in AbstractOperations/conditional_operations.jl
 const Identity = typeof(Base.identity)
 @inline condition_operand(::Identity, operand, ::Nothing, mask) = operand
-@inline condition_operand(::Nothing, operand, ::Nothing, mask) = operand
+@inline condition_operand(::Nothing,  operand, ::Nothing, mask) = operand
+
+# Reductions get a field's interior: a 1-based array of the field's own size, which generic
+# reduction code (e.g. GPUArrays') can view, reshape and adapt, unlike the field itself
+@inline reduction_operand(c::Field) = interior(c)
+@inline reduction_operand(c) = c
+
+# Operations drop the indices of their fields when adapted for a kernel, which changes their
+# size, so a windowed operation is reduced through a view of its window, which keeps it
+@inline reduction_operand(c::AbstractField) = windowed_reduction_operand(c, indices(c))
+@inline windowed_reduction_operand(c, ::Tuple{Colon, Colon, Colon}) = c
+@inline windowed_reduction_operand(c, ::Tuple) = view(c, axes(c)...)
+@inline windowed_reduction_operand(c, indices) = c
+
+# The mask stands in for the values of `f` where a condition doesn't hold, so it takes their type
+@inline function mapped_eltype(f, a)
+    T = Base.promote_op(f, eltype(a))
+    return isconcretetype(T) ? T : eltype(a)
+end
+
+# The neutral masks of `maximum` and `minimum` are infinite, which integers and `Bool`s represent
+# by their extreme values
+@inline convert_mask(::Type{T}, mask) where T = convert(T, mask)
+@inline convert_mask(::Type{T}, mask::AbstractFloat) where T <: Integer =
+    isinf(mask) ? (mask > 0 ? typemax(T) : typemin(T)) : convert(T, mask)
 
 @inline conditional_length(c::AbstractField) = length(c)
 @inline conditional_length(c::AbstractField, ::Colon) = conditional_length(c)
-@inline conditional_length(c::AbstractField, ::NTuple{3}) = conditional_length(c)
-@inline conditional_length(c::AbstractField, d::Int) = size(c, d)
-@inline conditional_length(c::AbstractField, dims::NTuple{1}) = conditional_length(c, dims[1])
-
-@inline function conditional_length(c::AbstractField, dims::NTuple{2})
-    N = size(c)
-    d1, d2 = dims
-    return N[d1] * N[d2]
-end
+@inline conditional_length(c::AbstractField, dims::Int) = size(c, dims)
+@inline conditional_length(c::AbstractField, dims::Tuple) = prod(size(c, d) for d in dims)
 
 # Allocating and in-place reductions
 for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
@@ -751,12 +856,12 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
                                     condition = nothing,
                                     mask = get_neutral_mask(Base.$(reduction!)),
                                     kwargs...)
-
+            mask = convert_mask(mapped_eltype(f, a), mask)
             operand = condition_operand(f, a, condition, mask)
 
             return Base.$(reduction!)(identity,
                                       interior(r),
-                                      operand;
+                                      reduction_operand(operand);
                                       kwargs...)
         end
 
@@ -766,9 +871,11 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
                                     mask = get_neutral_mask(Base.$(reduction!)),
                                     kwargs...)
 
+
+            mask = convert_mask(eltype(a), mask)
             return Base.$(reduction!)(identity,
                                       interior(r),
-                                      condition_operand(a, condition, mask);
+                                      reduction_operand(condition_operand(a, condition, mask));
                                       kwargs...)
         end
 
@@ -779,15 +886,18 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
                                    mask = get_neutral_mask(Base.$(reduction!)),
                                    dims = :)
 
+            mask = convert_mask(mapped_eltype(f, c), mask)
             conditioned_c = condition_operand(f, c, condition, mask)
             T = filltype(Base.$(reduction!), c)
             loc = reduced_location(instantiated_location(c); dims)
             r = Field(loc, c.grid, T; indices=indices(c))
             initialize_reduced_field!(Base.$(reduction!), identity, r, conditioned_c)
-            Base.$(reduction!)(identity, interior(r), conditioned_c, init=false)
+            Base.$(reduction!)(identity, interior(r), reduction_operand(conditioned_c), init=false)
 
             if dims isa Colon
-                return @allowscalar first(r)
+                # Cartesian indexing: with Reactant on Julia 1.13, linear indexing
+                # into a view returns a one-element array rather than a number
+                return @allowscalar interior(r)[1, 1, 1]
             else
                 return r
             end
@@ -801,12 +911,69 @@ end
 Base.extrema(c::AbstractField; kwargs...) = (minimum(c; kwargs...), maximum(c; kwargs...))
 Base.extrema(f, c::AbstractField; kwargs...) = (minimum(f, c; kwargs...), maximum(f, c; kwargs...))
 
+# Index reductions: locate extrema over `interior(c)`, returning indices in the field's own
+# axes so that `c[argmax(c)] == maximum(c)` — which for default fields coincide with positional
+# interior (and `nodes`) indices. The generic fallbacks scalar-index on the GPU and are blind
+# to immersed boundaries.
+# The search is fused: a lazy broadcast of (value, linear index) pairs is folded in place
+# on the CPU, or consumed by `mapreducedim!` on the GPU — which GPUArrays dispatches on
+# the one-element destination — so neither the operand nor the pairs are materialized.
+function locate_extremum(better, f, c::AbstractField, condition, mask)
+    mask = convert_mask(mapped_eltype(f, c), mask)
+    operand = condition_operand(f, c, condition, mask)
+
+    # Ties resolve to the smaller linear index, matching Base
+    tiebreak((x, i), (y, j)) = better(x, y) ? (y, j) :
+                               isequal(x, y) ? (x, min(i, j)) : (x, i)
+
+    # Everything is 1-based from here: a windowed interior is a 1-based view and a
+    # `ConditionalOperation` has 1-based axes, so no offset axes enter the search
+    values = search_values(c, operand)
+
+    value, i = fold_pairs(architecture(c), tiebreak, values, (mask, 1))
+    positional = CartesianIndices(size(values))[i]
+
+    # Shift into the field's own axes so that `c[argmax(c)] == maximum(c)` holds for
+    # windowed fields too; for default fields the shift vanishes
+    return value, CartesianIndex(Tuple(positional) .+ first.(axes(c)) .- 1)
+end
+
+# Dispatch detects when `condition_operand` passed `c` through; `operand === c` can be false for windowed fields
+@inline search_values(c::C, operand::C) where C = interior(c)
+@inline search_values(c, operand) = operand
+
+function fold_pairs(::Architectures.CPU, tiebreak, values, init)
+    result = init
+    linear = 0
+    @inbounds for I in CartesianIndices(size(values))
+        linear += 1
+        result = tiebreak(result, (values[I], linear))
+    end
+    return result
+end
+
+function fold_pairs(arch, tiebreak, values, init)
+    pairs = Broadcast.instantiate(Broadcast.broadcasted(tuple, values, LinearIndices(size(values))))
+    result = on_architecture(arch, fill(init, 1, 1, 1))
+    Base.mapreducedim!(identity, tiebreak, result, pairs)
+    return first(Array(result))
+end
+
+Base.findmax(f, c::AbstractField; condition = nothing, mask = -Inf) = locate_extremum(Base.isless,    f, c, condition, mask)
+Base.findmin(f, c::AbstractField; condition = nothing, mask = Inf)  = locate_extremum(Base.isgreater, f, c, condition, mask)
+Base.findmax(c::AbstractField; kwargs...) = findmax(identity, c; kwargs...)
+Base.findmin(c::AbstractField; kwargs...) = findmin(identity, c; kwargs...)
+Base.argmax(c::AbstractField; kwargs...) = last(findmax(c; kwargs...))
+Base.argmin(c::AbstractField; kwargs...) = last(findmin(c; kwargs...))
+
 function Statistics._mean(f, c::AbstractField, ::Colon; condition = nothing, mask = 0)
+    mask = convert_mask(mapped_eltype(f, c), mask)
     operator = condition_operand(f, c, condition, mask)
     return sum(operator) / conditional_length(operator)
 end
 
 function Statistics._mean(f, c::AbstractField, dims; condition = nothing, mask = 0)
+    mask = convert_mask(mapped_eltype(f, c), mask)
     operand = condition_operand(f, c, condition, mask)
     r = sum(operand; dims)
     L = conditional_length(operand, dims)
@@ -822,6 +989,7 @@ Statistics.mean(f::Function, c::AbstractField; condition = nothing, dims=:) = St
 Statistics.mean(c::AbstractField; condition = nothing, dims=:) = Statistics._mean(identity, c, dims; condition)
 
 function Statistics.mean!(f::Function, r::ReducedAbstractField, a::AbstractField; condition = nothing, mask = 0)
+    mask = convert_mask(mapped_eltype(f, a), mask)
     sum!(f, r, a; condition, mask, init=true)
     dims = reduced_dimension(location(r))
     L = conditional_length(condition_operand(f, a, condition, mask), dims)
@@ -839,7 +1007,7 @@ Statistics.mean!(r::ReducedAbstractField, a::AbstractArray; kwargs...) = Statist
 ##### fill_halo_regions!
 #####
 
-function fill_halo_regions!(field::Field, positional_args...; kwargs...)
+function BoundaryConditions.fill_halo_regions!(field::Field, positional_args...; kwargs...)
 
     arch = architecture(field.grid)
     args = (field.data,
@@ -847,7 +1015,7 @@ function fill_halo_regions!(field::Field, positional_args...; kwargs...)
             field.indices,
             instantiated_location(field),
             field.grid,
-            positional_args...)
+            halo_fill_args(field.boundary_conditions, positional_args)...)
 
     # Manually convert args... to be
     # passed to the fill_halo_regions! function.
@@ -863,4 +1031,30 @@ end
 ##### nodes
 #####
 
-nodes(f::Field; kwargs...) = nodes(f.grid, instantiated_location(f)...; indices=indices(f), kwargs...)
+Grids.xnodes(f::Field; kwargs...) = xnodes(f.grid, instantiated_location(f)...; indices=indices(f)[1], kwargs...)
+Grids.ynodes(f::Field; kwargs...) = ynodes(f.grid, instantiated_location(f)...; indices=indices(f)[2], kwargs...)
+Grids.znodes(f::Field; kwargs...) = znodes(f.grid, instantiated_location(f)...; indices=indices(f)[3], kwargs...)
+Grids.rnodes(f::Field; kwargs...) = rnodes(f.grid, instantiated_location(f)...; indices=indices(f)[3], kwargs...)
+Grids.nodes(f::Field; kwargs...) = nodes(f.grid, instantiated_location(f)...; indices=indices(f), kwargs...)
+
+#####
+##### Checkpointing
+#####
+
+# Save a host copy of the underlying data (halos included) so that on restore we can
+# `copyto!` straight into the existing device array. Serializing the device array directly
+# makes JLD2 reconstruct a *new* device array on read, doubling GPU memory at pickup and
+# OOMing for large fields. `parent` keeps the same indexing as `restored`'s parent below.
+function prognostic_state(field::Field)
+    return (; data = on_architecture(CPU(), parent(field)),
+              boundary_conditions = prognostic_state(field.boundary_conditions))
+end
+
+function restore_prognostic_state!(restored::Field, from)
+    # `from.data` is a host-side copy of the parent data; restore region-by-region when needed.
+    @apply_regionally copyto!(parent(restored), from.data)
+    haskey(from, :boundary_conditions) && restore_prognostic_state!(restored.boundary_conditions, from.boundary_conditions)
+    return restored
+end
+
+restore_prognostic_state!(::Field, ::Nothing) = nothing

@@ -1,23 +1,21 @@
-using Oceananigans.Utils: prettysummary
+"""
+    FunctionField{LX, LY, LZ}(func, grid; clock=nothing, parameters=nothing) where {LX, LY, LZ}
 
+Returns a `FunctionField` on `grid` and at location `LX, LY, LZ`.
+
+If `clock` is not specified, then `func` must be a function with signature
+`func(x, y, z)`. If clock is specified, `func` must be a function with signature
+`func(x, y, z, t)`, where `t` is internally determined from `clock.time`.
+
+A `FunctionField` will return the result of `func(x, y, z [, t])` at `LX, LY, LZ` on
+`grid` when indexed at `i, j, k`.
+"""
 struct FunctionField{LX, LY, LZ, C, P, F, G, T} <: AbstractField{LX, LY, LZ, G, T, 3}
           func :: F
           grid :: G
          clock :: C
     parameters :: P
 
-    @doc """
-        FunctionField{LX, LY, LZ}(func, grid; clock=nothing, parameters=nothing) where {LX, LY, LZ}
-
-    Returns a `FunctionField` on `grid` and at location `LX, LY, LZ`.
-
-    If `clock` is not specified, then `func` must be a function with signature
-    `func(x, y, z)`. If clock is specified, `func` must be a function with signature
-    `func(x, y, z, t)`, where `t` is internally determined from `clock.time`.
-
-    A `FunctionField` will return the result of `func(x, y, z [, t])` at `LX, LY, LZ` on
-    `grid` when indexed at `i, j, k`.
-    """
     @inline function FunctionField{LX, LY, LZ}(func::F,
                                                grid::G;
                                                clock::C=nothing,
@@ -68,7 +66,7 @@ Adapt.adapt_structure(to, f::FunctionField{LX, LY, LZ}) where {LX, LY, LZ} =
                            parameters = Adapt.adapt(to, f.parameters))
 
 
-on_architecture(to, f::FunctionField{LX, LY, LZ}) where {LX, LY, LZ} =
+Architectures.on_architecture(to, f::FunctionField{LX, LY, LZ}) where {LX, LY, LZ} =
     FunctionField{LX, LY, LZ}(on_architecture(to, f.func),
                               on_architecture(to, f.grid),
                               clock = on_architecture(to, f.clock),
@@ -80,4 +78,3 @@ Base.show(io::IO, field::FunctionField) =
           "├── grid: $(summary(field.grid))\n",
           "├── clock: $(summary(field.clock))\n",
           "└── parameters: $(field.parameters)")
-

@@ -1,12 +1,12 @@
 using Oceananigans.BoundaryConditions
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions, BoundaryCondition
 using Oceananigans.BoundaryConditions: MultiRegionCommunication, DistributedCommunication
-using Oceananigans.Grids: halo_size, size, topology
+using Oceananigans.Grids: CommunicatingSide, halo_size, size, topology
 using Oceananigans.Utils: launch!
 
 using Adapt
 
-using KernelAbstractions: @kernel, @index
+using KernelAbstractions: @kernel, @index, get_backend
 
 import Oceananigans.Architectures: on_architecture
 import Oceananigans.Fields: communication_buffers
@@ -14,7 +14,7 @@ import Oceananigans.Fields: communication_buffers
 const MCBC = BoundaryCondition{<:MultiRegionCommunication}
 const DCBC = BoundaryCondition{<:DistributedCommunication}
 
-struct CommunicationBuffers{W, E, S, N, SW, SE, NW, NE}
+struct CommunicationBuffers{W, E, S, N, SW, SE, NW, NE, CS}
     west :: W
     east :: E
    south :: S
@@ -23,38 +23,42 @@ struct CommunicationBuffers{W, E, S, N, SW, SE, NW, NE}
    southeast :: SE
    northwest :: NW
    northeast :: NE
+   state :: CS
 end
 
 Adapt.adapt_structure(to, buff::CommunicationBuffers) =
-    CommunicationBuffers(Adapt.adapt(to, buff.west), 
-                         Adapt.adapt(to, buff.east),    
-                         Adapt.adapt(to, buff.north), 
-                         Adapt.adapt(to, buff.south), 
-                         Adapt.adapt(to, buff.southwest), 
-                         Adapt.adapt(to, buff.southeast), 
-                         Adapt.adapt(to, buff.northwest), 
-                         Adapt.adapt(to, buff.northeast))
+    CommunicationBuffers(Adapt.adapt(to, buff.west),
+                         Adapt.adapt(to, buff.east),
+                         Adapt.adapt(to, buff.south),
+                         Adapt.adapt(to, buff.north),
+                         Adapt.adapt(to, buff.southwest),
+                         Adapt.adapt(to, buff.southeast),
+                         Adapt.adapt(to, buff.northwest),
+                         Adapt.adapt(to, buff.northeast),
+                         Adapt.adapt(to, buff.state))
 
 on_architecture(arch, buff::CommunicationBuffers) =
-    CommunicationBuffers(on_architecture(arch, buff.west), 
-                         on_architecture(arch, buff.east),    
-                         on_architecture(arch, buff.north), 
-                         on_architecture(arch, buff.south), 
-                         on_architecture(arch, buff.southwest), 
-                         on_architecture(arch, buff.southeast), 
-                         on_architecture(arch, buff.northwest), 
-                         on_architecture(arch, buff.northeast))
+    CommunicationBuffers(on_architecture(arch, buff.west),
+                         on_architecture(arch, buff.east),
+                         on_architecture(arch, buff.south),
+                         on_architecture(arch, buff.north),
+                         on_architecture(arch, buff.southwest),
+                         on_architecture(arch, buff.southeast),
+                         on_architecture(arch, buff.northwest),
+                         on_architecture(arch, buff.northeast),
+                         on_architecture(arch, buff.state))
+
 
 communication_buffers(grid::DistributedGrid, data, boundary_conditions) = CommunicationBuffers(grid, data, boundary_conditions)
 
 """
-    CommunicationBuffers(grid, data, boundary_conditions)
+$(TYPEDSIGNATURES)
 
 Construct communication buffers for distributed halo exchange.
 
-`CommunicationBuffers` stores send/receive buffers for each spatial direction and corner 
-in a distributed grid. During halo exchange, data is copied from the interior domain into 
-send buffers, communicated via MPI to neighboring processes, and then unpacked from receive 
+`CommunicationBuffers` stores send/receive buffers for each spatial direction and corner
+in a distributed grid. During halo exchange, data is copied from the interior domain into
+send buffers, communicated via MPI to neighboring processes, and then unpacked from receive
 buffers into halo regions.
 
 # Buffer Types
@@ -85,7 +89,9 @@ function CommunicationBuffers(grid, data, boundary_conditions::FieldBoundaryCond
     nw = corner_communication_buffer(arch, grid, data, Hx, Hy, west, north)
     ne = corner_communication_buffer(arch, grid, data, Hx, Hy, east, north)
 
-    return CommunicationBuffers(west, east, south, north, sw, se, nw, ne)
+    state = communication_state(arch, west, east, south, north, sw, se, nw, ne)
+
+    return CommunicationBuffers(west, east, south, north, sw, se, nw, ne, state)
 end
 
 CommunicationBuffers(grid, data, ::Missing) = nothing
@@ -96,12 +102,12 @@ CommunicationBuffers(grid, data, ::Nothing) = nothing
 
 Communication buffer for one-dimensional domain decomposition or edge boundaries.
 
-In a one-dimensional parallelization (e.g., only in x or only in y), `OneDBuffer` 
-contains the full extent of the halo region including the corners. This allows corner 
+In a one-dimensional parallelization (e.g., only in x or only in y), `OneDBuffer`
+contains the full extent of the halo region including the corners. This allows corner
 data to be communicated in a single pass along with the edge data.
 
-`OneDBuffer` is also used in two-dimensional parallelizations for processes at domain 
-edges (e.g., boundaries with `RightConnected` or `LeftConnected` topologies), where 
+`OneDBuffer` is also used in two-dimensional parallelizations for processes at domain
+edges (directions connected on one side only), where
 corner communication is not needed in that direction.
 
 # Size
@@ -118,9 +124,9 @@ end
 
 Communication buffer for two-dimensional domain decomposition without corner regions.
 
-In a two-dimensional parallelization where corners are communicated separately via 
-`CornerBuffer`, `TwoDBuffer` contains only the edge halo region excluding the corners. 
-This enables efficient communication patterns where edge and corner data are sent in 
+In a two-dimensional parallelization where corners are communicated separately via
+`CornerBuffer`, `TwoDBuffer` contains only the edge halo region excluding the corners.
+This enables efficient communication patterns where edge and corner data are sent in
 separate MPI passes.
 
 # Size
@@ -137,17 +143,17 @@ end
 
 Communication buffer for corner regions in two-dimensional domain decomposition.
 
-In a two-dimensional parallelization, `CornerBuffer` handles the communication of 
-diagonal corner regions (southwest, southeast, northwest, northeast) that are not 
-covered by the edge communication buffers (`TwoDBuffer`). Corner communication ensures 
-that all halo regions are properly synchronized between neighboring processes in both 
+In a two-dimensional parallelization, `CornerBuffer` handles the communication of
+diagonal corner regions (southwest, southeast, northwest, northeast) that are not
+covered by the edge communication buffers (`TwoDBuffer`). Corner communication ensures
+that all halo regions are properly synchronized between neighboring processes in both
 x and y directions.
 
 # Size
 `(Hx, Hy, Tz)` where `Hx` is the halo size in x, `Hy` is the halo size in y, and `Tz` is the size in z
 
 # Note
-Corner buffers are only created for `Distributed` architectures with two-dimensional 
+Corner buffers are only created for `Distributed` architectures with two-dimensional
 parallelization and are `nothing` otherwise.
 """
 struct CornerBuffer{B}
@@ -172,7 +178,7 @@ function x_communication_buffer(arch::Distributed, grid::AbstractGrid{<:Any, TX,
     _, Ty, Tz = size(parent(data))
     Ny = size(grid, 2)
     FT = eltype(data)
-    if (ranks(arch)[2] == 1) || (TY == RightConnected) || (TY == LeftConnected)
+    if (ranks(arch)[2] == 1) || ((TY <: TwoSided{<:CommunicatingSide}) != (TY <: TwoSided{<:Any, <:CommunicatingSide}))
         send = on_architecture(arch, zeros(FT, H, Ty, Tz))
         recv = on_architecture(arch, zeros(FT, H, Ty, Tz))
         return OneDBuffer(send, recv)
@@ -187,7 +193,7 @@ function y_communication_buffer(arch::Distributed, grid::AbstractGrid{<:Any, TX,
     Tx, _, Tz = size(parent(data))
     FT = eltype(data)
     Nx = size(grid, 1)
-    if (ranks(arch)[1] == 1) || (TX == RightConnected) || (TX == LeftConnected)
+    if (ranks(arch)[1] == 1) || ((TX <: TwoSided{<:CommunicatingSide}) != (TX <: TwoSided{<:Any, <:CommunicatingSide}))
         send = on_architecture(arch, zeros(FT, Tx, H, Tz))
         recv = on_architecture(arch, zeros(FT, Tx, H, Tz))
         return OneDBuffer(send, recv)
@@ -199,7 +205,7 @@ function y_communication_buffer(arch::Distributed, grid::AbstractGrid{<:Any, TX,
 end
 
 # Never pass corners in a MCBC.
-function x_communication_buffer(arch, grid, data, H, ::MCBC) 
+function x_communication_buffer(arch, grid, data, H, ::MCBC)
     _, Ty, Tz = size(parent(data))
     FT = eltype(data)
     send = on_architecture(arch, zeros(FT, H, Ty, Tz))
@@ -207,7 +213,7 @@ function x_communication_buffer(arch, grid, data, H, ::MCBC)
     return OneDBuffer(send, recv)
 end
 
-function y_communication_buffer(arch, grid, data, H, ::MCBC) 
+function y_communication_buffer(arch, grid, data, H, ::MCBC)
     Tx, _, Tz = size(parent(data))
     FT = eltype(data)
     send = on_architecture(arch, zeros(FT, Tx, H, Tz))
@@ -226,7 +232,7 @@ corner_communication_buffer(arch, grid, data, Hx, Hy, xedge, yedge) = nothing
 corner_communication_buffer(::Distributed, grid, data, Hx, Hy, ::Nothing, ::Nothing) = nothing
 corner_communication_buffer(arch::Distributed, grid, data, Hx, Hy, ::Nothing, yedge) = nothing
 corner_communication_buffer(arch::Distributed, grid, data, Hx, Hy, xedge, ::Nothing) = nothing
-    
+
 # CornerBuffer are used only  in the two-dimensional partitioning case, in all other cases they are equal to `nothing`
 function corner_communication_buffer(arch::Distributed, grid, data, Hx, Hy, xedge, yedge)
     Tz = size(parent(data), 3)
@@ -237,7 +243,7 @@ function corner_communication_buffer(arch::Distributed, grid, data, Hx, Hy, xedg
 end
 
 """
-    fill_send_buffers!(c::OffsetArray, buffers::CommunicationBuffers, grid)
+$(TYPEDSIGNATURES)
 
 fills `buffers.send` from OffsetArray `c` preparing for message passing.
 """
@@ -277,13 +283,13 @@ end
 ##### Single sided fill_send_buffers!
 #####
 
-fill_send_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::West) = 
+fill_send_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::West) =
     _fill_west_send_buffer!(parent(c), buff.west, halo_size(grid)[[1, 2]]..., size(grid)[[1, 2]]...)
-fill_send_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::East) = 
+fill_send_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::East) =
     _fill_east_send_buffer!(parent(c), buff.east, halo_size(grid)[[1, 2]]..., size(grid)[[1, 2]]...)
-fill_send_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::South) = 
+fill_send_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::South) =
     _fill_south_send_buffer!(parent(c), buff.south, halo_size(grid)[[1, 2]]..., size(grid)[[1, 2]]...)
-fill_send_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::North) = 
+fill_send_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::North) =
     _fill_north_send_buffer!(parent(c), buff.north, halo_size(grid)[[1, 2]]..., size(grid)[[1, 2]]...)
 fill_send_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::Bottom) = nothing
 fill_send_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::Top) = nothing
@@ -311,7 +317,7 @@ end
 fill_send_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::BottomAndTop) = nothing
 
 """
-    recv_from_buffers!(c::OffsetArray, buffers::CommunicationBuffers, grid)
+$(TYPEDSIGNATURES)
 
 fills OffsetArray `c` from `buffers.recv` after message passing occurred.
 """
@@ -348,13 +354,13 @@ end
 ##### Single sided recv_from_buffers!
 #####
 
-recv_from_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::West) = 
+recv_from_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::West) =
     _recv_from_west_buffer!(parent(c), buff.west, halo_size(grid)[[1, 2]]..., size(grid)[[1, 2]]...)
-recv_from_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::East) = 
+recv_from_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::East) =
     _recv_from_east_buffer!(parent(c), buff.east, halo_size(grid)[[1, 2]]..., size(grid)[[1, 2]]...)
-recv_from_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::South) = 
+recv_from_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::South) =
     _recv_from_south_buffer!(parent(c), buff.south, halo_size(grid)[[1, 2]]..., size(grid)[[1, 2]]...)
-recv_from_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::North) = 
+recv_from_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::North) =
     _recv_from_north_buffer!(parent(c), buff.north, halo_size(grid)[[1, 2]]..., size(grid)[[1, 2]]...)
 recv_from_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::Bottom) = nothing
 recv_from_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::Top) = nothing
@@ -389,6 +395,13 @@ recv_from_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::BottomAnd
 ##### Individual _fill_send_buffers and _recv_from_buffer kernels
 #####
 
+@kernel function _copy_from_buffer!(c, recv)
+    I = @index(Global, Cartesian)
+    @inbounds c[I] = recv[I]
+end
+
+copy_from_buffer!(c, recv) = _copy_from_buffer!(get_backend(recv))(c, recv; ndrange = size(c))
+
 for dir in (:west, :east, :south, :north, :southwest, :southeast, :northwest, :northeast)
     _fill_send_buffer! = Symbol(:_fill_, dir, :_send_buffer!)
     _recv_from_buffer! = Symbol(:_recv_from_, dir, :_buffer!)
@@ -405,10 +418,10 @@ end
 _fill_south_send_buffer!(c, buff::OneDBuffer, Hx, Hy, Nx, Ny) = buff.send .= view(c, :, 1+Hy:2Hy,  :)
 _fill_north_send_buffer!(c, buff::OneDBuffer, Hx, Hy, Nx, Ny) = buff.send .= view(c, :, 1+Ny:Ny+Hy, :)
 
- _recv_from_west_buffer!(c, buff::OneDBuffer, Hx, Hy, Nx, Ny) = view(c, 1:Hx,           :,     :) .= buff.recv
- _recv_from_east_buffer!(c, buff::OneDBuffer, Hx, Hy, Nx, Ny) = view(c, 1+Nx+Hx:Nx+2Hx, :,     :) .= buff.recv
-_recv_from_south_buffer!(c, buff::OneDBuffer, Hx, Hy, Nx, Ny) = view(c, :,     1:Hy,           :) .= buff.recv
-_recv_from_north_buffer!(c, buff::OneDBuffer, Hx, Hy, Nx, Ny) = view(c, :,     1+Ny+Hy:Ny+2Hy, :) .= buff.recv
+ _recv_from_west_buffer!(c, buff::OneDBuffer, Hx, Hy, Nx, Ny) = copy_from_buffer!(view(c, 1:Hx,           :,     :), buff.recv)
+ _recv_from_east_buffer!(c, buff::OneDBuffer, Hx, Hy, Nx, Ny) = copy_from_buffer!(view(c, 1+Nx+Hx:Nx+2Hx, :,     :), buff.recv)
+_recv_from_south_buffer!(c, buff::OneDBuffer, Hx, Hy, Nx, Ny) = copy_from_buffer!(view(c, :,     1:Hy,           :), buff.recv)
+_recv_from_north_buffer!(c, buff::OneDBuffer, Hx, Hy, Nx, Ny) = copy_from_buffer!(view(c, :,     1+Ny+Hy:Ny+2Hy, :), buff.recv)
 
 #####
 ##### 2D Parallelizations (explicitly send all corners)
@@ -419,17 +432,25 @@ _recv_from_north_buffer!(c, buff::OneDBuffer, Hx, Hy, Nx, Ny) = view(c, :,     1
 _fill_south_send_buffer!(c, buff::TwoDBuffer, Hx, Hy, Nx, Ny) = buff.send .= view(c, 1+Hx:Nx+Hx, 1+Hy:2Hy,  :)
 _fill_north_send_buffer!(c, buff::TwoDBuffer, Hx, Hy, Nx, Ny) = buff.send .= view(c, 1+Hx:Nx+Hx, 1+Ny:Ny+Hy, :)
 
- _recv_from_west_buffer!(c, buff::TwoDBuffer, Hx, Hy, Nx, Ny) = view(c, 1:Hx,           1+Hy:Ny+Hy,     :) .= buff.recv
- _recv_from_east_buffer!(c, buff::TwoDBuffer, Hx, Hy, Nx, Ny) = view(c, 1+Nx+Hx:Nx+2Hx, 1+Hy:Ny+Hy,     :) .= buff.recv
-_recv_from_south_buffer!(c, buff::TwoDBuffer, Hx, Hy, Nx, Ny) = view(c, 1+Hx:Nx+Hx,     1:Hy,           :) .= buff.recv
-_recv_from_north_buffer!(c, buff::TwoDBuffer, Hx, Hy, Nx, Ny) = view(c, 1+Hx:Nx+Hx,     1+Ny+Hy:Ny+2Hy, :) .= buff.recv
+ _recv_from_west_buffer!(c, buff::TwoDBuffer, Hx, Hy, Nx, Ny) = copy_from_buffer!(view(c, 1:Hx,           1+Hy:Ny+Hy,     :), buff.recv)
+ _recv_from_east_buffer!(c, buff::TwoDBuffer, Hx, Hy, Nx, Ny) = copy_from_buffer!(view(c, 1+Nx+Hx:Nx+2Hx, 1+Hy:Ny+Hy,     :), buff.recv)
+_recv_from_south_buffer!(c, buff::TwoDBuffer, Hx, Hy, Nx, Ny) = copy_from_buffer!(view(c, 1+Hx:Nx+Hx,     1:Hy,           :), buff.recv)
+_recv_from_north_buffer!(c, buff::TwoDBuffer, Hx, Hy, Nx, Ny) = copy_from_buffer!(view(c, 1+Hx:Nx+Hx,     1+Ny+Hy:Ny+2Hy, :), buff.recv)
 
 _fill_southwest_send_buffer!(c, buff::CornerBuffer, Hx, Hy, Nx, Ny) = buff.send .= view(c, 1+Hx:2Hx,   1+Hy:2Hy,   :)
 _fill_southeast_send_buffer!(c, buff::CornerBuffer, Hx, Hy, Nx, Ny) = buff.send .= view(c, 1+Nx:Nx+Hx, 1+Hy:2Hy,   :)
 _fill_northwest_send_buffer!(c, buff::CornerBuffer, Hx, Hy, Nx, Ny) = buff.send .= view(c, 1+Hx:2Hx,   1+Ny:Ny+Hy, :)
 _fill_northeast_send_buffer!(c, buff::CornerBuffer, Hx, Hy, Nx, Ny) = buff.send .= view(c, 1+Nx:Nx+Hx, 1+Ny:Ny+Hy, :)
 
-_recv_from_southwest_buffer!(c, buff::CornerBuffer, Hx, Hy, Nx, Ny) = view(c, 1:Hx,           1:Hy,           :) .= buff.recv
-_recv_from_southeast_buffer!(c, buff::CornerBuffer, Hx, Hy, Nx, Ny) = view(c, 1+Nx+Hx:Nx+2Hx, 1:Hy,           :) .= buff.recv
-_recv_from_northwest_buffer!(c, buff::CornerBuffer, Hx, Hy, Nx, Ny) = view(c, 1:Hx,           1+Ny+Hy:Ny+2Hy, :) .= buff.recv
-_recv_from_northeast_buffer!(c, buff::CornerBuffer, Hx, Hy, Nx, Ny) = view(c, 1+Nx+Hx:Nx+2Hx, 1+Ny+Hy:Ny+2Hy, :) .= buff.recv
+_recv_from_southwest_buffer!(c, buff::CornerBuffer, Hx, Hy, Nx, Ny) = copy_from_buffer!(view(c, 1:Hx,           1:Hy,           :), buff.recv)
+_recv_from_southeast_buffer!(c, buff::CornerBuffer, Hx, Hy, Nx, Ny) = copy_from_buffer!(view(c, 1+Nx+Hx:Nx+2Hx, 1:Hy,           :), buff.recv)
+_recv_from_northwest_buffer!(c, buff::CornerBuffer, Hx, Hy, Nx, Ny) = copy_from_buffer!(view(c, 1:Hx,           1+Ny+Hy:Ny+2Hy, :), buff.recv)
+_recv_from_northeast_buffer!(c, buff::CornerBuffer, Hx, Hy, Nx, Ny) = copy_from_buffer!(view(c, 1+Nx+Hx:Nx+2Hx, 1+Ny+Hy:Ny+2Hy, :), buff.recv)
+
+# Pass throughs to communication state
+wait_for_messages!(buff::CommunicationBuffers) = wait_for_messages!(buff.state)
+
+posted_by_main_thread(buff::CommunicationBuffers) =
+    CommunicationBuffers(buff.west, buff.east, buff.south, buff.north,
+                         buff.southwest, buff.southeast, buff.northwest, buff.northeast,
+                         posted_by_main_thread(buff.state))

@@ -1,6 +1,10 @@
 module Biogeochemistry
 
+using DocStringExtensions: TYPEDSIGNATURES
+using KernelAbstractions: @kernel, @index
+using Oceananigans.Architectures: architecture
 using Oceananigans.Grids: Center, xnode, ynode, znode
+using Oceananigans.Utils: launch!
 
 import Oceananigans.Fields: CenterField
 
@@ -11,14 +15,14 @@ import Oceananigans.Fields: CenterField
 @inline biogeochemistry_rhs(i, j, k, grid, ::Nothing, val_tracer_name, clock, fields) = zero(grid)
 
 """
-    update_tendencies!(bgc, model)
+$(TYPEDSIGNATURES)
 
 Update prognostic tendencies after they have been computed.
 """
 update_tendencies!(bgc, model) = nothing
 
 """
-    update_biogeochemical_state!(bgc, model)
+$(TYPEDSIGNATURES)
 
 Update biogeochemical state variables. Called at the end of update_state!.
 """
@@ -128,25 +132,27 @@ add_biogeochemical_tracer(tracers::NamedTuple, name, grid) = merge(tracers, (; n
 @inline function has_biogeochemical_tracers(fields, required_fields, grid)
     user_specified_tracers = [name in tracernames(fields) for name in required_fields]
 
-    if !all(user_specified_tracers) && any(user_specified_tracers)
+    flds = if !all(user_specified_tracers) && any(user_specified_tracers)
         throw(ArgumentError("The biogeochemical model you have selected requires $required_fields.\n" *
                             "You have specified some but not all of these as tracers so may be attempting\n" *
                             "to use them for a different purpose. Please either specify all of the required\n" *
                             "fields, or none and allow them to be automatically added."))
 
     elseif !any(user_specified_tracers)
+        f = fields
         for field_name in required_fields
-            fields = add_biogeochemical_tracer(fields, field_name, grid)
+            f = add_biogeochemical_tracer(f, field_name, grid)
         end
+        f
     else
-        fields = fields
+        fields
     end
 
-    return fields
+    return flds
 end
 
 """
-    validate_biogeochemistry(tracers, auxiliary_fields, bgc, grid, clock)
+$(TYPEDSIGNATURES)
 
 Ensure that `tracers` contains biogeochemical tracers and `auxiliary_fields`
 contains biogeochemical auxiliary fields.
@@ -157,12 +163,72 @@ contains biogeochemical auxiliary fields.
     req_auxiliary_fields = required_biogeochemical_auxiliary_fields(bgc)
 
     all(field ∈ tracernames(auxiliary_fields) for field in req_auxiliary_fields) ||
-        error("$(req_auxiliary_fields) must be among the list of auxiliary fields to use $(typeof(bgc).name.wrapper)")
+        error("$(req_auxiliary_fields) must be among the list of auxiliary fields to use $(nameof(typeof(bgc)))")
 
     # Return tracers and aux fields so that users may overload and
     # define their own special auxiliary fields
     return tracers, auxiliary_fields
 end
+
+#####
+##### Optionally computing biogeochemical transitions in separate kernels
+#####
+
+"""
+$(TYPEDSIGNATURES)
+
+Return a tuple of tracer names whose biogeochemical transition is computed in a separate kernel,
+launched after the tracer tendency kernels, rather than inline with advection and diffusion.
+The separately computed transition is added in place to the tracer tendency `Gⁿ[name]`, so no extra
+storage is required.
+
+The default is `()`, for which the transition is computed inline in the tracer tendency kernel.
+Splitting can make tendency kernels for complex biogeochemical models substantially cheaper to
+compile and faster to run (especially on GPUs). Opt in by extending this function, e.g.
+
+```julia
+Oceananigans.Biogeochemistry.separate_tracer_transitions(bgc::MyBGC) = required_biogeochemical_tracers(bgc)
+```
+"""
+separate_tracer_transitions(bgc) = ()
+
+"""
+$(TYPEDSIGNATURES)
+
+Add the biogeochemical transition of each tracer in `separate_tracer_transitions(bgc)` in place to
+the corresponding tendency `Gⁿ[name]`, using one kernel launch per tracer. `model_fields` must be the
+same fields that the tracer tendency kernel passes to `biogeochemical_transition`.
+Does nothing when `separate_tracer_transitions(bgc)` is empty.
+"""
+add_biogeochemical_transitions!(Gⁿ, bgc, grid, clock, model_fields; kernel_parameters=:xyz) =
+    add_biogeochemical_transitions!(Gⁿ, bgc, grid, clock, model_fields, separate_tracer_transitions(bgc);
+                                    kernel_parameters)
+
+add_biogeochemical_transitions!(Gⁿ, bgc, grid, clock, model_fields, ::Tuple{}; kwargs...) = nothing
+
+@inline function add_biogeochemical_transitions!(Gⁿ, bgc, grid, clock, model_fields, names::Tuple;
+                                                 kernel_parameters=:xyz)
+    name = first(names)
+    launch!(architecture(grid), grid, kernel_parameters, _add_biogeochemical_transition!,
+            Gⁿ[name], grid, bgc, Val(name), clock, model_fields)
+    return add_biogeochemical_transitions!(Gⁿ, bgc, grid, clock, model_fields, Base.tail(names);
+                                           kernel_parameters)
+end
+
+@kernel function _add_biogeochemical_transition!(Gc, grid, bgc, val_tracer_name, clock, fields)
+    i, j, k = @index(Global, NTuple)
+    @inbounds Gc[i, j, k] += biogeochemical_transition(i, j, k, grid, bgc, val_tracer_name, clock, fields)
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Return `false` if the biogeochemical transition of tracer `name` is computed in a separate kernel
+(that is, if `name` is in [`separate_tracer_transitions`](@ref)), so that the tracer tendency kernel
+does not include it; otherwise return `true`.
+"""
+@inline include_biogeochemistry_transitions(biogeochemistry, ::Val{name}) where name =
+    !(name in separate_tracer_transitions(biogeochemistry))
 
 const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}
 required_biogeochemical_tracers(::AbstractBGCOrNothing) = ()

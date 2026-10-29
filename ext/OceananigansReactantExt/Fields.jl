@@ -3,12 +3,12 @@ module Fields
 using Reactant
 
 using Oceananigans: Oceananigans
+using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Architectures: on_architecture, CPU
-using Oceananigans.Fields: Field, interior
-
-using KernelAbstractions: @index, @kernel
+using Oceananigans.Fields: Field, ReducedAbstractField, interior, interpolate!, copyable_fields
 
 import Oceananigans.Fields: set_to_field!, set_to_function!, set!
+import Oceananigans.DistributedComputations: reconstruct_global_field, synchronize_communication!
 
 import ..OceananigansReactantExt: deconcretize
 import ..Grids: ReactantGrid
@@ -16,6 +16,9 @@ import ..Grids: ShardedGrid
 
 const ReactantField{LX, LY, LZ, O} = Field{LX, LY, LZ, O, <:ReactantGrid}
 const ShardedDistributedField{LX, LY, LZ, O} = Field{LX, LY, LZ, O, <:ShardedGrid}
+const ReactantOperation{LX, LY, LZ} = AbstractOperation{LX, LY, LZ, <:ReactantGrid}
+
+reconstruct_global_field(field::ShardedDistributedField) = field
 
 deconcretize(field::Field{LX, LY, LZ}) where {LX, LY, LZ} =
     Field{LX, LY, LZ}(field.grid,
@@ -34,23 +37,59 @@ function set_to_function!(u::ReactantField, f)
     cpu_u = Field(Oceananigans.Fields.instantiated_location(u), cpu_grid; indices=Oceananigans.Fields.indices(u))
     f_field = Oceananigans.Fields.field(Oceananigans.Fields.instantiated_location(u), f, cpu_grid)
     set!(cpu_u, f_field)
-    copyto!(interior(u), interior(cpu_u))
-    return nothing
+    interior(u) .= interior(cpu_u)
+    return u
 end
 
-function set_to_function!(u::ShardedDistributedField, f)
-    grid = u.grid
-    arch = grid.architecture
-    Oceananigans.Utils.launch!(arch, grid, size(u), _set_to_function_on_device!,
-                               u, f, grid, Oceananigans.Fields.location(u))
-    return nothing
+# When `v` may be copied into `u` we broadcast interiors, which traces. Otherwise we fall
+# back to interpolation on the CPU, since interpolate!'s KA kernel does not
+# currently trace under Reactant (see Reactant.jl#2364). This mirrors how
+# set_to_function! hops to the CPU. Note that the CPU fallback only works
+# outside of tracing: traced data cannot be materialized on the CPU mid-trace,
+# so under `@compile`/`@jit` only the copy path is available.
+#
+# `copyable_fields` is Oceananigans' own copy-versus-interpolate policy; we differ from
+# `copy_to_field!` only in mechanism, copying interiors alone rather than attempting halos
+# through a `try`/`catch` that cannot be traced.
+function set_to_field!(u::ReactantField, v::ReactantField)
+    if copyable_fields(u, v)
+        interior(u) .= interior(v)
+    else
+        cpu_grid_u = on_architecture(CPU(), u.grid)
+        cpu_grid_v = on_architecture(CPU(), v.grid)
+        cpu_u = Field(Oceananigans.Fields.instantiated_location(u), cpu_grid_u;
+                      indices=Oceananigans.Fields.indices(u))
+        cpu_v = Field(Oceananigans.Fields.instantiated_location(v), cpu_grid_v;
+                      indices=Oceananigans.Fields.indices(v))
+        copyto!(interior(cpu_v), interior(v))
+        interpolate!(cpu_u, cpu_v)
+        copyto!(interior(u), interior(cpu_u))
+    end
+    return u
 end
 
-@kernel function _set_to_function_on_device!(u, f, grid, loc)
-    i, j, k = @index(Global, NTuple)
-    LX, LY, LZ = loc
-    x = Oceananigans.Grids.node(i, j, k, grid, LX(), LY(), LZ())
-    @inbounds u[i, j, k] = f(x...)
+# Reactant reduces its own arrays natively, but has currently no path for a lazy `AbstractOperation`.
+# We materialize the Field here: this isn't ideal but works until we have a better solution in Reactant
+for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
+
+    reduction! = Symbol(reduction, '!')
+
+    @eval begin
+        Base.$(reduction!)(f::Function, r::ReducedAbstractField, a::ReactantOperation; kwargs...) =
+            Base.$(reduction!)(f, r, Field(a); kwargs...)
+
+        Base.$(reduction!)(r::ReducedAbstractField, a::ReactantOperation; kwargs...) =
+            Base.$(reduction!)(r, Field(a); kwargs...)
+
+        Base.$(reduction!)(f, r::AbstractArray, a::ReactantOperation; kwargs...) =
+            Base.$(reduction!)(f, r, Field(a); kwargs...)
+
+        Base.$(reduction)(f::Function, a::ReactantOperation; kwargs...) =
+            Base.$(reduction)(f, Field(a); kwargs...)
+    end
 end
+
+# No need to synchronize -> it should be implicit
+synchronize_communication!(::ShardedDistributedField) = nothing
 
 end

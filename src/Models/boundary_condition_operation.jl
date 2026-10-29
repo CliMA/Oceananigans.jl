@@ -50,7 +50,7 @@ const BoundaryConditionField{LX, LY, LZ} =
     Field{LX, LY, LZ, <:BoundaryConditionOperation} where {LX, LY, LZ}
 
 """
-    BoundaryConditionOperation(field::Field, side::Symbol, model::AbstractModel)
+$(TYPEDSIGNATURES)
 
 Returns a `KernelFunctionOperation` that evaluates a `field`'s boundary condition
 on the specified `side` using the properties of `model`.
@@ -62,7 +62,6 @@ Build a `BoundaryConditionOperation` for a top flux boundary condition:
 
 ```jldoctest bc_op
 using Oceananigans
-using Oceananigans.Models: BoundaryConditionOperation
 
 grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1))
 
@@ -80,12 +79,10 @@ KernelFunctionOperation at (Center, Center, ⋅)
 └── arguments: ("Clock", "NamedTuple")
 ```
 
-Next, we build a `BoundaryConditionField` for the top flux, and compute it:
+Next, we build a `Field` for the top flux, and compute it:
 
 ```jldoctest bc_op
-using Oceananigans.Models: BoundaryConditionField
-c_flux_field = BoundaryConditionField(model.tracers.c, :top, model)
-compute!(c_flux_field)
+c_flux_field = Field(c_flux_op)
 
 # output
 16×16×1 Field{Center, Center, Nothing} reduced over dims = (3,) on RectilinearGrid on CPU

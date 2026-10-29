@@ -120,7 +120,7 @@ filename = "zonally_averaged_baroclinic_adjustment"
 simulation.output_writers[:fields] = JLD2Writer(model, outputs; filename,
                                                 #schedule = TimeInterval(save_interval),
                                                 schedule = IterationInterval(10),
-                                                overwrite_existing = true)
+                                                overwrite_files = true)
 
 @info "Running the simulation..."
 
@@ -218,4 +218,3 @@ record(fig, filename * ".mp4", 1:Nt, framerate=8) do i
     @info "Plotting frame $i of $Nt"
     n[] = i
 end
-

@@ -2,7 +2,7 @@ name: CI
 
 on:
   pull_request:
-    paths:
+    paths: &paths
       - '.github/workflows/ci.yml'
       - 'ext/**'
       - 'src/**'
@@ -12,12 +12,7 @@ on:
     branches:
       - main
     tags: '*'
-    paths:
-      - '.github/workflows/ci.yml'
-      - 'ext/**'
-      - 'src/**'
-      - 'test/**'
-      - 'Project.toml'
+    paths: *paths
 
 concurrency:
   # Skip intermediate builds: always.
@@ -26,211 +21,122 @@ concurrency:
   cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
 
 jobs:
-  sharding_tests:
-    name: Sharding Tests - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
+  tests:
+    name: ${{ matrix.label }} - Julia ${{ matrix.julia_version }} - ${{ matrix.os }} - ${{ matrix.julia_arch }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
-        version:
-          - '1.12'
-        os:
-          - ubuntu-latest
-        arch:
-          - x64
+        include:
+          - label: 'Distributed MPI'
+            julia_version: '1.13'
+            julia_arch: 'default'
+            os: 'ubuntu-latest'
+            test_group: 'distributed/tripolar,distributed/output_combining'
+            check_bounds: 'yes'
+          - label: 'Reactant and Makie'
+            julia_version: '1.13'
+            julia_arch: 'default'
+            os: 'ubuntu-latest'
+            test_group: 'makie,reactant,sharding'
+            check_bounds: 'auto'
+          - label: 'Metal'
+            julia_version: '1.13'
+            julia_arch: 'default'
+            os: 'macos-latest'
+            test_group: 'metal'
+            check_bounds: 'yes'
     steps:
-      - run: |
-          touch LocalPreferences.toml
-
+      - uses: actions/checkout@v7
+      - uses: julia-actions/setup-julia@v3
+        with:
+          version: ${{ matrix.julia_version }}
+          arch: ${{ matrix.julia_arch }}
+          show-versioninfo: true
+      - uses: julia-actions/cache@v3
+      - name: Set IFRT runtime for Reactant
+        run: |
           echo "[Reactant]" >> LocalPreferences.toml
-          echo "xla_runtime = \"IFRT\"" >> LocalPreferences.toml
+          echo 'xla_runtime = "IFRT"' >> LocalPreferences.toml
 
           cat LocalPreferences.toml
-      - uses: actions/checkout@v6
-      - uses: julia-actions/setup-julia@v2
-        with:
-          version: ${{ matrix.version }}
-          arch: ${{ matrix.arch }}
-      - uses: julia-actions/cache@v2
-      - uses: julia-actions/julia-buildpkg@v1
-      - uses: julia-actions/julia-runtest@v1
-        env:
-          JULIA_DEBUG: "Reactant, Reactant_jll"
-          REACTANT_TEST: true
-          TEST_GROUP: "sharding"
+      - name: Set TMPDIR and create directory
+        # We have to use `${GITHUB_WORKSPACE}` instead of `github.workspace` because GitHub
+        # is terrible and the two don't match inside containers:
+        # https://github.com/actions/runner/issues/2058
+        run: |
+          export TMPDIR="${GITHUB_WORKSPACE}/tmp"
+          mkdir -vp "${TMPDIR}"
+          echo "TMPDIR=${TMPDIR}" | tee -a "${GITHUB_ENV}"
+      - name: "Set test arguments and other environment variables"
+        shell: bash
+        run: |
+          # Run tests in verbose mode
+          TEST_ARGS=(--verbose)
+          # Exit immediately if there's a test failure
+          TEST_ARGS+=(--quickfail)
 
-  mpi_tripolar:
-    name: Distributed MPI Tripolar Grid - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 120
-    strategy:
-      fail-fast: false
-      matrix:
-        version:
-          - '1.12'
-        os:
-          - ubuntu-latest
-        arch:
-          - x64
-    steps:
-      - uses: actions/checkout@v6
-      - uses: julia-actions/setup-julia@v2
-        with:
-          version: ${{ matrix.version }}
-          arch: ${{ matrix.arch }}
-      - uses: julia-actions/cache@v2
-      - uses: julia-actions/julia-buildpkg@v1
+          if [[ '${{ matrix.label }}' == 'Reactant and Makie' ]]; then
+              # Reduce number of workers to avoid OOM's
+              TEST_ARGS+=(--jobs=$(($(nproc) - 2)))
+          fi
+          echo "runtest_test_args=${TEST_ARGS[@]}" | tee -a "${GITHUB_ENV}"
+      - name: Instantiate environment
+        timeout-minutes: 45
+        shell: bash
+        run: |
+          julia --project=test --color=yes --check-bounds=${{ matrix.check_bounds }} -e '
+            using Pkg
+            Pkg.instantiate()
+          '
+      - name: Install earlyoom
+        if:  ${{ runner.os == 'Linux' }}
+        shell: bash
+        run: |
+          sudo apt-get install -y earlyoom
+      - name: Start earlyoom
+        if:  ${{ runner.os == 'Linux' }}
+        id: earlyoom
+        run: |
+          earlyoom -m 2 -s 100 -r 60 --prefer 'julia'
+        background: true
       - uses: julia-actions/julia-runtest@v1
-        env:
-          TEST_GROUP: "mpi_tripolar"
-
-  distributed_output:
-    name: Distributed Output Combining - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix:
-        version:
-          - '1.12'
-        os:
-          - ubuntu-latest
-        arch:
-          - x64
-    steps:
-      - uses: actions/checkout@v6
-      - uses: julia-actions/setup-julia@v2
         with:
-          version: ${{ matrix.version }}
-          arch: ${{ matrix.arch }}
-      - uses: julia-actions/cache@v2
-      - uses: julia-actions/julia-buildpkg@v1
-      - uses: julia-actions/julia-runtest@v1
+          check_bounds: "${{ matrix.check_bounds }}"
+          optimize: "0"
+          test_args: "${{ env.runtest_test_args }}"
         env:
-          TEST_GROUP: "distributed_output"
-
-  turbulent_closures:
-    name: Turbulence closures - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 120
-    strategy:
-      fail-fast: false
-      matrix:
-        version:
-          - '1.12'
-        os:
-          - ubuntu-latest
-        arch:
-          - x64
-    steps:
-      - uses: actions/checkout@v6
-      - uses: julia-actions/setup-julia@v2
+          TEST_GROUP: "${{ matrix.test_group }}"
+      - name: Stop earlyoom
+        cancel: earlyoom
+      - uses: julia-actions/julia-processcoverage@v1
         with:
-          version: ${{ matrix.version }}
-          arch: ${{ matrix.arch }}
-      - uses: julia-actions/cache@v2
-      - uses: julia-actions/julia-buildpkg@v1
-      - uses: julia-actions/julia-runtest@v1
-        env:
-          TEST_GROUP: "turbulence_closures"
-
-  makie_ext:
-    name: Makie extension - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 120
-    strategy:
-      fail-fast: false
-      matrix:
-        version:
-          - '1.10'
-        os:
-          - ubuntu-latest
-        arch:
-          - x64
-    steps:
-      - uses: actions/checkout@v6
-      - uses: julia-actions/setup-julia@v2
+          # default is src,ext — include others if you need them
+          directories: src,ext
+      - name: Upload XLA dump
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        timeout-minutes: 10
+        if: ${{ always() }}
         with:
-          version: ${{ matrix.version }}
-          arch: ${{ matrix.arch }}
-      - uses: julia-actions/cache@v2
-      - uses: julia-actions/julia-buildpkg@v1
-      - uses: julia-actions/julia-runtest@v1
-        env:
-          TEST_GROUP: "makie"
-
-  reactant:
-    name: Reactant - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 120
-    strategy:
-      fail-fast: false
-      matrix:
-        version:
-          - '1.12'
-        os:
-          - ubuntu-latest
-        arch:
-          - x64
-    steps:
-      - uses: actions/checkout@v6
-      - uses: julia-actions/setup-julia@v2
+          name: 'xla-dump-${{ matrix.julia_version }}-${{ matrix.os }}-${{ matrix.julia_arch }}'
+          path: '**/xla_dump'
+          retention-days: 90
+          overwrite: false
+          if-no-files-found: ignore
+      - name: Upload MLIR and XLA modules
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        timeout-minutes: 10
+        if: ${{ always() }}
         with:
-          version: ${{ matrix.version }}
-          arch: ${{ matrix.arch }}
-      - uses: julia-actions/cache@v2
-      - uses: julia-actions/julia-buildpkg@v1
-      - uses: julia-actions/julia-runtest@v1
-        env:
-          TEST_GROUP: "reactant"
-
-  metal:
-    name: Metal - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix:
-        version:
-          - '1.12'
-        os:
-          - macos-latest
-        arch:
-          - arm64
-    steps:
-      - uses: actions/checkout@v6
-      - uses: julia-actions/setup-julia@v2
+          name: 'mlir-${{ matrix.julia_version }}-${{ matrix.os }}-${{ matrix.julia_arch }}'
+          path: |
+            **/*.mlir
+          retention-days: 90
+          overwrite: false
+          if-no-files-found: ignore
+      - uses: codecov/codecov-action@v7
         with:
-          version: ${{ matrix.version }}
-          arch: ${{ matrix.arch }}
-      - uses: julia-actions/cache@v2
-      - uses: julia-actions/julia-buildpkg@v1
-      - uses: julia-actions/julia-runtest@v1
-        env:
-          TEST_GROUP: "metal"
-
-  conservative_regridding:
-    name: ConservativeRegridding - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix:
-        version:
-          - '1.10'
-        os:
-          - ubuntu-latest
-        arch:
-          - x64
-    steps:
-      - uses: actions/checkout@v6
-      - uses: julia-actions/setup-julia@v2
-        with:
-          version: ${{ matrix.version }}
-          arch: ${{ matrix.arch }}
-      - uses: julia-actions/cache@v2
-      - uses: julia-actions/julia-buildpkg@v1
-      - uses: julia-actions/julia-runtest@v1
-        env:
-          TEST_GROUP: "conservative_regridding"
+          files: lcov.info
+          flags: "${{ matrix.test_group }}"    # optional but strongly recommended
+          token: ${{ secrets.CODECOV_TOKEN }}  # only needed for some repos (see below)

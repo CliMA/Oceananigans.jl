@@ -79,7 +79,7 @@ function cylinder_model(open_boundaries;
                         ϵ = 0, # break up-down symmetry
                         x = (-6, 12), # 18
                         y = (-6 + ϵ, 6 + ϵ),  # 12
-                        grid_kwargs = (; size=(Nx, Ny), x, y, halo=(6, 6), topology=(Bounded, Bounded, Flat)),
+                        grid_kwargs = (; size=(Nx, Ny), x, y, halo=(6, 6), topology=(Open, Bounded, Flat)),
                         prefix = "flow_around_cylinder_Re$(Re)_Ny$(Ny)_$(obc_name)",
                         drag_averaging_window = 29)
 
@@ -165,15 +165,15 @@ function cylinder_model(open_boundaries;
     outputs = (; u, v, p, ζ)
 
     simulation.output_writers[:jld2] = JLD2Writer(model, outputs,
-                                                  schedule = TimeInterval(0.1),
+                                                  schedule = TimeInterval(0.2),
                                                   filename = prefix * "_fields.jld2",
-                                                  overwrite_existing = true,
+                                                  overwrite_files = true,
                                                   with_halos = true)
 
     simulation.output_writers[:drag] = JLD2Writer(model, (; drag_force),
-                                                  schedule = TimeInterval(0.1),
+                                                  schedule = TimeInterval(0.2),
                                                   filename = prefix * "_drag.jld2",
-                                                  overwrite_existing = true,
+                                                  overwrite_files = true,
                                                   with_halos = true,
                                                   indices = (1, 1, 1))
 
@@ -216,12 +216,12 @@ end
 
 u∞ = 1
 
-paobcs = (west = OpenBoundaryCondition(u∞; scheme = PerturbationAdvection(inflow_timescale = 0.1, outflow_timescale = 0.1)),
-          east = OpenBoundaryCondition(u∞; scheme = PerturbationAdvection(inflow_timescale = 1/4, outflow_timescale = Inf)))
+paobcs = (west = NormalFlowBoundaryCondition(u∞; scheme = PerturbationAdvection(inflow_timescale = 0.1, outflow_timescale = 0.1)),
+          east = NormalFlowBoundaryCondition(u∞; scheme = PerturbationAdvection(inflow_timescale = 1/4, outflow_timescale = Inf)))
 
 obcs = (; perturbation_advection=paobcs)
 
 for (obc_name, obc) in pairs(obcs)
     @info "Running $(obc_name)"
-    cylinder_model(obc; obc_name, u∞, arch=CPU(), Ny=16)
+    cylinder_model(obc; obc_name, u∞, arch=CPU(), Ny=64)
 end

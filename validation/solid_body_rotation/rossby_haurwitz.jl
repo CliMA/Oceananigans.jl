@@ -116,7 +116,7 @@ function run_rossby_haurwitz(; architecture = CPU(),
     simulation.output_writers[:fields] = JLD2Writer(model, output_fields,
                                                     schedule = TimeInterval(40Δt),
                                                     prefix = "rh_$(prefix)_Nx$(Nx)",
-                                                    overwrite_existing = true)
+                                                    overwrite_files = true)
     run!(simulation)
 
     return simulation.output_writers[:fields].filepath
@@ -125,4 +125,3 @@ end
 filepath_w = run_rossby_haurwitz(architecture=GPU(), Nx=512, Ny=256, advection_scheme=WENO(vector_invariant=VelocityStencil()), prefix = "WENOVectorInvariantVel")
 filepath_w = run_rossby_haurwitz(architecture=GPU(), Nx=512, Ny=256, advection_scheme=WENO(vector_invariant=VorticityStencil()), prefix = "WENOVectorInvariantVort")
 filepath_w = run_rossby_haurwitz(architecture=GPU(), Nx=512, Ny=256, advection_scheme=VectorInvariant(), prefix = "VectorInvariant")
-

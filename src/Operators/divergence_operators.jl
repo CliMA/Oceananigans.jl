@@ -3,7 +3,7 @@
 #####
 
 """
-    divᶜᶜᶜ(i, j, k, grid, u, v, w)
+$(TYPEDSIGNATURES)
 
 Calculate the divergence ``𝛁·𝐕`` of a vector field ``𝐕 = (u, v, w)``,
 
@@ -19,18 +19,13 @@ which ends up at the cell centers `ccc`.
                              δzᶜᶜᶜ(i, j, k, grid, Az_qᶜᶜᶠ, w))
 
 """
-    div_xyᶜᶜᵃ(i, j, k, grid, u, v)
+$(TYPEDSIGNATURES)
 
-Return the discrete `div_xy = ∂x u + ∂y v` of velocity field `u, v` defined as
+Return the discrete horizontal flux divergence `δxᶜᶜᶜ(Ax * u) + δyᶜᶜᶜ(Ay * v)` of the
+velocity field `u, v`, where `Ax` and `Ay` are the areas of the cell faces in `x` and `y`.
+Unlike `div_xyᶜᶜᶜ`, this is _not_ divided by the cell volume.
 
-```julia
-1 / Azᶜᶜᵃ * [δxᶜᵃᵃ(Δyᵃᶜᵃ * u) + δyᵃᶜᵃ(Δxᶜᵃᵃ * v)]
-```
-
-at `i, j, k`, where `Azᶜᶜᵃ` is the area of the cell centered on (Center, Center, Any) --- a tracer cell,
-`Δy` is the length of the cell centered on (Face, Center, Any) in `y` (a `u` cell),
-and `Δx` is the length of the cell centered on (Center, Face, Any) in `x` (a `v` cell).
-`div_xyᶜᶜᵃ` ends up at the location `cca`.
+`flux_div_xyᶜᶜᶜ` ends up at the location `ccc`.
 """
 @inline flux_div_xyᶜᶜᶜ(i, j, k, grid, u, v) = (δxᶜᶜᶜ(i, j, k, grid, Ax_qᶠᶜᶜ, u) +
                                                δyᶜᶜᶜ(i, j, k, grid, Ay_qᶜᶠᶜ, v))
@@ -49,36 +44,36 @@ index_right(i, ::Center) = i + 1
 index_right(i, ::Face)   = i
 
 @inline Base.div(i, j, k, grid::AbstractGrid, loc, q_west, q_east, q_south, q_north, q_bottom, q_top) =
-    1 / volume(i, j, k, grid, loc...) * (δx_Ax_q(i, j, k, grid, loc, q_west, q_east) +
+    V⁻¹(i, j, k, grid, loc...) * (δx_Ax_q(i, j, k, grid, loc, q_west, q_east) +
                                          δy_Ay_q(i, j, k, grid, loc, q_south, q_north) +
                                          δz_Az_q(i, j, k, grid, loc, q_bottom, q_top))
 
 @inline function δx_Ax_q(i, j, k, grid, (LX, LY, LZ), qᵂ, qᴱ)
     iᵂ = index_left(i, LX)
-    Axᵂ = Ax(iᵂ, j, k, grid, LX, LY, LZ)
+    Axᵂ = Ax(iᵂ, j, k, grid, flip_location(LX), LY, LZ)
 
     iᴱ = index_right(i, LX)
-    Axᴱ = Ax(iᴱ, j, k, grid, LX, LY, LZ)
+    Axᴱ = Ax(iᴱ, j, k, grid, flip_location(LX), LY, LZ)
 
     return Axᴱ * qᴱ - Axᵂ * qᵂ
 end
 
 @inline function δy_Ay_q(i, j, k, grid, (LX, LY, LZ), qˢ, qᴺ)
     jˢ = index_left(j, LY)
-    Ayˢ = Ay(i, jˢ, k, grid, LX, LY, LZ)
+    Ayˢ = Ay(i, jˢ, k, grid, LX, flip_location(LY), LZ)
 
     jᴺ = index_right(j, LY)
-    Ayᴺ = Ay(i, jᴺ, k, grid, LX, LY, LZ)
+    Ayᴺ = Ay(i, jᴺ, k, grid, LX, flip_location(LY), LZ)
 
     return Ayᴺ * qᴺ - Ayˢ * qˢ
 end
 
 @inline function δz_Az_q(i, j, k, grid, (LX, LY, LZ), qᴮ, qᵀ)
     kᴮ = index_left(k, LZ)
-    Azᴮ = Az(i, j, kᴮ, grid, LX, LY, LZ)
+    Azᴮ = Az(i, j, kᴮ, grid, LX, LY, flip_location(LZ))
 
     kᵀ = index_right(k, LZ)
-    Azᵀ = Az(i, j, kᵀ, grid, LX, LY, LZ)
+    Azᵀ = Az(i, j, kᵀ, grid, LX, LY, flip_location(LZ))
 
     return Azᵀ * qᵀ - Azᴮ * qᴮ
 end

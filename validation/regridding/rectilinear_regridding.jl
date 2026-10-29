@@ -55,4 +55,3 @@ scatter!(ax5, Array(interior(c_xy, 180, 60, :)), z)
 scatter!(ax6, Array(interior(c_xyz, 180, 60, :)), z′)
 
 display(fig)
-

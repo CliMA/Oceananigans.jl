@@ -1,10 +1,12 @@
-using Oceananigans.BoundaryConditions: BoundaryCondition,
+using Oceananigans.BoundaryConditions: BoundaryConditions,
+                                       BoundaryCondition,
                                        DefaultBoundaryCondition,
                                        NoFluxBoundaryCondition,
                                        LeftBoundary,
                                        RightBoundary,
                                        regularize_boundary_condition,
-                                       VBC, GBC, FBC, Flux
+                                       VBC, GBC, FBC, IEFBC, Flux,
+                                       needs_implicit_solver
 
 import Oceananigans.BoundaryConditions: regularize_immersed_boundary_condition,
                                         update_boundary_condition!,
@@ -43,7 +45,12 @@ Base.show(io::IO, ibc::IBC) =
               "└── top: ", summary(ibc.top))
 
 """
-    ImmersedBoundaryCondition(; interfaces...)
+    ImmersedBoundaryCondition(; west=nothing,
+                               east=nothing,
+                               south=nothing,
+                               north=nothing,
+                               bottom=nothing,
+                               top=nothing)
 
 Return an `ImmersedBoundaryCondition` with conditions on individual cell
 `interfaces ∈ (west, east, south, north, bottom, top)` between the fluid
@@ -59,11 +66,20 @@ function ImmersedBoundaryCondition(; west = nothing,
     return ImmersedBoundaryCondition(west, east, south, north, bottom, top)
 end
 
+BoundaryConditions.needs_implicit_solver(ibc::ImmersedBoundaryCondition) = needs_implicit_solver(ibc.bottom) | needs_implicit_solver(ibc.top)
+
+function BoundaryConditions.validate_immersed_implicit_explicit_flux(ibc::ImmersedBoundaryCondition)
+    for facet in (ibc.west, ibc.east, ibc.south, ibc.north)
+        facet isa IEFBC && error("IMEXFluxTimeDiscretization is supported only on the bottom and top facets of an ImmersedBoundaryCondition")
+    end
+    return nothing
+end
+
 #####
 ##### Boundary condition "regularization"
 #####
 
-const ZFBC = BoundaryCondition{Flux, Nothing}
+const ZFBC = BoundaryCondition{<:Flux, Nothing}
 regularize_immersed_boundary_condition(ibc::ZFBC, ibg::IBG, args...) = ibc # keep it
 
 regularize_immersed_boundary_condition(default::DefaultBoundaryCondition, ibg::IBG, loc, field_name, args...) =
@@ -71,12 +87,12 @@ regularize_immersed_boundary_condition(default::DefaultBoundaryCondition, ibg::I
 
 # Convert certain non-immersed boundary conditions to immersed boundary conditions
 function regularize_immersed_boundary_condition(ibc::Union{VBC, GBC, FBC}, ibg::IBG, loc, field_name, args...)
-    ibc = ImmersedBoundaryCondition(Tuple(ibc for i=1:6)...)
-    regularize_immersed_boundary_condition(ibc, ibg, loc, field_name, args...)
+    _ibc = ImmersedBoundaryCondition(Tuple(ibc for i=1:6)...)
+    regularize_immersed_boundary_condition(_ibc, ibg, loc, field_name, args...)
 end
 
 """
-    regularize_immersed_boundary_condition(bc::IBC, grid, loc, field_name, prognostic_field_names)
+$(TYPEDSIGNATURES)
 """
 function regularize_immersed_boundary_condition(bc::IBC, grid, loc, field_name, prognostic_field_names)
 

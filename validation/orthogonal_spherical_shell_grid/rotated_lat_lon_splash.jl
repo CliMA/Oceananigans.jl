@@ -1,5 +1,4 @@
 using Oceananigans
-using Oceananigans.Grids: RightConnected
 using Oceananigans.OrthogonalSphericalShellGrids: RotatedLatitudeLongitudeGrid
 using Oceananigans.OrthogonalSphericalShellGrids: rotate_coordinates
 using Oceananigans.Units
@@ -54,7 +53,7 @@ for name in keys(models)
     simulation.output_writers[:splash] = JLD2Writer(model, (; u, v, s, η),
                                                     schedule = IterationInterval(6),
                                                     filename = "splash_$name",
-                                                    overwrite_existing = true)
+                                                    overwrite_files = true)
 
     @info "Run simulation..."
     run!(simulation)
@@ -129,4 +128,3 @@ frames = 1:length(times)
 record(fig, "splash.mp4", frames, framerate = 12) do nn
     n[] = nn
 end
-

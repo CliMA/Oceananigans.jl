@@ -1,4 +1,4 @@
-using Oceananigans.Fields: AbstractField, compute_at!, ZeroField
+using Oceananigans.Fields: AbstractField, compute_at!
 
 # TODO: figure out how to support this
 # using Oceananigans.OutputReaders: FieldTimeSeries
@@ -11,7 +11,7 @@ time(::Nothing) = nothing
 
 fetch_output(output, model) = output(model)
 
-function fetch_output(field::AbstractField, model)
+Base.@nospecializeinfer function fetch_output(@nospecialize(field::AbstractField), @nospecialize(model))
     compute_at!(field, time(model))
     return parent(field)
 end
@@ -40,4 +40,4 @@ function fetch_and_convert_output(output, model, writer)
     return convert_output(fetched, writer)
 end
 
-fetch_and_convert_output(output::ZeroField, model, writer) = zero(eltype(output))
+fetch_and_convert_output(output::ConstantFields, model, writer) = output[1, 1, 1]

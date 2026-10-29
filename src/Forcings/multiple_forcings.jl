@@ -1,16 +1,14 @@
-using Adapt
-
 struct MultipleForcings{N, F}
     forcings :: F
 end
 
 Adapt.adapt_structure(to, mf::MultipleForcings) = MultipleForcings(adapt(to, mf.forcings))
-on_architecture(to, mf::MultipleForcings) = MultipleForcings(on_architecture(to, mf.forcings))
+Architectures.on_architecture(to, mf::MultipleForcings) = MultipleForcings(on_architecture(to, mf.forcings))
 
 Base.getindex(mf::MultipleForcings, i) = mf.forcings[i]
 
 """
-    MultipleForcings(forcings)
+$(TYPEDSIGNATURES)
 
 Return a lightweight tuple-wrapper representing multiple user-defined `forcings`.
 Each forcing in `forcings` is added to the specified field's tendency.
@@ -74,4 +72,3 @@ function Base.show(io::IO, mf::MultipleForcings)
 
     return nothing
 end
-

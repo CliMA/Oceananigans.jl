@@ -104,7 +104,7 @@ simulation.output_writers[:fields] =
                schedule = TimeInterval(1.0),
                with_halos = false,
                filename = "sediment_entrainment",
-               overwrite_existing = true)
+               overwrite_files = true)
 
 run!(simulation)
 
@@ -149,4 +149,3 @@ display(fig)
 record(fig, "sediment_entrainment.mp4", 1:Nt, framerate=160) do nn
     n[] = nn
 end
-

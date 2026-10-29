@@ -17,8 +17,8 @@ function plan_forward_transform(A::Array, ::Periodic, dims, planner_flag=FFTW.PA
     length(dims) == 0 && return nothing
     return FFTW.plan_fft!(A, dims, flags=planner_flag; num_threads)
 end
-    
-function plan_forward_transform(A::Array, ::Bounded, dims, planner_flag=FFTW.PATIENT, num_threads=FFTW_NUM_THREADS[])
+
+function plan_forward_transform(A::Array, ::BoundaryTopology, dims, planner_flag=FFTW.PATIENT, num_threads=FFTW_NUM_THREADS[])
     length(dims) == 0 && return nothing
     return FFTW.plan_r2r!(A, FFTW.REDFT10, dims, flags=planner_flag; num_threads)
 end
@@ -28,7 +28,7 @@ function plan_backward_transform(A::Array, ::Periodic, dims, planner_flag=FFTW.P
     return FFTW.plan_ifft!(A, dims, flags=planner_flag; num_threads)
 end
 
-function plan_backward_transform(A::Array, ::Bounded, dims, planner_flag=FFTW.PATIENT, num_threads=FFTW_NUM_THREADS[])
+function plan_backward_transform(A::Array, ::BoundaryTopology, dims, planner_flag=FFTW.PATIENT, num_threads=FFTW_NUM_THREADS[])
     length(dims) == 0 && return nothing
     return FFTW.plan_r2r!(A, FFTW.REDFT01, dims, flags=planner_flag; num_threads)
 end
@@ -69,11 +69,11 @@ function plan_transforms(grid::XYZRegularRG, storage, planner_flag)
     Nx, Ny, Nz = size(grid)
     topo = topology(grid)
     periodic_dims = findall(t -> t == Periodic, topo)
-    bounded_dims = findall(t -> t == Bounded, topo)
+    bounded_dims = findall(t -> t <: BoundaryTopology, topo)
 
-    # Convert Flat to Bounded for inferring batchability and transform ordering
+    # Convert Flat and boundary topologies to Bounded for inferring batchability and transform ordering
     # Note that transforms are omitted in Flat directions.
-    unflattened_topo = Tuple(T() isa Flat ? Bounded : T for T in topo)
+    unflattened_topo = Tuple(T() isa Union{Flat, BoundaryTopology} ? Bounded : T for T in topo)
 
     arch = architecture(grid)
 
@@ -155,9 +155,9 @@ function plan_transforms(grid, storage, planner_flag, untransformed_dim)
             error("Transform directions must be regularly spaced.")
     end
 
-    !(topo[untransformed_dim] === Bounded) && error("Transforms can be planned only when the untransformed direction's topology is `Bounded`.")
+    topo[untransformed_dim] <: BoundaryTopology || error("Transforms can be planned only when the untransformed direction's topology is bounded.")
     periodic_dims = Tuple(dim for dim in findall(t -> t == Periodic, topo) if dim ≠ untransformed_dim)
-    bounded_dims  = Tuple(dim for dim in findall(t -> t == Bounded,  topo) if dim ≠ untransformed_dim)
+    bounded_dims  = Tuple(dim for dim in findall(t -> t <: BoundaryTopology, topo) if dim ≠ untransformed_dim)
 
     arch = architecture(grid)
 
@@ -220,20 +220,20 @@ function plan_transforms(grid, storage, planner_flag, untransformed_dim)
         forward_plans  = Dict(transform_dims[1] => forward_plan_1,  transform_dims[2] => forward_plan_2)
         backward_plans = Dict(transform_dims[1] => backward_plan_1, transform_dims[2] => backward_plan_2)
 
-        # Transform Flat topologies into Bounded
-        unflattened_topo = Tuple(T() isa Flat ? Bounded : T for T in topo)
+        # Transform Flat and boundary topologies into Bounded
+        unflattened_topo = Tuple(T() isa Union{Flat, BoundaryTopology} ? Bounded : T for T in topo)
         f_order = forward_orders(unflattened_topo...)
         b_order = backward_orders(unflattened_topo...)
 
         # Extract untranformed dimension
-        f_order = Tuple(f_order[i] for i in findall(d -> d != untransformed_dim, f_order))
-        b_order = Tuple(b_order[i] for i in findall(d -> d != untransformed_dim, b_order))
+        ex_f_order = Tuple(f_order[i] for i in findall(d -> d != untransformed_dim, f_order))
+        ex_b_order = Tuple(b_order[i] for i in findall(d -> d != untransformed_dim, b_order))
 
-        forward_transforms = (DiscreteTransform(forward_plans[f_order[1]], Forward(), grid, [f_order[1]]),
-                              DiscreteTransform(forward_plans[f_order[2]], Forward(), grid, [f_order[2]]))
+        forward_transforms = (DiscreteTransform(forward_plans[ex_f_order[1]], Forward(), grid, [ex_f_order[1]]),
+                              DiscreteTransform(forward_plans[ex_f_order[2]], Forward(), grid, [ex_f_order[2]]))
 
-        backward_transforms = (DiscreteTransform(backward_plans[b_order[1]], Backward(), grid, [b_order[1]]),
-                               DiscreteTransform(backward_plans[b_order[2]], Backward(), grid, [b_order[2]]))
+        backward_transforms = (DiscreteTransform(backward_plans[ex_b_order[1]], Backward(), grid, [ex_b_order[1]]),
+                               DiscreteTransform(backward_plans[ex_b_order[2]], Backward(), grid, [ex_b_order[2]]))
     end
 
     transforms = (forward=forward_transforms, backward=backward_transforms)
