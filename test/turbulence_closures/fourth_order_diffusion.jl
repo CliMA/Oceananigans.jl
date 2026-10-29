@@ -88,6 +88,8 @@ end
     @testset "Construction" begin
         closure = ScalarDiffusivity(ν=1, κ=2, order=4)
         @test diffusion_order(closure) === Val(4)
+        @test closure.discretization isa Oceananigans.TurbulenceClosures.FourthOrderDiffusion
+        @test ScalarDiffusivity(ν=1).discretization isa Oceananigans.TurbulenceClosures.SecondOrderDiffusion
         @test diffusion_order(ScalarDiffusivity(ν=1, κ=2)) === Val(2)
         @test required_halo_size_x(closure) == 2
         @test required_halo_size_y(closure) == 2
