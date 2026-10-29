@@ -55,7 +55,16 @@ function __init__()
     # Static-shape specialisations of the kernels that opt in (below): the preference `static_shapes`, or
     # `OCEANANIGANS_STATIC_SHAPES=false` / `true` for this run.
     STATIC_SHAPES[] = lowercase(get(ENV, "OCEANANIGANS_STATIC_SHAPES", string(AC.STATIC_SHAPES))) == "true"
+
+    # Per-kernel launch configuration entries of the cached launch (`UT.kernel_launch_workgroup`,
+    # `UT.kernel_launch_maxregs`): `OCEANANIGANS_KERNEL_LAUNCH_WORKGROUPS=false` launches every kernel with its
+    # configured workgroup, `OCEANANIGANS_KERNEL_LAUNCH_MAXREGS=false` ignores register caps.
+    KERNEL_LAUNCH_WORKGROUPS[] = lowercase(get(ENV, "OCEANANIGANS_KERNEL_LAUNCH_WORKGROUPS", "true")) != "false"
+    KERNEL_LAUNCH_MAXREGS[] = lowercase(get(ENV, "OCEANANIGANS_KERNEL_LAUNCH_MAXREGS", "true")) != "false"
 end
+
+const KERNEL_LAUNCH_WORKGROUPS = Ref(true)
+const KERNEL_LAUNCH_MAXREGS = Ref(true)
 
 const CUDAGPU = AC.GPU{<:CUDABackend}
 CUDAGPU() = AC.GPU(CUDABackend(always_inline=true))
@@ -602,7 +611,11 @@ const StaticNDRange = Union{KA.StaticSize, UT.OffsetStaticSize}
 end
 
 @inline function cached_kernel_launch!(configured::KA.Kernel{CUDABackend, <:KA.StaticSize, <:StaticNDRange}, args...)
-    obj = configured_kernel(configured)
+    KERNEL_LAUNCH_WORKGROUPS[] || return launch_configured_object!(configured, configured, args...)
+    return launch_configured_object!(configured, configured_kernel(configured), args...)
+end
+
+@inline function launch_configured_object!(configured, obj, args...)
     ndrange, workgroupsize, iterspace, dynamic = KA.launch_config(obj, nothing, nothing)
     ctx = KA.mkcontext(obj, ndrange, iterspace)
     kernel_args = (ctx, args...)
@@ -619,7 +632,7 @@ end
 
     maxthreads = prod(KA.get(KA.workgroupsize(obj)))
     always_inline = KA.backend(obj).always_inline
-    maxregs = UT.kernel_launch_maxregs(obj.f, Val(static_launch_size(obj)))
+    maxregs = KERNEL_LAUNCH_MAXREGS[] ? UT.kernel_launch_maxregs(obj.f, Val(static_launch_size(obj))) : 0
     if STATIC_SHAPES[] && UT.kernel_launch_static_shapes(obj.f, TT)
         launch_static_shapes!(obj.f, kernel_args, threads, blocks, maxthreads, always_inline, maxregs) && return nothing
     end
