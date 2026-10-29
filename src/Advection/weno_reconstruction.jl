@@ -2,16 +2,18 @@
 ##### Weighted Essentially Non-Oscillatory (WENO) advection scheme
 #####
 
-struct WENO{N, FT, WCT, TD, PP, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N, FT, TD}
+struct WENO{N, FT, WCT, TD, PP, CA, SI, SC} <: AbstractUpwindBiasedAdvectionScheme{N, FT, TD}
     bounds :: PP
     buffer_scheme :: CA
     advecting_velocity_scheme :: SI
     time_discretization :: TD
+    coefficients :: SC
     function WENO{N, FT, WCT}(bounds::PP, buffer_scheme::CA,
                               advecting_velocity_scheme :: SI,
-                              time_discretization :: TD) where {N, FT, WCT, PP, CA, SI, TD}
+                              time_discretization :: TD,
+                              coefficients :: SC = nothing) where {N, FT, WCT, PP, CA, SI, TD, SC}
 
-        return new{N, FT, WCT, TD, PP, CA, SI}(bounds, buffer_scheme, advecting_velocity_scheme, time_discretization)
+        return new{N, FT, WCT, TD, PP, CA, SI, SC}(bounds, buffer_scheme, advecting_velocity_scheme, time_discretization, coefficients)
     end
 end
 
@@ -23,7 +25,8 @@ end
          time_discretization = ExplicitTimeDiscretization(),
          bounds = nothing,
          maximum_courant_number = 5//18,
-         minimum_buffer_upwind_order = 3)
+         minimum_buffer_upwind_order = 3,
+         stretched = false)
 
 Construct a weighted essentially non-oscillatory advection scheme of order `order` with precision `FT`.
 
@@ -51,6 +54,10 @@ Keyword arguments
                                  scheme order reaches this value, subsequent buffers use
                                  `Centered(order=2)` instead of continuing to decrease the
                                  upwind order. Default: 3.
+- `stretched`: The directions, among `:x`, `:y` and `:z`, along which the reconstruction coefficients, the smoothness
+               indicators and the optimal weights are computed from the cell widths of the grid, built when the grid is
+               known (see `materialize_advection`): a tuple such as `(:z,)` or `(:x, :z)`, `true` for all three or
+               `false` for none. Uniform and unselected directions keep the constant coefficients. Default: `false`.
 
 Examples
 ========
@@ -118,7 +125,8 @@ function WENO(FT::DataType=Oceananigans.defaults.FloatType;
               time_discretization = ExplicitTimeDiscretization(),
               bounds = nothing,
               maximum_courant_number = 5//18,
-              minimum_buffer_upwind_order = 3)
+              minimum_buffer_upwind_order = 3,
+              stretched = false)
 
     mod(order, 2) == 0 && throw(ArgumentError("WENO reconstruction scheme is defined only for odd orders"))
 
@@ -136,7 +144,7 @@ function WENO(FT::DataType=Oceananigans.defaults.FloatType;
                 # At minimum order, switch to Centered scheme
                 buffer_scheme = Centered(FT; order=2)
             else
-                buffer_scheme = WENO(FT; order=order-2, bounds, maximum_courant_number, minimum_buffer_upwind_order, weight_computation)
+                buffer_scheme = WENO(FT; order=order-2, bounds, maximum_courant_number, minimum_buffer_upwind_order, weight_computation, stretched)
             end
         end
 
@@ -144,14 +152,20 @@ function WENO(FT::DataType=Oceananigans.defaults.FloatType;
         preserved_bounds = isnothing(bounds) ? nothing :
             BoundsPreservation(convert(FT, bounds[1]), convert(FT, bounds[2]), convert(FT, maximum_courant_number), nothing)
 
-        return WENO{N, FT, weight_computation}(preserved_bounds, buffer_scheme, advecting_velocity_scheme, time_discretization)
+        directions = stretched === true ? (:x, :y, :z) : stretched === false ? () : stretched
+        all(∈((:x, :y, :z)), directions) || throw(ArgumentError("stretched directions must be among :x, :y and :z, found $directions"))
+        coefficients = isempty(directions) ? nothing : directions
+
+        return WENO{N, FT, weight_computation}(preserved_bounds, buffer_scheme, advecting_velocity_scheme, time_discretization, coefficients)
     end
 end
 
 weno_order(::WENO{N}) where N = 2N-1
 Base.eltype(::WENO{N, FT}) where {N, FT} = FT
-Base.summary(a::WENO{N, FT, WCT, TD, Nothing}) where {N, FT, WCT, TD} = string("WENO{$N, $FT, $WCT}(order=", 2N-1, ")")
-Base.summary(a::WENO{N, FT, WCT, TD, PP}) where {N, FT, WCT, TD, PP} = string("WENO{$N, $FT, $WCT}(order=", 2N-1, ", bounds=", string(a.bounds), ")")
+Base.summary(a::WENO{N, FT, WCT, TD, Nothing}) where {N, FT, WCT, TD} =
+    string("WENO{$N, $FT, $WCT}(order=", 2N-1, isnothing(a.coefficients) ? "" : ", stretched", ")")
+Base.summary(a::WENO{N, FT, WCT, TD, PP}) where {N, FT, WCT, TD, PP} =
+    string("WENO{$N, $FT, $WCT}(order=", 2N-1, ", bounds=", string(a.bounds), isnothing(a.coefficients) ? "" : ", stretched", ")")
 
 function Base.show(io::IO, a::WENO)
     print(io, summary(a), '\n')
@@ -171,13 +185,15 @@ Adapt.adapt_structure(to, scheme::WENO{N, FT, WCT}) where {N, FT, WCT} =
      WENO{N, FT, WCT}(Adapt.adapt(to, scheme.bounds),
                       Adapt.adapt(to, scheme.buffer_scheme),
                       Adapt.adapt(to, scheme.advecting_velocity_scheme),
-                      Adapt.adapt(to, scheme.time_discretization))
+                      Adapt.adapt(to, scheme.time_discretization),
+                      Adapt.adapt(to, scheme.coefficients))
 
 Architectures.on_architecture(to, scheme::WENO{N, FT, WCT}) where {N, FT, WCT} =
     WENO{N, FT, WCT}(on_architecture(to, scheme.bounds),
                      on_architecture(to, scheme.buffer_scheme),
                      on_architecture(to, scheme.advecting_velocity_scheme),
-                     on_architecture(to, scheme.time_discretization))
+                     on_architecture(to, scheme.time_discretization),
+                     on_architecture(to, scheme.coefficients))
 
 # Select the default WENO weight computation
 # Specific backends may override

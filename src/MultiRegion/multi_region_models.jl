@@ -7,10 +7,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceMo
 using Oceananigans.Fields: XFaceField, YFaceField
 using Oceananigans.Operators: rotation_angle
 using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: SplitExplicitFreeSurfaces,
-                                                                                  FillHaloSplitExplicit,
-                                                                                  apply_barotropic_kernel!,
-                                                                                  _split_explicit_barotropic_velocity!,
-                                                                                  _split_explicit_free_surface!
+                                                                                  FillHaloSplitExplicit
 
 using Oceananigans.TurbulenceClosures: TurbulenceClosures, VerticallyImplicitTimeDiscretization, implicit_diffusion_solver,
     add_closure_specific_boundary_conditions, closure_required_tracers, step_closure_prognostics!
@@ -18,8 +15,6 @@ using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCAT
 using Oceananigans.Advection: OnlySelfUpwinding, CrossAndSelfUpwinding
 using Oceananigans.ImmersedBoundaries: GridFittedVerticalBoundaries, PartialCellVerticalBoundaries, GridFittedBoundary
 using Oceananigans.Solvers: ConjugateGradientSolver
-using Oceananigans.Utils: configure_kernel
-using KernelAbstractions.Extras.LoopInfo: @unroll
 
 const MultiRegionModel = HydrostaticFreeSurfaceModel{<:Any, <:Any, <:AbstractArchitecture, <:Any, <:MultiRegionGrids}
 const CubedSphereModel = HydrostaticFreeSurfaceModel{<:Any, <:Any, <:AbstractArchitecture, <:Any, <:ConformalCubedSphereGridOfSomeKind}
@@ -80,6 +75,7 @@ end
                                 getregion(fs.kernel_parameters, r),
                                 getregion(fs.substepping, r),
                                 getregion(fs.timestepper, r),
+                                getregion(fs.slow_forcing, r),
                                 getregion(fs.boundary_transport, r))
 
 @inline Utils.getregion(fs::SplitExplicitFreeSurface{E}, r) where {E} =
@@ -90,6 +86,7 @@ end
                                 _getregion(fs.kernel_parameters, r),
                                 _getregion(fs.substepping, r),
                                 _getregion(fs.timestepper, r),
+                                _getregion(fs.slow_forcing, r),
                                 _getregion(fs.boundary_transport, r))
 
 @inline Utils.isregional(fs::SplitExplicitFreeSurface) = isregional(fs.displacement)
@@ -227,44 +224,16 @@ end
 HydrostaticFreeSurfaceModels.default_free_surface(grid::YinYangGridOfSomeKind; gravitational_acceleration=Oceananigans.defaults.gravitational_acceleration) =
     SplitExplicitFreeSurface(; substeps=50, extend_halos=false, gravitational_acceleration)
 
-SplitExplicitFreeSurfaces.maybe_extend_halos(TX, TY, grid::YinYangGridOfSomeKind, ::FixedSubstepNumber) =
+SplitExplicitFreeSurfaces.maybe_extend_halos(TX, TY, grid::YinYangGridOfSomeKind, ::FixedSubstepNumber; stages = 1) =
     throw(ArgumentError("The SplitExplicitFreeSurface on a YinYangGrid needs extend_halos = false."))
 
-## Split explicit extension for complete halo filling
-function SplitExplicitFreeSurfaces.iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid::CubedSphereOrYinYangGrid, GUⁿ, GVⁿ, Δτᴮ, F, clock, weights, transport_weights, ::Val{Nsubsteps}) where Nsubsteps
-    arch = architecture(grid)
+# On panelled grids the halos are filled through the region connectivity, on whole fields rather than on
+# per-region argument tuples.
+SplitExplicitFreeSurfaces.barotropic_halo_arguments(::FillHaloSplitExplicit, arch, grid::CubedSphereOrYinYangGrid,
+                                                    reference_fields, ::Tuple{}) = ()
 
-    η           = free_surface.displacement
-    grid        = free_surface.displacement.grid
-    state       = free_surface.filtered_state
-    timestepper = free_surface.timestepper
-    g           = free_surface.gravitational_acceleration
-    parameters  = free_surface.kernel_parameters
-
-    # Unpack state quantities, parameters and forcing terms.
-    U, V    = free_surface.barotropic_velocities
-    η̅, U̅, V̅ = state.η̅, state.U̅, state.V̅
-    Ũ, Ṽ    = state.Ũ, state.Ṽ
-
-    @apply_regionally velocity_kernel!, _     = configure_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!)
-    @apply_regionally free_surface_kernel!, _ = configure_kernel(arch, grid, parameters, _split_explicit_free_surface!)
-
-    U_args = (grid, Val(true), Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, Ũ, Ṽ, timestepper)
-    η_args = (grid, Val(true), Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)
-
-    @unroll for substep in 1:Nsubsteps
-        @inbounds averaging_weight = weights[substep]
-        @inbounds transport_weight = transport_weights[substep]
-
-        fill_halo_regions!(η)
-        @apply_regionally apply_barotropic_kernel!(velocity_kernel!, transport_weight, U_args)
-
-        fill_halo_regions!((U, V))
-        @apply_regionally apply_barotropic_kernel!(free_surface_kernel!, averaging_weight, η_args)
-    end
-
-    return nothing
-end
+SplitExplicitFreeSurfaces.barotropic_halo_arguments(::FillHaloSplitExplicit, arch, grid::CubedSphereOrYinYangGrid,
+                                                    reference_fields, fields_to_fill::Tuple) = ((fields_to_fill, reference_fields),)
 
 # The barotropic face integral behind `target_transport` is region-local, so targets are refused here.
 function HydrostaticFreeSurfaceModels.validate_free_surface_boundary_conditions(::SplitExplicitFreeSurfaces.SplitExplicitFreeSurface, boundary_conditions, ::MultiRegionGrids)

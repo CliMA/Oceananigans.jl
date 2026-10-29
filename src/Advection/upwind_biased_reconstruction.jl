@@ -23,11 +23,6 @@ function UpwindBiased(FT::DataType = Oceananigans.defaults.FloatType;
     advecting_velocity_scheme = Centered(FT; order = 2)
 
     if N > 1
-        # coefficients = Tuple(nothing for i in 1:6)
-        # Stretched coefficient seem to be more unstable that constant spacing ones for
-        # linear (non-WENO) upwind reconstruction. We keep constant coefficients for the moment
-        # Some tests are needed to verify why this is the case (and if it is expected)
-        # coefficients = compute_reconstruction_coefficients(grid, FT, :Upwind; order)
         if buffer_scheme isa DecreasingOrderAdvectionScheme
             if order ≤ minimum_buffer_upwind_order
                 # At minimum order, switch to Centered scheme
