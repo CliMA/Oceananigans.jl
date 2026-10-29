@@ -96,6 +96,7 @@ complete the halo passing of `field` among processors.
 function synchronize_communication!(field::DistributedField)
     wait_for_messages!(field)
     recv_from_buffers!(field.data, field.communication_buffers, field.grid)
+    refresh_pending_radiation_halos!(field)
     return nothing
 end
 

@@ -157,6 +157,7 @@ function synchronize_communication!(field::NCCLDistributedField)
             empty!(pending_unpacks)
         end
     end
+    DC.refresh_pending_radiation_halos!(field)
     return nothing
 end
 

@@ -5,7 +5,11 @@ using Oceananigans.Fields: instantiated_location
 using Oceananigans.BoundaryConditions
 using Oceananigans.BoundaryConditions:
     DistributedFillHalo,
-    get_boundary_kernels
+    get_boundary_kernels,
+    refresh_tangential_halos!,
+    written_buffer
+
+using Oceananigans.TimeSteppers: Clock
 
 import Oceananigans.BoundaryConditions: fill_halo_event!, fill_halo_regions!
 
@@ -76,6 +80,36 @@ function distributed_fill_halo_regions!(arch, c, boundary_conditions, indices, l
     kernels!, bcs = get_boundary_kernels(boundary_conditions, c, grid, loc, indices)
     distributed_fill_halo_events!(c, values(kernels!), values(bcs), loc, arch, grid, buffers, args; only_local_halos, kwargs...)
     fill_corners!(c, arch.connectivity, arch, grid, buffers; only_local_halos, kwargs...)
+    only_local_halos || refresh_radiation_halos!(c, boundary_conditions, loc, arch, grid, buffers, args; kwargs...)
+    return nothing
+end
+
+# Asynchronous fills refresh the radiation buffers in `synchronize_communication!`, once the exchange completes
+refresh_radiation_halos!(c, boundary_conditions, loc, arch, grid, ::Nothing, args; kwargs...) = nothing
+
+function refresh_radiation_halos!(c, boundary_conditions, loc, arch, grid, buffers, args;
+                                  async = false, fill_normal_flow_bcs = true, kwargs...)
+    w = written_radiation_buffer(args)
+    if async && (arch isa AsynchronousDistributed)
+        buffers.state.pending_radiation_refresh[] = (w, fill_normal_flow_bcs)
+    else
+        buffers.state.pending_radiation_refresh[] = (0, true)
+        w == 0 || refresh_tangential_halos!(c, boundary_conditions, loc, grid, w, fill_normal_flow_bcs)
+    end
+    return nothing
+end
+
+# Radiation schemes write their buffers only when the fill is given the clock
+written_radiation_buffer(args::Tuple{<:Clock, Vararg}) = written_buffer(first(args))
+written_radiation_buffer(args) = 0
+
+function refresh_pending_radiation_halos!(field)
+    buffers = field.communication_buffers
+    isnothing(buffers) && return nothing
+    w, fill_normal_flow_bcs = buffers.state.pending_radiation_refresh[]
+    w == 0 && return nothing
+    buffers.state.pending_radiation_refresh[] = (0, true)
+    refresh_tangential_halos!(field.data, field.boundary_conditions, instantiated_location(field), field.grid, w, fill_normal_flow_bcs)
     return nothing
 end
 

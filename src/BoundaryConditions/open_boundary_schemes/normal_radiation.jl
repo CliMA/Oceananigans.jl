@@ -190,7 +190,7 @@ Oceananigans.restore_prognostic_state!(::RBC, ::Nothing) = nothing
     return ifelse(τ == 0, φᵉˣᵗ, φᵇⁿ⁺¹)
 end
 
-@inline radiation_update(radiation::NormalRadiation, t, k, clock, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, outflow, Cᵃ) =
+@inline radiation_update(radiation::NormalRadiation, t, k, clock, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, outflow, Cᵃ, closed) =
     normal_radiation_update(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
 
 # The radiated point is the boundary face for NormalFlow (Face-located fields) and the first halo cell for Value
@@ -218,8 +218,8 @@ end
         Cᵃ  = abs(Uᵃ) * Δt * Δx⁻¹ᶠᶜᶜ(iᵇ, j, k, grid)
         outflow = Uᵃ >= 0
 
-        φᵇⁿ⁺¹  = radiation_update(radiation, j, k, clock, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, outflow, Cᵃ)
         closed = immersed_peripheral_node(grid.Nx, j, k, grid, Center(), ℓy, ℓz)
+        φᵇⁿ⁺¹  = radiation_update(radiation, j, k, clock, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, outflow, Cᵃ, closed)
         c[iᵇ, j, k]         = ifelse(closed, zero(grid), φᵇⁿ⁺¹)
         radiation.φᵇ[j, k]  = φᵇⁿ   # anchor old values for sub-stages
         radiation.φ₁[j, k]  = φ₁ⁿ
@@ -250,8 +250,8 @@ end
         Cᵃ  = abs(Uᵃ) * Δt * Δx⁻¹ᶠᶜᶜ(iᵇ + 1, j, k, grid)
         outflow = Uᵃ <= 0
 
-        φᵇⁿ⁺¹  = radiation_update(radiation, j, k, clock, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, outflow, Cᵃ)
         closed = immersed_peripheral_node(1, j, k, grid, Center(), ℓy, ℓz)
+        φᵇⁿ⁺¹  = radiation_update(radiation, j, k, clock, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, outflow, Cᵃ, closed)
         c[iᵇ, j, k]         = ifelse(closed, zero(grid), φᵇⁿ⁺¹)
         radiation.φᵇ[j, k]  = φᵇⁿ   # anchor old values for sub-stages
         radiation.φ₁[j, k]  = φ₁ⁿ
@@ -282,8 +282,8 @@ end
         Cᵃ  = abs(Uᵃ) * Δt * Δy⁻¹ᶜᶠᶜ(i, jᵇ, k, grid)
         outflow = Uᵃ >= 0
 
-        φᵇⁿ⁺¹  = radiation_update(radiation, i, k, clock, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, outflow, Cᵃ)
         closed = immersed_peripheral_node(i, grid.Ny, k, grid, ℓx, Center(), ℓz)
+        φᵇⁿ⁺¹  = radiation_update(radiation, i, k, clock, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, outflow, Cᵃ, closed)
         c[i, jᵇ, k]         = ifelse(closed, zero(grid), φᵇⁿ⁺¹)
         radiation.φᵇ[i, k]  = φᵇⁿ   # anchor old values for sub-stages
         radiation.φ₁[i, k]  = φ₁ⁿ
@@ -314,8 +314,8 @@ end
         Cᵃ  = abs(Uᵃ) * Δt * Δy⁻¹ᶜᶠᶜ(i, jᵇ + 1, k, grid)
         outflow = Uᵃ <= 0
 
-        φᵇⁿ⁺¹  = radiation_update(radiation, i, k, clock, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, outflow, Cᵃ)
         closed = immersed_peripheral_node(i, 1, k, grid, ℓx, Center(), ℓz)
+        φᵇⁿ⁺¹  = radiation_update(radiation, i, k, clock, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, outflow, Cᵃ, closed)
         c[i, jᵇ, k]         = ifelse(closed, zero(grid), φᵇⁿ⁺¹)
         radiation.φᵇ[i, k]  = φᵇⁿ   # anchor old values for sub-stages
         radiation.φ₁[i, k]  = φ₁ⁿ

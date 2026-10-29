@@ -6,6 +6,7 @@ struct CommunicationState{R, E, M}
     tag :: UInt64
     pack_event :: E
     mailbox :: M # to the progress worker, or `nothing`
+    pending_radiation_refresh :: Base.RefValue{Tuple{Int, Bool}} # radiation buffer parity (0 if none) and `fill_normal_flow_bcs` of an asynchronous fill
 end
 
 # CommunicationState only lives on host, so never needs to be converted
@@ -18,7 +19,7 @@ function communication_state(arch::Distributed, west, east, south, north, southw
     sides = (; west, east, south, north, southwest, southeast, northwest, northeast)
     tag = UInt64(mod(next_field_tag!(arch), MPI.tag_ub() ÷ halo_tag_slots))
     pack_event = new_event(arch)
-    return CommunicationState(Threads.Atomic{UInt64}(0), map(side_requests, sides), tag, pack_event, progress_mailbox(pack_event))
+    return CommunicationState(Threads.Atomic{UInt64}(0), map(side_requests, sides), tag, pack_event, progress_mailbox(pack_event), Ref((0, true)))
 end
 
 side_requests(::Nothing) = nothing
@@ -37,4 +38,4 @@ function wait_for_messages!(cs::CommunicationState)
     return nothing
 end
 
-posted_by_main_thread(cs::CommunicationState) = CommunicationState(cs.pending_messages, cs.requests, cs.tag, cs.pack_event, nothing)
+posted_by_main_thread(cs::CommunicationState) = CommunicationState(cs.pending_messages, cs.requests, cs.tag, cs.pack_event, nothing, cs.pending_radiation_refresh)

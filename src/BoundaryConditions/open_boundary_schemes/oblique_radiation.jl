@@ -133,7 +133,7 @@ end
     return ifelse(τ == 0, φᵉˣᵗ, φᵇⁿ⁺¹)
 end
 
-@inline function radiation_update(radiation::ObliqueRadiation, t, k, clock, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, outflow, Cᵃ)
+@inline function radiation_update(radiation::ObliqueRadiation, t, k, clock, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, outflow, Cᵃ, closed)
     w = written_buffer(clock)
     r = 3 - w
     δᵇ₋, δᵇ₊ = tangential_differences(radiation.previous_boundary, t, k, r)
@@ -141,9 +141,76 @@ end
     φᵇⁿ⁺¹ = oblique_radiation_update(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, δᵇ₋, δᵇ₊, δ₁₋, δ₁₊, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
 
     @inbounds begin
-        radiation.previous_boundary[t, k, w] = φᵇⁿ⁺¹
+        radiation.previous_boundary[t, k, w] = ifelse(closed, zero(φᵇⁿ⁺¹), φᵇⁿ⁺¹)
         radiation.previous_interior[t, k, w] = φ₁ⁿ⁺¹
     end
 
     return φᵇⁿ⁺¹
 end
+
+#####
+##### Tangential halos of the buffers on distributed grids
+#####
+
+# The fill writes tangential halo entries before the exchange; afterwards `c` holds the neighbors' values there
+const ObliqueRadiationBC = BoundaryCondition{<:Union{Value{<:ObliqueRadiation}, NormalFlow{<:ObliqueRadiation}}}
+
+"""
+$(TYPEDSIGNATURES)
+
+Copy the boundary and first-interior values of `c` into the tangential halo entries of the
+`ObliqueRadiation` buffers written with parity `w` on the lateral sides of `boundary_conditions`.
+Sides that `fill_normal_flow_bcs = false` left unfilled are skipped.
+"""
+function refresh_tangential_halos!(c, boundary_conditions::FieldBoundaryConditions, loc, grid, w, fill_normal_flow_bcs)
+    refresh_tangential_halos!(c, boundary_conditions.west,  West(),  loc, grid, w, fill_normal_flow_bcs)
+    refresh_tangential_halos!(c, boundary_conditions.east,  East(),  loc, grid, w, fill_normal_flow_bcs)
+    refresh_tangential_halos!(c, boundary_conditions.south, South(), loc, grid, w, fill_normal_flow_bcs)
+    refresh_tangential_halos!(c, boundary_conditions.north, North(), loc, grid, w, fill_normal_flow_bcs)
+    return nothing
+end
+
+refresh_tangential_halos!(c, bc, side, loc, grid, w, fill_normal_flow_bcs) = nothing
+
+function refresh_tangential_halos!(c, bc::ObliqueRadiationBC, side, loc, grid, w, fill_normal_flow_bcs)
+    fills_halo(bc, fill_normal_flow_bcs) || return nothing
+
+    radiation = bc.classification.scheme
+    previous_boundary = radiation.previous_boundary
+    previous_interior = radiation.previous_interior
+
+    nᵇ, n₁ = boundary_indices(side, loc, grid)
+    St = tangential_size(side, loc, grid)
+    Nk = size(previous_boundary, 2)
+
+    for halo in (firstindex(previous_boundary, 1):0, St+1:lastindex(previous_boundary, 1))
+        isempty(halo) && continue
+        launch!(architecture(grid), grid, KernelParameters(halo, 1:Nk), _refresh_tangential_halos!,
+                previous_boundary, previous_interior, c, side, nᵇ, n₁, w)
+    end
+
+    return nothing
+end
+
+@kernel function _refresh_tangential_halos!(previous_boundary, previous_interior, c, side, nᵇ, n₁, w)
+    t, k = @index(Global, NTuple)
+    @inbounds begin
+        previous_boundary[t, k, w] = normal_line_value(c, side, nᵇ, t, k)
+        previous_interior[t, k, w] = normal_line_value(c, side, n₁, t, k)
+    end
+end
+
+@inline normal_line_value(c, ::Union{West, East},   n, t, k) = @inbounds c[n, t, k]
+@inline normal_line_value(c, ::Union{South, North}, n, t, k) = @inbounds c[t, n, k]
+
+# Radiated and first-interior indices, as in the `radiate_*_halo!` kernels
+@inline left_boundary_index(::Face)   = 1
+@inline left_boundary_index(::Center) = 0
+
+@inline boundary_indices(::West,  loc, grid) = (left_boundary_index(loc[1]), left_boundary_index(loc[1]) + 1)
+@inline boundary_indices(::South, loc, grid) = (left_boundary_index(loc[2]), left_boundary_index(loc[2]) + 1)
+@inline boundary_indices(::East,  loc, grid) = (grid.Nx + 1, grid.Nx)
+@inline boundary_indices(::North, loc, grid) = (grid.Ny + 1, grid.Ny)
+
+@inline tangential_size(::Union{West, East},   loc, grid) = size(grid, loc)[2]
+@inline tangential_size(::Union{South, North}, loc, grid) = size(grid, loc)[1]
