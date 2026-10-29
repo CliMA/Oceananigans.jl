@@ -39,6 +39,7 @@ using Oceananigans.Grids: OrthogonalSphericalShellGrid
 
 using Oceananigans.ImmersedBoundaries:
     ImmersedBoundaryGrid, GridFittedBottom, GridFittedBoundary, PartialCellBottom,
+    GridFittedVerticalBoundaries, PartialCellVerticalBoundaries,
     CenterImmersedCondition, InterfaceImmersedCondition, bottom_height_field
 using Oceananigans.Models: LagrangianParticles
 using Oceananigans.OutputReaders:
