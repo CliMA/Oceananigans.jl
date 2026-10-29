@@ -110,7 +110,7 @@ end
 # bounds of the sides.
 for side in (:ᶜ, :ᶠ), (d, ξ) in enumerate((:x, :y, :z))
     index = (:i, :j, :k)[d]
-    open_topology = :(Union{Sides{Open}, Sides{<:Any, Open}})
+    open_topology = :(Union{TwoSided{Open}, TwoSided{<:Any, Open}})
     open_grid = (:(IBG{<:Any, <:$open_topology}), :(IBG{<:Any, <:Any, <:$open_topology}), :(IBG{<:Any, <:Any, <:Any, <:$open_topology}))[d]
 
     near_boundary_symmetric = Symbol(:near_, ξ, :_boundary_symmetric, side)

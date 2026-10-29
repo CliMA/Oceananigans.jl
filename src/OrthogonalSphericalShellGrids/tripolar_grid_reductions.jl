@@ -42,9 +42,9 @@ Adapt.adapt_structure(to, vd::PrognosticTripolarCells) = PrognosticTripolarCells
     center_folded_domain = ifelse(Ly == Face, true, !last_half_row_center)
 
     # At the moment it does not work for UPivot distributed tripolar grids since
-    # if TY != Sides{Closed, FaceFolded} it assumes an FPivot which is the default distributed tripolar grids.
+    # if TY != TwoSided{Closed, FaceFolded} it assumes an FPivot which is the default distributed tripolar grids.
     # TODO: add support for a `UPivot` distributed tripolar grid.
-    return ifelse(TY == Sides{Closed, FaceFolded}, face_folded_domain, center_folded_domain)
+    return ifelse(TY == TwoSided{Closed, FaceFolded}, face_folded_domain, center_folded_domain)
 end
 
 @inline function evaluate_condition(vd::PrognosticTripolarCells,

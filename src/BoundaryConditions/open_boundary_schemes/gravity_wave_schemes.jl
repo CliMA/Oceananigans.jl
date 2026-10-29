@@ -123,14 +123,14 @@ SurfaceWaveRadiation{Float64}
 """
 struct SurfaceWaveRadiation{FT, S} <: AbstractRadiationScheme{FT}
     gravitational_acceleration :: FT
-    φᵇ :: S
+    φ⁻ :: S
 end
 
 function SurfaceWaveRadiation(; gravitational_acceleration = defaults.gravitational_acceleration)
     return SurfaceWaveRadiation(gravitational_acceleration, nothing)
 end
 
-Adapt.adapt_structure(to, c::SurfaceWaveRadiation) = SurfaceWaveRadiation(adapt(to, c.gravitational_acceleration), adapt(to, c.φᵇ))
+Adapt.adapt_structure(to, c::SurfaceWaveRadiation) = SurfaceWaveRadiation(adapt(to, c.gravitational_acceleration), adapt(to, c.φ⁻))
 radiation_storage(c::SurfaceWaveRadiation, buffer) = SurfaceWaveRadiation(c.gravitational_acceleration, buffer())
 
 const IGWVBC = BoundaryCondition{<:Value{<:SurfaceWaveRadiation}}
@@ -312,7 +312,7 @@ end
         η₁ = η[i₁, j₁, k₁]
         H  = column_depthᶜᶜᵃ(i₁, j₁, k₁, grid, η)
         C  = sqrt(g * max(H, zero(H))) * Δt * reciprocal_boundary_spacing(side, grid, i, j)
-        η[iᵇ, jᵇ, kᵇ] = (bc.classification.scheme.φᵇ[i, j] + C * η₁) / (1 + C)
+        η[iᵇ, jᵇ, kᵇ] = (bc.classification.scheme.φ⁻[i, j] + C * η₁) / (1 + C)
     end
 
     return nothing

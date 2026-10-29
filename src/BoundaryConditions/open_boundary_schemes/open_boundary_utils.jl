@@ -4,7 +4,7 @@ using Oceananigans.Operators: Δx⁻¹ᶠᶜᶜ, Δy⁻¹ᶜᶠᶜ, Δz⁻¹ᶜ�
 
 #####
 ##### Open boundary schemes whose exterior state is prognostic: the time stepper caches, steps and initializes it, and the
-##### halo fill leaves it in place. `φᵇ` holds the state at the base of a stage.
+##### halo fill leaves it in place. `φ⁻` holds the state at the base of a stage.
 #####
 
 abstract type AbstractRadiationScheme{FT} end
@@ -125,7 +125,7 @@ initialize_boundary_condition!(bc::RBC, side, field, clock, model_fields) = upda
 
 @inline function cache_exterior_state!(side, i, j, grid, c, bc, loc)
     iᵇ, jᵇ, kᵇ = boundary_point(side, loc, grid, 0, i, j)
-    @inbounds bc.classification.scheme.φᵇ[i, j] = c[iᵇ, jᵇ, kᵇ]
+    @inbounds bc.classification.scheme.φ⁻[i, j] = c[iᵇ, jᵇ, kᵇ]
     return nothing
 end
 

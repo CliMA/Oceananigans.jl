@@ -6,7 +6,7 @@ struct PerturbationAdvection{FT, D, TF, S} <: AbstractRadiationScheme{FT}
     gravity_wave_speed :: FT
     density :: D
     target_transport :: TF
-    φᵇ :: S
+    φ⁻ :: S
 end
 
 """
@@ -37,8 +37,10 @@ We can then assume that the flow composes of mean (`U⃗`) and perturbation (`u�
 and considering the `x`-component of velocity, we can rewrite the equation as
 
 ```math
-∂ₜu₁ = -u₁ ∂₁u - u₂ ∂₂u₁ - u₃ ∂₃u₁ + F₁
+\begin{align}
+∂ₜu₁ &= -u₁ ∂₁u - u₂ ∂₂u₁ - u₃ ∂₃u₁ + F₁
       ≈ -U₁ ∂₁u₁' - U₂ ∂₂u₁' - U₃ ∂₃u₁' + F
+\end{align}
 ```
 
 Simplify by assuming that `U⃗ = U x̂`, and then take a numerical step to find `u₁`.
@@ -125,7 +127,7 @@ Adapt.adapt_structure(to, pe::PerturbationAdvection) =
                           adapt(to, pe.gravity_wave_speed),
                           adapt(to, pe.density),
                           adapt(to, pe.target_transport),
-                          adapt(to, pe.φᵇ))
+                          adapt(to, pe.φ⁻))
 
 radiation_storage(pe::PerturbationAdvection, buffer) =
     PerturbationAdvection(pe.inflow_timescale, pe.outflow_timescale, pe.gravity_wave_speed, pe.density, pe.target_transport, buffer())
@@ -183,7 +185,7 @@ _eval_tt(f, grid) = f(grid)
     pa = bc.classification.scheme
     ρ = pa.density
 
-    ψᵇ = to_intensive(ρ, @inbounds(pa.φᵇ[i, j]), kᵇ)
+    ψᵇ = to_intensive(ρ, @inbounds(pa.φ⁻[i, j]), kᵇ)
     ψ₁ = to_intensive(ρ, @inbounds(ψ[i₁, j₁, k₁]), kᵇ)
     ψ̄  = getbc(bc, i, j, grid, clock, model_fields)
 

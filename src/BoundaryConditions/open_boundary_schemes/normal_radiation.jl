@@ -8,8 +8,8 @@
                       use_boundary_velocity = false,
                       target_transport = nothing)
 
-Orlanski (1976) radiation condition with locally-diagnosed phase speed
-and adaptive nudging (Marchesiello et al. 2001):
+[Orlanski (1976)](@cite Orlanksi1976) radiation condition with locally-diagnosed phase speed
+and adaptive nudging ([Marchesiello et al., 2001](@cite marchesiello.ea2001)):
 
     ∂φ/∂t + cₙ ⋅ ∂φ/∂n = - (φ - φᵉˣᵗ) / τ
 
@@ -64,7 +64,7 @@ struct NormalRadiation{FT, S, TF} <: AbstractRadiationScheme{FT}
     outflow_timescale :: FT
     inflow_timescale  :: FT
     use_boundary_velocity :: Bool # advect Value fields with the boundary-face velocity instead of one cell in
-    φᵇ  :: S  # boundary value at the base of the stage (2D array or nothing)
+    φ⁻  :: S  # boundary value at the base of the stage (2D array or nothing)
     φ₁  :: S  # interior value at the base of the stage (2D array or nothing)
     target_transport :: TF # prescribed net transport through the boundary, or nothing
 end
@@ -85,7 +85,7 @@ Adapt.adapt_structure(to, r::NormalRadiation) =
     NormalRadiation(adapt(to, r.outflow_timescale),
               adapt(to, r.inflow_timescale),
               r.use_boundary_velocity,
-              adapt(to, r.φᵇ),
+              adapt(to, r.φ⁻),
               adapt(to, r.φ₁),
               adapt(to, r.target_transport))
 
@@ -144,7 +144,7 @@ const ORBC = Union{BoundaryCondition{<:Value{<:Union{NormalRadiation, ObliqueRad
     iᵇ, jᵇ, kᵇ = boundary_point(side, loc, grid, 0, i, j)
     i₁, j₁, k₁ = boundary_point(side, loc, grid, 1, i, j)
     radiation = bc.classification.scheme
-    @inbounds radiation.φᵇ[i, j] = c[iᵇ, jᵇ, kᵇ]
+    @inbounds radiation.φ⁻[i, j] = c[iᵇ, jᵇ, kᵇ]
     @inbounds radiation.φ₁[i, j] = c[i₁, j₁, k₁]
     return nothing
 end
@@ -166,7 +166,7 @@ end
         Cᵃ = abs(Uᵃ) * Δt * reciprocal_boundary_spacing(side, grid, i, j)
         outflow = outward(side, Uᵃ) >= 0
 
-        φᵇⁿ⁺¹ = radiation_update(radiation, side, i, j, radiation.φᵇ[i, j], φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, radiation.φ₁[i, j], φᵉˣᵗ, Δt, outflow, Cᵃ)
+        φᵇⁿ⁺¹ = radiation_update(radiation, side, i, j, radiation.φ⁻[i, j], φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, radiation.φ₁[i, j], φᵉˣᵗ, Δt, outflow, Cᵃ)
         c[iᵇ, jᵇ, kᵇ] = ifelse(immersed_boundary_point(side, loc, grid, i, j), zero(grid), φᵇⁿ⁺¹)
     end
 

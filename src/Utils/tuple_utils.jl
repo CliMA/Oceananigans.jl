@@ -50,6 +50,14 @@ Call `f(Val(n), Val(name))` for each property `name` of `nt`, where `n` is the p
     return _foreach_name(f, Val(n + 1), val_names...)
 end
 
+# Call `f(x, args...; kwargs...)` for each element `x` of the tuple `t`, unrolled so that `t` may be heterogeneous
+@inline foreach_element(f, ::Tuple{}, args...; kwargs...) = nothing
+
+@inline function foreach_element(f::F, t::Tuple, args::Vararg{Any, N}; kwargs...) where {F, N}
+    f(first(t), args...; kwargs...)
+    return foreach_element(f, Base.tail(t), args...; kwargs...)
+end
+
 @inline datatuple(obj::Nothing) = nothing
 @inline datatuple(obj::AbstractArray) = obj
 @inline datatuple(obj::Tuple) = Tuple(datatuple(o) for o in obj)

@@ -193,11 +193,12 @@ reconstruct_global_immersed_boundary(g::GridFittedBoundary{<:Field}, ::MultiRegi
 
 # The immersed boundary of a connected region is materialized on the whole multi-region grid, so it moves to
 # another architecture as it is, without being materialized again on the region alone.
-const RegionalConnectedTopology = Union{Sides{Connected, Connected}, Sides{Connected, <:BoundarySide}, Sides{<:BoundarySide, Connected}}
+# Distributed local grids also have connected topologies, but every rank must materialize them (with a halo exchange).
+const RegionalConnectedTopology = Union{TwoSided{Connected, Connected}, TwoSided{Connected, <:BoundarySide}, TwoSided{<:BoundarySide, Connected}}
 const RegionalGrid = Union{RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid}
 
-const ImmersedRegionalGrid = Union{ImmersedBoundaryGrid{<:Any, <:RegionalConnectedTopology, <:Any, <:Any, <:RegionalGrid},
-                                   ImmersedBoundaryGrid{<:Any, <:Any, <:RegionalConnectedTopology, <:Any, <:RegionalGrid}}
+const ImmersedRegionalGrid = Union{ImmersedBoundaryGrid{<:Any, <:RegionalConnectedTopology, <:Any, <:Any, <:RegionalGrid, <:Any, <:Any, <:Any, <:AbstractSerialArchitecture},
+                                   ImmersedBoundaryGrid{<:Any, <:Any, <:RegionalConnectedTopology, <:Any, <:RegionalGrid, <:Any, <:Any, <:Any, <:AbstractSerialArchitecture}}
 
 function Oceananigans.Architectures.on_architecture(arch, ibg::ImmersedRegionalGrid)
     underlying_grid = on_architecture(arch, ibg.underlying_grid)

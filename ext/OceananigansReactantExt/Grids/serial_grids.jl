@@ -4,7 +4,9 @@ deconcretize(z::StaticVerticalDiscretization) =
         deconcretize(z.cᵃᵃᶠ),
         deconcretize(z.cᵃᵃᶜ),
         deconcretize(z.Δᵃᵃᶠ),
-        deconcretize(z.Δᵃᵃᶜ)
+        deconcretize(z.Δᵃᵃᶜ),
+        deconcretize(z.Δ⁻¹ᵃᵃᶠ),
+        deconcretize(z.Δ⁻¹ᵃᵃᶜ)
     )
 
 # TODO: handle MutableVerticalDiscretization in grid constructors

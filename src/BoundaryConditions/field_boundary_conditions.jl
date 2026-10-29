@@ -15,20 +15,20 @@ DefaultBoundaryCondition() = DefaultBoundaryCondition(NoFluxBoundaryCondition())
 default_prognostic_bc(::Grids.Periodic, loc, default) = PeriodicBoundaryCondition()
 default_prognostic_bc(::Flat,           loc, default) = nothing
 
-default_prognostic_bc(::Sides,                       ::Center, default) = default.boundary_condition
-default_prognostic_bc(::Sides{Connected, Connected}, ::Center, default) = MultiRegionCommunicationBoundaryCondition()
+default_prognostic_bc(::TwoSided,                       ::Center, default) = default.boundary_condition
+default_prognostic_bc(::TwoSided{Connected, Connected}, ::Center, default) = MultiRegionCommunicationBoundaryCondition()
 
 # TODO: make model constructors enforce impenetrability on velocity components to simplify this code
-default_prognostic_bc(::Sides,                       ::Face, default) = ImpenetrableBoundaryCondition()
-default_prognostic_bc(::Sides{Connected, Connected}, ::Face, default) = MultiRegionCommunicationBoundaryCondition()
+default_prognostic_bc(::TwoSided,                       ::Face, default) = ImpenetrableBoundaryCondition()
+default_prognostic_bc(::TwoSided{Connected, Connected}, ::Face, default) = MultiRegionCommunicationBoundaryCondition()
 
 default_prognostic_bc(::Grids.Periodic, ::Nothing, default) = nothing
 default_prognostic_bc(::Flat,           ::Nothing, default) = nothing
-default_prognostic_bc(::Sides,          ::Nothing, default) = nothing
+default_prognostic_bc(::TwoSided,          ::Nothing, default) = nothing
 
 _default_auxiliary_bc(topo, loc) = default_prognostic_bc(topo, loc, DefaultBoundaryCondition())
-_default_auxiliary_bc(::Sides,                       ::Face) = nothing
-_default_auxiliary_bc(::Sides{Connected, Connected}, ::Face) = MultiRegionCommunicationBoundaryCondition()
+_default_auxiliary_bc(::TwoSided,                       ::Face) = nothing
+_default_auxiliary_bc(::TwoSided{Connected, Connected}, ::Face) = MultiRegionCommunicationBoundaryCondition()
 
 default_auxiliary_bc(grid, ::Val{:east},   loc) = _default_auxiliary_bc(topology(grid, 1)(), loc[1])
 default_auxiliary_bc(grid, ::Val{:west},   loc) = _default_auxiliary_bc(topology(grid, 1)(), loc[1])
@@ -242,6 +242,12 @@ end
     coefficient = regularize_boundary_condition(mc.coefficient, grid, args...)
     inhomogeneity = regularize_boundary_condition(mc.inhomogeneity, grid, args...)
     return MixedCondition(coefficient, inhomogeneity)
+end
+
+function regularize_boundary_condition(c::IMEXFlux, grid, args...)
+    explicit_flux = regularize_boundary_condition(c.explicit_flux, grid, args...)
+    implicit_coefficient = regularize_boundary_condition(c.implicit_coefficient, grid, args...)
+    return IMEXFlux(explicit_flux, implicit_coefficient)
 end
 
 """
