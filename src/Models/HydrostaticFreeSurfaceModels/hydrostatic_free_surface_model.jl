@@ -13,7 +13,7 @@ using Oceananigans.TimeSteppers: Clock, TimeStepper, AbstractLagrangianParticles
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_closure_fields, add_closure_specific_boundary_conditions,
                                        implicit_diffusion_solver, VerticallyImplicitTimeDiscretization,
                                        closure_required_tracers, initialize_closure_fields!
-using Oceananigans.Utils: tupleit
+using Oceananigans.Utils: tupleit, initialize_on_construction!
 
 import Oceananigans
 import Oceananigans: initialize!, prognostic_state, restore_prognostic_state!
@@ -349,7 +349,7 @@ function build_hydrostatic_free_surface_model(grid, ::Val{tracer_names}, timeste
                                         boundary_transport)
 
     materialize_clock!(clock, timestepper)
-    update_state!(model)
+    initialize_on_construction!(arch, update_state!, model)
 
     return model
 end

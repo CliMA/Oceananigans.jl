@@ -13,7 +13,7 @@ using Oceananigans.Models: validate_model_halo, validate_tracer_advection
 using Oceananigans.Advection: materialize_advection
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
 using Oceananigans.TurbulenceClosures: with_tracers, build_closure_fields
-using Oceananigans.Utils: tupleit
+using Oceananigans.Utils: tupleit, initialize_on_construction!
 
 import Oceananigans: prognostic_state, restore_prognostic_state!
 import Oceananigans.Architectures: architecture
@@ -225,7 +225,7 @@ function ShallowWaterModel(grid;
                               timestepper,
                               formulation)
 
-    update_state!(model)
+    initialize_on_construction!(arch, update_state!, model)
 
     return model
 end

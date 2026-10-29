@@ -14,7 +14,7 @@ using Oceananigans.Solvers: FFTBasedPoissonSolver
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!, materialize_clock!, AbstractLagrangianParticles, time_discretization
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_closure_fields, implicit_diffusion_solver, VerticallyImplicitTimeDiscretization, initialize_closure_fields!
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE
-using Oceananigans.Utils: tupleit
+using Oceananigans.Utils: tupleit, initialize_on_construction!
 
 import Oceananigans: prognostic_state, restore_prognostic_state!
 import Oceananigans.Architectures: architecture
@@ -360,8 +360,8 @@ function build_nonhydrostatic_model(grid, ::Val{tracer_names}, timestepper,
                                 advecting_vertical_velocity)
 
     materialize_clock!(clock, timestepper)
-    update_state!(model)
-    initialize_closure_fields!(model.closure_fields, model.closure, model)
+    initialize_on_construction!(arch, update_state!, model)
+    initialize_on_construction!(arch, initialize_closure_fields!, model.closure_fields, model.closure, model)
 
     return model
 end
