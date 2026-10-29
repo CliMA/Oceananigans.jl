@@ -6,7 +6,7 @@ struct ScalarDiffusivity{TD, F, N, V, K, O} <: AbstractScalarDiffusivity{TD, F, 
     ScalarDiffusivity{TD, F, N}(ν::V, κ::K, ::Val{O}=Val(2)) where {TD, F, N, V, K, O} = new{TD, F, N, V, K, O}(ν, κ)
 end
 
-@inline diffusion_order(::ScalarDiffusivity{TD, F, N, V, K, O}) where {TD, F, N, V, K, O} = Val(O)
+@inline stencil_order(::ScalarDiffusivity{TD, F, N, V, K, O}) where {TD, F, N, V, K, O} = Val(O)
 
 """
     ScalarDiffusivity(time_discretization = ExplicitTimeDiscretization(),
@@ -223,7 +223,7 @@ HorizontalDivergenceScalarDiffusivity(FT::DataType; kwargs...) = ScalarDiffusivi
 
 @inline function Utils.with_tracers(tracers, closure::ScalarDiffusivity{TD, F, N}) where {TD, F, N}
     κ = tracer_diffusivities(tracers, closure.κ)
-    return ScalarDiffusivity{TD, F, N}(closure.ν, κ, diffusion_order(closure))
+    return ScalarDiffusivity{TD, F, N}(closure.ν, κ, stencil_order(closure))
 end
 
 @inline viscosity(closure::ScalarDiffusivity, K) = closure.ν
@@ -242,7 +242,7 @@ function Base.summary(closure::ScalarDiffusivity)
         summary_str = string(prefix, "ScalarDiffusivity{$TD}(ν=", prettysummary(closure.ν), ", κ=", prettysummary(closure.κ), ")")
     end
 
-    if diffusion_order(closure) == Val(4)
+    if stencil_order(closure) == Val(4)
         summary_str = summary_str[1:end-1] * ", order=4)"
     end
 
@@ -254,13 +254,13 @@ Base.show(io::IO, closure::ScalarDiffusivity) = print(io, summary(closure))
 function Adapt.adapt_structure(to, closure::ScalarDiffusivity{TD, F, N}) where {TD, F, N}
     ν = Adapt.adapt(to, closure.ν)
     κ = Adapt.adapt(to, closure.κ)
-    return ScalarDiffusivity{TD, F, N}(ν, κ, diffusion_order(closure))
+    return ScalarDiffusivity{TD, F, N}(ν, κ, stencil_order(closure))
 end
 
 function Architectures.on_architecture(to, closure::ScalarDiffusivity{TD, F, N}) where {TD, F, N}
     ν = on_architecture(to, closure.ν)
     κ = on_architecture(to, closure.κ)
-    return ScalarDiffusivity{TD, F, N}(ν, κ, diffusion_order(closure))
+    return ScalarDiffusivity{TD, F, N}(ν, κ, stencil_order(closure))
 end
 
 #####

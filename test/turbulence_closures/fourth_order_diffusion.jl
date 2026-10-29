@@ -1,6 +1,6 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
-using Oceananigans.TurbulenceClosures: ∇_dot_qᶜ, ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∂ⱼ_τ₃ⱼ, with_tracers, diffusion_order,
+using Oceananigans.TurbulenceClosures: ∇_dot_qᶜ, ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∂ⱼ_τ₃ⱼ, with_tracers, stencil_order,
                                        required_halo_size_x, required_halo_size_y, required_halo_size_z,
                                        cell_diffusion_timescale
 
@@ -11,7 +11,7 @@ function tracer_flux_divergence(c, closure)
     fill_halo_regions!(c)
     op = KernelFunctionOperation{Center, Center, Center}(∇_dot_qᶜ, grid, closure, nothing, Val(:c), c,
                                                          Clock(grid), (; c), nothing)
-    return Array(interior(compute!(Field(op))))
+    return Field(op)
 end
 
 # Divergence of the viscous stress ∂ⱼτᵢⱼ
@@ -23,10 +23,11 @@ function viscous_stress_divergence(u, v, w, closure)
     ops = (KernelFunctionOperation{Face,   Center, Center}(∂ⱼ_τ₁ⱼ, grid, closure, nothing, clock, fields, nothing),
            KernelFunctionOperation{Center, Face,   Center}(∂ⱼ_τ₂ⱼ, grid, closure, nothing, clock, fields, nothing),
            KernelFunctionOperation{Center, Center, Face  }(∂ⱼ_τ₃ⱼ, grid, closure, nothing, clock, fields, nothing))
-    return Tuple(Array(interior(compute!(Field(op)))) for op in ops)
+    return Tuple(Field(op) for op in ops)
 end
 
-max_error(a, b) = maximum(abs, a .- b)
+max_error(a, b) = maximum(abs, Field(a - b))
+mean_absolute_error(a, b) = sum(abs, Field(a - b)) / length(interior(b))
 convergence_rate(errors, Ns) = log(errors[end-1] / errors[end]) / log(Ns[end] / Ns[end-1])
 
 const Ns = (16, 32, 64)
@@ -41,8 +42,7 @@ function periodic_tracer_laplacian_errors(arch, order)
         grid = RectilinearGrid(arch; size=(N, N, N), extent=(L, L, L), halo=(3, 3, 3), topology=(Periodic, Periodic, Periodic))
         c = CenterField(grid)
         set!(c, c₀)
-        exact = 6κ .* Array(interior(c)) # - κ ∇²c = 6κ c
-        max_error(tracer_flux_divergence(c, closure), exact)
+        max_error(tracer_flux_divergence(c, closure), 6κ * c) # - κ ∇²c = 6κ c
     end
     return errors
 end
@@ -60,7 +60,7 @@ function periodic_viscous_errors(arch, order)
         set!(v, (x, y, z) -> - cos(x) * sin(y) + sin(y) * cos(z))
         set!(w, (x, y, z) -> - cos(y) * sin(z))
         τ = viscous_stress_divergence(u, v, w, closure)
-        maximum(max_error(τᵢ, 2ν .* Array(interior(uᵢ))) for (τᵢ, uᵢ) in zip(τ, (u, v, w)))
+        maximum(max_error(τᵢ, 2ν * uᵢ) for (τᵢ, uᵢ) in zip(τ, (u, v, w)))
     end
     return errors
 end
@@ -74,10 +74,10 @@ function bounded_tracer_laplacian_errors(arch, order)
                                topology=(Bounded, Periodic, Bounded))
         c = CenterField(grid)
         set!(c, (x, y, z) -> cos(x) * cos(z))
-        exact = 2κ .* Array(interior(c))
         result = tracer_flux_divergence(c, closure)
+        exact = Field(2κ * c)
         # Max error, and L1 error (mean absolute error)
-        (max_error(result, exact), sum(abs, result .- exact) / length(exact))
+        (max_error(result, exact), mean_absolute_error(result, exact))
     end
     return first.(errors), last.(errors)
 end
@@ -87,15 +87,15 @@ end
 
     @testset "Construction" begin
         closure = ScalarDiffusivity(ν=1, κ=2, order=4)
-        @test diffusion_order(closure) === Val(4)
-        @test diffusion_order(ScalarDiffusivity(ν=1, κ=2)) === Val(2)
+        @test stencil_order(closure) === Val(4)
+        @test stencil_order(ScalarDiffusivity(ν=1, κ=2)) === Val(2)
         @test required_halo_size_x(closure) == 2
         @test required_halo_size_y(closure) == 2
         @test required_halo_size_z(closure) == 2
         @test required_halo_size_x(ScalarDiffusivity(ν=1, κ=2)) == 1
         @test summary(closure) == "ScalarDiffusivity{ExplicitTimeDiscretization}(ν=1.0, κ=2.0, order=4)"
-        @test diffusion_order(with_tracers((:c,), closure)) === Val(4)
-        @test diffusion_order(VerticalScalarDiffusivity(κ=1, order=4)) === Val(4)
+        @test stencil_order(with_tracers((:c,), closure)) === Val(4)
+        @test stencil_order(VerticalScalarDiffusivity(κ=1, order=4)) === Val(4)
 
         @test_throws ArgumentError ScalarDiffusivity(ν=1, order=3)
         @test_throws ArgumentError HorizontalScalarDiffusivity(ν=1, order=4)
@@ -143,11 +143,11 @@ end
             model = NonhydrostaticModel(grid; closure=ScalarDiffusivity(ν=1e-2, κ=1e-2, order=4), tracers=:c)
             set!(model, c=(x, y, z) -> exp(-50 * ((x - 0.1)^2 + (y - 0.9)^2 + (z - 0.2)^2)),
                         u=(x, y, z) -> 1e-2 * randn(), v=(x, y, z) -> 1e-2 * randn())
-            C₀ = sum(interior(model.tracers.c))
+            C₀ = sum(model.tracers.c)
             for _ in 1:10
                 time_step!(model, 1e-3)
             end
-            @test sum(interior(model.tracers.c)) ≈ C₀ rtol=1e-12
+            @test sum(model.tracers.c) ≈ C₀ rtol=1e-12
         end
 
         @testset "Immersed boundary [$(typeof(arch))]" begin
@@ -166,26 +166,26 @@ end
             set!(cᴵ, c₀); set!(cᵀ, c₀)
             qᴵ = tracer_flux_divergence(cᴵ, closure)
             qᵀ = tracer_flux_divergence(cᵀ, closure)
-            @test qᴵ[:, :, Nz÷2+1:end] ≈ qᵀ rtol=1e-12
+            above(f) = interior(f, :, :, Nz÷2+1:Nz)
+            @test maximum(abs, above(qᴵ) .- interior(qᵀ)) ≤ 1e-12 * maximum(abs, qᵀ)
 
-            # Momentum on the immersed grid: tangential velocity sees fourth-order diffusion away from the bottom
+            # Momentum on the immersed grid: tangential velocity sees fourth-order stencils away from the bottom
             uᴵ, vᴵ, wᴵ = XFaceField(immersed), YFaceField(immersed), ZFaceField(immersed)
             uᵀ, vᵀ, wᵀ = XFaceField(truncated), YFaceField(truncated), ZFaceField(truncated)
             set!(uᴵ, c₀); set!(uᵀ, c₀)
             τᴵ = viscous_stress_divergence(uᴵ, vᴵ, wᴵ, closure)
             τᵀ = viscous_stress_divergence(uᵀ, vᵀ, wᵀ, closure)
-            @test τᴵ[1][:, :, Nz÷2+1:end] ≈ τᵀ[1] rtol=1e-12
+            @test maximum(abs, above(τᴵ[1]) .- interior(τᵀ[1])) ≤ 1e-12 * maximum(abs, τᵀ[1])
 
             # Time stepping conserves tracer and produces no NaN
             model = NonhydrostaticModel(immersed; closure, tracers=:c)
             set!(model, c=c₀)
-            C₀ = sum(interior(model.tracers.c)[:, :, Nz÷2+1:end])
+            C₀ = sum(model.tracers.c) # reductions on immersed grids exclude immersed cells
             for _ in 1:10
                 time_step!(model, 1e-4)
             end
-            c = Array(interior(model.tracers.c))
-            @test !any(isnan, c)
-            @test sum(c[:, :, Nz÷2+1:end]) ≈ C₀ rtol=1e-12
+            @test !isnan(maximum(abs, model.tracers.c))
+            @test sum(model.tracers.c) ≈ C₀ rtol=1e-12
         end
 
         @testset "Decay of a sine wave [$(typeof(arch))]" begin
@@ -197,8 +197,9 @@ end
                 set!(model, c=x -> sin(k * x))
                 simulation = Simulation(model; Δt=1e-5, stop_time=T, verbose=false)
                 run!(simulation)
-                exact = exp(-κ * k^2 * T) .* sin.(k .* xnodes(grid, Center()))
-                return maximum(abs, Array(interior(model.tracers.c, :, 1, 1)) .- exact)
+                exact = CenterField(grid)
+                set!(exact, x -> exp(-κ * k^2 * T) * sin(k * x))
+                return max_error(model.tracers.c, exact)
             end
             e₂ = [decay_error(N, 2) for N in (16, 32)]
             e₄ = [decay_error(N, 4) for N in (16, 32)]
