@@ -350,4 +350,10 @@ jobs:
             fi
           } > pr_comment.md
 
+          gh api --paginate "repos/${{ github.repository }}/issues/$PR_NUMBER/comments" \
+            --jq '.[] | select(.user.login == "github-actions[bot]" and (.body | startswith("## Benchmark Comparison"))) | .id' |
+            while read -r COMMENT_ID; do
+              gh api -X DELETE "repos/${{ github.repository }}/issues/comments/$COMMENT_ID"
+            done
+
           gh pr comment "$PR_NUMBER" --body-file pr_comment.md
