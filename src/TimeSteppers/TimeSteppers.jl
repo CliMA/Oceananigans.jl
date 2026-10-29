@@ -44,8 +44,11 @@ step_closure_prognostics!(model, Δt::Number) = nothing
 reconcile_state!(model) = nothing
 
 # The exterior states of open boundaries are prognostic, like the fields they belong to
-BoundaryConditions.cache_boundary_conditions!(model::AbstractModel) = @apply_regionally cache_boundary_conditions!(prognostic_fields(model), model.clock, fields(model))
-BoundaryConditions.initialize_boundary_conditions!(model::AbstractModel) = @apply_regionally initialize_boundary_conditions!(prognostic_fields(model), model.clock, fields(model))
+BoundaryConditions.cache_boundary_conditions!(model::AbstractModel{<:AbstractTimeStepper}) = @apply_regionally cache_boundary_conditions!(prognostic_fields(model), model.clock, fields(model))
+BoundaryConditions.initialize_boundary_conditions!(model::AbstractModel{<:AbstractTimeStepper}) = @apply_regionally initialize_boundary_conditions!(prognostic_fields(model), model.clock, fields(model))
+
+# Models without a time stepper need not define `prognostic_fields` or `fields`
+BoundaryConditions.initialize_boundary_conditions!(model) = nothing
 
 # Prepare the model for the first time step, in case run! is not used.
 function maybe_prepare_first_time_step!(model, Δt, callbacks)
