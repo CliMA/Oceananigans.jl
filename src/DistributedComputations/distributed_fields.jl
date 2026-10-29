@@ -148,14 +148,32 @@ partition_dimensions(f::DistributedField) = partition_dimensions(architecture(f)
 function maybe_all_reduce!(op, f::ReducedAbstractField)
     reduced_dims   = reduced_dimensions(f)
     partition_dims = partition_dimensions(f)
+    arch = architecture(f)
 
-    sync_device!(architecture(f))
+    sync_device!(arch)
 
     if any([dim ∈ partition_dims for dim in reduced_dims])
-        all_reduce!(op, parent(f), architecture(f))
+        all_reduce_along!(op, parent(f), arch, reduced_dims)
     end
 
     return f
+end
+
+function all_reduce_along!(op, data, arch, reduced_dims)
+    R = ranks(arch)
+    unreduced_partition_dims = filter(d -> R[d] > 1 && d ∉ reduced_dims, (1, 2, 3))
+
+    if isempty(unreduced_partition_dims)
+        all_reduce!(op, data, arch)
+    else
+        index = ntuple(d -> d ∈ unreduced_partition_dims ? arch.local_index[d] : 1, 3)
+        color = LinearIndices(R)[index...]
+        communicator = MPI.Comm_split(arch.communicator, color, arch.local_rank)
+        MPI.Allreduce!(data, op, communicator)
+        MPI.free(communicator)
+    end
+
+    return data
 end
 
 # Allocating and in-place reductions
@@ -228,11 +246,29 @@ end
 # divides by the global count instead of the local one.
 @inline conditional_length(c::DistributedField) = all_reduce(+, length(c), architecture(c))
 
+@inline conditional_length(c::DistributedField, dims::Int) = conditional_length(c, tuple(dims))
+
+@inline function conditional_length(c::DistributedField, dims::Tuple)
+    arch = architecture(c)
+    R = ranks(arch)
+    local_length = prod(Base.Fix1(size, c), dims)
+    unreduced_ranks = prod(R[d] for d in 1:3 if d ∉ dims; init=1)
+    return all_reduce(+, local_length, arch) ÷ unreduced_ranks
+end
+
 # A field on a distributed immersed grid matches both `DistributedField` and the immersed
-# `AbstractField{…, <:ImmersedBoundaryGrid}` method; defer to the immersed definition, which
-# excludes inactive cells and is already globally reduced through the distributed `sum`.
-@inline conditional_length(c::Field{<:Any, <:Any, <:Any, <:Any, <:DistributedImmersedBoundaryGrid}) =
+# `AbstractField{…, <:ImmersedBoundaryGrid}` methods; defer to the immersed definitions, which
+# exclude inactive cells and are already globally reduced through the distributed `sum`.
+const DistributedImmersedField = Field{<:Any, <:Any, <:Any, <:Any, <:DistributedImmersedBoundaryGrid}
+
+@inline conditional_length(c::DistributedImmersedField) =
     conditional_length(condition_operand(identity, c, NotImmersed(), 0))
+
+@inline conditional_length(c::DistributedImmersedField, dims::Int) =
+    conditional_length(condition_operand(identity, c, NotImmersed(), 0), dims)
+
+@inline conditional_length(c::DistributedImmersedField, dims::Tuple) =
+    conditional_length(condition_operand(identity, c, NotImmersed(), 0), dims)
 
 # Distributed norm
 @inline function norm(u::DistributedAbstractField; condition=nothing)
