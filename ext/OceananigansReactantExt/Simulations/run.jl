@@ -212,18 +212,16 @@ state: the place for a terminal quantity such as a loss or an end-of-run error n
 needs neither a schedule nor a traced branch. Like everything inside the program it must do only
 device work; printing and IO belong after the compiled call returns.
 
-`stop_iteration` is a plain number on the `Simulation`, so under `@compile` it is a static loop
-bound. It counts steps from the state the simulation was constructed in: a run continued from
-iteration `n` steps `stop_iteration` more times.
+`stop_iteration` is a device number on the `Simulation`, so under `@compile` it is an input of
+the program, read at each call: set `sim.stop_iteration = n` to run `n` steps with the same
+compiled `run!`. It counts steps from wherever the model is: each call steps `stop_iteration`
+more times.
 """
 function run!(sim::ReactantSimulation)
-    isfinite(sim.stop_iteration) || throw(ArgumentError(
-        "run! on a ReactantState model needs `stop_iteration` or `stop_time`: they bound the compiled loop."))
-
-    N = Int(sim.stop_iteration)
+    check_stop_iteration(sim)
 
     initialize!(sim)
-    time_step_for!(sim, N)
+    time_step_for!(sim, sim.stop_iteration)
     remainder_step!(sim, sim.stop_time)
     foreach(callback -> finalize!(callback, sim), values(sim.callbacks))
 
@@ -231,16 +229,24 @@ function run!(sim::ReactantSimulation)
 end
 
 function run!(sim::Simulation{<:ReactantModel{<:QuasiAdamsBashforth2TimeStepper}})
-    isfinite(sim.stop_iteration) || throw(ArgumentError(
-        "run! on a ReactantState model needs `stop_iteration` or `stop_time`: they bound the compiled loop."))
-
-    N = Int(sim.stop_iteration)
+    check_stop_iteration(sim)
+    N = sim.stop_iteration
 
     initialize!(sim)
-    N ≥ 1 && time_step!(sim; euler = true)
-    time_step_for!(sim, N - 1)
+    first_step = N ≥ 1
+    @trace track_numbers = false if first_step
+        euler_step!(sim)
+    end
+    # Never a negative trip count: Enzyme-JAX folds the loop's iteration increments into one add of it
+    time_step_for!(sim, N - first_step)
     remainder_step!(sim, sim.stop_time)
     foreach(callback -> finalize!(callback, sim), values(sim.callbacks))
 
     return nothing
 end
+
+check_stop_iteration(sim) = isnothing(sim.stop_iteration) && throw(ArgumentError(
+    "run! on a ReactantState model needs `stop_iteration` or `stop_time`: they bound the compiled loop."))
+
+# Called with `sim` as an argument inside the traced `if`, so the branch captures it (see `invoke_callback`)
+euler_step!(sim) = time_step!(sim; euler = true)
