@@ -38,7 +38,7 @@ end
 
 function write_immersed_boundary_data!(ds, grid::ImmersedBoundaryGrid, immersed_grid_args, prefix)
     group_name = "$(prefix)immersed_grid_reconstruction_args"
-    if (grid.immersed_boundary isa GridFittedBottom) || (grid.immersed_boundary isa PartialCellBottom)
+    if (grid.immersed_boundary isa GridFittedVerticalBoundaries) || (grid.immersed_boundary isa PartialCellVerticalBoundaries)
         pop!(immersed_grid_args, :bottom_height)
         ibg_group = defGroup(ds, group_name; attrib=convert_for_netcdf(immersed_grid_args))
         defVar(ibg_group, "bottom_height", bottom_height_field(grid))
@@ -101,14 +101,14 @@ function reconstruct_immersed_boundary(ds, ::Val{:GridFittedBoundary}, prefix)
     return GridFittedBoundary(mask)
 end
 
-function reconstruct_immersed_boundary(ds, ::Val{:GridFittedBottom}, prefix)
+function reconstruct_immersed_boundary(ds, ::Union{Val{:GridFittedBottom}, Val{:GridFittedVerticalBoundaries}}, prefix)
     ibg_group = ds.group["$(prefix)immersed_grid_reconstruction_args"]
     bottom_height = Array(ibg_group["bottom_height"])
     immersed_condition = ibg_group.attrib["immersed_condition"] |> materialize_from_netcdf
     return GridFittedBottom(bottom_height, immersed_condition)
 end
 
-function reconstruct_immersed_boundary(ds, ::Val{:PartialCellBottom}, prefix)
+function reconstruct_immersed_boundary(ds, ::Union{Val{:PartialCellBottom}, Val{:PartialCellVerticalBoundaries}}, prefix)
     ibg_group = ds.group["$(prefix)immersed_grid_reconstruction_args"]
     bottom_height = Array(ibg_group["bottom_height"])
     minimum_fractional_cell_height = ibg_group.attrib["minimum_fractional_cell_height"] |> materialize_from_netcdf
@@ -201,7 +201,7 @@ function reconstruct_ossg_grid(ds, prefix, args, kwargs)
     Hx, Hy, Hz = map(Int, kwargs[:halo])
     topo       = kwargs[:topology]
     radius     = FT(kwargs[:radius])
-    TX, TY, TZ = topo
+    TX, TY, TZ = validate_topology(topo)
     topo_instances = (TX(), TY(), TZ())
 
     file_has_halos = haskey(ds.attrib, "output_includes_halos")
@@ -325,19 +325,19 @@ end
 
 # Rebuild the `conformal_mapping` from its serialized attributes (see
 # `conformal_mapping_info` in `src/OrthogonalSphericalShellGrids/`). The `TY`
-# argument is the y-topology type — for `Tripolar`, that's the fold flavor
-# (`RightCenterFolded`/`RightFaceFolded`) which lives as a type-parameter on
+# argument is the y-topology type — for `Tripolar`, its north side is the fold flavor
+# (`CenterFolded`/`FaceFolded`) which lives as a type-parameter on
 # the struct rather than a runtime field.
 reconstruct_conformal_mapping(attrib, TY) = reconstruct_conformal_mapping(attrib, Val(Symbol(attrib["type"])), TY)
 
 reconstruct_conformal_mapping(attrib, ::Val{:Nothing}, TY) = nothing
 
-function reconstruct_conformal_mapping(attrib, ::Val{:Tripolar}, TY)
+function reconstruct_conformal_mapping(attrib, ::Val{:Tripolar}, ::Type{<:TwoSided{<:Any, R}}) where R
     return Tripolar(
         attrib["north_poles_latitude"],
         attrib["first_pole_longitude"],
         attrib["southernmost_latitude"],
-        TY,
+        R,
     )
 end
 

@@ -34,7 +34,7 @@ function flow_over_hill_simulation(; arch = CPU(),
     end
 
     # Create grid first
-    grid_base = RectilinearGrid(arch; topology = (Bounded, Flat, Bounded), size = (Nx, Nz), x = (0, Lx), z, halo = (8, 8))
+    grid_base = RectilinearGrid(arch; topology = (Open, Flat, Bounded), size = (Nx, Nz), x = (0, Lx), z, halo = (8, 8))
     hill(x) = hill_height * exp(-((x - x₀)/hill_width)^2) - Lz
     grid = ImmersedBoundaryGrid(grid_base, PartialCellBottom(hill))
 

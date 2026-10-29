@@ -118,8 +118,8 @@ end
 function test_partial_cell_bottom_cell_detection(FT, arch)
     underlying_grid = RectilinearGrid(arch, FT, size=(4, 4, 8), extent=(1, 1, 1))
 
-    # Create a bottom at z = -0.5 with minimum fractional cell height
-    bottom_height = -0.5
+    # Create a bottom inside the fifth cell with minimum fractional cell height
+    bottom_height = -0.47
     ϵ = 0.2
     ib = PartialCellBottom(bottom_height; minimum_fractional_cell_height=ϵ)
     ibg = ImmersedBoundaryGrid(underlying_grid, ib)
@@ -127,9 +127,8 @@ function test_partial_cell_bottom_cell_detection(FT, arch)
     # Test immersed cell detection
     @allowscalar begin
         for i in 1:4, j in 1:4, k in 1:8
-            # The partial cell criterion is different - need to check grid spacing
             immersed = _immersed_cell(i, j, k, ibg.underlying_grid, ibg.immersed_boundary)
-            @test immersed isa Bool
+            @test immersed == (k ≤ 4)
         end
     end
 
@@ -166,10 +165,8 @@ end
 function test_partial_cell_bottom_grid_spacings(FT, arch; mutable_grid = false)
     Nz = 3; Lz = 1
     if mutable_grid
-        @info "    Testing grid with a MutableVerticalDiscretization"
         underlying_grid = RectilinearGrid(arch, FT, topology=(Flat, Flat, Bounded), size=Nz, z=MutableVerticalDiscretization((-Lz, 0)))
     else
-        @info "    Testing grid with a StaticVerticalDiscretization"
         underlying_grid = RectilinearGrid(arch, FT, topology=(Flat, Flat, Bounded), size=Nz, z=(-Lz, 0))
     end
 
@@ -567,8 +564,9 @@ end
     @testset "Grid spacings and metrics" begin
         for arch in archs, FT in float_types
             @testset "Spacings [$FT, $(typeof(arch))]" begin
-                test_partial_cell_bottom_grid_spacings(FT, arch, mutable_grid=false)
-                test_partial_cell_bottom_grid_spacings(FT, arch, mutable_grid=true)
+                @testset "PartialCellBottom spacings with a $(mutable_grid ? "Mutable" : "Static")VerticalDiscretization" for mutable_grid in (false, true)
+                    test_partial_cell_bottom_grid_spacings(FT, arch; mutable_grid)
+                end
                 test_partial_cell_bottom_face_spacings(FT, arch)
 
                 for boundary_type in (GridFittedBottom, PartialCellBottom)

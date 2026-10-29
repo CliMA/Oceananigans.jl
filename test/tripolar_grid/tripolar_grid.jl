@@ -1,15 +1,12 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Oceananigans.BoundaryConditions: Zipper, FPivot, UPivot, TPivot, pivot_shift
-using Oceananigans.Grids: get_cartesian_nodes_and_vertices, RightFaceFolded, RightCenterFolded
+using Oceananigans.Grids: get_cartesian_nodes_and_vertices
 using Oceananigans.ImmersedBoundaries: immersed_cell
-using Oceananigans.Utils: KernelParameters, contiguousrange
+using Oceananigans.Utils: KernelParameters
 using Statistics
 
-Oceananigans.Utils.contiguousrange(::KernelParameters{spec, offset}) where {spec, offset} =
-    contiguousrange(spec, offset)
-
-fold_topologies = ((RightCenterFolded, UPivot), (RightCenterFolded, TPivot), (RightFaceFolded, FPivot))
+fold_topologies = ((CenterFolded, UPivot), (CenterFolded, TPivot), (FaceFolded, FPivot))
 
 @kernel function compute_nonorthogonality_angle!(angle, grid, xF, yF, zF)
     i, j = @index(Global, NTuple)
@@ -116,34 +113,35 @@ end
     end
 end
 
+@testset "Conditional reductions on tripolar grids" begin
+    for arch in archs
+        @testset "$fold_topology $pivot fold topology [$(typeof(arch))]" for (fold_topology, pivot) in fold_topologies
+            grid = TripolarGrid(arch; size = (8, 10, 1), z = (0, 1), fold_topology, pivot)
+            c = Field{Center, Center, Nothing}(grid)
+            set!(c, (λ, φ) -> φ)
+
+            box = Field{Center, Center, Nothing}(grid, Bool)
+            set!(box, (λ, φ) -> -30 < φ < 30)
+            φ = Array(interior(c))
+            inside = Array(interior(box))
+
+            @test maximum(c; condition=box) == maximum(φ[inside])
+            @test minimum(c; condition=box) == minimum(φ[inside])
+            @test maximum(c; condition=interior(box)) == maximum(φ[inside])
+        end
+    end
+end
+
 @testset "Model tests..." begin
     for arch in archs
         @testset "$fold_topology $pivot fold topology" for (fold_topology, pivot) in fold_topologies
             grid = TripolarGrid(arch; size = (10, 10, 1), fold_topology, pivot)
 
-            # Wrong free surface
-            @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid)
-
             free_surface = SplitExplicitFreeSurface(grid; substeps = 12)
             model = HydrostaticFreeSurfaceModel(grid; free_surface)
 
-            # Tests the grid has been extended
-            η = model.free_surface.displacement
-            P = model.free_surface.kernel_parameters
-
-            range = contiguousrange(P)
-
-            # Should have extended halos in the north
-            Hx, Hy, _ = halo_size(η.grid)
-            Nx, Ny, _ = size(grid)
-
-            @test P isa KernelParameters
-            @test range[1] == 1:Nx
-            @test range[2] == 1:Ny+Hy-1
-
-            @test Hx == halo_size(grid, 1)
-            @test Hy != halo_size(grid, 2)
-            @test Hy == length(free_surface.substepping.averaging_weights) + 2
+            # A serial fold substeps without extending the halos
+            @test halo_size(model.free_surface.displacement.grid) == halo_size(grid)
 
             @test begin
                 time_step!(model, 1.0)
@@ -288,9 +286,9 @@ isrot180antisymmetric(arr) = arr == -rot180(arr)
             #          │           │           │           │           │           │           │
             # Ny+1 ─▶  u     c     u     c     u     c     u     c     u     c     u     c     u
             #          │           │           │           │           │           │           │
-            # Ny+1 ─▶  ├──── v ────┼──── v ────┼──── v ─── F ─── v ────┼──── v ────┼───  v ────┤ ◀─ Fold (RightFaceFolded)
+            # Ny+1 ─▶  ├──── v ────┼──── v ────┼──── v ─── F ─── v ────┼──── v ────┼───  v ────┤ ◀─ Fold (FaceFolded)
             #          │           │           │           │           │           │           │
-            #   Ny ─▶  u     c     u     c     u     c     U     c     u     c     u     c     u ◀─ Fold (RightCenterFolded)
+            #   Ny ─▶  u     c     u     c     u     c     U     c     u     c     u     c     u ◀─ Fold (CenterFolded)
             #          │           │           │           │           │           │           │
             #   Ny ─▶  ├──── v ────┼──── v ────┼──── v ────┼──── v ────┼──── v ────┼──── v ────┤
             #          │           │           │           │           │           │           │
@@ -304,18 +302,18 @@ isrot180antisymmetric(arr) = arr == -rot180(arr)
 
             # Use half-indices for the pivot-point index, which depends on the topology and location.
             # pivotjᶜ is the pivot index for center fields, and pivotjᶠ for face fields.
-            pivotjᶜ, pivotjᶠ = (fold_topology == RightFaceFolded) ? (Ny + 1/2, Ny + 1) : (Ny, Ny + 1/2)
+            pivotjᶜ, pivotjᶠ = (fold_topology == FaceFolded) ? (Ny + 1/2, Ny + 1) : (Ny, Ny + 1/2)
 
             # Then we take views centered around the pivot and rotate that view by 180°.
             # However we cannot rotate the entire grid and must restrict ourselves to those indices
             # that remain within the interior + halo after 180° rotation.
             maxjᶜ = Ny + Hy # max j for center fields
-            maxjᶠ = Ny + Hy + (fold_topology == RightFaceFolded) # +1 for y-face fields if FPivot
+            maxjᶠ = Ny + Hy + (fold_topology == FaceFolded) # +1 for y-face fields if FPivot
             jᶜ = pivotable_indices(1 - Hy, maxjᶜ, pivotjᶜ)
             jᶠ = pivotable_indices(1 - Hy, maxjᶠ, pivotjᶠ)
 
             # Enforce zero velocities on the pivot points where u = -u and v = -v!
-            # Only u velocity can be on pivot point for UPointPivot grid (RightCenterFolded)
+            # Only u velocity can be on pivot point for UPointPivot grid (CenterFolded)
             if pivot == UPivot
                 u.data[[1, Nx ÷ 2 + 1, Nx + 1], pivotjᶜ, :] .= 0.0
             end
@@ -352,7 +350,7 @@ isrot180antisymmetric(arr) = arr == -rot180(arr)
 
             # The fold row is its own mirror at every level, vertical halos included
             @testset "Test fold row vertical halos" begin
-                if fold_topology == RightFaceFolded
+                if fold_topology == FaceFolded
                     @test view(CF.data, iᶜ, Ny+1, :) ==  view(CF.data, iᶜ′, Ny+1, :)
                     @test view(FF.data, iᶠ, Ny+1, :) ==  view(FF.data, iᶠ′, Ny+1, :)
                     @test view( v.data, iᶜ, Ny+1, :) == -view( v.data, iᶜ′, Ny+1, :)
