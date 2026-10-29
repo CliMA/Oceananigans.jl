@@ -5,6 +5,10 @@ function time_step_sharded_model(arch)
     model = sharding_test_model(arch)
     Δt = model.clock.last_Δt
 
+    @info "Compiling and running initialize!..."
+    compiled_initialize! = @compile sync=true raise=true Oceananigans.initialize!(model)
+    compiled_initialize!(model)
+
     @info "Compiling first_time_step..."
     r_first_time_step! = @compile sync=true raise=true first_time_step!(model, Δt)
 

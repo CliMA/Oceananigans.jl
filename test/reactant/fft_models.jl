@@ -26,6 +26,8 @@ using Reactant: @trace
                                topology=(Periodic, Periodic, Periodic))
         # model = NonhydrostaticModel(grid; timestepper=:QuasiAdamsBashforth2)
         model = NonhydrostaticModel(grid; timestepper=:RungeKutta3)
+        compiled_initialize! = @compile sync=true Oceananigans.initialize!(model)
+        compiled_initialize!(model)
 
         @testset "Construction" begin
             @test model isa NonhydrostaticModel
@@ -47,6 +49,8 @@ using Reactant: @trace
         grid = RectilinearGrid(reactant_arch; size=(4, 4), extent=(1, 1),
                                topology=(Periodic, Periodic, Flat))
         model = NonhydrostaticModel(grid; timestepper=:QuasiAdamsBashforth2)
+        compiled_initialize! = @compile sync=true Oceananigans.initialize!(model)
+        compiled_initialize!(model)
 
         @testset "Construction" begin
             @test model isa NonhydrostaticModel

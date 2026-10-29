@@ -35,6 +35,8 @@ using Statistics: mean
                         timestepper  = :QuasiAdamsBashforth2,
                         buoyancy     = nothing,
                         tracers      = :T)
+            compiled_initialize! = @compile sync=true Oceananigans.initialize!(model)
+            compiled_initialize!(model)
 
             @testset "Construction" begin
                 @test model isa HydrostaticFreeSurfaceModel
