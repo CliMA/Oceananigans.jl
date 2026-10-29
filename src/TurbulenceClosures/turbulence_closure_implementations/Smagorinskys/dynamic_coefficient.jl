@@ -373,8 +373,7 @@ const c = Center()
         # Compute time scale
         𝒥ᴸᴹ𝒥ᴹᴹ = 𝒥ᴸᴹ⁻ᵢⱼₖ * 𝒥ᴹᴹ⁻ᵢⱼₖ
 
-        T⁻ = convert(FT, 1.5) * Δᶠ(i, j, k, grid) / √(∜(𝒥ᴸᴹ𝒥ᴹᴹ))
-        τ = Δt / T⁻
+        τ = Δt * √(∜(𝒥ᴸᴹ𝒥ᴹᴹ)) * Δᶠ⁻¹(i, j, k, grid) / convert(FT, 1.5)
         ϵ = τ / (1 + τ)
 
         # Compute interpolation

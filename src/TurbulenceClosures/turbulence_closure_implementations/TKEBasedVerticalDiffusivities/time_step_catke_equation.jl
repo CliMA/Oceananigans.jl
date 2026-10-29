@@ -1,5 +1,5 @@
 using Oceananigans: fields
-using Oceananigans.Operators: σⁿ, σ⁻
+using Oceananigans.Operators: σⁿ, σ⁻, σ⁻¹ⁿ
 using Oceananigans.Grids: bottommost_active_node
 using Oceananigans.TimeSteppers: implicit_step!
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, SplitRungeKuttaTimeStepper
@@ -28,7 +28,6 @@ function time_step_catke_equation!(model, ::QuasiAdamsBashforth2TimeStepper, Δt
     previous_velocities = closure_fields.previous_velocities
     tracer_index = findfirst(k -> k == :e, keys(model.tracers))
     implicit_solver = model.timestepper.implicit_solver
-    active_cells_map = get_active_cells_map(grid, Val(:xyz))
 
     Δτ = get_time_step(closure)
 
@@ -56,8 +55,7 @@ function time_step_catke_equation!(model, ::QuasiAdamsBashforth2TimeStepper, Δt
         launch!(arch, grid, :xyz,
                 compute_TKE_diffusivity!,
                 κe, grid, closure,
-                model.velocities, tracers, buoyancy, closure_fields;
-                active_cells_map)
+                model.velocities, tracers, buoyancy, closure_fields)
 
         # ... and step forward.
         launch!(arch, grid, :xyz,
@@ -65,8 +63,7 @@ function time_step_catke_equation!(model, ::QuasiAdamsBashforth2TimeStepper, Δt
                 Le, grid, closure,
                 model.velocities, previous_velocities,
                 tracers, buoyancy, closure_fields,
-                Δτ, χ, Gⁿe, G⁻e;
-                active_cells_map)
+                Δτ, χ, Gⁿe, G⁻e)
 
         implicit_step!(e, implicit_solver, closure,
                        closure_fields, Val(tracer_index),
@@ -100,7 +97,6 @@ function time_step_catke_equation!(model, ::SplitRungeKuttaTimeStepper, Δt)
     previous_velocities = closure_fields.previous_velocities
     tracer_index = findfirst(k -> k == :e, keys(model.tracers))
     implicit_solver = model.timestepper.implicit_solver
-    active_cells_map = get_active_cells_map(grid, Val(:xyz))
 
     Δτ = get_time_step(closure)
 
@@ -120,8 +116,7 @@ function time_step_catke_equation!(model, ::SplitRungeKuttaTimeStepper, Δt)
         launch!(arch, grid, :xyz,
                 compute_TKE_diffusivity!,
                 κe, grid, closure,
-                model.velocities, tracers, buoyancy, closure_fields;
-                active_cells_map)
+                model.velocities, tracers, buoyancy, closure_fields)
 
         if m == 1
             # First substep: reset from cached state σe⁻
@@ -130,8 +125,7 @@ function time_step_catke_equation!(model, ::SplitRungeKuttaTimeStepper, Δt)
                     Le, σe⁻, grid, closure,
                     model.velocities, previous_velocities,
                     tracers, buoyancy, closure_fields,
-                    Δτ, Gⁿ;
-                    active_cells_map)
+                    Δτ, Gⁿ)
         else
             # Subsequent substeps: Euler increment from current state
             launch!(arch, grid, :xyz,
@@ -139,8 +133,7 @@ function time_step_catke_equation!(model, ::SplitRungeKuttaTimeStepper, Δt)
                     Le, grid, closure,
                     model.velocities, previous_velocities,
                     tracers, buoyancy, closure_fields,
-                    Δτ, Gⁿ;
-                    active_cells_map)
+                    Δτ, Gⁿ)
         end
 
         implicit_step!(e, implicit_solver, closure,
@@ -203,11 +196,11 @@ end
 
     on_bottom = bottommost_active_node(i, j, k, grid, c, c, c)
     active = !inactive_cell(i, j, k, grid)
-    Δz = Δzᶜᶜᶜ(i, j, k, grid)
+    Δz⁻¹ = Δz⁻¹ᶜᶜᶜ(i, j, k, grid)
     Cᵂϵ = closure_ij.turbulent_kinetic_energy_equation.Cᵂϵ
     e⁺ = clip(eⁱʲᵏ)
     w★ = sqrt(e⁺)
-    div_Jᵉ_e = - on_bottom * Cᵂϵ * w★ / Δz
+    div_Jᵉ_e = - on_bottom * Cᵂϵ * w★ * Δz⁻¹
 
     # Implicit TKE dissipation
     ω = dissipation_rate(i, j, k, grid, closure_ij, next_velocities, tracers, buoyancy, closure_fields)
@@ -253,7 +246,6 @@ end
 
     # Advance TKE and store tendency
     FT = eltype(χ)
-    Δτ = convert(FT, Δτ)
     e  = tracers.e
 
     # See below.
@@ -262,11 +254,12 @@ end
 
     σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
     σᶜᶜ⁻ = σ⁻(i, j, k, grid, Center(), Center(), Center())
+    σ⁻¹ᶜᶜⁿ = σ⁻¹ⁿ(i, j, k, grid, Center(), Center(), Center())
     active = !inactive_cell(i, j, k, grid)
 
     @inbounds begin
         total_Gⁿe = slow_Gⁿe[i, j, k] + fast_Gⁿe * σᶜᶜⁿ
-        e[i, j, k] += Δτ * (α * total_Gⁿe - β * G⁻e[i, j, k]) * active / σᶜᶜⁿ
+        e[i, j, k] += Δτ * (α * total_Gⁿe - β * G⁻e[i, j, k]) * active * σ⁻¹ᶜᶜⁿ
         G⁻e[i, j, k] = total_Gⁿe * active
     end
 end
@@ -285,11 +278,12 @@ end
                                  tracers, buoyancy, closure_fields)
 
     σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
+    σ⁻¹ᶜᶜⁿ = σ⁻¹ⁿ(i, j, k, grid, Center(), Center(), Center())
     active = !inactive_cell(i, j, k, grid)
 
     @inbounds begin
         total_Gⁿ = slow_Gⁿe[i, j, k] + fast_Gⁿe * σᶜᶜⁿ
-        e[i, j, k] = (σe⁻[i, j, k] + Δt * total_Gⁿ * active) / σᶜᶜⁿ
+        e[i, j, k] = (σe⁻[i, j, k] + Δt * total_Gⁿ * active) * σ⁻¹ᶜᶜⁿ
     end
 end
 
@@ -307,14 +301,12 @@ end
                                  tracers, buoyancy, closure_fields)
 
     σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
+    σ⁻¹ᶜᶜⁿ = σ⁻¹ⁿ(i, j, k, grid, Center(), Center(), Center())
     active = !inactive_cell(i, j, k, grid)
-
-    FT = eltype(grid)
-    Δτ = convert(FT, Δτ)
 
     @inbounds begin
         total_Gⁿ = slow_Gⁿe[i, j, k] + fast_Gⁿe * σᶜᶜⁿ
-        e[i, j, k] += Δτ * total_Gⁿ * active / σᶜᶜⁿ
+        e[i, j, k] += Δτ * total_Gⁿ * active * σ⁻¹ᶜᶜⁿ
     end
 end
 

@@ -1,9 +1,9 @@
 import FFTW
 
-using GPUArraysCore
 using Oceananigans.Grids: XYZRegularRG, XYRegularRG, XZRegularRG, YZRegularRG
 
 import Oceananigans.Solvers: poisson_eigenvalues, solve!, compute_preconditioner_rhs!
+using Oceananigans.Solvers: _spectral_poisson_solve!
 import Oceananigans.Architectures: architecture
 import Oceananigans.Fields: interior
 
@@ -120,8 +120,8 @@ function DistributedFFTBasedPoissonSolver(global_grid, local_grid, planner_flag=
     plan = plan_distributed_transforms(global_grid, storage, planner_flag)
 
     # We need to permute indices to apply bounded transforms on the GPU (r2r of r2c with twiddling)
-    x_buffer_needed = child_arch isa GPU && TX == Bounded
-    z_buffer_needed = child_arch isa GPU && TZ == Bounded
+    x_buffer_needed = child_arch isa GPU && TX <: BoundaryTopology
+    z_buffer_needed = child_arch isa GPU && TZ <: BoundaryTopology
 
     # We cannot really batch anything, so on GPUs we always have to permute indices in the y direction
     y_buffer_needed = child_arch isa GPU
@@ -155,13 +155,7 @@ function solve!(x, solver::DistributedFFTBasedPoissonSolver, m=0)
     λ = solver.eigenvalues
     x̂ = b̂ = parent(storage.xfield)
 
-    launch!(arch, storage.xfield.grid, :xyz, _solve_poisson_in_spectral_space!, x̂, b̂, λ[1], λ[2], λ[3], m)
-
-    # Set the zeroth wavenumber and volume mean, which are undetermined
-    # in the Poisson equation, to zero.
-    if arch.local_rank == 0 && m === 0
-        @allowscalar x̂[1, 1, 1] = 0
-    end
+    launch!(arch, storage.xfield.grid, :xyz, _spectral_poisson_solve!, x̂, b̂, λ[1], λ[2], λ[3], m)
 
     # Apply backward transforms to x̂ = parent(storage.xfield).
     solver.plan.backward.x!(parent(storage.xfield), buffer.x)
@@ -175,11 +169,6 @@ function solve!(x, solver::DistributedFFTBasedPoissonSolver, m=0)
             _copy_real_component!, x, parent(storage.zfield))
 
     return x
-end
-
-@kernel function _solve_poisson_in_spectral_space!(x̂, b̂, λx, λy, λz, m)
-    i, j, k = @index(Global, NTuple)
-    @inbounds x̂[i, j, k] = - b̂[i, j, k] / (λx[i] + λy[j] + λz[k] - m)
 end
 
 @kernel function _copy_real_component!(ϕ, ϕc)
@@ -213,7 +202,7 @@ validate_poisson_solver_distributed_grid(global_grid) =
 function validate_poisson_solver_distributed_grid(global_grid::RectilinearGrid)
     TX, TY, TZ = topology(global_grid)
 
-    if (TY == Bounded && TZ == Periodic) || (TX == Bounded && TY == Periodic) || (TX == Bounded && TZ == Periodic)
+    if (TY <: BoundaryTopology && TZ == Periodic) || (TX <: BoundaryTopology && TY == Periodic) || (TX <: BoundaryTopology && TZ == Periodic)
         throw("Distributed Poisson solvers do not support grids with topology ($TX, $TY, $TZ) at the moment.
                A Periodic z-direction requires also the y- and and x-directions to be Periodic, while a Periodic y-direction requires also
                the x-direction to be Periodic.")

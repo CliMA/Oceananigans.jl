@@ -1,7 +1,8 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Oceananigans.Grids: MutableVerticalDiscretization, required_halo_size_x, required_halo_size_y, required_halo_size_z
-using Oceananigans.Models: ZStarCoordinate, ZCoordinate, surface_kernel_parameters
+using Oceananigans.Grids: surface_kernel_parameters
+using Oceananigans.Models: ZStarCoordinate, ZCoordinate
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: update_zstar_scaling!
 using Oceananigans.TurbulenceClosures: with_tracers,
                                        IsopycnalSkewSymmetricDiffusivity,
@@ -117,6 +118,10 @@ function redi_preserves_stratification_on_zstar(arch)
     fill!(grid.z.σᶜᶠⁿ, σ)
     fill!(grid.z.σᶠᶠⁿ, σ)
     fill!(grid.z.σᶠᶜⁿ, σ)
+    fill!(grid.z.σ⁻¹ᶜᶜⁿ, 1 / σ)
+    fill!(grid.z.σ⁻¹ᶜᶠⁿ, 1 / σ)
+    fill!(grid.z.σ⁻¹ᶠᶠⁿ, 1 / σ)
+    fill!(grid.z.σ⁻¹ᶠᶜⁿ, 1 / σ)
 
     model = HydrostaticFreeSurfaceModel(grid;
                                         buoyancy = BuoyancyTracer(),

@@ -20,17 +20,17 @@ Base.@constprop :aggressive function permute_boundary_conditions(bcs)
     split_y_halo_filling = split_halo_filling(bcs.south, bcs.north)
 
     # A single assignment keeps `sides` unboxed in the closures below
-    sides, bcs_tuple = if split_x_halo_filling && split_y_halo_filling
-        (West(), East(), South(), North(), BottomAndTop()), (bcs.west, bcs.east, bcs.south, bcs.north, bcs.bottom)
+    sides = if split_x_halo_filling && split_y_halo_filling
+        (West(), East(), South(), North(), BottomAndTop())
     elseif split_x_halo_filling
-        (West(), East(), SouthAndNorth(), BottomAndTop()), (bcs.west, bcs.east, bcs.south, bcs.bottom)
+        (West(), East(), SouthAndNorth(), BottomAndTop())
     elseif split_y_halo_filling
-        (WestAndEast(), South(), North(), BottomAndTop()), (bcs.west, bcs.south, bcs.north, bcs.bottom)
+        (WestAndEast(), South(), North(), BottomAndTop())
     else
-        (WestAndEast(), SouthAndNorth(), BottomAndTop()), (bcs.west, bcs.south, bcs.bottom)
+        (WestAndEast(), SouthAndNorth(), BottomAndTop())
     end
 
-    perm = filling_order(map(fill_priority, bcs_tuple))
+    perm = filling_order(map(side -> fill_priority(extract_bc(bcs, side)...), sides))
 
     ordered_sides = ntuple(Val(length(sides))) do n
         Base.@_inline_meta
@@ -92,18 +92,22 @@ const OBCTC = Union{NFBC, Tuple{NFBC, Vararg{NFBC}}}
 
 # Order of halo filling (see `fill_priority`)
 # 0) Nothing / no-op (Face on Bounded axis — no halo needed)
-# 1) Flux, Value, Gradient (TODO: remove these BC and apply them as fluxes)
-# 2) Periodic (PBCT)
-# 3) Shared Communication (MCBCT)
-# 4) Distributed Communication (DCBCT)
+# 1) Zipper, which overwrites the redundant half of the fold row that the other halos copy from
+# 2) Flux, Value, Gradient (TODO: remove these BC and apply them as fluxes)
+# 3) Periodic (PBCT)
+# 4) Shared Communication (MCBCT)
+# 5) Distributed Communication (DCBCT)
 
 # Sides are filled by increasing priority; among equal priorities, the side listed last goes first.
+# A two-sided fill takes the lower priority of its two boundary conditions.
 # Everything here folds at compile time because the priorities depend only on the boundary condition types.
+@inline fill_priority(bc₁, bc₂)  = min(fill_priority(bc₁), fill_priority(bc₂))
 @inline fill_priority(::Nothing) = 0
-@inline fill_priority(bc)        = 1
-@inline fill_priority(::PBCT)    = 2
-@inline fill_priority(::MCBCT)   = 3
-@inline fill_priority(::DCBCT)   = 4
+@inline fill_priority(::ZBC)     = 1
+@inline fill_priority(bc)        = 2
+@inline fill_priority(::PBCT)    = 3
+@inline fill_priority(::MCBCT)   = 4
+@inline fill_priority(::DCBCT)   = 5
 
 @inline fills_before((p₁, i₁), (p₂, i₂)) = p₁ < p₂ || (p₁ == p₂ && i₁ > i₂)
 

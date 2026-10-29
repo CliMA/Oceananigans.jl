@@ -14,7 +14,7 @@ using Oceananigans.Fields: ZFaceField
 using Oceananigans.Grids: AbstractGrid, StaticVerticalDiscretization, OrthogonalSphericalShellGrid, Periodic, RectilinearGrid
 using Oceananigans.Operators: Δzᶜᶠᶜ, Δzᶠᶜᶜ
 using Oceananigans.TimeSteppers: TimeSteppers, SplitRungeKuttaTimeStepper, SplitRungeKuttaName, QuasiAdamsBashforth2TimeStepper
-using Oceananigans.Utils: Utils, launch!, @apply_regionally
+using Oceananigans.Utils: Utils, launch!, foreach_name, @apply_regionally
 
 import Oceananigans: fields, prognostic_fields, initialize!
 import Oceananigans.Advection: cell_advection_timescale

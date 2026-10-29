@@ -148,6 +148,9 @@ ranks(r::Int)        = r
 ranks(r::Sizes)      = length(r.sizes)
 ranks(r::Fractional) = length(r.sizes)
 
+Base.isodd(r::Sizes) = isodd(length(r.sizes))
+Base.isodd(r::Fractional) = isodd(length(r.sizes))
+
 Base.size(p::Partition) = ranks(p)
 
 # If a direction has only 1 rank, then it is not partitioned
@@ -166,12 +169,12 @@ validate_partition(::Equal, ::Equal, ::Equal) = throw_multiple_equal()
 throw_multiple_equal() = throw(ArgumentError("Equal() can be used for only one direction"))
 
 function remaining_workers(r1, r2)
-    MPI.Initialized() || MPI.Init()
+    MPI.Initialized() || MPI.Init(; threadlevel = has_spare_thread() ? :multiple : :serialized)
     r12 = ranks(r1) * ranks(r2)
     return MPI.Comm_size(MPI.COMM_WORLD) ÷ r12
 end
 
-struct Distributed{A, S, Δ, R, ρ, I, C, γ, M, T, D} <: AbstractArchitecture
+struct Distributed{A, S, Δ, R, ρ, I, C, γ, T, D} <: AbstractArchitecture
     child_architecture :: A
     partition :: Δ
     ranks :: R
@@ -179,8 +182,7 @@ struct Distributed{A, S, Δ, R, ρ, I, C, γ, M, T, D} <: AbstractArchitecture
     local_index :: I
     connectivity :: C
     communicator :: γ
-    mpi_requests :: M
-    mpi_tag :: T
+    field_count :: T
     devices :: D
 
     Distributed{S}(child_architecture :: A,
@@ -190,18 +192,16 @@ struct Distributed{A, S, Δ, R, ρ, I, C, γ, M, T, D} <: AbstractArchitecture
                    local_index :: I,
                    connectivity :: C,
                    communicator :: γ,
-                   mpi_requests :: M,
-                   mpi_tag :: T,
-                   devices :: D) where {S, A, Δ, R, ρ, I, C, γ, M, T, D} =
-                   new{A, S, Δ, R, ρ, I, C, γ, M, T, D}(child_architecture,
+                   field_count :: T,
+                   devices :: D) where {S, A, Δ, R, ρ, I, C, γ, T, D} =
+                   new{A, S, Δ, R, ρ, I, C, γ, T, D}(child_architecture,
                                                         partition,
                                                         ranks,
                                                         local_rank,
                                                         local_index,
                                                         connectivity,
                                                         communicator,
-                                                        mpi_requests,
-                                                        mpi_tag,
+                                                        field_count,
                                                         devices)
 end
 
@@ -251,11 +251,12 @@ function Distributed(child_architecture = CPU();
                      partition = nothing,
                      devices = nothing,
                      communicator = nothing,
-                     synchronized_communication = false)
+                     synchronized_communication = false,
+                     field_count = Threads.Atomic{UInt64}(0))
 
     if !(MPI.Initialized())
         @info "MPI has not been initialized, so we are calling MPI.Init()."
-        MPI.Init()
+        MPI.Init(; threadlevel = has_spare_thread() ? :multiple : :serialized)
     end
 
     if isnothing(communicator) # default communicator
@@ -295,8 +296,6 @@ function Distributed(child_architecture = CPU();
         isnothing(devices) ? device!(child_architecture, node_rank % ndevices(child_architecture)) : device!(child_architecture, devices[node_rank+1])
     end
 
-    mpi_requests = MPI.Request[]
-
     return Distributed{synchronized_communication}(child_architecture,
                                                    partition,
                                                    ranks,
@@ -304,8 +303,7 @@ function Distributed(child_architecture = CPU();
                                                    local_index,
                                                    local_connectivity,
                                                    communicator,
-                                                   mpi_requests,
-                                                   Ref(0),
+                                                   field_count,
                                                    devices)
 end
 
@@ -338,8 +336,7 @@ synchronized(arch::Distributed) = Distributed{true}(child_architecture(arch),
                                                     arch.local_index,
                                                     arch.connectivity,
                                                     arch.communicator,
-                                                    arch.mpi_requests,
-                                                    arch.mpi_tag,
+                                                    arch.field_count,
                                                     arch.devices)
 
 cpu_architecture(arch::DistributedCPU) = arch
@@ -351,9 +348,23 @@ cpu_architecture(arch::Distributed{A, S}) where {A, S} =
                    arch.local_index,
                    arch.connectivity,
                    arch.communicator,
-                   arch.mpi_requests,
-                   arch.mpi_tag,
+                   arch.field_count,
                    nothing) # No devices on the CPU
+
+# Fields of architectures sharing `field_count` (e.g. `twin_grid`s) get distinct tags, as long as all ranks create them in the same order
+next_field_tag!(arch::Distributed) = Threads.atomic_add!(arch.field_count, UInt64(1))
+
+# Fail loudly instead of hanging in the first halo exchange: called where all ranks meet, e.g. `initialize!(::Simulation)`
+check_field_tags(arch) = nothing
+check_field_tags(arch::Distributed) = check_field_tags(arch.communicator, arch.field_count[])
+check_field_tags(communicator, field_count) = nothing # e.g. Reactant meshes
+
+function check_field_tags(communicator::MPI.Comm, field_count)
+    MPI.Allreduce(field_count, min, communicator) == MPI.Allreduce(field_count, max, communicator) ||
+        throw(ArgumentError("MPI ranks created different numbers of distributed fields, so their halo exchanges would never match. " *
+                            "All ranks must create the same distributed fields, in the same order."))
+    return nothing
+end
 
 #####
 ##### Converting between index and MPI rank taking k as the fast index
@@ -394,8 +405,8 @@ Generate a `NeighboringRanks` object that holds the MPI ranks of the neighboring
 NeighboringRanks(; east, west, north, south, southwest, southeast, northwest, northeast) =
     NeighboringRanks(east, west, north, south, southwest, southeast, northwest, northeast)
 
-# The "Periodic" topologies are `Periodic`, `FullyConnected` and `RightConnected`
-# The "Bounded" topologies are `Bounded` and `LeftConnected`
+# The "Periodic" topologies are `Periodic` and those connected on the right
+# The "Bounded" topologies are those bounded on the right
 function increment_index(i, R)
     R == 1 && return nothing
     if i+1 > R
@@ -460,12 +471,20 @@ function Base.show(io::IO, arch::Distributed)
     last_rank = Nr - 1
 
     rank_info = if last_rank == 0
-        "1 rank:"
+        "1 rank"
     else
-        "$Nr = $Rx×$Ry×$Rz ranks:"
+        "$Nr = $Rx×$Ry×$Rz ranks"
     end
 
-    print(io, summary(arch), " across ", rank_info, '\n')
+    sync_type = if arch isa SynchronizedDistributed
+        "synchronous"
+    elseif arch isa AsynchronousDistributed
+        "asynchronous"
+    else
+        "unknown"
+    end
+
+    print(io, summary(arch), " across ", rank_info, ", with $sync_type communications:", '\n')
     print(io, "├── local_rank: ", local_rank, " of 0-$last_rank", '\n')
 
     ix, iy, iz = arch.local_index

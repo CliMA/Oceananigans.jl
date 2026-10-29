@@ -75,7 +75,7 @@ function internal_wave_dynamics_test(model, solution, Δt)
 
     set!(model, u=u₀, v=v₀, w=w₀, b=b₀)
 
-    simulation = Simulation(model, stop_iteration=10, Δt=Δt)
+    simulation = Simulation(model; stop_iteration=10, Δt, verbose=false)
 
     # Pesky NaNChecker
     pop!(simulation.callbacks, :nan_checker)

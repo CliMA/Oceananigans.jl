@@ -10,7 +10,7 @@ using SeawaterPolynomials: SeawaterPolynomials, ρ′, thermal_expansion, haline
 
 using Oceananigans: Oceananigans
 using Oceananigans.Operators: ℑxᶠᵃᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶠ, ∂xᵣᶠᶜᶜ, ∂yᵣᶜᶠᶜ, ∂xᶠᶜᶜ, ∂yᶜᶠᶜ, ∂zᶜᶜᶠ
-using Oceananigans.BoundaryConditions: total_boundary_flux
+using Oceananigans.BoundaryConditions: total_boundary_flux, Bottom, Top
 
 """
     AbstractBuoyancyFormulation{EOS}
@@ -30,7 +30,7 @@ function validate_buoyancy(buoyancy, tracers)
     req_tracers = required_tracers(buoyancy)
 
     all(tracer ∈ tracers for tracer in req_tracers) ||
-        error("$(req_tracers) must be among the list of tracers to use $(typeof(buoyancy).name.wrapper)")
+        error("$(req_tracers) must be among the list of tracers to use $(nameof(typeof(buoyancy)))")
 
     return nothing
 end

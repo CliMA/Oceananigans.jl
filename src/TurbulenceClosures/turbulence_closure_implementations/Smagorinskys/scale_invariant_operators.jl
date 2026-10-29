@@ -1,6 +1,6 @@
 using Oceananigans.TurbulenceClosures: Σ₁₁, Σ₂₂, Σ₃₃, Σ₁₂, Σ₁₃, Σ₂₃
 using Oceananigans.TurbulenceClosures: tr_Σ², Σ₁₂², Σ₁₃², Σ₂₃²
-using Oceananigans.Operators: volume, ∂xᶜᶜᶜ, ∂xᶠᶜᶠ, ∂xᶠᶠᶜ, ∂yᶜᶜᶜ, ∂yᶜᶠᶠ, ∂yᶠᶠᶜ, ∂zᶜᶜᶜ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ
+using Oceananigans.Operators: volume, V⁻¹, ∂xᶜᶜᶜ, ∂xᶠᶜᶠ, ∂xᶠᶠᶜ, ∂yᶜᶜᶜ, ∂yᶜᶠᶠ, ∂yᶠᶠᶜ, ∂zᶜᶜᶜ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ
 
 #####
 ##### Double dot product of strain on cell edges (currently unused)
@@ -150,6 +150,7 @@ const AG = AbstractGrid
 const ᾱ² = 4
 const β  = 1
 @inline Δᶠ(i, j, k, grid) = ∛volume(i, j, k, grid, Center(), Center(), Center())
+@inline Δᶠ⁻¹(i, j, k, grid) = ∛V⁻¹(i, j, k, grid, Center(), Center(), Center())
 @inline M₁₁ᶜᶜᶜ(i, j, k, grid, u, v, w, Σᶜᶜᶜ, Σ̄ᶜᶜᶜ) = 2*Δᶠ(i, j, k, grid)^2 * (var"⟨ΣΣ₁₁⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Σᶜᶜᶜ) - ᾱ² * β * Σ̄Σ̄₁₁ᶜᶜᶜ(i, j, k, grid, u, v, w, Σ̄ᶜᶜᶜ))
 @inline M₂₂ᶜᶜᶜ(i, j, k, grid, u, v, w, Σᶜᶜᶜ, Σ̄ᶜᶜᶜ) = 2*Δᶠ(i, j, k, grid)^2 * (var"⟨ΣΣ₂₂⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Σᶜᶜᶜ) - ᾱ² * β * Σ̄Σ̄₂₂ᶜᶜᶜ(i, j, k, grid, u, v, w, Σ̄ᶜᶜᶜ))
 @inline M₃₃ᶜᶜᶜ(i, j, k, grid, u, v, w, Σᶜᶜᶜ, Σ̄ᶜᶜᶜ) = 2*Δᶠ(i, j, k, grid)^2 * (var"⟨ΣΣ₃₃⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Σᶜᶜᶜ) - ᾱ² * β * Σ̄Σ̄₃₃ᶜᶜᶜ(i, j, k, grid, u, v, w, Σ̄ᶜᶜᶜ))
