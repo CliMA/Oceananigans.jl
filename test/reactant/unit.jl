@@ -5,6 +5,7 @@ using Statistics: mean
 using Oceananigans.OutputReaders: cpu_interpolating_time_indices, Clamp, Cyclical, update_field_time_series!, InMemory,
                                   TimeSeriesInterpolation
 using Oceananigans.Units: Time
+using Oceananigans.Utils: initialize_on_construction!
 
 arch = ReactantState()
 
@@ -13,6 +14,18 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
 @testset "Reactant unit tests" begin
     @testset "Checkbounds = auto" begin
         @test Base.JLOptions().check_bounds == 0
+    end
+
+    @testset "Construction leaves initialization to the compiled program" begin
+        initialized = Ref(false)
+        mark_initialized!(flag) = (flag[] = true; nothing)
+
+        initialize_on_construction!(CPU(), mark_initialized!, initialized)
+        @test initialized[]
+
+        initialized[] = false
+        initialize_on_construction!(arch, mark_initialized!, initialized)
+        @test !initialized[]
     end
 
     @info "Performing Reactanigans unit tests..."

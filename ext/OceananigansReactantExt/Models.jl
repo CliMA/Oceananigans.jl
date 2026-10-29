@@ -10,8 +10,13 @@ import Oceananigans: initialize!
 using Oceananigans.Architectures: ReactantState
 using Oceananigans.DistributedComputations: Distributed
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel
+using Oceananigans.Models.NonhydrostaticModels: NonhydrostaticModel
+using Oceananigans.Models.ShallowWaterModels: ShallowWaterModel
+using Oceananigans.TimeSteppers: update_state!
+using Oceananigans.TurbulenceClosures: initialize_closure_fields!
 
 using ..TimeSteppers: ReactantModel
+import ..TimeSteppers: initialize_state!
 using ..Grids: ShardedGrid, ShardedDistributed
 
 import Oceananigans.Models:
@@ -25,10 +30,33 @@ const ReactantHFSM{TS, E} = Union{
     HydrostaticFreeSurfaceModel{TS, E, <:ShardedDistributed},
 }
 
-function initialize!(model::ReactantHFSM)
-    reconcile_state!(model)
+const ReactantNonhydrostaticModel{TS, E} = Union{
+    NonhydrostaticModel{TS, E, <:ReactantState},
+    NonhydrostaticModel{TS, E, <:ShardedDistributed},
+}
+
+const ReactantShallowWaterModel = Union{
+    ShallowWaterModel{<:Any, <:ReactantState},
+    ShallowWaterModel{<:Any, <:ShardedDistributed},
+}
+
+const OceananigansReactantModel = Union{ReactantHFSM, ReactantNonhydrostaticModel, ReactantShallowWaterModel}
+
+# On ReactantState construction runs no kernels (`initialize_on_construction!`), so `initialize!` also
+# runs the `update_state!` that construction runs on other architectures. Idempotent.
+initialize!(model::ReactantHFSM) = initialize_state!(model)
+initialize!(model::ReactantNonhydrostaticModel) = initialize_state!(model)
+initialize!(model::ReactantShallowWaterModel) = initialize_state!(model)
+
+function initialize_state!(model::OceananigansReactantModel, callbacks=[])
+    prepare_initial_state!(model)
+    update_state!(model, callbacks)
     return nothing
 end
+
+prepare_initial_state!(model::ReactantHFSM) = reconcile_state!(model)
+prepare_initial_state!(model::ReactantNonhydrostaticModel) = initialize_closure_fields!(model.closure_fields, model.closure, model)
+prepare_initial_state!(model::ReactantShallowWaterModel) = nothing
 
 # No-op for Reactant: the iteration == 0 check evaluates at trace time,
 # causing a redundant update_state! to be compiled into every time_step!.

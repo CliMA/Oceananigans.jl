@@ -33,6 +33,15 @@ instantiate(t) = t
 # definition does.
 unparameterized_type(T::Type) = getglobal(parentmodule(T), nameof(T))
 
+"""
+$(TYPEDSIGNATURES)
+
+Call `initialize!(args...)` while an object is constructed on `arch`. On `ReactantState`
+(OceananigansReactantExt) construction skips it: outside a compiled program every kernel launch
+is compiled on its own, so the work is left to a compiled `initialize!(model)`.
+"""
+initialize_on_construction!(arch, initialize!, args...) = initialize!(args...)
+
 function get_active_cells_map end
 
 #####

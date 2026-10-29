@@ -14,7 +14,7 @@ using Oceananigans.Solvers: FFTBasedPoissonSolver
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!, materialize_clock!, AbstractLagrangianParticles, time_discretization
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_closure_fields, implicit_diffusion_solver, VerticallyImplicitTimeDiscretization, initialize_closure_fields!
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE
-using Oceananigans.Utils: tupleit
+using Oceananigans.Utils: tupleit, initialize_on_construction!
 
 import Oceananigans: prognostic_state, restore_prognostic_state!
 import Oceananigans.Architectures: architecture
@@ -132,6 +132,15 @@ Keyword arguments
   - `pressure_solver`: Pressure solver to be used in the model. If `nothing` (default), the model constructor
     chooses the default based on the `grid` provide.
   - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `NamedTuple()`
+
+Initialization
+==============
+
+Construction ends with `update_state!(model)` and initializes the closure fields, so the
+diagnostics and tendencies are consistent with the fields. On `ReactantState` construction launches no kernels: `initialize!(model)`,
+which there also runs `update_state!`, is compiled and run before time stepping,
+`Reactant.@compile sync=true initialize!(model)`. `first_time_step!`, `initialize!(simulation)` and
+`run!(simulation)` do this themselves. `initialize!` is idempotent.
 """
 function NonhydrostaticModel(grid;
                              clock = Clock(grid),
@@ -360,8 +369,8 @@ function build_nonhydrostatic_model(grid, ::Val{tracer_names}, timestepper,
                                 advecting_vertical_velocity)
 
     materialize_clock!(clock, timestepper)
-    update_state!(model)
-    initialize_closure_fields!(model.closure_fields, model.closure, model)
+    initialize_on_construction!(arch, update_state!, model)
+    initialize_on_construction!(arch, initialize_closure_fields!, model.closure_fields, model.closure, model)
 
     return model
 end

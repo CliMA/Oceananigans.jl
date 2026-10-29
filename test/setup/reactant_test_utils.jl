@@ -66,7 +66,8 @@ function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw;
     # It's complicated to test this currently because the halo
     # regions have different paddings, so we don't do it.
 
-    @jit Oceananigans.TimeSteppers.update_state!(r_model)
+    compiled_initialize! = @compile sync=true Oceananigans.initialize!(r_model)
+    compiled_initialize!(r_model)
 
     # Test that fields were set correctly
     @info "  After setting an initial condition:"

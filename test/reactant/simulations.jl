@@ -41,6 +41,8 @@ end
     ui = randn(size(model.velocities.u)...)
     vi = randn(size(model.velocities.v)...)
     set!(model, u=ui, v=vi)
+    compiled_initialize! = @compile sync=true Oceananigans.initialize!(model)
+    compiled_initialize!(model)
 
     @jit simple_tendency!(model)
 
@@ -112,6 +114,8 @@ end
     vi = randn(size(model.velocities.v)...)
     set!(model, u=ui, v=vi)
     set!(r_model, u=ui, v=vi)
+    compiled_initialize! = @compile sync=true Oceananigans.initialize!(r_model)
+    compiled_initialize!(r_model)
 
     Δt = 1e-6 * minimum_xspacing(grid)
     stop_iteration = 4
@@ -152,6 +156,8 @@ end
         ui = randn(size(model.velocities.u)...)
         set!(model, u=ui)
         set!(r_model, u=ui)
+        compiled_initialize! = @compile sync=true Oceananigans.initialize!(r_model)
+        compiled_initialize!(r_model)
 
         Δt = 1e-3
         simulation = Simulation(model; Δt, stop_iteration=5, verbose=false)
@@ -181,6 +187,8 @@ end
         vi = randn(size(model.velocities.v)...)
         set!(model, u=ui, v=vi)
         set!(r_model, u=ui, v=vi)
+        compiled_initialize! = @compile sync=true Oceananigans.initialize!(r_model)
+        compiled_initialize!(r_model)
         return model, r_model
     end
 
@@ -272,6 +280,8 @@ Oceananigans.Simulations.finalize!(bookends::EnergyBookends, sim) = (bookends.fi
     vi = randn(size(model.velocities.v)...)
     set!(model, u=ui, v=vi)
     set!(r_model, u=ui, v=vi)
+    compiled_initialize! = @compile sync=true Oceananigans.initialize!(r_model)
+    compiled_initialize!(r_model)
 
     Δt = 1e-6 * minimum_xspacing(grid)
     stop_iteration = 4
@@ -310,6 +320,10 @@ end
         grid = RectilinearGrid(arch; rectilinear_kw...)
         model = HydrostaticFreeSurfaceModel(grid; model_kw...)
         set!(model, u=ui, v=vi, T=Ti)
+        if arch isa ReactantState
+            compiled_initialize! = @compile sync=true Oceananigans.initialize!(model)
+            compiled_initialize!(model)
+        end
         return model
     end
 

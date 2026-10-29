@@ -22,6 +22,8 @@ using Statistics: mean
         model = HydrostaticFreeSurfaceModel(grid;
                     buoyancy = nothing,
                     tracers = :T)
+        compiled_initialize! = @compile sync=true Oceananigans.initialize!(model)
+        compiled_initialize!(model)
 
         @test model isa HydrostaticFreeSurfaceModel
         @test model.grid.architecture isa ReactantState
@@ -32,6 +34,8 @@ using Statistics: mean
         model = HydrostaticFreeSurfaceModel(grid;
                     buoyancy = nothing,
                     tracers = :T)
+        compiled_initialize! = @compile sync=true Oceananigans.initialize!(model)
+        compiled_initialize!(model)
 
         Δt = 60.0
         Nt = 4
@@ -45,6 +49,8 @@ using Statistics: mean
         model = HydrostaticFreeSurfaceModel(grid;
                     buoyancy = BuoyancyTracer(),
                     tracers = :b)
+        compiled_initialize! = @compile sync=true Oceananigans.initialize!(model)
+        compiled_initialize!(model)
 
         Δt = 60.0
         Nt = 4
@@ -66,6 +72,8 @@ using Statistics: mean
         b_init = CenterField(grid)
         set!(b_init, z -> 1e-5 * z)
         set!(model, b=b_init)
+        compiled_initialize! = @compile sync=true Oceananigans.initialize!(model)
+        compiled_initialize!(model)
 
         Δt = 60.0
         Nt = 4
@@ -84,6 +92,8 @@ using Statistics: mean
                     tracers = :b)
 
         set!(model, b=z -> 1e-5 * z, e=1e-6, ϵ=1e-9)
+        compiled_initialize! = @compile sync=true Oceananigans.initialize!(model)
+        compiled_initialize!(model)
 
         compiled_run! = @compile raise=true raise_first=true sync=true run_timesteps!(model, 60.0, 10)
         compiled_run!(model, 60.0, 10)
@@ -96,6 +106,8 @@ using Statistics: mean
         model = HydrostaticFreeSurfaceModel(grid;
                     buoyancy = nothing,
                     tracers = :T)
+        compiled_initialize! = @compile sync=true Oceananigans.initialize!(model)
+        compiled_initialize!(model)
 
         dmodel = Enzyme.make_zero(model)
 

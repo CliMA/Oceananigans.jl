@@ -296,6 +296,31 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
         end
     end
 
+    @testset "HydrostaticFreeSurfaceModel initialize! restores the constructed state" begin
+        @info "Testing that a compiled initialize! gives the state construction gives eagerly..."
+        kw = (size=(8, 8, 4), halo=(3, 3, 3), x=(0, 1e5), y=(0, 1e5), z=(-100, 0), topology=(Periodic, Periodic, Bounded))
+        vanilla_grid = RectilinearGrid(vanilla_arch; kw...)
+        reactant_grid = RectilinearGrid(reactant_arch; kw...)
+
+        # A wind stress makes the constructed u tendency nonzero
+        u_bcs = FieldBoundaryConditions(top=FluxBoundaryCondition(-1e-4))
+        free_surface = SplitExplicitFreeSurface(vanilla_grid; substeps = 10)
+        model_kw = (; free_surface, coriolis=FPlane(f=1e-4), boundary_conditions=(; u=u_bcs))
+
+        vanilla_model = HydrostaticFreeSurfaceModel(vanilla_grid; model_kw...)
+        reactant_model = HydrostaticFreeSurfaceModel(reactant_grid; model_kw...)
+
+        @test any(!iszero, Array(interior(vanilla_model.timestepper.Gⁿ.u)))
+        @test all(iszero, Array(interior(reactant_model.timestepper.Gⁿ.u)))
+
+        compiled_initialize! = @compile sync=true Oceananigans.initialize!(reactant_model)
+        compiled_initialize!(reactant_model)
+        @test compare_interior("Gu", vanilla_model.timestepper.Gⁿ.u, reactant_model.timestepper.Gⁿ.u)
+
+        compiled_initialize!(reactant_model)
+        @test compare_interior("Gu", vanilla_model.timestepper.Gⁿ.u, reactant_model.timestepper.Gⁿ.u)
+    end
+
     # HydrostaticFreeSurfaceModel time-stepping tests commented out:
     # Reactant compilation fails with "'llvm.call' op incorrect number of operands"
     # during @jit update_state!(model). This affects all topologies and is a
@@ -372,7 +397,8 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
                         run!(vanilla_simulation)
 
                         # Compile and run Reactant simulation
-                        @jit Oceananigans.TimeSteppers.update_state!(reactant_model)
+                        compiled_initialize! = @compile sync=true Oceananigans.initialize!(reactant_model)
+                        compiled_initialize!(reactant_model)
 
                         r_first_time_step! = @compile sync=true Oceananigans.TimeSteppers.first_time_step!(reactant_model, Δt)
                         r_time_step! = @compile sync=true Oceananigans.TimeSteppers.time_step!(reactant_model, Δt)

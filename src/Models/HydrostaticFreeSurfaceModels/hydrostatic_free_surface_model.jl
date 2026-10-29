@@ -13,7 +13,7 @@ using Oceananigans.TimeSteppers: Clock, TimeStepper, AbstractLagrangianParticles
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_closure_fields, add_closure_specific_boundary_conditions,
                                        implicit_diffusion_solver, VerticallyImplicitTimeDiscretization,
                                        closure_required_tracers, initialize_closure_fields!
-using Oceananigans.Utils: tupleit
+using Oceananigans.Utils: tupleit, initialize_on_construction!
 
 import Oceananigans
 import Oceananigans: initialize!, prognostic_state, restore_prognostic_state!
@@ -141,6 +141,15 @@ Keyword arguments
                            Default: `default_vertical_coordinate(grid)`, which returns `ZStarCoordinate(grid)`
                            for grids with `MutableVerticalDiscretization` otherwise returns
                            `ZCoordinate()`.
+
+Initialization
+==============
+
+Construction ends with `update_state!(model)`, so the diagnostics and tendencies are
+consistent with the fields. On `ReactantState` construction launches no kernels: `initialize!(model)`,
+which there also runs `update_state!`, is compiled and run before time stepping,
+`Reactant.@compile sync=true initialize!(model)`. `first_time_step!`, `initialize!(simulation)` and
+`run!(simulation)` do this themselves. `initialize!` is idempotent.
 """
 function HydrostaticFreeSurfaceModel(grid;
                                      clock = Clock(grid),
@@ -349,7 +358,7 @@ function build_hydrostatic_free_surface_model(grid, ::Val{tracer_names}, timeste
                                         boundary_transport)
 
     materialize_clock!(clock, timestepper)
-    update_state!(model)
+    initialize_on_construction!(arch, update_state!, model)
 
     return model
 end
