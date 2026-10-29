@@ -311,7 +311,7 @@ end
     @inbounds begin
         η₁ = η[i₁, j₁, k₁]
         H  = column_depthᶜᶜᵃ(i₁, j₁, k₁, grid, η)
-        C  = sqrt(g * max(H, zero(H))) * Δt / boundary_spacing(side, grid, i, j)
+        C  = sqrt(g * max(H, zero(H))) * Δt * reciprocal_boundary_spacing(side, grid, i, j)
         η[iᵇ, jᵇ, kᵇ] = (bc.classification.scheme.φᵇ[i, j] + C * η₁) / (1 + C)
     end
 

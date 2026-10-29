@@ -1,6 +1,6 @@
 using Oceananigans: defaults, instantiated_location
 using Oceananigans.Grids: column_depthᶠᶜᵃ, column_depthᶜᶠᵃ, column_depthᶜᶜᵃ, immersed_peripheral_node
-using Oceananigans.Operators: Δxᶠᶜᶜ, Δyᶜᶠᶜ, Δzᶜᶜᶠ
+using Oceananigans.Operators: Δx⁻¹ᶠᶜᶜ, Δy⁻¹ᶜᶠᶜ, Δz⁻¹ᶜᶜᶠ
 
 #####
 ##### Open boundary schemes whose exterior state is prognostic: the time stepper caches, steps and initializes it, and the
@@ -35,10 +35,10 @@ const AFA = Tuple{Any, Face, Any}
 @inline normal_velocity(side::Union{South, North}, model_fields, grid, n, i, k) = @inbounds model_fields.v[i, normal_index(side, Face(), grid.Ny, n), k]
 @inline normal_velocity(side::Union{Bottom, Top},  model_fields, grid, n, i, j) = @inbounds model_fields.w[i, j, normal_index(side, Face(), grid.Nz, n)]
 
-# Spacing between the exterior state and the first interior value
-@inline boundary_spacing(side::Union{West, East},   grid, j, k) = Δxᶠᶜᶜ(normal_index(side, Face(), grid.Nx, 0), j, k, grid)
-@inline boundary_spacing(side::Union{South, North}, grid, i, k) = Δyᶜᶠᶜ(i, normal_index(side, Face(), grid.Ny, 0), k, grid)
-@inline boundary_spacing(side::Union{Bottom, Top},  grid, i, j) = Δzᶜᶜᶠ(i, j, normal_index(side, Face(), grid.Nz, 0), grid)
+# Reciprocal of the spacing between the exterior state and the first interior value
+@inline reciprocal_boundary_spacing(side::Union{West, East},   grid, j, k) = Δx⁻¹ᶠᶜᶜ(normal_index(side, Face(), grid.Nx, 0), j, k, grid)
+@inline reciprocal_boundary_spacing(side::Union{South, North}, grid, i, k) = Δy⁻¹ᶜᶠᶜ(i, normal_index(side, Face(), grid.Ny, 0), k, grid)
+@inline reciprocal_boundary_spacing(side::Union{Bottom, Top},  grid, i, j) = Δz⁻¹ᶜᶜᶠ(i, j, normal_index(side, Face(), grid.Nz, 0), grid)
 
 # Component of a boundary-normal velocity pointing out of the domain
 @inline outward(::Union{West, South, Bottom}, U) = -U

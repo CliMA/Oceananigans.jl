@@ -163,7 +163,7 @@ end
 
         n  = ifelse(radiation.use_boundary_velocity, 0, 1)
         Uᵃ = advecting_velocity(bc, side, model_fields, grid, n, i, j, φ₁ⁿ⁺¹)
-        Cᵃ = abs(Uᵃ) * Δt / boundary_spacing(side, grid, i, j)
+        Cᵃ = abs(Uᵃ) * Δt * reciprocal_boundary_spacing(side, grid, i, j)
         outflow = outward(side, Uᵃ) >= 0
 
         φᵇⁿ⁺¹ = radiation_update(radiation, side, i, j, radiation.φᵇ[i, j], φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, radiation.φ₁[i, j], φᵉˣᵗ, Δt, outflow, Cᵃ)
