@@ -21,7 +21,7 @@
 #####
 
 using Oceananigans.Grids: XRegularRG, YRegularRG, ZRegularRG, Flat, inactive_node, topology
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, PartialCellVerticalBoundaries
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, PartialCellBottom
 using Oceananigans.Operators: Δxᶜᶜᶜ, Δyᶜᶜᶜ, Δzᶜᶜᶜ,
                               ∂xᵣᶠᶜᶜ, ∂xᵣᶜᶜᶜ, ∂xᵣᶠᶠᶜ, ∂xᵣᶠᶜᶠ,
                               ∂yᵣᶜᶠᶜ, ∂yᵣᶠᶠᶜ, ∂yᵣᶜᶜᶜ, ∂yᵣᶜᶠᶠ,
@@ -53,7 +53,7 @@ used to compute the diffusive and viscous fluxes of `closure`.
 @inline z_diffusion_order(ibg::ImmersedBoundaryGrid, order::Val{4}) = z_diffusion_order(ibg.underlying_grid, order)
 
 # Partial cells change the vertical spacing near the immersed boundary
-const PartialCellIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:PartialCellVerticalBoundaries}
+const PartialCellIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:PartialCellBottom}
 @inline z_diffusion_order(::PartialCellIBG, ::Val{4}) = Val(2)
 
 #####
