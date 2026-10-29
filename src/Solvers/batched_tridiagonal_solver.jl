@@ -112,6 +112,13 @@ Press William, H., Teukolsky Saul, A., Vetterling William, T., & Flannery Brian,
 """
 function solve!(ϕ, solver::BatchedTridiagonalSolver, rhs, args...)
 
+    if solver.tridiagonal_direction isa ZDirection && shared_thomas_scratch(architecture(solver), solver.grid, solver.t)
+        launch_shared_column_solve!(solve_batched_tridiagonal_system_shared_kernel!, architecture(solver), solver.grid,
+                                    (ϕ, solver.a, solver.b, solver.c, rhs, solver.t, solver.grid, solver.parameters,
+                                     Tuple(args), solver.tridiagonal_direction))
+        return nothing
+    end
+
     launch_config = if solver.tridiagonal_direction isa XDirection
                         :yz
                     elseif solver.tridiagonal_direction isa YDirection
@@ -286,6 +293,65 @@ end
     end
 
     return nothing
+end
+
+#####
+##### The `ZDirection` sweep with its Thomas scratch in shared memory (handoff P01, Breeze 42166bec; tier A)
+#####
+##### The forward sweep stores tₖ = cₖ₋₁/β only for the back-substitution of the same column; nothing else reads
+##### the solver's `t`. The shared form gives each thread one column of a block's shared tile (x-contiguous (32, 2)
+##### blocks, one column per thread, no cross-thread dependency, hence no barrier) and runs the same sweep with `t`
+##### there: every stored value is the value the global array held, in its element type, so every output has the
+##### same bits; only the global scratch is no longer written. Taken where the column fits (Nz ≤ 64, at most 32 KiB
+##### per block), on the GPU, without an `:xy` active-cells map. `OCEANANIGANS_SHARED_THOMAS_SCRATCH=false` (read in
+##### `Solvers.__init__`; `SHARED_THOMAS_SCRATCH[]` switches in-process) restores the global-scratch launch.
+#####
+
+struct SharedColumnScratch{A, I}
+    data :: A
+    column :: I
+end
+
+Base.eltype(t::SharedColumnScratch) = eltype(t.data)
+@inline Base.getindex(t::SharedColumnScratch, i, j, k) = @inbounds t.data[t.column, k]
+@inline Base.setindex!(t::SharedColumnScratch, value, i, j, k) = @inbounds t.data[t.column, k] = value
+
+const SHARED_THOMAS_SCRATCH = Ref(true)
+const SHARED_THOMAS_SCRATCH_ON_CPU = Ref(false) # tests: run the shared form on the CPU backend too
+
+const shared_column_workgroup = (32, 2)
+const shared_column_count = 64 # prod(shared_column_workgroup)
+
+function shared_thomas_scratch(arch, grid, t)
+    SHARED_THOMAS_SCRATCH[] || return false
+    arch isa GPU || (SHARED_THOMAS_SCRATCH_ON_CPU[] && arch isa CPU) || return false
+    t isa AbstractArray{<:AbstractFloat} || return false
+    isnothing(Utils.get_active_cells_map(grid, Val(:xy))) || return false
+    Nz = size(grid, 3)
+    return 1 <= Nz <= 64 && shared_column_count * Nz * sizeof(eltype(t)) <= 32768
+end
+
+"""
+    launch_shared_column_solve!(kernel!, arch, grid, args)
+
+Launch the column kernel `kernel!` over `(Nx, Ny)` in `(32, 2)` blocks with `Val(Nz)` appended to `args`
+(its shared tile is `(64, Nz)`).
+"""
+function launch_shared_column_solve!(kernel!, arch, grid, args)
+    Nx, Ny, Nz = size(grid)
+    loop! = kernel!(Architectures.device(arch), StaticSize(shared_column_workgroup), StaticSize((Nx, Ny)))
+    Utils.launch_configured_kernel!(loop!, Architectures.convert_to_device(arch, (args..., Val(Nz)))...)
+    return nothing
+end
+
+@kernel function solve_batched_tridiagonal_system_shared_kernel!(ϕ, a, b, c, f, t, grid, p, args,
+                                                                 tridiagonal_direction::ZDirection, ::Val{Nz}) where Nz
+    i, j = @index(Global, NTuple)
+    column = @index(Local, Linear)
+    TT = @uniform eltype(t)
+    scratch = @localmem TT (shared_column_count, Nz)
+    local_t = SharedColumnScratch(scratch, column)
+    solve_batched_tridiagonal_system_z!(i, j, Nz, ϕ, a, b, c, f, local_t, grid, p, args, tridiagonal_direction)
 end
 
 @inline right_hand_side_ahead(f::AbstractArray{<:Any, 3}) = true

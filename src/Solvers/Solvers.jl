@@ -9,7 +9,7 @@ export
 
 using DocStringExtensions: TYPEDSIGNATURES
 using FFTW: FFTW
-using KernelAbstractions: @kernel, @index
+using KernelAbstractions: @kernel, @index, @localmem, @uniform, StaticSize
 
 using Oceananigans.Architectures: Architectures, CPU, GPU, architecture, on_architecture
 using Oceananigans.BoundaryConditions: fill_halo_regions!
@@ -68,6 +68,7 @@ function __init__()
     # but don't affect global FFTW configuration for other packages using FFTW
     # FFTW.set_num_threads(4threads)
     FFTW_NUM_THREADS[] = 4 * Threads.nthreads()
+    SHARED_THOMAS_SCRATCH[] = lowercase(strip(get(ENV, "OCEANANIGANS_SHARED_THOMAS_SCRATCH", "true"))) in ("1", "true")
 end
 
 end # module
