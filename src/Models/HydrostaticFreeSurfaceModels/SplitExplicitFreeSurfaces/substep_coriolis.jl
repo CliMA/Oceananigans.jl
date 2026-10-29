@@ -162,7 +162,16 @@ end
 
 @inline fills_halos(::SplitExplicitFreeSurface{ExtendedHalos}) = Val(false)
 @inline fills_halos(::FillHaloSplitExplicit) = Val(true)
-@inline fill_only_local_halos(::SplitExplicitFreeSurface{ExtendedHalos}) = true # unused, extended halos are never filled
+
+# Extended halos are refreshed all at once, only when the substeps outnumber them
+@inline substep_exchange_halos!(::Val{true}, fields, exchange) = nothing
+
+function substep_exchange_halos!(::Val{false}, fields, exchange)
+    if exchange
+        fill_halo_regions!(fields)
+    end
+    return nothing
+end
 
 @inline substep_fill_halos!(::Val{false}, arch, args, clock, only_local_halos) = nothing
 @inline substep_fill_halos!(::Val{true},  arch, args, clock, only_local_halos) = maybe_distributed_fill_halo_regions!(arch, args[1:end-1]..., clock, args[end]; only_local_halos)
@@ -194,14 +203,13 @@ function iterate_split_explicit_with_coriolis!(free_surface, GUⁿ, GVⁿ, Δτ�
     η_args = (grid, filled, Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)
 
     barotropic_model_fields = (; U, V, η)
-    halo_args = map(field -> build_halo_fill_args(field, grid, barotropic_model_fields), (U, V, η))
-    only_local_halos = fill_only_local_halos(free_surface)
+    Uh, Vh, ηh = map(field -> build_halo_fill_args(arch, field, grid, barotropic_model_fields), (U, V, η))
+    exchange_interval = halo_exchange_interval(free_surface, grid, Nsubsteps)
 
-    GC.@preserve U_args V_args η_args halo_args begin
+    GC.@preserve U_args V_args η_args begin
         converted_U_args = convert_to_device(arch, U_args)
         converted_V_args = convert_to_device(arch, V_args)
         converted_η_args = convert_to_device(arch, η_args)
-        Uh, Vh, ηh = map(args -> prepare_halo_fill_args(arch, args, grid, free_surface), halo_args)
         face_pins = configure_face_pins(arch, grid, U, V, free_surface.boundary_transport)
 
         for substep in 1:Nsubsteps # unrolling stalls LLVM's SLP vectorizer on immersed grids
@@ -209,7 +217,10 @@ function iterate_split_explicit_with_coriolis!(free_surface, GUⁿ, GVⁿ, Δτ�
             @inbounds transport_weight = transport_weights[substep]
 
             substep_clock = (; time = clock.time + (substep - 1) * Δτᴮ, iteration = clock.iteration, stage = 0, last_stage_Δt = Δτᴮ)
+            exchange = substep > 1 && (substep - 1) % exchange_interval == 0
+            only_local_halos = !exchange
 
+            substep_exchange_halos!(filled, (U, V, η), exchange)
             substep_fill_halos!(filled, arch, ηh, substep_clock, only_local_halos)
             x_velocity_kernel!(transport_weight, converted_U_args...)
             substep_fill_halos!(filled, arch, Uh, substep_clock, only_local_halos)

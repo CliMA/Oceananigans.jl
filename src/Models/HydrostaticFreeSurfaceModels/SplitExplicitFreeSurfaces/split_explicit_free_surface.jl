@@ -208,13 +208,17 @@ end
 # A free surface where halos are explicitly filled at each substep
 const FillHaloSplitExplicit = SplitExplicitFreeSurface{<:Union{LocalHaloFilling, CompleteHaloFilling}}
 
-# Substeps between two halo exchanges: a halo of H cells in a Connected direction holds H - 2 substeps
+# Substeps between two halo exchanges: a halo of H cells in a Connected direction holds (H - 2) ÷ reach substeps
+@inline substeps_per_halo(H, reach) = max(1, (H - 2) ÷ reach)
+
 @inline halo_exchange_interval(::SplitExplicitFreeSurface{CompleteHaloFilling}, grid, Nsubsteps) = 1
 
 function halo_exchange_interval(free_surface, grid, Nsubsteps)
     TX, TY, _ = topology(grid)
     Hx, Hy, _ = halo_size(grid)
-    return min(TX() isa ConnectedTopology ? Hx - 2 : Nsubsteps, TY() isa ConnectedTopology ? Hy - 2 : Nsubsteps)
+    reach = substep_halo_reach(free_surface.timestepper)
+    return min(TX() isa ConnectedTopology ? substeps_per_halo(Hx, reach) : Nsubsteps,
+               TY() isa ConnectedTopology ? substeps_per_halo(Hy, reach) : Nsubsteps)
 end
 
 # Simplest case: we have the substeps and the averaging kernel
@@ -439,12 +443,12 @@ function maybe_extend_halos(TX, TY, grid, substepping::FixedSubstepNumber, times
 
     new_halos = (Hx, Hy, old_halos[3])
 
-    x_capped = TX() isa ConnectedTopology && Hx < Nsubsteps + 2
-    y_capped = TY() isa ConnectedTopology && Hy < Nsubsteps + 2
+    x_capped = TX() isa ConnectedTopology && Hx < reach * Nsubsteps + 2
+    y_capped = TY() isa ConnectedTopology && Hy < reach * Nsubsteps + 2
 
     if x_capped || y_capped
-        exchange_interval = min(TX() isa ConnectedTopology ? Hx - 2 : Nsubsteps,
-                                TY() isa ConnectedTopology ? Hy - 2 : Nsubsteps)
+        exchange_interval = min(TX() isa ConnectedTopology ? substeps_per_halo(Hx, reach) : Nsubsteps,
+                                TY() isa ConnectedTopology ? substeps_per_halo(Hy, reach) : Nsubsteps)
         Nexchanges = cld(Nsubsteps, exchange_interval) - 1
         @root @info "SplitExplicitFreeSurface: the extended halos $((Hx, Hy)) are capped by the smallest local grid size $((Nx, Ny)), " *
                     "so the $Nsubsteps barotropic substeps fill the halos $Nexchanges more time(s) per time step." maxlog=1
