@@ -87,20 +87,27 @@ end
 
     TX, TY, _ = topology(grid)
     Nx, Ny, _ = size(grid)
-    accumulate_edge_U_transport!(TX(), i, j, Nx, Ũ, timestepper, grid, U)
-    accumulate_edge_V_transport!(TY(), i, j, Ny, Ṽ, timestepper, grid, U)
+    accumulate_edge_U_transport!(TX(), i, j, Nx, transport_weight, Ũ, timestepper, grid, U)
+    accumulate_edge_V_transport!(TY(), i, j, Ny, transport_weight, Ṽ, timestepper, grid, V)
 end
 
 # Fallback...
 @inline accumulate_edge_U_transport!(TX, i, j, args...) = nothing
 @inline accumulate_edge_V_transport!(TY, i, j, args...) = nothing
 
-@inline function accumulate_edge_U_transport!(::Sides{<:Any, Open}, i, j, Nx, Ũ, timestepper, grid, U)
-    i == Nx ? @inbounds Ũ[i+1, j, 1] += transport_weight * U★(i+1, j, 1, grid, timestepper, U) : nothing
+@inline function accumulate_edge_U_transport!(::TwoSided{<:Any, Open}, i, j, Nx, transport_weight, Ũ, timestepper, grid, U)
+    if i == Nx
+        @inbounds Ũ[i+1, j, 1] += transport_weight * U★(i+1, j, 1, grid, timestepper, U)
     end
+    return nothing
+end
 
-@inline accumulate_edge_V_transport!(::Sides{<:Any, Open}, i, j, Ny, Ṽ, timestepper, grid, V) = 
-    j == Ny ? @inbounds Ṽ[i, j+1, 1] += transport_weight * V★(i, j+1, 1, grid, timestepper, U) : nothing
+@inline function accumulate_edge_V_transport!(::TwoSided{<:Any, Open}, i, j, Ny, transport_weight, Ṽ, timestepper, grid, V)
+    if j == Ny
+        @inbounds Ṽ[i, j+1, 1] += transport_weight * U★(i, j+1, 1, grid, timestepper, V)
+    end
+    return nothing
+end
 
 # Change name
 const FNS = FixedSubstepNumber
