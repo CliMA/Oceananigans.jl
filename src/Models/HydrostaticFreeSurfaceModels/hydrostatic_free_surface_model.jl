@@ -141,6 +141,15 @@ Keyword arguments
                            Default: `default_vertical_coordinate(grid)`, which returns `ZStarCoordinate(grid)`
                            for grids with `MutableVerticalDiscretization` otherwise returns
                            `ZCoordinate()`.
+
+Initialization
+==============
+
+Construction ends with `update_state!(model)`, so the diagnostics and tendencies are
+consistent with the fields. On `ReactantState` construction launches no kernels: `initialize!(model)`,
+which there also runs `update_state!`, is compiled and run before time stepping,
+`Reactant.@compile sync=true initialize!(model)`. `first_time_step!`, `initialize!(simulation)` and
+`run!(simulation)` do this themselves. `initialize!` is idempotent.
 """
 function HydrostaticFreeSurfaceModel(grid;
                                      clock = Clock(grid),

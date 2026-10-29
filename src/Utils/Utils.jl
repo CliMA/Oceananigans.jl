@@ -38,8 +38,7 @@ $(TYPEDSIGNATURES)
 
 Call `initialize!(args...)` while an object is constructed on `arch`. On `ReactantState`
 (OceananigansReactantExt) construction skips it: outside a compiled program every kernel launch
-is compiled on its own, and the compiled entry points (`first_time_step!`, `initialize!(simulation)`)
-repeat the initialization anyway.
+is compiled on its own, so the work is left to a compiled `initialize!(model)`.
 """
 initialize_on_construction!(arch, initialize!, args...) = initialize!(args...)
 

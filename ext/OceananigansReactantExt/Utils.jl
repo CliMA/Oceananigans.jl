@@ -11,7 +11,7 @@ using Oceananigans.DistributedComputations: Distributed
 # Reactant tracing breaks if Δt is converted outside the kernel, so pass it through.
 @inline kernel_time_step(::ReactantState, grid, Δt) = Δt
 
-# Initialization is compiled with the program that needs it (`first_time_step!`, `initialize!(simulation)`)
+# Construction leaves the initialization to a compiled `initialize!(model)` (Models.jl)
 initialize_on_construction!(::ReactantState, initialize!, args...) = nothing
 initialize_on_construction!(::Distributed{<:ReactantState}, initialize!, args...) = nothing
 

@@ -132,6 +132,15 @@ Keyword arguments
   - `pressure_solver`: Pressure solver to be used in the model. If `nothing` (default), the model constructor
     chooses the default based on the `grid` provide.
   - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `NamedTuple()`
+
+Initialization
+==============
+
+Construction ends with `update_state!(model)` and initializes the closure fields, so the
+diagnostics and tendencies are consistent with the fields. On `ReactantState` construction launches no kernels: `initialize!(model)`,
+which there also runs `update_state!`, is compiled and run before time stepping,
+`Reactant.@compile sync=true initialize!(model)`. `first_time_step!`, `initialize!(simulation)` and
+`run!(simulation)` do this themselves. `initialize!` is idempotent.
 """
 function NonhydrostaticModel(grid;
                              clock = Clock(grid),

@@ -151,16 +151,22 @@ end
 ##### first_time_step! for Reactant
 #####
 
-function first_time_step!(model::ReactantModel, Δt)
+# The state a model needs before its first step: `initialize!`, then `update_state!` with `callbacks`.
+# Oceananigans' own models extend this (Models.jl): their `initialize!` already ends in `update_state!`.
+function initialize_state!(model, callbacks=[])
     initialize!(model)
-    update_state!(model)
+    update_state!(model, callbacks)
+    return nothing
+end
+
+function first_time_step!(model::ReactantModel, Δt)
+    initialize_state!(model)
     time_step!(model, Δt)
     return nothing
 end
 
 function first_time_step!(model::ReactantModel{<:Oceananigans.TimeSteppers.QuasiAdamsBashforth2TimeStepper}, Δt)
-    initialize!(model)
-    update_state!(model)
+    initialize_state!(model)
     time_step!(model, Δt, euler=true)
     return nothing
 end
