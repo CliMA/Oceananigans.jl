@@ -71,6 +71,21 @@ xnodes(grid, Face())
 0.0:4.0:60.0
 ```
 
+`Bounded` closes a direction with walls on both sides. Each side of a direction can also be given separately as a pair of
+side topologies: `Closed` for a wall and `Open` for a side where the domain continues into an exterior, whose state is
+set by an open boundary condition (see [Boundary conditions](@ref model_step_bcs)).
+For example, a channel closed on the west and open on the east is
+
+```jldoctest grids
+channel = RectilinearGrid(topology = ((Closed, Open), Periodic, Bounded), size = (16, 8, 4), extent = (64, 32, 8))
+
+# output
+16×8×4 RectilinearGrid{Float64, TwoSided{Closed, Open}, Periodic, Bounded} on CPU with 3×3×3 halo
+├── TwoSided{Closed, Open} x ∈ [0.0, 64.0] regularly spaced with Δx=4.0
+├── Periodic y ∈ [0.0, 32.0)               regularly spaced with Δy=4.0
+└── Bounded  z ∈ [-8.0, 0.0]               regularly spaced with Δz=2.0
+```
+
 In building our first grid, we did not specify whether it should be constructed on the [`CPU`](@ref) or [`GPU`](@ref).
 As a result, the grid was constructed by default on the CPU.
 Next we build a grid on the _GPU_ that's two-dimensional in ``x, z`` and has variably-spaced cell interfaces in the `z`-direction,
@@ -266,6 +281,8 @@ above underlying grids with a type of immersed boundary. The immersed boundaries
    of the domain is above the bottom height.
 1. [`PartialCellBottom`](@ref Oceananigans.ImmersedBoundaries.PartialCellBottom), which is similar to [`GridFittedBottom`](@ref),
    except that the height of the bottommost cell is changed to conform to bottom height, limited to prevent the bottom cells from becoming too thin.
+1. [`GridFittedVerticalBoundaries`](@ref) and [`PartialCellVerticalBoundaries`](@ref), which bound each column by a `bottom_height`
+   and a `top_height` (for example an ice-shelf draft). `GridFittedBottom` and `PartialCellBottom` are their aliases without a top.
 3. [`GridFittedBoundary`](@ref), which fits a three-dimensional mask to the grid.
 
 To build an `ImmersedBoundaryGrid`, we start by building one of the three underlying grids, and then embedding a boundary
@@ -421,8 +438,8 @@ big_halo_grid = RectilinearGrid(topology = (Periodic, Periodic, Flat),
 
 # output
 32×16×1 RectilinearGrid{Float64, Periodic, Periodic, Flat} on CPU with 7×7×0 halo
-├── Periodic x ∈ [-6.90805e-17, 6.28319) regularly spaced with Δx=0.19635
-├── Periodic y ∈ [-1.07194e-16, 3.14159) regularly spaced with Δy=0.19635
+├── Periodic x ∈ [0.0, 6.28319) regularly spaced with Δx=0.19635
+├── Periodic y ∈ [0.0, 3.14159) regularly spaced with Δy=0.19635
 └── Flat z
 ```
 
