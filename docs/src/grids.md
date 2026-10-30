@@ -281,6 +281,8 @@ above underlying grids with a type of immersed boundary. The immersed boundaries
    of the domain is above the bottom height.
 1. [`PartialCellBottom`](@ref Oceananigans.ImmersedBoundaries.PartialCellBottom), which is similar to [`GridFittedBottom`](@ref),
    except that the height of the bottommost cell is changed to conform to bottom height, limited to prevent the bottom cells from becoming too thin.
+1. [`GridFittedVerticalBoundaries`](@ref) and [`PartialCellVerticalBoundaries`](@ref), which bound each column by a `bottom_height`
+   and a `top_height` (for example an ice-shelf draft). `GridFittedBottom` and `PartialCellBottom` are their aliases without a top.
 3. [`GridFittedBoundary`](@ref), which fits a three-dimensional mask to the grid.
 
 To build an `ImmersedBoundaryGrid`, we start by building one of the three underlying grids, and then embedding a boundary

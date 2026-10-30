@@ -114,6 +114,14 @@ function on_architecture(arch::AbstractArchitecture, a::SubArray)
     return SubArray(p, parentindices(a))
 end
 
+# Host data that arrives reshaped, e.g. a 2D NetCDF variable reshaped to (Nx, Ny, 1), moves its parent and
+# reshapes it again. Host parents with real or missing elements only, so that the method does not overlap
+# those of device and traced arrays.
+const ReshapedHostArray{T} = Base.ReshapedArray{T, <:Any, <:Union{Array{T}, SubArray{T, <:Any, <:Array}}}
+
+on_architecture(arch::AbstractSerialArchitecture, a::ReshapedHostArray{<:Union{Missing, Real}}) =
+    reshape(on_architecture(arch, parent(a)), size(a))
+
 cpu_architecture(::CPU) = CPU()
 cpu_architecture(::GPU) = CPU()
 cpu_architecture(::ReactantState) = CPU()

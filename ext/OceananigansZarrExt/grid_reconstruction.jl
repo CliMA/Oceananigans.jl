@@ -161,14 +161,14 @@ function reconstruct_immersed_boundary(grid_group, ::Val{:GridFittedBoundary})
     return GridFittedBoundary(mask)
 end
 
-function reconstruct_immersed_boundary(grid_group, ::Val{:GridFittedBottom})
+function reconstruct_immersed_boundary(grid_group, ::Union{Val{:GridFittedBottom}, Val{:GridFittedVerticalBoundaries}})
     ibg_group = grid_group["immersed_boundary"]
     bottom_height = Array(ibg_group["bottom_height"])
     immersed_condition = ibg_group.attrs["immersed_condition"] |> materialize_from_zarr
     return GridFittedBottom(bottom_height, immersed_condition)
 end
 
-function reconstruct_immersed_boundary(grid_group, ::Val{:PartialCellBottom})
+function reconstruct_immersed_boundary(grid_group, ::Union{Val{:PartialCellBottom}, Val{:PartialCellVerticalBoundaries}})
     ibg_group = grid_group["immersed_boundary"]
     bottom_height = Array(ibg_group["bottom_height"])
     minimum_fractional_cell_height = ibg_group.attrs["minimum_fractional_cell_height"] |> materialize_from_zarr
