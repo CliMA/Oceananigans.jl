@@ -215,6 +215,10 @@ function halo_exchange_interval(free_surface, grid, Nsubsteps)
     return min(TX() isa ConnectedTopology ? Hx - 2 : Nsubsteps, TY() isa ConnectedTopology ? Hy - 2 : Nsubsteps)
 end
 
+# Extended halos start the substeps filled, while `CompleteHaloFilling` exchanges before every substep
+@inline exchange_halos(free_surface, substep, exchange_interval) = substep > 1 && (substep - 1) % exchange_interval == 0
+@inline exchange_halos(::SplitExplicitFreeSurface{CompleteHaloFilling}, substep, exchange_interval) = true
+
 # Simplest case: we have the substeps and the averaging kernel
 function split_explicit_substepping(::Nothing, substeps, fixed_Δt, grid, averaging_kernel, gravitational_acceleration)
     FT = eltype(gravitational_acceleration)
