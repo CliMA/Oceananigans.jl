@@ -380,8 +380,11 @@ end
 # The free runs are another matter. Without a closure, the coarse model has too much energy in its mean flow
 # and too little in its eddies. Trained on one-day windows, the closure mostly learns to dissipate: it brings
 # the mean flow closer to the truth's, but it also damps the eddies. Matching long-term statistics requires
-# much longer training on longer windows, as in Maddison's 300-epoch curriculum. In our experiments with
-# longer training, the free-run statistics still varied with the network's initial weights.
+# longer training on longer windows, as in Maddison's 300-epoch curriculum. In our experiments with ten months
+# of data and a curriculum of 1-, 2- and 4-day windows (3,500 optimizer steps), the closure cut the error over
+# 4-day windows by three quarters and, for three of six initial weights, reproduced the truth's kinetic energy
+# and eddy kinetic energy within 20% in free runs of one to five years. The other networks were too energetic
+# or unstable, like Maddison's at short window lengths.
 #
 # ## Visualization
 
