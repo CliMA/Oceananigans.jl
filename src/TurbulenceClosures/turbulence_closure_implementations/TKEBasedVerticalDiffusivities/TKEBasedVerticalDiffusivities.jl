@@ -17,6 +17,8 @@ using Oceananigans.BuoyancyFormulations: BuoyancyForce, BuoyancyTracer, Seawater
                                          TemperatureSeawaterBuoyancy, SalinitySeawaterBuoyancy,
                                          ∂z_b, top_buoyancy_flux
 using Oceananigans.Fields: CenterField, XFaceField, YFaceField, ZFaceField, ZeroField
+using Oceananigans.Forcings: surface_radiative_buoyancy_flux, transmitted_fraction, transmitted_fraction_derivative,
+                             transmitted_thickness
 using Oceananigans.Grids: Center, Face, peripheral_node, inactive_node, inactive_cell, static_column_depthᶜᶜᵃ
 using Oceananigans.Operators: Δzᶜᶜᶜ, Δzᶜᶠᶠ, Δzᶠᶜᶠ, Δz⁻¹ᶜᶜᶜ, Δz⁻¹ᶜᶠᶜ, Δz⁻¹ᶠᶜᶜ,
                               ℑxᶜᵃᵃ, ℑxᶠᵃᵃ, ℑyᵃᶜᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶜ, ℑzᵃᵃᶠ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ
@@ -42,7 +44,8 @@ import Oceananigans.TurbulenceClosures:
     viscosity,
     diffusivity,
     viscosity_location,
-    diffusivity_location
+    diffusivity_location,
+    with_penetrative_radiation
 
 const c = Center()
 const f = Face()
@@ -165,6 +168,7 @@ get_top_tracer_bcs(::SeawaterBuoyancy, tracers) = (T = tracers.T.boundary_condit
 get_top_tracer_bcs(::TemperatureSeawaterBuoyancy, tracers) = (; T = tracers.T.boundary_conditions.top)
 get_top_tracer_bcs(::SalinitySeawaterBuoyancy, tracers)    = (; S = tracers.S.boundary_conditions.top)
 
+include("penetrative_radiation.jl")
 include("tke_top_boundary_condition.jl")
 include("catke_vertical_diffusivity.jl")
 include("catke_mixing_length.jl")
