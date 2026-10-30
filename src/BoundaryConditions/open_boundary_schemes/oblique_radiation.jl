@@ -60,20 +60,15 @@ ObliqueRadiation{Float64}
 └── target_transport: nothing
 ```
 """
-struct ObliqueRadiation{FT, S, B, TF} <: AbstractRadiationScheme{FT}
+struct ObliqueRadiation{FT, S, P, N, TF} <: AbstractRadiationScheme{FT}
     outflow_timescale  :: FT
     inflow_timescale   :: FT
     phase_speed_weight :: FT
-    φᵇ  :: S
-    φ₁  :: S
-    φ₁ˡ :: S
-    previous_boundary :: B # boundary values written during the previous iteration, double-buffered by iteration parity
-    previous_interior :: B # first-interior values, likewise
-    rₙ :: B                # time-averaged coefficients: [.., .., 1] at the start of the step, [.., .., 2] latest
-    rₜ :: B
-    c  :: B
-    normal_interior :: B   # tangential velocity only: the two adjacent normal-velocity interior values,
-                           # [.., .., 1:2] start-of-step and latest on one side, [.., .., 3:4] on the other
+    φ⁻ :: S # boundary value at the base of the stage (2D array or nothing)
+    φ₁ :: S # interior value at the base of the stage (2D array or nothing)
+    phase_speeds :: P # time-averaged coefficients (rₙ, rₜ, c): at the start of the step, then the latest of each
+    normal_interior :: N # tangential velocity only: the first interior values of the normal velocity at the two
+                         # adjacent points, at the base of the stage
     target_transport :: TF # prescribed net transport through the boundary, or nothing
 end
 
@@ -89,21 +84,16 @@ function ObliqueRadiation(FT = defaults.FloatType;
     phase_speed_weight = convert(FT, phase_speed_weight)
     target_transport = convert_target_transport(FT, target_transport)
     return ObliqueRadiation(outflow_timescale, inflow_timescale, phase_speed_weight,
-                            nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, target_transport)
+                            nothing, nothing, nothing, nothing, target_transport)
 end
 
 Adapt.adapt_structure(to, r::ObliqueRadiation) =
     ObliqueRadiation(adapt(to, r.outflow_timescale),
                      adapt(to, r.inflow_timescale),
                      adapt(to, r.phase_speed_weight),
-                     adapt(to, r.φᵇ),
+                     adapt(to, r.φ⁻),
                      adapt(to, r.φ₁),
-                     adapt(to, r.φ₁ˡ),
-                     adapt(to, r.previous_boundary),
-                     adapt(to, r.previous_interior),
-                     adapt(to, r.rₙ),
-                     adapt(to, r.rₜ),
-                     adapt(to, r.c),
+                     adapt(to, r.phase_speeds),
                      adapt(to, r.normal_interior),
                      adapt(to, r.target_transport))
 
@@ -115,35 +105,35 @@ function Base.show(io::IO, r::ObliqueRadiation)
     print(io, "└── target_transport: ", prettysummary(r.target_transport))
 end
 
-# Inflow and outflow are distinguished by the direction of the phase speed, not by the velocity.
-@inline uses_boundary_velocity(::ObliqueRadiation) = false
-
-has_target_transport(::ObliqueRadiation{<:Any, <:Any, <:Any, <:Nothing}) = false
+has_target_transport(::ObliqueRadiation{<:Any, <:Any, <:Any, <:Any, <:Nothing}) = false
 has_target_transport(::ObliqueRadiation) = true
 
-radiation_buffers(radiation::ObliqueRadiation, arch, FT, tangential_ranges) =
-    (ntuple(_ -> radiation_buffer(arch, FT, tangential_ranges...), 3)...,
-     ntuple(_ -> radiation_buffer(arch, FT, tangential_ranges..., 1:2), 5)...,
-     radiation_buffer(arch, FT, tangential_ranges..., 1:4))
-
-radiation_buffers(radiation::ObliqueRadiation) =
-    (radiation.φᵇ, radiation.φ₁, radiation.φ₁ˡ, radiation.previous_boundary, radiation.previous_interior,
-     radiation.rₙ, radiation.rₜ, radiation.c, radiation.normal_interior)
-
-radiation_storage(radiation::ObliqueRadiation, (φᵇ, φ₁, φ₁ˡ, previous_boundary, previous_interior, rₙ, rₜ, c, normal_interior)) =
+radiation_storage(radiation::ObliqueRadiation, buffer) =
     ObliqueRadiation(radiation.outflow_timescale, radiation.inflow_timescale, radiation.phase_speed_weight,
-                     φᵇ, φ₁, φ₁ˡ, previous_boundary, previous_interior, rₙ, rₜ, c, normal_interior, radiation.target_transport)
+                     buffer(), buffer(), ntuple(_ -> buffer(), 6), ntuple(_ -> buffer(), 2), radiation.target_transport)
 
-# Fills read the buffer written during the previous iteration and write the other one.
-@inline written_buffer(clock) = clock.iteration % 2 + 1
-@inline written_buffer(::Nothing) = 1
+const OblBC = Union{BoundaryCondition{<:Value{<:ObliqueRadiation}}, BoundaryCondition{<:NormalFlow{<:ObliqueRadiation}}}
 
-# Backward and forward differences along the boundary face, zero beyond its ends.
-@inline function tangential_differences(φ, t, k, b)
+# The averaged coefficients of the latest step are the only state that outlives it
+latest_phase_speeds(radiation::ObliqueRadiation) = radiation.phase_speeds[4:6]
+
+Oceananigans.prognostic_state(bc::OblBC) = map(b -> on_architecture(CPU(), b), latest_phase_speeds(bc.classification.scheme))
+
+function Oceananigans.restore_prognostic_state!(bc::OblBC, from)
+    latest = latest_phase_speeds(bc.classification.scheme)
+    length(from) == length(latest) && foreach(copyto!, latest, from)
+    return bc
+end
+
+Oceananigans.restore_prognostic_state!(::OblBC, ::Nothing) = nothing
+
+# Backward and forward differences along the boundary face, zero beyond its ends. Next to a rank edge the neighbour is
+# in the extended range of the buffer, which holds the neighbouring rank's value.
+@inline function tangential_differences(φ, i, j)
     @inbounds begin
-        φ₀ = φ[t, k, b]
-        φ₋ = φ[max(t - 1, firstindex(φ, 1)), k, b]
-        φ₊ = φ[min(t + 1, lastindex(φ, 1)),  k, b]
+        φ₀ = φ[i, j]
+        φ₋ = φ[max(i - 1, firstindex(φ, 1)), j]
+        φ₊ = φ[min(i + 1, lastindex(φ, 1)),  j]
     end
     return φ₀ - φ₋, φ₊ - φ₀
 end
@@ -177,172 +167,170 @@ end
     return ifelse(τ == 0, φᵉˣᵗ, φᵇⁿ⁺¹)
 end
 
-# `outflow` and `Cᵃ` are unused: inflow and outflow are distinguished by the direction of the phase speed.
-@inline function radiation_update(radiation::ObliqueRadiation, t, k, clock, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, outflow, Cᵃ)
-    w = written_buffer(clock)
-    r = 3 - w
-    δᵇ₋, δᵇ₊ = tangential_differences(radiation.previous_boundary, t, k, r)
-    δ₁₋, δ₁₊ = tangential_differences(radiation.previous_interior, t, k, r)
-    rₙ, rₜ, c, radiating = oblique_phase_speeds(φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, δ₁₋, δ₁₊)
+# The averages advance once per time step: the first stage of a step promotes the latest averages to the start-of-step
+# values, at the base of the stage, and every stage of the step averages from the start-of-step values.
+@inline first_stage(clock) = clock.stage ≤ 1
+@inline first_stage(::Nothing) = true
 
-    r̄ₙ, r̄ₜ, c̄ = average_phase_speeds!(radiation, t, k, clock, rₙ, rₜ, c)
-    φᵇⁿ⁺¹ = oblique_radiation_update(φᵇⁿ, φ₁ⁿ⁺¹, δᵇ₋, δᵇ₊, r̄ₙ, r̄ₜ, c̄, radiating, φᵉˣᵗ, Δt, radiation)
+@inline function cache_exterior_state!(side, i, j, grid, c, bc::OblBC, loc, clock, model_fields)
+    iᵇ, jᵇ, kᵇ = boundary_point(side, loc, grid, 0, i, j)
+    i₁, j₁, k₁ = boundary_point(side, loc, grid, 1, i, j)
+    radiation = bc.classification.scheme
+    rₙ⁰, rₜ⁰, c⁰, rₙ, rₜ, cˡ = radiation.phase_speeds
+    promote = first_stage(clock)
 
     @inbounds begin
-        radiation.previous_boundary[t, k, w] = φᵇⁿ⁺¹
-        radiation.previous_interior[t, k, w] = φ₁ⁿ⁺¹
+        radiation.φ⁻[i, j] = c[iᵇ, jᵇ, kᵇ]
+        radiation.φ₁[i, j] = c[i₁, j₁, k₁]
+        rₙ⁰[i, j] = ifelse(promote, rₙ[i, j], rₙ⁰[i, j])
+        rₜ⁰[i, j] = ifelse(promote, rₜ[i, j], rₜ⁰[i, j])
+        c⁰[i, j]  = ifelse(promote, cˡ[i, j], c⁰[i, j])
     end
 
-    return φᵇⁿ⁺¹
+    cache_normal_interior!(side, i, j, grid, radiation, loc, model_fields)
+
+    return nothing
 end
 
-# The averages advance once per time step: the first fill of a step promotes the latest average to the
-# start-of-step value, and every fill of the step averages from that start-of-step value.
-@inline function average_phase_speeds!(radiation, t, k, clock, rₙ, rₜ, c)
-    anchored = anchored_fill(clock)
+@inline cache_normal_interior!(side, i, j, grid, radiation, loc, model_fields) = nothing
+
+# Time-average the coefficients from the start-of-step values, keeping the result as the latest
+@inline function average_phase_speeds!(radiation, i, j, rₙ, rₜ, c)
     ω = radiation.phase_speed_weight
+    rₙ⁰, rₜ⁰, c⁰, rₙˡ, rₜˡ, cˡ = radiation.phase_speeds
+
     @inbounds begin
-        r̄ₙ⁰ = ifelse(anchored, radiation.rₙ[t, k, 2], radiation.rₙ[t, k, 1])
-        r̄ₜ⁰ = ifelse(anchored, radiation.rₜ[t, k, 2], radiation.rₜ[t, k, 1])
-        c̄⁰  = ifelse(anchored, radiation.c[t, k, 2],  radiation.c[t, k, 1])
+        r̄ₙ = (1 - ω) * rₙ⁰[i, j] + ω * rₙ
+        r̄ₜ = (1 - ω) * rₜ⁰[i, j] + ω * rₜ
+        c̄  = (1 - ω) * c⁰[i, j]  + ω * c
+        rₙˡ[i, j] = r̄ₙ
+        rₜˡ[i, j] = r̄ₜ
+        cˡ[i, j]  = c̄
     end
-    r̄ₙ = (1 - ω) * r̄ₙ⁰ + ω * rₙ
-    r̄ₜ = (1 - ω) * r̄ₜ⁰ + ω * rₜ
-    c̄  = (1 - ω) * c̄⁰  + ω * c
-    @inbounds begin
-        radiation.rₙ[t, k, 1] = r̄ₙ⁰
-        radiation.rₜ[t, k, 1] = r̄ₜ⁰
-        radiation.c[t, k, 1]  = c̄⁰
-        radiation.rₙ[t, k, 2] = r̄ₙ
-        radiation.rₜ[t, k, 2] = r̄ₜ
-        radiation.c[t, k, 2]  = c̄
-    end
+
     return r̄ₙ, r̄ₜ, c̄
+end
+
+@inline step_exterior_state!(side, i, j, grid, c, bc::OblBC, loc, clock, model_fields, Δt) =
+    step_oblique_exterior_state!(side, i, j, grid, c, bc, loc, clock, model_fields, Δt)
+
+@inline function step_oblique_exterior_state!(side, i, j, grid, c, bc, loc, clock, model_fields, Δt)
+    iᵇ, jᵇ, kᵇ = boundary_point(side, loc, grid, 0, i, j)
+    i₁, j₁, k₁ = boundary_point(side, loc, grid, 1, i, j)
+    i₂, j₂, k₂ = boundary_point(side, loc, grid, 2, i, j)
+    radiation = bc.classification.scheme
+
+    @inbounds begin
+        φᵉˣᵗ  = getbc(bc, i, j, grid, clock, model_fields)
+        φ₁ⁿ⁺¹ = c[i₁, j₁, k₁]
+        φ₂ⁿ⁺¹ = c[i₂, j₂, k₂]
+
+        φᵇⁿ = radiation.φ⁻[i, j]
+        φ₁ⁿ = radiation.φ₁[i, j]
+        δᵇ₋, δᵇ₊ = tangential_differences(radiation.φ⁻, i, j)
+        δ₁₋, δ₁₊ = tangential_differences(radiation.φ₁, i, j)
+
+        rₙ, rₜ, cᵖ, radiating = oblique_phase_speeds(φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, δ₁₋, δ₁₊)
+        r̄ₙ, r̄ₜ, c̄ = average_phase_speeds!(radiation, i, j, rₙ, rₜ, cᵖ)
+
+        φᵇⁿ⁺¹ = oblique_radiation_update(φᵇⁿ, φ₁ⁿ⁺¹, δᵇ₋, δᵇ₊, r̄ₙ, r̄ₜ, c̄, radiating, φᵉˣᵗ, Δt, radiation)
+        c[iᵇ, jᵇ, kᵇ] = ifelse(immersed_boundary_point(side, loc, grid, i, j), zero(grid), φᵇⁿ⁺¹)
+    end
+
+    return nothing
 end
 
 #####
 ##### Tangential velocity: phase speeds of the boundary-normal velocity
 #####
 
-# The start-of-step value of a normal-velocity interior point, kept in slots (s, s + 1) of `normal_interior`.
-@inline function previous_normal_interior!(radiation, t, k, s, uⁿ⁺¹, first_call, anchored)
+const TangentialToX = Tuple{Center, Face, Center} # v on a west or east boundary
+const TangentialToY = Tuple{Face, Center, Center} # u on a south or north boundary
+
+# A face-located tangential velocity point `t` lies between the normal-velocity points `t - 1` and `t`
+@inline normal_neighbours(t, N) = (clamp(t - 1, 1, N), clamp(t, 1, N))
+
+# The normal velocity and the length of the boundary it varies along
+@inline normal_component(::Union{West, East},   model_fields) = model_fields.u
+@inline normal_component(::Union{South, North}, model_fields) = model_fields.v
+@inline boundary_length(::Union{West, East},   grid) = grid.Ny
+@inline boundary_length(::Union{South, North}, grid) = grid.Nx
+
+# Index of the normal velocity at plane point `t`, `n` faces into the interior
+@inline normal_velocity_index(side::Union{West, East},   grid, n, t, k) = (normal_index(side, Face(), grid.Nx, n), t, k)
+@inline normal_velocity_index(side::Union{South, North}, grid, n, t, k) = (t, normal_index(side, Face(), grid.Ny, n), k)
+
+const WestEast = Union{West, East}
+const SouthNorth = Union{South, North}
+
+@inline cache_normal_interior!(side::WestEast,   t, k, grid, radiation, loc::TangentialToX, model_fields) =
+    cache_tangential_normal_interior!(side, t, k, grid, radiation, model_fields)
+
+@inline cache_normal_interior!(side::SouthNorth, t, k, grid, radiation, loc::TangentialToY, model_fields) =
+    cache_tangential_normal_interior!(side, t, k, grid, radiation, model_fields)
+
+@inline function cache_tangential_normal_interior!(side, t, k, grid, radiation, model_fields)
+    uₙ = normal_component(side, model_fields)
+    t₋, t₊ = normal_neighbours(t, boundary_length(side, grid))
     @inbounds begin
-        uᵃ = ifelse(anchored, radiation.normal_interior[t, k, s + 1], radiation.normal_interior[t, k, s])
-        uⁿ = ifelse(first_call, uⁿ⁺¹, uᵃ)
-        radiation.normal_interior[t, k, s]     = uⁿ
-        radiation.normal_interior[t, k, s + 1] = uⁿ⁺¹
+        radiation.normal_interior[1][t, k] = uₙ[normal_velocity_index(side, grid, 1, t₋, k)...]
+        radiation.normal_interior[2][t, k] = uₙ[normal_velocity_index(side, grid, 1, t₊, k)...]
     end
-    return uⁿ
-end
-
-# Radiate a tangential velocity with the averaged coefficients of the normal velocity at its two neighbours,
-# `(u₁, u₂, δ₋, δ₊)` on each side: first and second interior values, and differences along the boundary.
-@inline function tangential_radiation_update(radiation, t, k, clock, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt,
-                                             (u₁₋, u₂₋, δ₋₋, δ₋₊), (u₁₊, u₂₊, δ₊₋, δ₊₊))
-    radiation.phase_speed_weight == 1 &&
-        return radiation_update(radiation, t, k, clock, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, nothing, nothing)
-
-    first_call = isinf(stage_Δt(clock))
-    anchored = anchored_fill(clock)
-    u₁₋ⁿ = previous_normal_interior!(radiation, t, k, 1, u₁₋, first_call, anchored)
-    u₁₊ⁿ = previous_normal_interior!(radiation, t, k, 3, u₁₊, first_call, anchored)
-    rₙ₋, rₜ₋, c₋, _ = oblique_phase_speeds(u₁₋, u₂₋, u₁₋ⁿ, δ₋₋, δ₋₊)
-    rₙ₊, rₜ₊, c₊, _ = oblique_phase_speeds(u₁₊, u₂₊, u₁₊ⁿ, δ₊₋, δ₊₊)
-    r̄ₙ, r̄ₜ, c̄ = average_phase_speeds!(radiation, t, k, clock, (rₙ₋ + rₙ₊) / 2, (rₜ₋ + rₜ₊) / 2, (c₋ + c₊) / 2)
-
-    w = written_buffer(clock)
-    δᵇ₋, δᵇ₊ = tangential_differences(radiation.previous_boundary, t, k, 3 - w)
-    φᵇⁿ⁺¹ = oblique_radiation_update(φᵇⁿ, φ₁ⁿ⁺¹, δᵇ₋, δᵇ₊, r̄ₙ, r̄ₜ, c̄, r̄ₙ > 0, φᵉˣᵗ, Δt, radiation)
-
-    @inbounds begin
-        radiation.previous_boundary[t, k, w] = φᵇⁿ⁺¹
-        radiation.previous_interior[t, k, w] = φ₁ⁿ⁺¹
-    end
-
-    return φᵇⁿ⁺¹
-end
-
-# First and second interior values of a normal velocity next to the boundary, and its differences along the
-# boundary (zero beyond the ends).
-@inline function normal_neighbour_x(u, iᵢ, iᵢᵢ, j, k, Ny)
-    j = clamp(j, 1, Ny)
-    @inbounds begin
-        u₁ = u[iᵢ, j, k]
-        δ₋ = ifelse(j > 1,  u₁ - u[iᵢ, j - 1, k], zero(u₁))
-        δ₊ = ifelse(j < Ny, u[iᵢ, j + 1, k] - u₁, zero(u₁))
-        return u₁, u[iᵢᵢ, j, k], δ₋, δ₊
-    end
-end
-
-@inline function normal_neighbour_y(v, jᵢ, jᵢᵢ, i, k, Nx)
-    i = clamp(i, 1, Nx)
-    @inbounds begin
-        v₁ = v[i, jᵢ, k]
-        δ₋ = ifelse(i > 1,  v₁ - v[i - 1, jᵢ, k], zero(v₁))
-        δ₊ = ifelse(i < Nx, v[i + 1, jᵢ, k] - v₁, zero(v₁))
-        return v₁, v[i, jᵢᵢ, k], δ₋, δ₊
-    end
-end
-
-@inline function radiate_tangential!(c, bᵢ, b₁, b₂, t, k, grid, bc, clock, model_fields, neighbours, closed)
-    Δτ = stage_Δt(clock)
-    first_call = isinf(Δτ)
-    Δt = ifelse(first_call, zero(Δτ), Δτ)
-    anchored = anchored_fill(clock)
-    radiation = bc.classification.scheme
-
-    @inbounds begin
-        φᵉˣᵗ  = getbc(bc, t, k, grid, clock, model_fields)
-        φ₁ⁿ⁺¹ = c[b₁...]
-        φ₂ⁿ⁺¹ = c[b₂...]
-        φᵇᵃ = ifelse(anchored, c[bᵢ...], radiation.φᵇ[t, k])
-        φ₁ᵃ = ifelse(anchored, radiation.φ₁ˡ[t, k], radiation.φ₁[t, k])
-        φᵇⁿ = ifelse(first_call, φ₁ⁿ⁺¹, φᵇᵃ)
-        φ₁ⁿ = ifelse(first_call, φ₁ⁿ⁺¹, φ₁ᵃ)
-
-        φᵇⁿ⁺¹ = tangential_radiation_update(radiation, t, k, clock, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, neighbours...)
-        c[bᵢ...] = ifelse(closed, zero(grid), φᵇⁿ⁺¹)
-        radiation.φᵇ[t, k]  = φᵇⁿ
-        radiation.φ₁[t, k]  = φ₁ⁿ
-        radiation.φ₁ˡ[t, k] = φ₁ⁿ⁺¹
-    end
-
     return nothing
 end
 
-const OVBC = BoundaryCondition{<:Value{<:ObliqueRadiation}}
-const TangentialToX = Tuple{Center, Face, Center} # v on an east or west boundary
-const TangentialToY = Tuple{Face, Center, Center} # u on a north or south boundary
-
-# A face-located tangential velocity point J lies between the normal-velocity points J - 1 and J.
-@inline function _fill_east_halo!(j, k, grid, c, bc::OVBC, loc::TangentialToX, clock, model_fields)
-    Nx, Ny = grid.Nx, grid.Ny
-    u = model_fields.u
-    neighbours = (normal_neighbour_x(u, Nx, Nx - 1, j - 1, k, Ny), normal_neighbour_x(u, Nx, Nx - 1, j, k, Ny))
-    closed = immersed_peripheral_node(Nx, j, k, grid, Center(), Face(), Center())
-    return radiate_tangential!(c, (Nx + 1, j, k), (Nx, j, k), (Nx - 1, j, k), j, k, grid, bc, clock, model_fields, neighbours, closed)
+# First and second interior values of the normal velocity at plane point `t`, and its differences along the
+# boundary (zero beyond the ends)
+@inline function normal_neighbour(side, model_fields, grid, t, k)
+    uₙ = normal_component(side, model_fields)
+    N = boundary_length(side, grid)
+    @inbounds begin
+        u₁ = uₙ[normal_velocity_index(side, grid, 1, t, k)...]
+        u₂ = uₙ[normal_velocity_index(side, grid, 2, t, k)...]
+        u₋ = uₙ[normal_velocity_index(side, grid, 1, max(t - 1, 1), k)...]
+        u₊ = uₙ[normal_velocity_index(side, grid, 1, min(t + 1, N), k)...]
+    end
+    δ₋ = ifelse(t > 1, u₁ - u₋, zero(u₁))
+    δ₊ = ifelse(t < N, u₊ - u₁, zero(u₁))
+    return u₁, u₂, δ₋, δ₊
 end
 
-@inline function _fill_west_halo!(j, k, grid, c, bc::OVBC, loc::TangentialToX, clock, model_fields)
-    Ny = grid.Ny
-    u = model_fields.u
-    neighbours = (normal_neighbour_x(u, 2, 3, j - 1, k, Ny), normal_neighbour_x(u, 2, 3, j, k, Ny))
-    closed = immersed_peripheral_node(1, j, k, grid, Center(), Face(), Center())
-    return radiate_tangential!(c, (0, j, k), (1, j, k), (2, j, k), j, k, grid, bc, clock, model_fields, neighbours, closed)
-end
+# Radiate a tangential velocity with the averaged coefficients of the normal velocity at its two neighbours.
+# With `phase_speed_weight = 1` it uses its own phase speed, like any other field.
+@inline step_exterior_state!(side::WestEast,   t, k, grid, c, bc::OblBC, loc::TangentialToX, clock, model_fields, Δt) =
+    step_tangential_exterior_state!(side, t, k, grid, c, bc, loc, clock, model_fields, Δt)
 
-@inline function _fill_north_halo!(i, k, grid, c, bc::OVBC, loc::TangentialToY, clock, model_fields)
-    Nx, Ny = grid.Nx, grid.Ny
-    v = model_fields.v
-    neighbours = (normal_neighbour_y(v, Ny, Ny - 1, i - 1, k, Nx), normal_neighbour_y(v, Ny, Ny - 1, i, k, Nx))
-    closed = immersed_peripheral_node(i, Ny, k, grid, Face(), Center(), Center())
-    return radiate_tangential!(c, (i, Ny + 1, k), (i, Ny, k), (i, Ny - 1, k), i, k, grid, bc, clock, model_fields, neighbours, closed)
-end
+@inline step_exterior_state!(side::SouthNorth, t, k, grid, c, bc::OblBC, loc::TangentialToY, clock, model_fields, Δt) =
+    step_tangential_exterior_state!(side, t, k, grid, c, bc, loc, clock, model_fields, Δt)
 
-@inline function _fill_south_halo!(i, k, grid, c, bc::OVBC, loc::TangentialToY, clock, model_fields)
-    Nx = grid.Nx
-    v = model_fields.v
-    neighbours = (normal_neighbour_y(v, 2, 3, i - 1, k, Nx), normal_neighbour_y(v, 2, 3, i, k, Nx))
-    closed = immersed_peripheral_node(i, 1, k, grid, Face(), Center(), Center())
-    return radiate_tangential!(c, (i, 0, k), (i, 1, k), (i, 2, k), i, k, grid, bc, clock, model_fields, neighbours, closed)
+@inline function step_tangential_exterior_state!(side, t, k, grid, c, bc, loc, clock, model_fields, Δt)
+    radiation = bc.classification.scheme
+
+    radiation.phase_speed_weight == 1 &&
+        return step_oblique_exterior_state!(side, t, k, grid, c, bc, loc, clock, model_fields, Δt)
+
+    iᵇ, jᵇ, kᵇ = boundary_point(side, loc, grid, 0, t, k)
+    i₁, j₁, k₁ = boundary_point(side, loc, grid, 1, t, k)
+    t₋, t₊ = normal_neighbours(t, boundary_length(side, grid))
+
+    @inbounds begin
+        φᵉˣᵗ  = getbc(bc, t, k, grid, clock, model_fields)
+        φ₁ⁿ⁺¹ = c[i₁, j₁, k₁]
+        φᵇⁿ = radiation.φ⁻[t, k]
+        δᵇ₋, δᵇ₊ = tangential_differences(radiation.φ⁻, t, k)
+
+        u₁₋, u₂₋, δ₋₋, δ₋₊ = normal_neighbour(side, model_fields, grid, t₋, k)
+        u₁₊, u₂₊, δ₊₋, δ₊₊ = normal_neighbour(side, model_fields, grid, t₊, k)
+        u₁₋ⁿ = radiation.normal_interior[1][t, k]
+        u₁₊ⁿ = radiation.normal_interior[2][t, k]
+
+        rₙ₋, rₜ₋, c₋, _ = oblique_phase_speeds(u₁₋, u₂₋, u₁₋ⁿ, δ₋₋, δ₋₊)
+        rₙ₊, rₜ₊, c₊, _ = oblique_phase_speeds(u₁₊, u₂₊, u₁₊ⁿ, δ₊₋, δ₊₊)
+        r̄ₙ, r̄ₜ, c̄ = average_phase_speeds!(radiation, t, k, (rₙ₋ + rₙ₊) / 2, (rₜ₋ + rₜ₊) / 2, (c₋ + c₊) / 2)
+
+        φᵇⁿ⁺¹ = oblique_radiation_update(φᵇⁿ, φ₁ⁿ⁺¹, δᵇ₋, δᵇ₊, r̄ₙ, r̄ₜ, c̄, r̄ₙ > 0, φᵉˣᵗ, Δt, radiation)
+        c[iᵇ, jᵇ, kᵇ] = ifelse(immersed_boundary_point(side, loc, grid, t, k), zero(grid), φᵇⁿ⁺¹)
+    end
+
+    return nothing
 end
