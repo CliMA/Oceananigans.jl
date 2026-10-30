@@ -391,9 +391,9 @@ copy_velocity(c) = c
 # A generic free surface transports with the stashed pre-step velocity, so there is nothing left to do
 compute_transport_velocities!(model, free_surface) = nothing
 
-# Not if `transport === velocities`
+# Identity is tested on the data: `===` on large immutable Fields miscompiles on Julia ≥ 1.12 and skips the copy
 function update_transport_velocities!(transport_velocities, velocities, free_surface)
-    transport_velocities === velocities && return nothing
+    parent(transport_velocities.u) === parent(velocities.u) && return nothing
     update_transport_velocity_data!(transport_velocities.u, velocities.u)
     update_transport_velocity_data!(transport_velocities.v, velocities.v)
     stash_vertical_velocity!(transport_velocities, velocities, free_surface)
@@ -462,7 +462,8 @@ function prognostic_state(model::HydrostaticFreeSurfaceModel)
             free_surface = prognostic_state(model.free_surface),
             coriolis = prognostic_state(model.coriolis),
             auxiliary_fields = prognostic_state(model.auxiliary_fields),
-            vertical_coordinate = prognostic_state(model.vertical_coordinate, model.grid))
+            vertical_coordinate = prognostic_state(model.vertical_coordinate, model.grid),
+            biogeochemistry = prognostic_state(model.biogeochemistry))
 end
 
 function restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel, from)
@@ -476,6 +477,7 @@ function restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel, from)
     restore_prognostic_state!(restored.closure_fields, from.closure_fields)
     restore_prognostic_state!(restored.auxiliary_fields, from.auxiliary_fields)
     restore_prognostic_state!(restored.vertical_coordinate, restored.grid, from.vertical_coordinate)
+    restore_prognostic_state!(restored.biogeochemistry, from.biogeochemistry)
     return restored
 end
 

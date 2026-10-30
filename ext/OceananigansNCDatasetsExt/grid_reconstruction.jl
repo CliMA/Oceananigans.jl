@@ -38,7 +38,7 @@ end
 
 function write_immersed_boundary_data!(ds, grid::ImmersedBoundaryGrid, immersed_grid_args, prefix)
     group_name = "$(prefix)immersed_grid_reconstruction_args"
-    if (grid.immersed_boundary isa GridFittedBottom) || (grid.immersed_boundary isa PartialCellBottom)
+    if (grid.immersed_boundary isa GridFittedVerticalBoundaries) || (grid.immersed_boundary isa PartialCellVerticalBoundaries)
         pop!(immersed_grid_args, :bottom_height)
         ibg_group = defGroup(ds, group_name; attrib=convert_for_netcdf(immersed_grid_args))
         defVar(ibg_group, "bottom_height", bottom_height_field(grid))
@@ -101,14 +101,14 @@ function reconstruct_immersed_boundary(ds, ::Val{:GridFittedBoundary}, prefix)
     return GridFittedBoundary(mask)
 end
 
-function reconstruct_immersed_boundary(ds, ::Val{:GridFittedBottom}, prefix)
+function reconstruct_immersed_boundary(ds, ::Union{Val{:GridFittedBottom}, Val{:GridFittedVerticalBoundaries}}, prefix)
     ibg_group = ds.group["$(prefix)immersed_grid_reconstruction_args"]
     bottom_height = Array(ibg_group["bottom_height"])
     immersed_condition = ibg_group.attrib["immersed_condition"] |> materialize_from_netcdf
     return GridFittedBottom(bottom_height, immersed_condition)
 end
 
-function reconstruct_immersed_boundary(ds, ::Val{:PartialCellBottom}, prefix)
+function reconstruct_immersed_boundary(ds, ::Union{Val{:PartialCellBottom}, Val{:PartialCellVerticalBoundaries}}, prefix)
     ibg_group = ds.group["$(prefix)immersed_grid_reconstruction_args"]
     bottom_height = Array(ibg_group["bottom_height"])
     minimum_fractional_cell_height = ibg_group.attrib["minimum_fractional_cell_height"] |> materialize_from_netcdf
