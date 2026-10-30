@@ -408,6 +408,11 @@ foreach_name_allocations(counts, weights, names) =
             @test f4_cpu.table isa Array{Float64, 4}
             @test f4_cpu(0.5, 0.5, 0.5, 0.5) ≈ f4(0.5, 0.5, 0.5, 0.5)
 
+            # A reshaped host array moves its parent and is reshaped again
+            reshaped = reshape(view(collect(1.0:8.0), 1:6), 2, 3)
+            @test reshaped isa Base.ReshapedArray
+            @test on_architecture(CPU(), reshaped) == reshaped
+
             # Test Adapt.adapt_structure (used for GPU kernels)
             # When adapted, func should be replaced with nothing
             f1_adapted = Adapt.adapt_structure(nothing, f1)

@@ -22,7 +22,7 @@ struct LocalHaloFilling end
 struct CompleteHaloFilling end
 
 has_normal_flow(bc) = false
-has_normal_flow(bc::BoundaryCondition{<:NormalFlow}) = !isnothing(bc.classification.scheme) || non_zero_transport(bc.condition)
+has_normal_flow(bc::BoundaryCondition{<:NormalFlow}) = non_zero_transport(bc.condition)
 
 non_zero_transport(condition)         = true
 non_zero_transport(::Nothing)         = false
@@ -33,9 +33,11 @@ has_normal_flow(bcs::FieldBoundaryConditions) =
     has_normal_flow(bcs.south)  || has_normal_flow(bcs.north) ||
     has_normal_flow(bcs.bottom) || has_normal_flow(bcs.top)
 
-function substep_halo_filling(extend_halos::Bool, bcs)
+const OpenTopology = Union{TwoSided{Open}, TwoSided{<:Any, Open}}
+
+function substep_halo_filling(extend_halos::Bool, TX, TY, bcs)
     extend_halos || return CompleteHaloFilling()
-    open_boundaries = has_normal_flow(bcs.U) || has_normal_flow(bcs.V)
+    open_boundaries = TX() isa OpenTopology || TY() isa OpenTopology || has_normal_flow(bcs.U) || has_normal_flow(bcs.V)
     return open_boundaries ? LocalHaloFilling() : ExtendedHalos()
 end
 
@@ -143,10 +145,10 @@ Keyword Arguments
                   grid size, and substep into them, communicating only when the substeps outnumber the
                   halo cells. If `false`, halos are not extended and
                   `fill_halo_regions!` is called after each individual update of `U` and `η`, including
-                  communication (`CompleteHaloFilling`). Note that when the barotropic velocities
-                  have prescribed normal-flow boundary conditions (e.g. `GravityWaveRadiation`), the per-substep
-                  `fill_halo_regions!` path is selected automatically with `only_local_halos = true`
-                  (`LocalHaloFilling`) — `extend_halos = false` is not required for open boundaries.
+                  communication (`CompleteHaloFilling`). Note that when the grid has an `Open` side or the barotropic
+                  velocities have a non-zero normal flow, the per-substep `fill_halo_regions!` path is selected
+                  automatically with `only_local_halos = true` (`LocalHaloFilling`) — `extend_halos = false`
+                  is not required for open boundaries.
 
 - `averaging_kernel`: A function of `τ` used to average the barotropic transport `U` and the free surface
                       `η` within the barotropic advancement. `τ` is the fractional substep going from 0 to 2
@@ -255,7 +257,7 @@ Base.@constprop :aggressive function hydrostatic_tendency_fields(velocities, fre
     return merge((u=u, v=v, U=U, V=V), tracers)
 end
 
-const ConnectedTopology = Union{Sides{Connected}, Sides{<:Any, Connected}}
+const ConnectedTopology = Union{TwoSided{Connected}, TwoSided{<:Any, Connected}}
 
 # Internal function for HydrostaticFreeSurfaceModel
 function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_halos}, velocities, grid, bcs) where {extend_halos}
@@ -268,13 +270,17 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
                              `free_surface = SplitExplicitFreeSurface(grid; substeps = N)` where `N::Int`"))
     end
 
-    strategy = substep_halo_filling(extend_halos, bcs)
+    strategy = substep_halo_filling(extend_halos, TX, TY, bcs)
 
     maybe_extended_grid = if strategy isa CompleteHaloFilling
         grid
     else
         maybe_extend_halos(TX, TY, grid, substepping)
     end
+
+    # The barotropic fields live on `maybe_extended_grid`, whose halos size the exterior states of their open boundaries
+    barotropic_names = filter(∈((:U, :V, :η)), keys(bcs))
+    bcs = regularize_field_boundary_conditions(bcs[barotropic_names], maybe_extended_grid, keys(bcs))
 
     η = free_surface_displacement_field(velocities, free_surface, maybe_extended_grid; boundary_conditions = get(bcs, :η, nothing))
     η̅ = free_surface_displacement_field(velocities, free_surface, maybe_extended_grid)

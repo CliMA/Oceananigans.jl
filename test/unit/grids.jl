@@ -2,7 +2,7 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 include(joinpath(@__DIR__, "..", "setup", "data_dependencies.jl"))
 
 using Oceananigans: fully_supported_float_types
-using Oceananigans.Grids: total_extent, with_halo, ColumnEnsembleSize,
+using Oceananigans.Grids: total_extent, with_halo, ColumnEnsembleSize, inactive_cell,
                           xspacings, yspacings, zspacings,
                           xnode, ynode, znode, λnode, φnode,
                           λspacings, φspacings
@@ -836,6 +836,18 @@ end
         @info "  Testing grid utilities..."
         @test total_extent(Periodic(), 1, 0.2, 1.0) == 1.2
         @test total_extent(Bounded(), 1, 0.2, 1.0) == 1.4
+    end
+
+    @testset "Inactive cells beyond Closed sides" begin
+        for (x, inactive_west, inactive_east) in ((Bounded, true, true), (Open, false, false),
+                                                  ((Closed, Open), true, false), ((Open, Closed), false, true))
+            grid = RectilinearGrid(size=4, x=(0, 1), topology=(x, Flat, Flat))
+            Nx = size(grid, 1)
+            @test inactive_cell(0, 1, 1, grid) == inactive_west
+            @test inactive_cell(Nx + 1, 1, 1, grid) == inactive_east
+            @test !inactive_cell(1, 1, 1, grid)
+            @test !inactive_cell(Nx, 1, 1, grid)
+        end
     end
 
     @testset "Coordinate utils" begin

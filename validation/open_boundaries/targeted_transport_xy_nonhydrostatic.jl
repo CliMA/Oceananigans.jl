@@ -24,7 +24,7 @@ experiments = ("west → east"           => (west = Q, east = Q,       south = n
                "targets don't balance" => (west = Q, east = 2Q,      south = nothing, north = nothing))
 
 grid = RectilinearGrid(CPU(); size = (Nx, Ny), x = (0, Lx), y = (0, Ly), halo = (4, 4),
-                       topology = (Bounded, Bounded, Flat))
+                       topology = (Open, Open, Flat))
 
 open_boundary(Scheme, target) = NormalFlowBoundaryCondition(0; scheme = Scheme(; inflow_timescale = Inf, outflow_timescale = Inf,
                                                                                   target_transport = target))

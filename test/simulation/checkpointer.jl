@@ -4,11 +4,14 @@ using Glob
 using NCDatasets
 
 using Oceananigans: prognostic_state, restore_prognostic_state!, prognostic_fields
+using Oceananigans.Biogeochemistry: AbstractBiogeochemistry
 using Oceananigans.TurbulenceClosures.Smagorinskys: Smagorinsky,
     DirectionallyAveragedDynamicSmagorinsky, LagrangianAveragedDynamicSmagorinsky
 using Oceananigans.Models.ShallowWaterModels: ShallowWaterScalarDiffusivity
 using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: ForwardBackwardScheme
 using Oceananigans.Grids: MutableVerticalDiscretization
+
+import Oceananigans.Biogeochemistry: update_biogeochemical_state!
 
 pickup_log = (:info, r"^Picking up simulation from checkpoint file .+\.jld2; last modified \(UTC\): ")
 checkpointing_log = (:info, r"^Checkpointing done: time=.+, size=.+$")
@@ -837,6 +840,63 @@ function test_checkpointing_auxiliary_fields(arch)
     test_model_equality(new_model, ref_model)
 
     rm.(glob("$(prefix)_iteration*.jld2"), force=true)
+
+    return nothing
+end
+
+# A stand-in for a sediment model: `sediment` evolves with the model but is not a tracer,
+# so the biogeochemistry checkpoints it by extending `prognostic_state`
+struct SedimentBiogeochemistry{S} <: AbstractBiogeochemistry
+    sediment :: S
+end
+
+function update_biogeochemical_state!(bgc::SedimentBiogeochemistry, model)
+    interior(bgc.sediment) .+= 1
+    return nothing
+end
+
+Oceananigans.prognostic_state(bgc::SedimentBiogeochemistry) = (; sediment = prognostic_state(bgc.sediment))
+
+function Oceananigans.restore_prognostic_state!(bgc::SedimentBiogeochemistry, from)
+    restore_prognostic_state!(bgc.sediment, from.sediment)
+    return bgc
+end
+
+Oceananigans.restore_prognostic_state!(::SedimentBiogeochemistry, ::Nothing) = nothing
+
+# Most biogeochemical models keep all of their state in `model.tracers`
+struct StatelessBiogeochemistry <: AbstractBiogeochemistry end
+
+function sediment_simulation(arch, Model, dir)
+    grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+    biogeochemistry = SedimentBiogeochemistry(Field{Center, Center, Nothing}(grid))
+    model = Model(grid; biogeochemistry)
+    simulation = Simulation(model; Δt=0.1, stop_iteration=5, verbose=false)
+    simulation.output_writers[:checkpointer] = Checkpointer(model; schedule=IterationInterval(5), dir)
+    return simulation
+end
+
+function test_checkpointing_biogeochemistry(arch, Model)
+    dir = mktempdir()
+
+    simulation = sediment_simulation(arch, Model, dir)
+    @test_nowarn run!(simulation)
+    sediment = Array(interior(simulation.model.biogeochemistry.sediment))
+
+    restored_simulation = sediment_simulation(arch, Model, dir)
+    fresh_sediment = Array(interior(restored_simulation.model.biogeochemistry.sediment))
+    @test fresh_sediment != sediment
+
+    @test_logs pickup_log set!(restored_simulation; checkpoint=:latest)
+    restored_sediment = Array(interior(restored_simulation.model.biogeochemistry.sediment))
+    @test restored_sediment == sediment
+
+    # Biogeochemistry without state of its own adds nothing to checkpoints
+    grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+    stateless_model = Model(grid; biogeochemistry=StatelessBiogeochemistry())
+    @test isnothing(prognostic_state(stateless_model).biogeochemistry)
+
+    rm(dir; recursive=true)
 
     return nothing
 end
@@ -2047,7 +2107,7 @@ function test_open_boundary_condition_scheme_checkpointing(arch, timestepper, sc
     Δt = 0.5
 
     function make_simulation(stop_iteration)
-        grid = RectilinearGrid(arch, topology=(Bounded, Bounded, Bounded), size=(Nx, Ny, Nz), extent=(10, 10, 10))
+        grid = RectilinearGrid(arch, topology=(Open, Bounded, Bounded), size=(Nx, Ny, Nz), extent=(10, 10, 10))
         obc = NormalFlowBoundaryCondition(0.1, scheme=scheme)
         u_bcs = FieldBoundaryConditions(west=obc, east=obc)
         reservoir = ValueBoundaryCondition(1, scheme=Oceananigans.BoundaryConditions.TracerReservoir(inflow_length_scale=1))
@@ -2338,6 +2398,12 @@ for arch in archs
 
     @testset "Auxiliary fields checkpointing [$(typeof(arch))]" begin
         test_checkpointing_auxiliary_fields(arch)
+    end
+
+    for Model in (NonhydrostaticModel, HydrostaticFreeSurfaceModel)
+        @testset "Biogeochemistry checkpointing [$(nameof(Model))] [$(typeof(arch))]" begin
+            test_checkpointing_biogeochemistry(arch, Model)
+        end
     end
 
     for FT in (Float64, Float32)

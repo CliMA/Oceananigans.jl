@@ -113,6 +113,7 @@ state, so it may read or write device arrays freely; its counterpart at the end 
 function initialize!(sim::ReactantSimulation)
     model = sim.model
     initialize!(model)
+    initialize_boundary_conditions!(model)
     update_state!(model, callbacks_at(sim, ModelCallsite))
     foreach(callback -> initialize!(callback, sim), values(sim.callbacks))
     foreach(callback -> callback(sim), callbacks_at(sim, TimeStepCallsite))
