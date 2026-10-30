@@ -63,8 +63,8 @@ HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 
 ├── tracers: ()
 ├── closure: Nothing
 ├── buoyancy: Nothing
-├── free surface: ImplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
-│   └── solver: FFTImplicitFreeSurfaceSolver
+├── free surface: SplitExplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
+│   └── substepping: FixedTimeStepSize(19.758 ms)
 ├── advection scheme:
 │   └── momentum: VectorInvariant
 ├── vertical_coordinate: ZCoordinate
@@ -100,8 +100,8 @@ HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 
 ├── tracers: b
 ├── closure: Nothing
 ├── buoyancy: BuoyancyTracer with ĝ = NegativeZDirection()
-├── free surface: ImplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
-│   └── solver: FFTImplicitFreeSurfaceSolver
+├── free surface: SplitExplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
+│   └── substepping: FixedTimeStepSize(19.758 ms)
 ├── advection scheme:
 │   ├── momentum: VectorInvariant
 │   └── b: Centered(order=2)
@@ -145,8 +145,8 @@ HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 
 ├── tracers: (T, S)
 ├── closure: Nothing
 ├── buoyancy: SeawaterBuoyancy with g=9.80665 and LinearEquationOfState(thermal_expansion=0.000167, haline_contraction=0.00078) with ĝ = NegativeZDirection()
-├── free surface: ImplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
-│   └── solver: FFTImplicitFreeSurfaceSolver
+├── free surface: SplitExplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
+│   └── substepping: FixedTimeStepSize(19.758 ms)
 ├── advection scheme:
 │   ├── momentum: VectorInvariant
 │   ├── T: Centered(order=2)

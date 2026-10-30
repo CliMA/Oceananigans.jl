@@ -251,3 +251,47 @@ end
         @test all(isapprox(p, s; atol = eps(eltype(p)), rtol = sqrt(eps(eltype(p)))))
     end
 end
+
+@testset "Distributed default free surface" begin
+    using Oceananigans.Models.HydrostaticFreeSurfaceModels: estimate_maximum_Δt
+    using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: FixedSubstepNumber, CompleteHaloFilling
+
+    # A shallow domain needs few substeps, so halos are extended; a deep domain on a
+    # coarse grid needs more substeps than fit in a rank's subdomain, so halos are not extended.
+    configurations = ((N = 128, H = 10,   extend_halos = true),
+                      (N = 16,  H = 1000, extend_halos = false))
+
+    for arch in archs, (; N, H, extend_halos) in configurations
+        grids = (RectilinearGrid(arch, size = (N, N, 4), x = (0, 1e5), y = (0, 1e5), z = (-H, 0),
+                                 halo = (4, 4, 4), topology = (Periodic, Periodic, Bounded)),
+                 LatitudeLongitudeGrid(arch, size = (N, N, 4), halo = (4, 4, 4),
+                                       latitude = (-60, 60), longitude = (0, 360), z = (-H, 0)))
+
+        for grid in grids
+            @testset "Default free surface on $(nameof(typeof(grid))) with $(ranks(arch)) ranks and depth $H" begin
+                model = HydrostaticFreeSurfaceModel(grid; tracers = :b, buoyancy = BuoyancyTracer())
+                free_surface = model.free_surface
+
+                @test free_surface isa SplitExplicitFreeSurface
+                @test free_surface.substepping isa FixedSubstepNumber
+
+                # All ranks must agree on the number of substeps, which must match the global grid's
+                substeps = length(free_surface.substepping.averaging_weights)
+                @test all_reduce(min, substeps, arch) == all_reduce(max, substeps, arch)
+
+                global_grid = reconstruct_global_grid(grid)
+                global_free_surface = SplitExplicitFreeSurface(global_grid; cfl = 0.7, fixed_Δt = estimate_maximum_Δt(global_grid))
+                @test substeps == length(global_free_surface.substepping.averaging_weights)
+
+                @test (free_surface isa SplitExplicitFreeSurface{<:CompleteHaloFilling}) == !extend_halos
+
+                Δt = estimate_maximum_Δt(grid)
+                for _ in 1:3
+                    time_step!(model, Δt)
+                end
+
+                @test all(isfinite, free_surface.displacement)
+            end
+        end
+    end
+end
