@@ -166,14 +166,15 @@ the top downwards we get
     \begin{equation}
     p_{HY}^\prime(k) =
         \begin{cases}
-            - \overline{b_{N_z}^\prime}^{aaf} \Delta z^F_{N_z},               & \quad k = N_z \, , \\
-            p_{HY}^\prime(k+1) - \overline{b_{k+1}^\prime}^{aaf} \Delta z^F_k, & \quad 1 \le k \le N_z - 1 \, ,
+            - \frac{1}{2} b_{N_z}^\prime \Delta z^C_{N_z},                       & \quad k = N_z \, , \\
+            p_{HY}^\prime(k+1) - \overline{b_{k+1}^\prime}^{aaf} \Delta z^F_{k+1}, & \quad 1 \le k \le N_z - 1 \, ,
         \end{cases}
     \end{equation}
 ```
 where we converted the sum into a recursive definition for ``p_{HY}^\prime(k)`` in terms of
 ``p_{HY}^\prime(k+1)`` so that the integral may be computed with ``\mathcal{O}(N_z)`` operations
-by a single thread.
+by a single thread. The sum starts half a cell below the top of the domain, where
+``p_{HY}^\prime = 0``, so the top term uses half of the thickness of the uppermost cell.
 
 The vertical velocity ``w`` may be computed from ``u`` and ``v`` via the continuity equation
 ```math
