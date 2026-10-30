@@ -3,7 +3,7 @@ using Dates: Dates, AbstractTime
 using Adapt: Adapt, adapt
 using GPUArraysCore: @allowscalar
 
-using Oceananigans.Architectures: architecture
+using Oceananigans.Architectures: Architectures, architecture, on_architecture
 using Oceananigans.BoundaryConditions: BoundaryConditions
 using Oceananigans.DistributedComputations: child_architecture, Distributed
 using Oceananigans.Fields: Fields, interpolate, interpolator, _interpolate, FixedTime,
@@ -231,12 +231,42 @@ const FTS0  = FlavorOfFTS{Nothing, Nothing, Nothing}
 @inline BoundaryConditions.getbc(f::XFTS, i::Int, ::Int, grid::AbstractGrid, clock, args...) = @inbounds f[i, 1, 1, Time(clock.time)]
 
 # West - east and top - bottom, this case is not really well defined since the indexes could be i and j or j and k
-# so we check which dimension of the grid is 1 and pick the corresponding index
+# so we check which dimension of the grid is 1 and pick the corresponding index. Regularized boundary conditions
+# do not reach this method: they wrap the series in an `XZReducedBoundarySeries` that knows its boundary.
 @inline function BoundaryConditions.getbc(f::YFTS, i1::Int, i2::Int, grid::AbstractGrid, clock, args...)
     Nx, _, Nz = size(grid)
     j = ifelse(Nz == 1, i1, i2)
     return @inbounds f[1, j, 1, Time(clock.time)]
 end
+
+"""
+    XZReducedBoundarySeries{D}(series)
+
+A `FieldTimeSeries` reduced in `x` and `z`, used as a boundary condition on dimension `D`. Its `y` index is the
+first boundary index on the west and east boundaries (`D = 1`), and the second on the bottom and top boundaries
+(`D = 3`).
+"""
+struct XZReducedBoundarySeries{D, S}
+    series :: S
+end
+
+XZReducedBoundarySeries{D}(series::S) where {D, S} = XZReducedBoundarySeries{D, S}(series)
+
+boundary_series(series, dim) = series
+boundary_series(series, ::Val{1}) = XZReducedBoundarySeries{1}(series)
+boundary_series(series, ::Val{3}) = XZReducedBoundarySeries{3}(series)
+
+BoundaryConditions.regularize_boundary_condition(series::YFTS, grid, loc, dim, args...) = boundary_series(series, Val(dim))
+
+@inline BoundaryConditions.getbc(s::XZReducedBoundarySeries{1}, j::Int, k::Int, grid::AbstractGrid, clock, args...) =
+    @inbounds s.series[1, j, 1, Time(clock.time)]
+
+@inline BoundaryConditions.getbc(s::XZReducedBoundarySeries{3}, i::Int, j::Int, grid::AbstractGrid, clock, args...) =
+    @inbounds s.series[1, j, 1, Time(clock.time)]
+
+Adapt.adapt_structure(to, s::XZReducedBoundarySeries{D}) where D = XZReducedBoundarySeries{D}(adapt(to, s.series))
+Architectures.on_architecture(to, s::XZReducedBoundarySeries{D}) where D = XZReducedBoundarySeries{D}(on_architecture(to, s.series))
+Base.summary(s::XZReducedBoundarySeries) = summary(s.series)
 
 # West - east and south - north boundary conditions, only the last index is valid (the first one is either i or j)
 @inline BoundaryConditions.getbc(f::ZFTS, ::Int, k::Int, grid::AbstractGrid, clock, args...) = @inbounds f[1, 1, k, Time(clock.time)]
