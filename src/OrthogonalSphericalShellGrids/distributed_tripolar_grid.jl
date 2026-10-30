@@ -11,10 +11,7 @@ using Oceananigans.DistributedComputations:
     concatenate_local_sizes,
     communication_buffers
 
-using Oceananigans.Grids: topology, FullyConnected,
-    RightCenterFolded, RightFaceFolded,
-    LeftConnectedRightCenterFolded, LeftConnectedRightFaceFolded,
-    LeftConnectedRightCenterConnected, LeftConnectedRightFaceConnected,
+using Oceananigans.Grids: topology, Bounded, Connected, FaceFolded, FaceFoldConnected, TwoSided,
     SlabFoldedTopology, PencilFoldedTopology, DistributedFoldedTopology
 using Oceananigans.DistributedComputations: insert_connected_topology
 using Oceananigans.Utils: Utils
@@ -128,7 +125,7 @@ function distribute_tripolar_grid(arch::Distributed, global_grid)
     Azᶜᶠᵃ = partition_tripolar_metric(global_grid, :Azᶜᶠᵃ, irange, jrange)
     Azᶠᶠᵃ = partition_tripolar_metric(global_grid, :Azᶠᶠᵃ, irange, jrange)
 
-    LX = workers[1] == 1 ? Periodic : FullyConnected
+    LX = workers[1] == 1 ? Periodic : TwoSided{Connected, Connected}
 
     global_fold_topology = topology(global_grid, 2)
 
@@ -417,7 +414,7 @@ end
 ##### Extend worksize for distributed FPivot grids (matches RFTRG worksize for serial FPivot)
 #####
 
-const DistributedFPivotTopology = Union{LeftConnectedRightFaceFolded, LeftConnectedRightFaceConnected}
+const DistributedFPivotTopology = TwoSided{Connected, <:Union{FaceFolded, FaceFoldConnected}}
 const DRFTRG = Union{MPITripolarGrid{<:Any, <:Any, <:DistributedFPivotTopology},
                      ImmersedBoundaryGrid{<:Any, <:Any, <:DistributedFPivotTopology, <:Any, <:MPITripolarGrid}}
 

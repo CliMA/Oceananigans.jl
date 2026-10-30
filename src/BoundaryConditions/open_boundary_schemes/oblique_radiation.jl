@@ -8,8 +8,8 @@
                        use_boundary_velocity = false,
                        target_transport = nothing)
 
-Raymond & Kuo (1984) two-dimensional radiation condition with adaptive nudging
-(Marchesiello et al. 2001):
+[Raymond & Kuo (1984)](@cite raymond.kuo1984) two-dimensional radiation condition with adaptive nudging
+([Marchesiello et al., 2001](@cite marchesiello.ea2001)):
 
     ∂φ/∂t + cₙ ∂φ/∂n + cₜ ∂φ/∂t̂ = - (φ - φᵉˣᵗ) / τ
 
@@ -49,19 +49,14 @@ ObliqueRadiation{Float64}
 └── target_transport: nothing
 ```
 """
-struct ObliqueRadiation{FT, S, B, TF, TB, E} <: AbstractRadiationScheme{FT}
+struct ObliqueRadiation{FT, S, TF} <: AbstractRadiationScheme{FT}
     outflow_timescale :: FT
     inflow_timescale  :: FT
     use_boundary_velocity :: Bool
-    φᵇ  :: S
-    φ₁  :: S
-    φ₁ˡ :: S
-    previous_boundary :: B # boundary values written during the previous iteration, one array per iteration parity,
-                           # with halos along the boundary that hold the values of neighbouring ranks
-    previous_interior :: B # first-interior values, likewise
+    φ⁻ :: S
+    φ₁ :: S
     target_transport :: TF # prescribed net transport through the boundary, or nothing
-    tangential_bounds :: TB # first and last index along the boundary that the tangential differences read
-    state_fields :: E      # the fields holding previous_boundary and previous_interior, whose halos are filled
+    periodic :: Bool       # whether the direction along the boundary is periodic on this grid
 end
 
 function ObliqueRadiation(FT = defaults.FloatType;
@@ -73,77 +68,45 @@ function ObliqueRadiation(FT = defaults.FloatType;
     outflow_timescale = convert(FT, outflow_timescale)
     inflow_timescale = convert(FT, inflow_timescale)
     target_transport = convert_target_transport(FT, target_transport)
-    return ObliqueRadiation(outflow_timescale, inflow_timescale, use_boundary_velocity,
-                            nothing, nothing, nothing, nothing, nothing, target_transport, nothing, nothing)
+    return ObliqueRadiation(outflow_timescale, inflow_timescale, use_boundary_velocity, nothing, nothing, target_transport, false)
 end
 
 Adapt.adapt_structure(to, r::ObliqueRadiation) =
     ObliqueRadiation(adapt(to, r.outflow_timescale),
                      adapt(to, r.inflow_timescale),
                      r.use_boundary_velocity,
-                     adapt(to, r.φᵇ),
+                     adapt(to, r.φ⁻),
                      adapt(to, r.φ₁),
-                     adapt(to, r.φ₁ˡ),
-                     adapt(to, r.previous_boundary),
-                     adapt(to, r.previous_interior),
                      adapt(to, r.target_transport),
-                     r.tangential_bounds,
-                     nothing)
+                     r.periodic)
 
-has_target_transport(::ObliqueRadiation{<:Any, <:Any, <:Any, <:Nothing}) = false
+has_target_transport(::ObliqueRadiation{<:Any, <:Any, <:Nothing}) = false
 has_target_transport(::ObliqueRadiation) = true
 
-# The previous boundary and first-interior values are kept in fields reduced normal to the boundary, whose halos along
-# it hold the values of a neighbouring rank or of the other end of a periodic boundary.
+radiation_storage(radiation::ObliqueRadiation, buffer) =
+    ObliqueRadiation(radiation.outflow_timescale, radiation.inflow_timescale, radiation.use_boundary_velocity,
+                     buffer(), buffer(), radiation.target_transport, radiation.periodic)
+
+# The buffers span the Connected halos along the boundary, but a periodic direction that is not partitioned wraps
+# onto itself.
 function materialize_radiation_storage(radiation::ObliqueRadiation, grid, loc, dim)
-    FT = eltype(grid)
-    arch = architecture(grid)
-    Sx, Sy, Sz = size(grid, loc)
-    Hx, Hy, _ = halo_size(grid)
-
-    d = dim == 1 ? 2 : 1
-    N = dim == 1 ? Sy : Sx
-    H = dim == 1 ? Hy : Hx
-    T = topology(grid, d)
-    r = connected_range(loc[d], T, N, H)
-
-    φᵇ, φ₁, φ₁ˡ = ntuple(_ -> radiation_buffer(arch, FT, r, 1:Sz), 3)
-
-    state_fields = ntuple(_ -> boundary_state_field(grid, loc, dim), 4)
-    previous_boundary = map(f -> along_boundary(f, dim), state_fields[1:2])
-    previous_interior = map(f -> along_boundary(f, dim), state_fields[3:4])
-
-    tangential_bounds = (ifelse(neighbour_on_left(T), first(r) - 1, 1), ifelse(neighbour_on_right(T), last(r) + 1, N))
-
-    return ObliqueRadiation(radiation.outflow_timescale, radiation.inflow_timescale, radiation.use_boundary_velocity,
-                            φᵇ, φ₁, φ₁ˡ, previous_boundary, previous_interior, radiation.target_transport,
-                            tangential_bounds, state_fields)
+    scheme = invoke(materialize_radiation_storage, Tuple{AbstractRadiationScheme, Any, Any, Any}, radiation, grid, loc, dim)
+    periodic = topology(grid, ifelse(dim == 1, 2, 1)) === Grids.Periodic
+    return ObliqueRadiation(scheme.outflow_timescale, scheme.inflow_timescale, scheme.use_boundary_velocity,
+                            scheme.φ⁻, scheme.φ₁, scheme.target_transport, periodic)
 end
 
-radiation_buffers(radiation::ObliqueRadiation) =
-    (radiation.φᵇ, radiation.φ₁, radiation.φ₁ˡ, map(f -> parent(f.data), radiation.state_fields)...)
-
-const OBC = BoundaryCondition{<:Union{Value{<:ObliqueRadiation}, NormalFlow{<:ObliqueRadiation}}}
-
-# The halos of the previous values take those of the neighbouring ranks
-function fill_boundary_state_halos!(radiation::ObliqueRadiation)
-    isnothing(radiation.state_fields) || foreach(fill_halo_regions!, radiation.state_fields)
-    return nothing
-end
-
-update_boundary_condition!(bc::OBC, side, field, model) = fill_boundary_state_halos!(bc.classification.scheme)
-
-# Fills read the buffer written during the previous iteration and write the other one.
-@inline written_buffer(clock) = clock.iteration % 2 + 1
-@inline written_buffer(::Nothing) = 1
-
-# Backward and forward differences along the boundary face, zero beyond its ends. Next to a rank edge the neighbour is
-# in the halo of φ, which holds the neighbouring rank's value.
-@inline function tangential_differences(φ, t, k, (lower, upper))
+# Backward and forward differences along the boundary face. Beyond its ends they are zero, or take the value from the
+# other end if the direction is periodic.
+@inline function tangential_differences(φ, i, j, periodic)
+    lower = firstindex(φ, 1)
+    upper = lastindex(φ, 1)
+    i₋ = ifelse(periodic, ifelse(i == lower, upper, i - 1), max(i - 1, lower))
+    i₊ = ifelse(periodic, ifelse(i == upper, lower, i + 1), min(i + 1, upper))
     @inbounds begin
-        φ₀ = φ[t, k]
-        φ₋ = φ[max(t - 1, lower), k]
-        φ₊ = φ[min(t + 1, upper), k]
+        φ₀ = φ[i, j]
+        φ₋ = φ[i₋, j]
+        φ₊ = φ[i₊, j]
     end
     return φ₀ - φ₋, φ₊ - φ₀
 end
@@ -167,17 +130,9 @@ end
     return ifelse(τ == 0, φᵉˣᵗ, φᵇⁿ⁺¹)
 end
 
-@inline function radiation_update(radiation::ObliqueRadiation, t, k, clock, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, outflow, Cᵃ)
-    w = written_buffer(clock)
-    bounds = radiation.tangential_bounds
-    δᵇ₋, δᵇ₊ = tangential_differences(radiation.previous_boundary[3 - w], t, k, bounds)
-    δ₁₋, δ₁₊ = tangential_differences(radiation.previous_interior[3 - w], t, k, bounds)
-    φᵇⁿ⁺¹ = oblique_radiation_update(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, δᵇ₋, δᵇ₊, δ₁₋, δ₁₊, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
-
-    @inbounds begin
-        radiation.previous_boundary[w][t, k] = φᵇⁿ⁺¹
-        radiation.previous_interior[w][t, k] = φ₁ⁿ⁺¹
-    end
-
-    return φᵇⁿ⁺¹
+# The tangential derivatives are those of the boundary and interior values at the base of the stage
+@inline function radiation_update(radiation::ObliqueRadiation, ::Union{West, East, South, North}, i, j, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, outflow, Cᵃ)
+    δᵇ₋, δᵇ₊ = tangential_differences(radiation.φ⁻, i, j, radiation.periodic)
+    δ₁₋, δ₁₊ = tangential_differences(radiation.φ₁, i, j, radiation.periodic)
+    return oblique_radiation_update(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, δᵇ₋, δᵇ₊, δ₁₋, δ₁₊, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
 end

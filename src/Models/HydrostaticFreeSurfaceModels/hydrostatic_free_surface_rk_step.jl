@@ -24,7 +24,7 @@ The order of operations for explicit free surfaces is:
 1. Compute momentum tendencies (baroclinic)
 2. Advance the free surface (barotropic step)
 3. Compute transport velocities for tracer advection
-4. Compute tracer tendencies
+4. Compute tracer tendencies and execute the `TracerTendencyCallsite` callbacks
 5. Advance grid scaling (for z-star coordinates)
 6. Advance velocities
 7. Correct barotropic mode to reconcile baroclinic and barotropic velocities
@@ -48,9 +48,10 @@ The order of operations for explicit free surfaces is:
     u, v, _ = model.velocities
     fill_halo_regions!((u, v), model.clock, fields(model); async=true)
 
-    @apply_regionally begin
-        compute_tracer_tendencies!(model)
+    @apply_regionally compute_tracer_tendencies!(model)
+    execute_tracer_tendency_callbacks!(model, callbacks)
 
+    @apply_regionally begin
         # The barotropic correction integrates over the column, so it must follow the grid update
         rk_substep_grid!(grid, model, model.vertical_coordinate, Δτ)
 
@@ -70,8 +71,9 @@ For implicit free surfaces, a predictor-corrector approach is used:
 2. Enforce targeted open boundary transports on the predictor velocity
 3. Solve implicit free surface equation
 4. Correct velocities for the updated barotropic pressure gradient
-5. Advance grid scaling (for z-star coordinates)
-6. Advance tracers
+5. Compute tracer tendencies and execute the `TracerTendencyCallsite` callbacks
+6. Advance grid scaling (for z-star coordinates)
+7. Advance tracers
 """
 @inline function rk_substep!(model, free_surface::ImplicitFreeSurface, grid, Δτ, callbacks)
 
@@ -105,7 +107,10 @@ For implicit free surfaces, a predictor-corrector approach is used:
     @apply_regionally begin
         compute_transport_velocities!(model, free_surface)
         compute_tracer_tendencies!(model)
+    end
+    execute_tracer_tendency_callbacks!(model, callbacks)
 
+    @apply_regionally begin
         # Advance grid (z-star scaling)
         rk_substep_grid!(model.grid, model, model.vertical_coordinate, Δτ)
 
@@ -153,6 +158,7 @@ function rk_substep_velocities!(velocities, model, Δt)
     implicit_substep_velocity!(model, Δt, Val(:u))
     implicit_substep_velocity!(model, Δt, Val(:v))
     add_barotropic_acceleration!(velocities, model.grid, model.free_surface, ηⁿ, -Δt)
+    step_boundary_conditions!(velocities, model.clock, fields(model), Δt)
 
     return nothing
 end
@@ -208,6 +214,7 @@ function rk_substep_tracers!(tracers, model, Δt)
     foreach_name(tracers) do val_tracer_index, val_tracer_name
         rk_substep_tracer!(model, Δt, val_tracer_index, val_tracer_name)
     end
+    step_boundary_conditions!(tracers, model.clock, fields(model), Δt)
     return nothing
 end
 
@@ -256,6 +263,6 @@ end
 # accounting for the stretching factors from the new and the previous time step.
 @kernel function _rk_substep_tracer_field!(c, grid, Δt, Gⁿ, σc⁻)
     i, j, k = @index(Global, NTuple)
-    σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
-    @inbounds c[i, j, k] = (σc⁻[i, j, k] + Δt * Gⁿ[i, j, k]) / σᶜᶜⁿ
+    σ⁻¹ᶜᶜⁿ = σ⁻¹ⁿ(i, j, k, grid, Center(), Center(), Center())
+    @inbounds c[i, j, k] = (σc⁻[i, j, k] + Δt * Gⁿ[i, j, k]) * σ⁻¹ᶜᶜⁿ
 end

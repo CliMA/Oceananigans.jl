@@ -29,8 +29,8 @@ using Oceananigans.Architectures: Architectures, CPU, GPU, architecture, on_arch
 import Oceananigans.Fields
 using Oceananigans.Fields: Fields, AbstractField, Field, data, interior, set!, Reduction, location, indices
 using Oceananigans.Grids:
-    Center, Face, grid, nodes, constructor_arguments,
-    generate_coordinate, AbstractVerticalCoordinate
+    Center, Face, TwoSided, grid, nodes, constructor_arguments,
+    generate_coordinate, validate_topology, AbstractVerticalCoordinate
 using Oceananigans.OrthogonalSphericalShellGrids:
     TripolarGrid, RotatedLatitudeLongitudeGrid,
     Tripolar, LatitudeLongitudeRotation,
@@ -39,6 +39,7 @@ using Oceananigans.Grids: OrthogonalSphericalShellGrid
 
 using Oceananigans.ImmersedBoundaries:
     ImmersedBoundaryGrid, GridFittedBottom, GridFittedBoundary, PartialCellBottom,
+    GridFittedVerticalBoundaries, PartialCellVerticalBoundaries,
     CenterImmersedCondition, InterfaceImmersedCondition, bottom_height_field
 using Oceananigans.Models: LagrangianParticles
 using Oceananigans.OutputReaders:
