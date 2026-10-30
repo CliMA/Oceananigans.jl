@@ -1,20 +1,51 @@
 module StokesDrifts
 
 export
+    AbstractStokesDrift,
     UniformStokesDrift,
     StokesDrift,
+    FieldStokesDrift,
     ∂t_uˢ,
     ∂t_vˢ,
     ∂t_wˢ,
     x_curl_Uˢ_cross_U,
     y_curl_Uˢ_cross_U,
-    z_curl_Uˢ_cross_U
+    z_curl_Uˢ_cross_U,
+    compute_stokes_drift!
 
 using Adapt: Adapt, adapt
+using KernelAbstractions: @kernel, @index
+using Oceananigans.Architectures: architecture
+using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields: Field
 using Oceananigans.Grids: AbstractGrid, node, znode, Face, Center
-using Oceananigans.Operators: ℑxyᶠᶜᵃ, ℑxyᶜᶠᵃ, ℑxzᶠᵃᶜ, ℑxzᶜᵃᶠ, ℑyzᵃᶠᶜ, ℑyzᵃᶜᶠ, ℑzᵃᵃᶜ
-using Oceananigans.Utils: prettysummary
+using Oceananigans.Operators: ℑxᶜᵃᵃ, ℑyᵃᶜᵃ, ℑzᵃᵃᶜ, ℑxyᶠᶜᵃ, ℑxyᶜᶠᵃ, ℑxzᶠᵃᶜ, ℑxzᶜᵃᶠ, ℑyzᵃᶠᶜ, ℑyzᵃᶜᶠ,
+                              ∂xᶠᶠᶜ, ∂xᶠᶜᶠ, ∂yᶠᶠᶜ, ∂yᶜᶠᶠ, ∂zᶠᶜᶠ, ∂zᶜᶠᶠ, flux_div_xyᶜᶜᶜ, Az⁻¹ᶜᶜᶜ
+using Oceananigans.Utils: prettysummary, launch!, KernelParameters
+
+#####
+##### Abstract Stokes-drift type
+#####
+
+"""
+    AbstractStokesDrift
+
+Supertype of all Stokes-drift representations Oceananigans understands. Three
+concrete subtypes ship with Oceananigans:
+
+  - [`UniformStokesDrift`](@ref): analytic, horizontally-uniform Stokes drift
+    given as functions of depth and time;
+  - [`StokesDrift`](@ref): analytic Stokes drift with horizontal structure,
+    given as functions of `(x, y, z, t)`;
+  - [`FieldStokesDrift`](@ref): Stokes drift carried as Oceananigans `Field`s
+    at the staggered velocity locations, suitable for couplings where
+    `uˢ, vˢ` are supplied by an external wave model.
+
+`compute_stokes_drift!(stokes_drift, grid)` is a no-op for the analytic
+subtypes and refreshes the diagnostic Fields (`wˢ, ∂t_wˢ`) for
+`FieldStokesDrift`.
+"""
+abstract type AbstractStokesDrift end
 
 #####
 ##### Functions for "no surface waves"
@@ -28,11 +59,21 @@ using Oceananigans.Utils: prettysummary
 @inline y_curl_Uˢ_cross_U(i, j, k, grid, ::Nothing, U, time) = zero(grid)
 @inline z_curl_Uˢ_cross_U(i, j, k, grid, ::Nothing, U, time) = zero(grid)
 
+"""
+    compute_stokes_drift!(stokes_drift, grid)
+
+Compute the diagnostic components of `stokes_drift`: for a [`FieldStokesDrift`](@ref),
+`wˢ` and `∂t_wˢ` from the continuity of `uˢ, vˢ` and `∂t_uˢ, ∂t_vˢ`, integrated upwards
+from `wˢ = 0` at the bottom. A no-op for the other Stokes drifts.
+"""
+compute_stokes_drift!(stokes_drift, grid) = nothing
+compute_stokes_drift!(::Nothing, grid) = nothing
+
 #####
 ##### Uniform surface waves
 #####
 
-struct UniformStokesDrift{P, UZ, VZ, UT, VT}
+struct UniformStokesDrift{P, UZ, VZ, UT, VT} <: AbstractStokesDrift
     ∂z_uˢ :: UZ
     ∂z_vˢ :: VZ
     ∂t_uˢ :: UT
@@ -173,7 +214,7 @@ const f = Face()
     - ℑxzᶜᵃᶠ(i, j, k, grid, U.u) * ∂z_Uᵃᵃᶠ(i, j, k, grid, sd, sd.∂z_uˢ, time)
     - ℑyzᵃᶜᶠ(i, j, k, grid, U.v) * ∂z_Uᵃᵃᶠ(i, j, k, grid, sd, sd.∂z_vˢ, time))
 
-struct StokesDrift{P, VX, WX, UY, WY, UZ, VZ, UT, VT, WT}
+struct StokesDrift{P, VX, WX, UY, WY, UZ, VZ, UT, VT, WT} <: AbstractStokesDrift
     ∂x_vˢ :: VX
     ∂x_wˢ :: WX
     ∂y_uˢ :: UY
@@ -307,6 +348,10 @@ StokesDrift{Nothing}:
 ├── ∂t_vˢ: zerofunction
 └── ∂t_wˢ: ∂t_wˢ
 ```
+
+For couplings where the Stokes drift comes from a wave-resolving model as
+Oceananigans `Field`s rather than analytic functions, use
+[`FieldStokesDrift`](@ref) instead.
 """
 function StokesDrift(; ∂x_vˢ = zerofunction,
                        ∂x_wˢ = zerofunction,
@@ -319,64 +364,272 @@ function StokesDrift(; ∂x_vˢ = zerofunction,
                        ∂t_wˢ = zerofunction,
                        parameters = nothing)
 
-    return StokesDrift(∂x_vˢ, ∂x_wˢ, ∂y_uˢ, ∂y_wˢ, ∂z_uˢ, ∂z_vˢ, ∂t_uˢ, ∂t_vˢ, ∂t_wˢ, parameters)
+    return StokesDrift(∂x_vˢ, ∂x_wˢ, ∂y_uˢ, ∂y_wˢ, ∂z_uˢ, ∂z_vˢ,
+                       ∂t_uˢ, ∂t_vˢ, ∂t_wˢ, parameters)
 end
 
 const SD = StokesDrift
 const SDnoP = StokesDrift{<:Nothing}
 
-@inline ∂t_uˢ(i, j, k, grid, sw::SD, time) = sw.∂t_uˢ(node(i, j, k, grid, f, c, c)..., time, sw.parameters)
-@inline ∂t_vˢ(i, j, k, grid, sw::SD, time) = sw.∂t_vˢ(node(i, j, k, grid, c, f, c)..., time, sw.parameters)
-@inline ∂t_wˢ(i, j, k, grid, sw::SD, time) = sw.∂t_wˢ(node(i, j, k, grid, c, c, f)..., time, sw.parameters)
-
-@inline ∂t_uˢ(i, j, k, grid, sw::SDnoP, time) = sw.∂t_uˢ(node(i, j, k, grid, f, c, c)..., time)
-@inline ∂t_vˢ(i, j, k, grid, sw::SDnoP, time) = sw.∂t_vˢ(node(i, j, k, grid, c, f, c)..., time)
-@inline ∂t_wˢ(i, j, k, grid, sw::SDnoP, time) = sw.∂t_wˢ(node(i, j, k, grid, c, c, f)..., time)
-
 @inline parameters_tuple(::SDnoP) = tuple()
 @inline parameters_tuple(sw::SD) = tuple(sw.parameters)
 
-@inline function x_curl_Uˢ_cross_U(i, j, k, grid, sw::SD, U, time)
+@inline ∂t_uˢ(i, j, k, grid, sw::SD, time) =
+    sw.∂t_uˢ(node(i, j, k, grid, f, c, c)..., time, parameters_tuple(sw)...)
+@inline ∂t_vˢ(i, j, k, grid, sw::SD, time) =
+    sw.∂t_vˢ(node(i, j, k, grid, c, f, c)..., time, parameters_tuple(sw)...)
+@inline ∂t_wˢ(i, j, k, grid, sw::SD, time) =
+    sw.∂t_wˢ(node(i, j, k, grid, c, c, f)..., time, parameters_tuple(sw)...)
+
+# Function-mode per-derivative helpers. Each `∂{x,y,z}_{u,v,w}ˢ_<loc>`
+# returns the appropriate component of ∇uˢ at node location <loc> by
+# evaluating the user-supplied callable at the node.
+@inline ∂z_uˢ_fcc(i, j, k, grid, sw::SD, time) =
+    sw.∂z_uˢ(node(i, j, k, grid, f, c, c)..., time, parameters_tuple(sw)...)
+@inline ∂z_uˢ_ccf(i, j, k, grid, sw::SD, time) =
+    sw.∂z_uˢ(node(i, j, k, grid, c, c, f)..., time, parameters_tuple(sw)...)
+@inline ∂z_vˢ_cfc(i, j, k, grid, sw::SD, time) =
+    sw.∂z_vˢ(node(i, j, k, grid, c, f, c)..., time, parameters_tuple(sw)...)
+@inline ∂z_vˢ_ccf(i, j, k, grid, sw::SD, time) =
+    sw.∂z_vˢ(node(i, j, k, grid, c, c, f)..., time, parameters_tuple(sw)...)
+@inline ∂y_uˢ_fcc(i, j, k, grid, sw::SD, time) =
+    sw.∂y_uˢ(node(i, j, k, grid, f, c, c)..., time, parameters_tuple(sw)...)
+@inline ∂y_uˢ_cfc(i, j, k, grid, sw::SD, time) =
+    sw.∂y_uˢ(node(i, j, k, grid, c, f, c)..., time, parameters_tuple(sw)...)
+@inline ∂x_vˢ_fcc(i, j, k, grid, sw::SD, time) =
+    sw.∂x_vˢ(node(i, j, k, grid, f, c, c)..., time, parameters_tuple(sw)...)
+@inline ∂x_vˢ_cfc(i, j, k, grid, sw::SD, time) =
+    sw.∂x_vˢ(node(i, j, k, grid, c, f, c)..., time, parameters_tuple(sw)...)
+@inline ∂x_wˢ_fcc(i, j, k, grid, sw::SD, time) =
+    sw.∂x_wˢ(node(i, j, k, grid, f, c, c)..., time, parameters_tuple(sw)...)
+@inline ∂x_wˢ_ccf(i, j, k, grid, sw::SD, time) =
+    sw.∂x_wˢ(node(i, j, k, grid, c, c, f)..., time, parameters_tuple(sw)...)
+@inline ∂y_wˢ_cfc(i, j, k, grid, sw::SD, time) =
+    sw.∂y_wˢ(node(i, j, k, grid, c, f, c)..., time, parameters_tuple(sw)...)
+@inline ∂y_wˢ_ccf(i, j, k, grid, sw::SD, time) =
+    sw.∂y_wˢ(node(i, j, k, grid, c, c, f)..., time, parameters_tuple(sw)...)
+
+#####
+##### Field-mode Stokes drift
+#####
+
+"""
+    FieldStokesDrift{P, US, VS, WS, UT, VT, WT} <: AbstractStokesDrift
+
+Stokes-drift representation backed by Oceananigans `Field`s at the C-grid
+velocity locations. Used for couplings where the Stokes drift state is
+provided by an external wave model (e.g., a spectral or single-band
+wave-action solver) rather than as a closed-form analytic expression.
+
+The six prognostic Field slots are:
+
+- `uˢ` at `(Face,   Center, Center)`,
+- `vˢ` at `(Center, Face,   Center)`,
+- `wˢ` at `(Center, Center, Face  )`,
+- `∂t_uˢ` at `(Face,   Center, Center)`,
+- `∂t_vˢ` at `(Center, Face,   Center)`,
+- `∂t_wˢ` at `(Center, Center, Face  )`.
+
+Spatial derivatives in the vortex-force curl
+(`x_curl_Uˢ_cross_U, y_curl_Uˢ_cross_U, z_curl_Uˢ_cross_U`) are computed
+inline from `uˢ, vˢ, wˢ` via the staggered finite-difference operators.
+Time derivatives are read directly via `getindex` — the user is expected
+to refresh `uˢ, vˢ, ∂t_uˢ, ∂t_vˢ` from the wave model before each ocean
+step. `wˢ` and `∂t_wˢ` are computed automatically by
+[`compute_stokes_drift!`](@ref) at the start of `update_state!` by
+vertical integration of incompressibility.
+"""
+struct FieldStokesDrift{P, US, VS, WS, UT, VT, WT} <: AbstractStokesDrift
+    parameters :: P
+    uˢ    :: US
+    vˢ    :: VS
+    wˢ    :: WS
+    ∂t_uˢ :: UT
+    ∂t_vˢ :: VT
+    ∂t_wˢ :: WT
+end
+
+Adapt.adapt_structure(to, sd::FieldStokesDrift) =
+    FieldStokesDrift(adapt(to, sd.parameters),
+                     adapt(to, sd.uˢ),
+                     adapt(to, sd.vˢ),
+                     adapt(to, sd.wˢ),
+                     adapt(to, sd.∂t_uˢ),
+                     adapt(to, sd.∂t_vˢ),
+                     adapt(to, sd.∂t_wˢ))
+
+Base.summary(::FieldStokesDrift{Nothing}) = "FieldStokesDrift{Nothing}"
+
+function Base.summary(sd::FieldStokesDrift)
+    p_str = prettysummary(sd.parameters)
+    return "FieldStokesDrift with parameters $p_str"
+end
+
+function Base.show(io::IO, sd::FieldStokesDrift)
+    print(io, summary(sd), ':', '\n')
+    print(io, "├── uˢ:    ", prettysummary(sd.uˢ,    false), '\n')
+    print(io, "├── vˢ:    ", prettysummary(sd.vˢ,    false), '\n')
+    print(io, "├── wˢ:    ", prettysummary(sd.wˢ,    false), '\n')
+    print(io, "├── ∂t_uˢ: ", prettysummary(sd.∂t_uˢ, false), '\n')
+    print(io, "├── ∂t_vˢ: ", prettysummary(sd.∂t_vˢ, false), '\n')
+    print(io, "└── ∂t_wˢ: ", prettysummary(sd.∂t_wˢ, false))
+end
+
+"""
+    FieldStokesDrift(grid; uˢ=…, vˢ=…, wˢ=…, ∂t_uˢ=…, ∂t_vˢ=…, ∂t_wˢ=…, parameters=nothing)
+
+Allocate a `FieldStokesDrift` with C-grid-located `Field`s for each
+prognostic slot. Each slot defaults to a freshly-allocated `Field` at the
+matching staggered location and can be overridden with a user-supplied
+`Field` via the corresponding kwarg (useful when the caller wants to
+share a Field with other code).
+
+Example
+=======
+
+```jldoctest
+using Oceananigans
+
+grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
+uˢ = XFaceField(grid)
+stokes_drift = FieldStokesDrift(grid; uˢ)
+
+# output
+
+FieldStokesDrift{Nothing}:
+├── uˢ:    4×4×4 Field{Face, Center, Center} on RectilinearGrid on CPU
+├── vˢ:    4×4×4 Field{Center, Face, Center} on RectilinearGrid on CPU
+├── wˢ:    4×4×5 Field{Center, Center, Face} on RectilinearGrid on CPU
+├── ∂t_uˢ: 4×4×4 Field{Face, Center, Center} on RectilinearGrid on CPU
+├── ∂t_vˢ: 4×4×4 Field{Center, Face, Center} on RectilinearGrid on CPU
+└── ∂t_wˢ: 4×4×5 Field{Center, Center, Face} on RectilinearGrid on CPU
+```
+"""
+function FieldStokesDrift(grid;
+                          uˢ    = Field{Face,   Center, Center}(grid),
+                          vˢ    = Field{Center, Face,   Center}(grid),
+                          wˢ    = Field{Center, Center, Face  }(grid),
+                          ∂t_uˢ = Field{Face,   Center, Center}(grid),
+                          ∂t_vˢ = Field{Center, Face,   Center}(grid),
+                          ∂t_wˢ = Field{Center, Center, Face  }(grid),
+                          parameters = nothing)
+    return FieldStokesDrift(parameters, uˢ, vˢ, wˢ, ∂t_uˢ, ∂t_vˢ, ∂t_wˢ)
+end
+
+const FSD = FieldStokesDrift
+
+@inline ∂t_uˢ(i, j, k, grid, sw::FSD, time) = @inbounds sw.∂t_uˢ[i, j, k]
+@inline ∂t_vˢ(i, j, k, grid, sw::FSD, time) = @inbounds sw.∂t_vˢ[i, j, k]
+@inline ∂t_wˢ(i, j, k, grid, sw::FSD, time) = @inbounds sw.∂t_wˢ[i, j, k]
+
+# Field-mode per-derivative helpers. Compute the relevant component of ∇uˢ
+# inline from the stored Fields via the staggered FD operators.
+@inline ∂z_uˢ_fcc(i, j, k, grid, sw::FSD, time) =
+    ℑzᵃᵃᶜ(i, j, k, grid, ∂zᶠᶜᶠ, sw.uˢ)
+@inline ∂z_uˢ_ccf(i, j, k, grid, sw::FSD, time) =
+    ℑxᶜᵃᵃ(i, j, k, grid, ∂zᶠᶜᶠ, sw.uˢ)
+@inline ∂z_vˢ_cfc(i, j, k, grid, sw::FSD, time) =
+    ℑzᵃᵃᶜ(i, j, k, grid, ∂zᶜᶠᶠ, sw.vˢ)
+@inline ∂z_vˢ_ccf(i, j, k, grid, sw::FSD, time) =
+    ℑyᵃᶜᵃ(i, j, k, grid, ∂zᶜᶠᶠ, sw.vˢ)
+@inline ∂y_uˢ_fcc(i, j, k, grid, sw::FSD, time) =
+    ℑyᵃᶜᵃ(i, j, k, grid, ∂yᶠᶠᶜ, sw.uˢ)
+@inline ∂y_uˢ_cfc(i, j, k, grid, sw::FSD, time) =
+    ℑxᶜᵃᵃ(i, j, k, grid, ∂yᶠᶠᶜ, sw.uˢ)
+@inline ∂x_vˢ_fcc(i, j, k, grid, sw::FSD, time) =
+    ℑyᵃᶜᵃ(i, j, k, grid, ∂xᶠᶠᶜ, sw.vˢ)
+@inline ∂x_vˢ_cfc(i, j, k, grid, sw::FSD, time) =
+    ℑxᶜᵃᵃ(i, j, k, grid, ∂xᶠᶠᶜ, sw.vˢ)
+@inline ∂x_wˢ_fcc(i, j, k, grid, sw::FSD, time) =
+    ℑzᵃᵃᶜ(i, j, k, grid, ∂xᶠᶜᶠ, sw.wˢ)
+@inline ∂x_wˢ_ccf(i, j, k, grid, sw::FSD, time) =
+    ℑxᶜᵃᵃ(i, j, k, grid, ∂xᶠᶜᶠ, sw.wˢ)
+@inline ∂y_wˢ_cfc(i, j, k, grid, sw::FSD, time) =
+    ℑzᵃᵃᶜ(i, j, k, grid, ∂yᶜᶠᶠ, sw.wˢ)
+@inline ∂y_wˢ_ccf(i, j, k, grid, sw::FSD, time) =
+    ℑyᵃᶜᵃ(i, j, k, grid, ∂yᶜᶠᶠ, sw.wˢ)
+
+#####
+##### Shared vortex-force evaluation
+#####
+##### Both `StokesDrift` (function mode) and `FieldStokesDrift` (Field mode)
+##### evaluate the vortex-force `(∇×uˢ) × uᴱ` via the same per-derivative
+##### helpers; only the helper dispatch differs. The three `*_curl_Uˢ_cross_U`
+##### methods live on the union of the two types so the body is shared.
+#####
+
+const NonUniformSD = Union{StokesDrift, FieldStokesDrift}
+
+@inline function x_curl_Uˢ_cross_U(i, j, k, grid, sw::NonUniformSD, U, time)
     wᶠᶜᶜ = ℑxzᶠᵃᶜ(i, j, k, grid, U.w)
     vᶠᶜᶜ = ℑxyᶠᶜᵃ(i, j, k, grid, U.v)
 
-    pt = parameters_tuple(sw)
-    X = node(i, j, k, grid, f, c, c)
-    ∂z_uˢ = sw.∂z_uˢ(X..., time, pt...)
-    ∂x_wˢ = sw.∂x_wˢ(X..., time, pt...)
-    ∂y_uˢ = sw.∂y_uˢ(X..., time, pt...)
-    ∂x_vˢ = sw.∂x_vˢ(X..., time, pt...)
+    ∂z_uˢ = ∂z_uˢ_fcc(i, j, k, grid, sw, time)
+    ∂x_wˢ = ∂x_wˢ_fcc(i, j, k, grid, sw, time)
+    ∂y_uˢ = ∂y_uˢ_fcc(i, j, k, grid, sw, time)
+    ∂x_vˢ = ∂x_vˢ_fcc(i, j, k, grid, sw, time)
 
     return wᶠᶜᶜ * (∂z_uˢ - ∂x_wˢ) - vᶠᶜᶜ * (∂x_vˢ - ∂y_uˢ)
 end
 
-
-@inline function y_curl_Uˢ_cross_U(i, j, k, grid, sw::SD, U, time)
+@inline function y_curl_Uˢ_cross_U(i, j, k, grid, sw::NonUniformSD, U, time)
     wᶜᶠᶜ = ℑyzᵃᶠᶜ(i, j, k, grid, U.w)
     uᶜᶠᶜ = ℑxyᶜᶠᵃ(i, j, k, grid, U.u)
 
-    pt = parameters_tuple(sw)
-    X = node(i, j, k, grid, c, f, c)
-    ∂z_vˢ = sw.∂z_vˢ(X..., time, pt...)
-    ∂y_wˢ = sw.∂y_wˢ(X..., time, pt...)
-    ∂x_vˢ = sw.∂x_vˢ(X..., time, pt...)
-    ∂y_uˢ = sw.∂y_uˢ(X..., time, pt...)
+    ∂z_vˢ = ∂z_vˢ_cfc(i, j, k, grid, sw, time)
+    ∂y_wˢ = ∂y_wˢ_cfc(i, j, k, grid, sw, time)
+    ∂x_vˢ = ∂x_vˢ_cfc(i, j, k, grid, sw, time)
+    ∂y_uˢ = ∂y_uˢ_cfc(i, j, k, grid, sw, time)
 
     return uᶜᶠᶜ * (∂x_vˢ - ∂y_uˢ) - wᶜᶠᶜ * (∂y_wˢ - ∂z_vˢ)
 end
 
-@inline function z_curl_Uˢ_cross_U(i, j, k, grid, sw::SD, U, time)
+@inline function z_curl_Uˢ_cross_U(i, j, k, grid, sw::NonUniformSD, U, time)
     uᶜᶜᶠ = ℑxzᶜᵃᶠ(i, j, k, grid, U.u)
     vᶜᶜᶠ = ℑyzᵃᶜᶠ(i, j, k, grid, U.v)
 
-    pt = parameters_tuple(sw)
-    X = node(i, j, k, grid, c, c, f)
-    ∂x_wˢ = sw.∂x_wˢ(X..., time, pt...)
-    ∂z_uˢ = sw.∂z_uˢ(X..., time, pt...)
-    ∂y_wˢ = sw.∂y_wˢ(X..., time, pt...)
-    ∂z_vˢ = sw.∂z_vˢ(X..., time, pt...)
+    ∂x_wˢ = ∂x_wˢ_ccf(i, j, k, grid, sw, time)
+    ∂z_uˢ = ∂z_uˢ_ccf(i, j, k, grid, sw, time)
+    ∂y_wˢ = ∂y_wˢ_ccf(i, j, k, grid, sw, time)
+    ∂z_vˢ = ∂z_vˢ_ccf(i, j, k, grid, sw, time)
 
     return vᶜᶜᶠ * (∂y_wˢ - ∂z_vˢ) - uᶜᶜᶠ * (∂z_uˢ - ∂x_wˢ)
+end
+
+#####
+##### compute_stokes_drift! — fills wˢ and ∂t_wˢ on a FieldStokesDrift by
+##### vertical integration of incompressibility from the bottom upward.
+##### No-op for the analytic StokesDrift / UniformStokesDrift.
+#####
+
+@kernel function _compute_wˢ_from_continuity!(wˢ, uˢ, vˢ, grid)
+    i, j = @index(Global, NTuple)
+    wᵏ = zero(eltype(wˢ))
+    @inbounds wˢ[i, j, 1] = wᵏ
+    Nz = size(grid, 3)
+    for k in 2:Nz+1
+        δ = flux_div_xyᶜᶜᶜ(i, j, k - 1, grid, uˢ, vˢ) *
+            Az⁻¹ᶜᶜᶜ(i, j, k - 1, grid)
+        wᵏ -= δ
+        @inbounds wˢ[i, j, k] = wᵏ
+    end
+end
+
+function compute_stokes_drift!(sw::FieldStokesDrift, grid)
+    # The divergence at i = Nx and j = Ny, and the vortex force near the boundaries, read the halos
+    fill_halo_regions!((sw.uˢ, sw.vˢ, sw.∂t_uˢ, sw.∂t_vˢ))
+
+    arch = architecture(grid)
+    Nx, Ny, _ = size(grid)
+    params = KernelParameters(1:Nx, 1:Ny)
+    launch!(arch, grid, params, _compute_wˢ_from_continuity!,
+            sw.wˢ, sw.uˢ, sw.vˢ, grid)
+    launch!(arch, grid, params, _compute_wˢ_from_continuity!,
+            sw.∂t_wˢ, sw.∂t_uˢ, sw.∂t_vˢ, grid)
+
+    fill_halo_regions!((sw.wˢ, sw.∂t_wˢ))
+
+    return nothing
 end
 
 end # module
