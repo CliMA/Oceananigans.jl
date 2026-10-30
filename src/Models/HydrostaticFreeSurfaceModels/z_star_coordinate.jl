@@ -126,7 +126,7 @@ function update_grid_vertical_velocity!(velocities, model, grid::MutableGridOfSo
     # SplitExplicitFreeSurface and are calculated for other free surface models
     # Here we distinguish between the model (prognostic) velocities and the transport velocities
     # used to advect tracers...
-    if velocities === model.velocities
+    if parent(velocities.u) === parent(model.velocities.u)
         U, V = barotropic_velocities(model.free_surface)
     else
         U, V = barotropic_transport(model.free_surface)
