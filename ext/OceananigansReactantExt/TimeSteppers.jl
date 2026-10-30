@@ -8,6 +8,7 @@ using Oceananigans
 
 using Oceananigans: AbstractModel, Distributed
 using Oceananigans.Grids: architecture
+using Oceananigans.BoundaryConditions: cache_boundary_conditions!, initialize_boundary_conditions!
 using Oceananigans.TimeSteppers:
     TimeSteppers as OceananigansTimeSteppers,
     update_state!,
@@ -132,6 +133,7 @@ function time_step!(model::ReactantModel{<:QAB2TS{FT}}, Δt; callbacks=[], euler
     χ₀ = ab2_timestepper.χ # Save initial value
     ab2_timestepper.χ = χ
 
+    cache_boundary_conditions!(model)
     ab2_step!(model, Δt, callbacks)
     cache_previous_tendencies!(model)
 
@@ -153,6 +155,7 @@ end
 
 function first_time_step!(model::ReactantModel, Δt)
     initialize!(model)
+    initialize_boundary_conditions!(model)
     update_state!(model)
     time_step!(model, Δt)
     return nothing
@@ -160,6 +163,7 @@ end
 
 function first_time_step!(model::ReactantModel{<:Oceananigans.TimeSteppers.QuasiAdamsBashforth2TimeStepper}, Δt)
     initialize!(model)
+    initialize_boundary_conditions!(model)
     update_state!(model)
     time_step!(model, Δt, euler=true)
     return nothing

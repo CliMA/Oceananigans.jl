@@ -215,6 +215,10 @@ function halo_exchange_interval(free_surface, grid, Nsubsteps)
     return min(TX() isa ConnectedTopology ? Hx - 2 : Nsubsteps, TY() isa ConnectedTopology ? Hy - 2 : Nsubsteps)
 end
 
+# Extended halos start the substeps filled, while `CompleteHaloFilling` exchanges before every substep
+@inline exchange_halos(free_surface, substep, exchange_interval) = substep > 1 && (substep - 1) % exchange_interval == 0
+@inline exchange_halos(::SplitExplicitFreeSurface{CompleteHaloFilling}, substep, exchange_interval) = true
+
 # Simplest case: we have the substeps and the averaging kernel
 function split_explicit_substepping(::Nothing, substeps, fixed_Δt, grid, averaging_kernel, gravitational_acceleration)
     FT = eltype(gravitational_acceleration)
@@ -277,6 +281,10 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
     else
         maybe_extend_halos(TX, TY, grid, substepping)
     end
+
+    # The barotropic fields live on `maybe_extended_grid`, whose halos size the exterior states of their open boundaries
+    barotropic_names = filter(∈((:U, :V, :η)), keys(bcs))
+    bcs = regularize_field_boundary_conditions(bcs[barotropic_names], maybe_extended_grid, keys(bcs))
 
     η = free_surface_displacement_field(velocities, free_surface, maybe_extended_grid; boundary_conditions = get(bcs, :η, nothing))
     η̅ = free_surface_displacement_field(velocities, free_surface, maybe_extended_grid)
