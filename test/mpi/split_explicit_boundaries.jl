@@ -40,7 +40,7 @@ end
         cpu_arch   = cpu_architecture(arch)
 
         for immersed in (false, true)
-            underlying = RectilinearGrid(arch, size=(64, 64, 4), x=(0, 1), y=(0, 1), z=(-1, 0),
+            underlying = RectilinearGrid(arch, size=(120, 120, 4), x=(0, 1), y=(0, 1), z=(-1, 0),
                                          halo=(4, 4, 4), topology=(Bounded, Bounded, Bounded))
             grid = immersed ? ImmersedBoundaryGrid(underlying, GridFittedBottom(bump)) : underlying
 
@@ -58,10 +58,13 @@ end
             vs = partition(interior(on_architecture(CPU(), ms.velocities.v)), cpu_arch, size(vp))
             ηs = partition(interior(on_architecture(CPU(), ms.free_surface.displacement)), cpu_arch, size(ηp))
 
+            # Uneven partitions place the rank edges at round-off from the serial coordinates
+            atol = eps(eltype(grid))
+
             @testset "serial vs distributed [immersed=$immersed, $(typeof(arch.partition))]" begin
-                @test all(isapprox.(up, us))
-                @test all(isapprox.(vp, vs))
-                @test all(isapprox.(ηp, ηs))
+                @test all(isapprox.(up, us; atol))
+                @test all(isapprox.(vp, vs; atol))
+                @test all(isapprox.(ηp, ηs; atol))
             end
 
             # Immersed velocities are zeroed in the distributed model too.

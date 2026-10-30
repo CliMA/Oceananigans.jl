@@ -2,10 +2,10 @@ using Oceananigans: instantiated_location
 using Oceananigans.Architectures: on_architecture, device_copy_to!
 using Oceananigans.Operators: assumed_field_location
 using Oceananigans.Fields: reduced_dimensions
-using Oceananigans.DistributedComputations: fill_send_buffers!
 
 using Oceananigans.BoundaryConditions:
     BoundaryCondition,
+    MCBC,
     ContinuousBoundaryFunction,
     DiscreteBoundaryFunction,
     fill_halo_event!,
@@ -48,6 +48,28 @@ function BoundaryConditions.fill_halo_regions!(c::MultiRegionObject, bcs, indice
     apply_regionally!(fill_halo_regions!, c, bcs, indices, loc, mrg, buff_ref, args...; fill_normal_flow_bcs, kwargs...)
     apply_regionally!(fill_send_buffers!, c, buffers, mrg)
     apply_regionally!(fill_halo_regions!, c, bcs, indices, loc, mrg, buff_ref, args...; fill_normal_flow_bcs, kwargs...)
+
+    return nothing
+end
+
+fill_send_buffers!(c, ::Nothing, grid) = nothing
+
+function fill_send_buffers!(c, buffers, grid)
+    Hx, Hy, _ = halo_size(grid)
+    Nx, Ny, _ = size(grid)
+
+    if !isnothing(buffers.west)
+        buffers.west.send .= view(parent(c), 1+Hx:2Hx, :, :)
+    end
+    if !isnothing(buffers.east)
+        buffers.east.send .= view(parent(c), 1+Nx:Nx+Hx, :, :)
+    end
+    if !isnothing(buffers.south)
+        buffers.south.send .= view(parent(c), :, 1+Hy:2Hy, :)
+    end
+    if !isnothing(buffers.north)
+        buffers.north.send .= view(parent(c), :, 1+Ny:Ny+Hy, :)
+    end
 
     return nothing
 end

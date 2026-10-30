@@ -36,7 +36,7 @@ end
 
 # Run the distributed grid simulation and save down reconstructed results
 function run_distributed_tripolar_grid(arch, filename; fold_topology, pivot)
-    grid  = TripolarGrid(arch; size = (40, 40, 1), z = (-1000, 0), halo = (5, 5, 5), fold_topology, pivot)
+    grid  = TripolarGrid(arch; size = (88, 88, 1), z = (-1000, 0), halo = (5, 5, 5), fold_topology, pivot)
     grid  = analytical_immersed_tripolar_grid(grid)
     model = run_distributed_simulation(grid)
 

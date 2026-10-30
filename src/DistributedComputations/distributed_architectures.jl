@@ -39,6 +39,9 @@ if supplied as positional arguments `x` will be the first argument,
 - `Sizes(n₁, n₂, ..., nₙ)`: divide the domain unequally. The total work is `W = sum(nᵢ)`,
                             and each process is then allocated `nᵢ`.
 
+A tuple of these in `x` (or `y`) divides every row (or column) of ranks separately, so that ranks do not have to
+line up across rows (or columns). All rows (or columns) hold the same number of ranks.
+
 Examples:
 ========
 
@@ -52,6 +55,13 @@ Partition across 4 = 1×4×1 ranks:
 julia> Partition(x = Fractional(1, 2, 3, 4))
 Partition across 4 = 4×1×1 ranks:
 └── x: Fractional(0.1, 0.2, 0.3, 0.4)
+
+julia> using Oceananigans.DistributedComputations: Sizes
+
+julia> Partition(x = 2, y = (Sizes(10, 22), Sizes(20, 12)))
+Partition across 4 = 2×2×1 ranks:
+├── x: 2
+└── y: (Sizes(10, 22), Sizes(20, 12))
 
 ```
 """
@@ -147,9 +157,7 @@ ranks(::Nothing)     = 1 # a direction not partitioned fits in 1 rank
 ranks(r::Int)        = r
 ranks(r::Sizes)      = length(r.sizes)
 ranks(r::Fractional) = length(r.sizes)
-
-Base.isodd(r::Sizes) = isodd(length(r.sizes))
-Base.isodd(r::Fractional) = isodd(length(r.sizes))
+ranks(r::Tuple)      = ranks(first(r))
 
 Base.size(p::Partition) = ranks(p)
 
@@ -284,10 +292,8 @@ function Distributed(child_architecture = CPU();
                             "with $mpi_ranks MPI ranks"))
     end
 
-    local_rank         = MPI.Comm_rank(communicator)
-    local_index        = rank2index(local_rank, Rx, Ry, Rz)
-    # The rank connectivity _ALWAYS_ wraps around (The cartesian processor "grid" is `Periodic`)
-    local_connectivity = NeighboringRanks(local_index, ranks)
+    local_rank  = MPI.Comm_rank(communicator)
+    local_index = rank2index(local_rank, Rx, Ry, Rz)
 
     # Assign GPU device if on GPUs
     if child_architecture isa GPU
@@ -301,7 +307,7 @@ function Distributed(child_architecture = CPU();
                                                    ranks,
                                                    local_rank,
                                                    local_index,
-                                                   local_connectivity,
+                                                   nothing,
                                                    communicator,
                                                    field_count,
                                                    devices)
@@ -381,75 +387,49 @@ function rank2index(r, Rx, Ry, Rz)
 end
 
 #####
-##### Rank connectivity graph
+##### Rank connectivity
 #####
 
-mutable struct NeighboringRanks{E, W, N, S, SW, SE, NW, NE}
-         east :: E
-         west :: W
-        north :: N
-        south :: S
-    southwest :: SW
-    southeast :: SE
-    northwest :: NW
-    northeast :: NE
-end
-
-const NoConnectivity = NeighboringRanks{Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing}
-
 """
-$(TYPEDSIGNATURES)
+    RankConnectivity(partition, global_size, topology, halo)
 
-Generate a `NeighboringRanks` object that holds the MPI ranks of the neighboring processors.
+Global index ranges of every rank (in rank order) on a grid of `global_size` and `topology` divided by `partition`.
+In the directions that are partitioned, every rank must be at least as large as the `halo`.
 """
-NeighboringRanks(; east, west, north, south, southwest, southeast, northwest, northeast) =
-    NeighboringRanks(east, west, north, south, southwest, southeast, northwest, northeast)
-
-# The "Periodic" topologies are `Periodic` and those connected on the right
-# The "Bounded" topologies are those bounded on the right
-function increment_index(i, R)
-    R == 1 && return nothing
-    if i+1 > R
-        return 1
-    else
-        return i+1
-    end
+struct RankConnectivity{T}
+    ranges :: Vector{NTuple{3, UnitRange{Int}}}
+    size :: NTuple{3, Int}
+    topology :: T
 end
 
-function decrement_index(i, R)
-    R == 1 && return nothing
-    if i-1 < 1
-        return R
-    else
-        return i-1
+function RankConnectivity(partition, global_size, topology, halo)
+    Rx, Ry, Rz = ranks(partition)
+    Nx, Ny, Nz = global_size
+
+    # The index ranges of the ranks that divide `N` cells according to `p`
+    function index_ranges(N, p)
+        n = [local_size(N, p, r) for r in 1:ranks(p)]
+        return [sum(n[1:r-1]) + 1 : sum(n[1:r]) for r in eachindex(n)]
     end
-end
 
-function NeighboringRanks(local_index, ranks)
-    i, j, k = local_index
-    Rx, Ry, Rz = ranks
+    # A tuple partitions every row (in x) or column (in y) of ranks separately
+    x = [index_ranges(Nx, partition.x isa Tuple ? partition.x[j] : partition.x) for j in 1:Ry]
+    y = [index_ranges(Ny, partition.y isa Tuple ? partition.y[i] : partition.y) for i in 1:Rx]
+    z = index_ranges(Nz, partition.z)
 
-    i_east  = increment_index(i, Rx)
-    i_west  = decrement_index(i, Rx)
-    j_north = increment_index(j, Ry)
-    j_south = decrement_index(j, Ry)
+    ranges = map(0:Rx*Ry*Rz-1) do rank
+        i, j, k = rank2index(rank, Rx, Ry, Rz)
+        return (x[j][i], y[i][j], z[k])
+    end
 
-     east_rank = isnothing(i_east)  ? nothing : index2rank(i_east,  j, k, Rx, Ry, Rz)
-     west_rank = isnothing(i_west)  ? nothing : index2rank(i_west,  j, k, Rx, Ry, Rz)
-    north_rank = isnothing(j_north) ? nothing : index2rank(i, j_north, k, Rx, Ry, Rz)
-    south_rank = isnothing(j_south) ? nothing : index2rank(i, j_south, k, Rx, Ry, Rz)
+    for d in 1:3
+        n = minimum(r -> length(r[d]), ranges)
+        if n < global_size[d] && n < halo[d]
+            throw(ArgumentError("halo=$(halo[d]) must be ≤ the size of every rank, found a rank of size $n in dimension $d"))
+        end
+    end
 
-    northeast_rank = isnothing(i_east) || isnothing(j_north) ? nothing : index2rank(i_east, j_north, k, Rx, Ry, Rz)
-    northwest_rank = isnothing(i_west) || isnothing(j_north) ? nothing : index2rank(i_west, j_north, k, Rx, Ry, Rz)
-    southeast_rank = isnothing(i_east) || isnothing(j_south) ? nothing : index2rank(i_east, j_south, k, Rx, Ry, Rz)
-    southwest_rank = isnothing(i_west) || isnothing(j_south) ? nothing : index2rank(i_west, j_south, k, Rx, Ry, Rz)
-
-    return NeighboringRanks(west=west_rank, east=east_rank,
-                            south=south_rank, north=north_rank,
-                            southwest=southwest_rank,
-                            southeast=southeast_rank,
-                            northwest=northwest_rank,
-                            northeast=northeast_rank)
+    return RankConnectivity(ranges, (Nx, Ny, Nz), topology)
 end
 
 #####
@@ -488,25 +468,5 @@ function Base.show(io::IO, arch::Distributed)
     print(io, "├── local_rank: ", local_rank, " of 0-$last_rank", '\n')
 
     ix, iy, iz = arch.local_index
-    index_info = string("index [$ix, $iy, $iz]")
-
-    c = arch.connectivity
-    connectivity_info = if c isa NeighboringRanks
-        string("└── connectivity:",
-               isnothing(c.east)      ? "" : " east=$(c.east)",
-               isnothing(c.west)      ? "" : " west=$(c.west)",
-               isnothing(c.north)     ? "" : " north=$(c.north)",
-               isnothing(c.south)     ? "" : " south=$(c.south)",
-               isnothing(c.southwest) ? "" : " southwest=$(c.southwest)",
-               isnothing(c.southeast) ? "" : " southeast=$(c.southeast)",
-               isnothing(c.northwest) ? "" : " northwest=$(c.northwest)",
-               isnothing(c.northeast) ? "" : " northeast=$(c.northeast)")
-    end
-
-    if isnothing(connectivity_info)
-        print(io, "└── local_index: [$ix, $iy, $iz]")
-    else
-        print(io, "├── local_index: [$ix, $iy, $iz]", '\n')
-        print(io, connectivity_info)
-    end
+    print(io, "└── local_index: [$ix, $iy, $iz]")
 end

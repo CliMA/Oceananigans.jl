@@ -1,0 +1,1 @@
+{"Conventions":"CF-1.13","Julia":"This file was generated using ","Oceananigans":"This file was generated using Oceananigans v0.114.0","date":"This file was generated on 2026-10-15T13:09:59.928 local time (2026-10-15T11:09:59.929 UTC).","interval":1,"output iteration interval":"Output was saved every 1 iteration(s).","rank_topology":[1,2,1],"schedule":"IterationInterval"}

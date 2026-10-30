@@ -41,9 +41,9 @@ function random_divergent_source_term(grid::DistributedGrid)
     v_bcs = regularize_field_boundary_conditions(default_bcs, grid, :v)
     w_bcs = regularize_field_boundary_conditions(default_bcs, grid, :w)
 
-    u_bcs = inject_halo_communication_boundary_conditions(u_bcs, (Face(), Center(), Center()), arch.local_rank, arch.connectivity, topology(grid))
-    v_bcs = inject_halo_communication_boundary_conditions(v_bcs, (Center(), Face(), Center()), arch.local_rank, arch.connectivity, topology(grid))
-    w_bcs = inject_halo_communication_boundary_conditions(w_bcs, (Center(), Center(), Face()), arch.local_rank, arch.connectivity, topology(grid))
+    u_bcs = inject_halo_communication_boundary_conditions(u_bcs, (Face(), Center(), Center()), arch.local_rank, arch.connectivity)
+    v_bcs = inject_halo_communication_boundary_conditions(v_bcs, (Center(), Face(), Center()), arch.local_rank, arch.connectivity)
+    w_bcs = inject_halo_communication_boundary_conditions(w_bcs, (Center(), Center(), Face()), arch.local_rank, arch.connectivity)
 
     Ru = XFaceField(grid, boundary_conditions=u_bcs)
     Rv = YFaceField(grid, boundary_conditions=v_bcs)
@@ -150,11 +150,11 @@ end
     for stretched_direction in (:z, )
         @info "  Testing 3D distributed Fourier Tridiagonal Poisson solver stretched in $stretched_direction with (4, 1, 1) ranks"
         @test divergence_free_poisson_tridiagonal_solution((44, 44, 8), (4, 1, 1), stretched_direction, child_arch)
-        @test divergence_free_poisson_tridiagonal_solution((4,  44, 8), (4, 1, 1), stretched_direction, child_arch)
+        @test divergence_free_poisson_tridiagonal_solution((8,  44, 8), (4, 1, 1), stretched_direction, child_arch)
         @test divergence_free_poisson_tridiagonal_solution((16, 44, 8), (4, 1, 1), stretched_direction, child_arch)
         @info "  Testing 3D distributed Fourier Tridiagonal Poisson solver stretched in $stretched_direction with (1, 4, 1) ranks"
         @test divergence_free_poisson_tridiagonal_solution((44, 44, 8), (1, 4, 1), stretched_direction, child_arch)
-        @test divergence_free_poisson_tridiagonal_solution((44,  4, 8), (1, 4, 1), stretched_direction, child_arch)
+        @test divergence_free_poisson_tridiagonal_solution((44,  8, 8), (1, 4, 1), stretched_direction, child_arch)
         @test divergence_free_poisson_tridiagonal_solution((16, 44, 8), (1, 4, 1), stretched_direction, child_arch)
         @info "  Testing 3D distributed Fourier Tridiagonal Poisson solver stretched in $stretched_direction with (2, 2, 1) ranks"
         @test divergence_free_poisson_tridiagonal_solution((22,  8, 8), (2, 2, 1), stretched_direction, child_arch)
