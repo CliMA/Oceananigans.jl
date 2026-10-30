@@ -70,6 +70,7 @@ struct ObliqueRadiation{FT, S, P, N, TF} <: AbstractRadiationScheme{FT}
     normal_interior :: N # tangential velocity only: the first interior values of the normal velocity at the two
                          # adjacent points, at the base of the stage
     target_transport :: TF # prescribed net transport through the boundary, or nothing
+    periodic :: Bool       # whether the direction along the boundary is periodic on this grid
 end
 
 function ObliqueRadiation(FT = defaults.FloatType;
@@ -84,7 +85,7 @@ function ObliqueRadiation(FT = defaults.FloatType;
     phase_speed_weight = convert(FT, phase_speed_weight)
     target_transport = convert_target_transport(FT, target_transport)
     return ObliqueRadiation(outflow_timescale, inflow_timescale, phase_speed_weight,
-                            nothing, nothing, nothing, nothing, target_transport)
+                            nothing, nothing, nothing, nothing, target_transport, false)
 end
 
 Adapt.adapt_structure(to, r::ObliqueRadiation) =
@@ -95,7 +96,8 @@ Adapt.adapt_structure(to, r::ObliqueRadiation) =
                      adapt(to, r.φ₁),
                      adapt(to, r.phase_speeds),
                      adapt(to, r.normal_interior),
-                     adapt(to, r.target_transport))
+                     adapt(to, r.target_transport),
+                     r.periodic)
 
 function Base.show(io::IO, r::ObliqueRadiation)
     print(io, summary(r), '\n')
@@ -110,7 +112,18 @@ has_target_transport(::ObliqueRadiation) = true
 
 radiation_storage(radiation::ObliqueRadiation, buffer) =
     ObliqueRadiation(radiation.outflow_timescale, radiation.inflow_timescale, radiation.phase_speed_weight,
-                     buffer(), buffer(), ntuple(_ -> buffer(), 6), ntuple(_ -> buffer(), 2), radiation.target_transport)
+                     buffer(), buffer(), ntuple(_ -> buffer(), 6), ntuple(_ -> buffer(), 2), radiation.target_transport,
+                     radiation.periodic)
+
+# The buffers span the Connected halos along the boundary, but a periodic direction that is not partitioned wraps
+# onto itself.
+function materialize_radiation_storage(radiation::ObliqueRadiation, grid, loc, dim)
+    scheme = invoke(materialize_radiation_storage, Tuple{AbstractRadiationScheme, Any, Any, Any}, radiation, grid, loc, dim)
+    periodic = topology(grid, ifelse(dim == 1, 2, 1)) === Grids.Periodic
+    return ObliqueRadiation(scheme.outflow_timescale, scheme.inflow_timescale, scheme.phase_speed_weight,
+                            scheme.φ⁻, scheme.φ₁, scheme.phase_speeds, scheme.normal_interior, scheme.target_transport,
+                            periodic)
+end
 
 const OblBC = Union{BoundaryCondition{<:Value{<:ObliqueRadiation}}, BoundaryCondition{<:NormalFlow{<:ObliqueRadiation}}}
 
@@ -127,13 +140,17 @@ end
 
 Oceananigans.restore_prognostic_state!(::OblBC, ::Nothing) = nothing
 
-# Backward and forward differences along the boundary face, zero beyond its ends. Next to a rank edge the neighbour is
-# in the extended range of the buffer, which holds the neighbouring rank's value.
-@inline function tangential_differences(φ, i, j)
+# Backward and forward differences along the boundary face. Beyond its ends they are zero, or take the value from the
+# other end if the direction is periodic.
+@inline function tangential_differences(φ, i, j, periodic)
+    lower = firstindex(φ, 1)
+    upper = lastindex(φ, 1)
+    i₋ = ifelse(periodic, ifelse(i == lower, upper, i - 1), max(i - 1, lower))
+    i₊ = ifelse(periodic, ifelse(i == upper, lower, i + 1), min(i + 1, upper))
     @inbounds begin
         φ₀ = φ[i, j]
-        φ₋ = φ[max(i - 1, firstindex(φ, 1)), j]
-        φ₊ = φ[min(i + 1, lastindex(φ, 1)),  j]
+        φ₋ = φ[i₋, j]
+        φ₊ = φ[i₊, j]
     end
     return φ₀ - φ₋, φ₊ - φ₀
 end
@@ -227,8 +244,8 @@ end
 
         φᵇⁿ = radiation.φ⁻[i, j]
         φ₁ⁿ = radiation.φ₁[i, j]
-        δᵇ₋, δᵇ₊ = tangential_differences(radiation.φ⁻, i, j)
-        δ₁₋, δ₁₊ = tangential_differences(radiation.φ₁, i, j)
+        δᵇ₋, δᵇ₊ = tangential_differences(radiation.φ⁻, i, j, radiation.periodic)
+        δ₁₋, δ₁₊ = tangential_differences(radiation.φ₁, i, j, radiation.periodic)
 
         rₙ, rₜ, cᵖ, radiating = oblique_phase_speeds(φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, δ₁₋, δ₁₊)
         r̄ₙ, r̄ₜ, c̄ = average_phase_speeds!(radiation, i, j, rₙ, rₜ, cᵖ)
@@ -247,8 +264,9 @@ end
 const TangentialToX = Tuple{Center, Face, Center} # v on a west or east boundary
 const TangentialToY = Tuple{Face, Center, Center} # u on a south or north boundary
 
-# A face-located tangential velocity point `t` lies between the normal-velocity points `t - 1` and `t`
-@inline normal_neighbours(t, N) = (clamp(t - 1, 1, N), clamp(t, 1, N))
+# A face-located tangential velocity point `t` lies between the normal-velocity points `t - 1` and `t`. Beyond the ends
+# of the boundary the neighbour is the point itself, or the one at the other end if the direction is periodic.
+@inline normal_neighbours(t, N, periodic) = (ifelse(periodic, ifelse(t == 1, N, t - 1), clamp(t - 1, 1, N)), clamp(t, 1, N))
 
 # The normal velocity and the length of the boundary it varies along
 @inline normal_component(::Union{West, East},   model_fields) = model_fields.u
@@ -271,7 +289,7 @@ const SouthNorth = Union{South, North}
 
 @inline function cache_tangential_normal_interior!(side, t, k, grid, radiation, model_fields)
     uₙ = normal_component(side, model_fields)
-    t₋, t₊ = normal_neighbours(t, boundary_length(side, grid))
+    t₋, t₊ = normal_neighbours(t, boundary_length(side, grid), radiation.periodic)
     @inbounds begin
         radiation.normal_interior[1][t, k] = uₙ[normal_velocity_index(side, grid, 1, t₋, k)...]
         radiation.normal_interior[2][t, k] = uₙ[normal_velocity_index(side, grid, 1, t₊, k)...]
@@ -281,17 +299,17 @@ end
 
 # First and second interior values of the normal velocity at plane point `t`, and its differences along the
 # boundary (zero beyond the ends)
-@inline function normal_neighbour(side, model_fields, grid, t, k)
+@inline function normal_neighbour(side, model_fields, grid, t, k, periodic)
     uₙ = normal_component(side, model_fields)
     N = boundary_length(side, grid)
     @inbounds begin
         u₁ = uₙ[normal_velocity_index(side, grid, 1, t, k)...]
         u₂ = uₙ[normal_velocity_index(side, grid, 2, t, k)...]
-        u₋ = uₙ[normal_velocity_index(side, grid, 1, max(t - 1, 1), k)...]
-        u₊ = uₙ[normal_velocity_index(side, grid, 1, min(t + 1, N), k)...]
+        u₋ = uₙ[normal_velocity_index(side, grid, 1, ifelse(periodic, ifelse(t == 1, N, t - 1), max(t - 1, 1)), k)...]
+        u₊ = uₙ[normal_velocity_index(side, grid, 1, ifelse(periodic, ifelse(t == N, 1, t + 1), min(t + 1, N)), k)...]
     end
-    δ₋ = ifelse(t > 1, u₁ - u₋, zero(u₁))
-    δ₊ = ifelse(t < N, u₊ - u₁, zero(u₁))
+    δ₋ = ifelse(periodic | (t > 1), u₁ - u₋, zero(u₁))
+    δ₊ = ifelse(periodic | (t < N), u₊ - u₁, zero(u₁))
     return u₁, u₂, δ₋, δ₊
 end
 
@@ -311,16 +329,16 @@ end
 
     iᵇ, jᵇ, kᵇ = boundary_point(side, loc, grid, 0, t, k)
     i₁, j₁, k₁ = boundary_point(side, loc, grid, 1, t, k)
-    t₋, t₊ = normal_neighbours(t, boundary_length(side, grid))
+    t₋, t₊ = normal_neighbours(t, boundary_length(side, grid), radiation.periodic)
 
     @inbounds begin
         φᵉˣᵗ  = getbc(bc, t, k, grid, clock, model_fields)
         φ₁ⁿ⁺¹ = c[i₁, j₁, k₁]
         φᵇⁿ = radiation.φ⁻[t, k]
-        δᵇ₋, δᵇ₊ = tangential_differences(radiation.φ⁻, t, k)
+        δᵇ₋, δᵇ₊ = tangential_differences(radiation.φ⁻, t, k, radiation.periodic)
 
-        u₁₋, u₂₋, δ₋₋, δ₋₊ = normal_neighbour(side, model_fields, grid, t₋, k)
-        u₁₊, u₂₊, δ₊₋, δ₊₊ = normal_neighbour(side, model_fields, grid, t₊, k)
+        u₁₋, u₂₋, δ₋₋, δ₋₊ = normal_neighbour(side, model_fields, grid, t₋, k, radiation.periodic)
+        u₁₊, u₂₊, δ₊₋, δ₊₊ = normal_neighbour(side, model_fields, grid, t₊, k, radiation.periodic)
         u₁₋ⁿ = radiation.normal_interior[1][t, k]
         u₁₊ⁿ = radiation.normal_interior[2][t, k]
 
