@@ -24,7 +24,6 @@ Base.size(f::MultiRegionAbstractOperation) = size(getregion(f.grid, 1))
 # The operands' indices are `MultiRegionObject`s, so intersect them region by region
 Fields.indices(β::MultiRegionBinaryOperation) = construct_regionally(intersect_indices, location(β), β.a, β.b)
 Fields.indices(Π::MultiRegionMultiaryOperation) = construct_regionally(intersect_indices, location(Π), Π.args...)
-Fields.indices(κ::MultiRegionKernelFunctionOperation) = construct_regionally(intersect_indices, location(κ), κ.arguments...)
 
 for T in [:BinaryOperation, :UnaryOperation, :MultiaryOperation, :Derivative, :ConditionalOperation]
     @eval begin
@@ -40,10 +39,12 @@ end
                         KernelFunctionOperation{LX, LY, LZ}(_getregion(κ.kernel_function, r),
                                                             _getregion(κ.grid, r),
                                                             _getregion(κ.arguments, r),
-                                                            eltype(κ))
+                                                            eltype(κ);
+                                                            indices=Utils._getregion(κ.indices, r))
 
 @inline Utils._getregion(κ::KernelFunctionOperation{LX, LY, LZ}, r) where {LX, LY, LZ} =
                          KernelFunctionOperation{LX, LY, LZ}(getregion(κ.kernel_function, r),
                                                              getregion(κ.grid, r),
                                                              getregion(κ.arguments, r),
-                                                             eltype(κ))
+                                                             eltype(κ);
+                                                             indices=Utils.getregion(κ.indices, r))

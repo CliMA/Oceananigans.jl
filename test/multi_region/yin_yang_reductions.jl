@@ -58,6 +58,22 @@ end
     @test all(==(1), interior(maximum(c, dims=(1, 2))))
     @test_throws ArgumentError sum(c; dims=1)
 
+    center_levels = CenterField(grid)
+    set!(center_levels, (λ, φ, z) -> 10 + z)
+    selected_center_plane = view(center_levels, :, :, 2:2)
+    selected_center_value = 10 + znodes(grid, Center())[2]
+    @test sum(selected_center_plane) ≈ selected_center_value * 2 * sum(Float64, w) rtol=tolerance
+    @test minimum(selected_center_plane) == selected_center_value
+    @test maximum(selected_center_plane) == selected_center_value
+
+    face_levels = ZFaceField(grid)
+    set!(face_levels, (λ, φ, z) -> 4 + z)
+    top_face_plane = view(face_levels, :, :, Nz + 1:Nz + 1)
+    top_face_value = 4 + znodes(grid, Face())[Nz + 1]
+    @test sum(top_face_plane) ≈ top_face_value * 2 * sum(Float64, w) rtol=tolerance
+    @test minimum(top_face_plane) == top_face_value
+    @test maximum(top_face_plane) == top_face_value
+
     # Sums and integrals weight each owned point once, also of operations that interpolate unowned neighbors;
     # integrals of constants are exact at every location
     set!(c, 3)
