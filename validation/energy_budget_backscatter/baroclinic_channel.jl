@@ -1,7 +1,8 @@
 # Flat-bottomed, high-latitude baroclinic channel on a latitude-longitude grid: the three-dimensional counterpart
 # of forced_two_dimensional_turbulence.jl. A zonal-mean restoring toward a sloping two-layer stratification is released
-# by baroclinic eddies at a deformation radius of ≈ 8 km, which an eddy-permitting 1/4° grid (Δx ≈ 14 km, Δy ≈ 28 km
-# at 60°S) does not resolve. A fine run (truth) is compared to 1/4° runs with and without EnergyBudgetBackscatter.
+# by baroclinic eddies at a deformation radius of ≈ 8 km, which an eddy-permitting 1/4° grid does not resolve. The
+# latitude spacing is the longitude spacing times cos 60°, so cells are square at 60°S (Δx = Δy ≈ 14 km at 1/4°).
+# A fine run (truth) is compared to 1/4° runs with and without EnergyBudgetBackscatter.
 #
 # Usage: ARCH=GPU julia --project baroclinic_channel.jl, then julia --project plot_baroclinic_channel.jl with the
 # same environment variables (the plot script needs CairoMakie and FFTW). Each run saves surface snapshots every 5 days
@@ -65,7 +66,7 @@ end
 
 function run_channel(name, degrees; backscatter=false)
     Nλ = round(Int, (longitude[2] - longitude[1]) / degrees)
-    Nφ = round(Int, (latitude[2] - latitude[1]) / degrees)
+    Nφ = round(Int, (latitude[2] - latitude[1]) / (degrees * cosd(60)))
     z = vcat(range(-H, -1000, length=5)[1:end-1], range(-1000, 0, length=21))
     grid = LatitudeLongitudeGrid(arch; size=(Nλ, Nφ, length(z) - 1), halo=(5, 5, 4),
                                  longitude, latitude, z, topology=(Periodic, Bounded, Bounded))
