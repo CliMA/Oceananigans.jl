@@ -306,13 +306,14 @@ end
 # # Distributed tangential velocity
 #
 # The velocity along the open boundaries radiates with the phase speed of the velocity across them, and is nudged toward
-# an exterior value that varies along them, so that the neighbours across the rank edges and the periodic ends matter.
-# There is no free surface: the barotropic correction of a split-explicit model resets the velocity along the boundary.
+# an exterior value that varies along them and with depth, so that the neighbours across the rank edges and the periodic
+# ends matter. With a split-explicit free surface the barotropic correction replaces the depth mean of the velocity at the
+# boundary, so the exterior value has a vertical shear.
 
-function build_oblique_tangential(grid)
+function build_oblique_tangential(grid; split_explicit)
     scheme = ObliqueRadiation(inflow_timescale = 100.0, outflow_timescale = 100.0)
     nudged = ObliqueRadiation(inflow_timescale = 0.05, outflow_timescale = 0.05)
-    exterior(x, z, t) = 0.3 * (1 + sin(2π * 3 * x))
+    exterior(x, z, t) = 0.3 * (1 + sin(2π * 3 * x)) * (1 + 0.5 * (z + 0.5))
 
     u_bcs = FieldBoundaryConditions(south = ValueBoundaryCondition(exterior; scheme = nudged),
                                     north = ValueBoundaryCondition(exterior; scheme = nudged))
@@ -320,8 +321,18 @@ function build_oblique_tangential(grid)
     v_bcs = FieldBoundaryConditions(south = NormalFlowBoundaryCondition(0; scheme),
                                     north = NormalFlowBoundaryCondition(0; scheme))
 
-    model = HydrostaticFreeSurfaceModel(grid; free_surface = nothing,
-                                        boundary_conditions = (u = u_bcs, v = v_bcs),
+    boundary_conditions = (u = u_bcs, v = v_bcs)
+    free_surface = nothing
+
+    if split_explicit
+        V_bcs = FieldBoundaryConditions(grid, (Center(), Face(), nothing);
+                                        south = GravityWaveRadiationBoundaryCondition((0.0, 0.0)),
+                                        north = GravityWaveRadiationBoundaryCondition((0.0, 0.0)))
+        boundary_conditions = merge(boundary_conditions, (V = V_bcs,))
+        free_surface = SplitExplicitFreeSurface(grid; substeps = 8)
+    end
+
+    model = HydrostaticFreeSurfaceModel(grid; free_surface, boundary_conditions,
                                         momentum_advection = Centered(),
                                         buoyancy = nothing,
                                         tracers = ())
@@ -338,22 +349,23 @@ end
 
 @testset "Distributed oblique radiation of the tangential velocity" begin
     for arch in (Distributed(child_arch; synchronized_communication=false, partition=Partition(4)),
-                 Distributed(child_arch; synchronized_communication=false, partition=Partition(2, 2)))
+                 Distributed(child_arch; synchronized_communication=false, partition=Partition(2, 2))),
+        split_explicit in (false, true)
 
         cpu_arch = cpu_architecture(arch)
 
         grid = RectilinearGrid(arch, size=(40, 20, 2), x=(0, 1), y=(0, 1), z=(-1, 0),
                                halo=(4, 4, 2), topology=(Periodic, Open, Bounded))
 
-        mp = build_oblique_tangential(grid)                           # partitioned
-        ms = build_oblique_tangential(reconstruct_global_grid(grid))  # serial reference
+        mp = build_oblique_tangential(grid; split_explicit)                           # partitioned
+        ms = build_oblique_tangential(reconstruct_global_grid(grid); split_explicit)  # serial reference
 
         up = interior(on_architecture(cpu_arch, mp.velocities.u))
         vp = interior(on_architecture(cpu_arch, mp.velocities.v))
         us = partition(interior(on_architecture(CPU(), ms.velocities.u)), cpu_arch, size(up))
         vs = partition(interior(on_architecture(CPU(), ms.velocities.v)), cpu_arch, size(vp))
 
-        @testset "tangential oblique radiation [$(typeof(arch.partition))]" begin
+        @testset "tangential oblique radiation [$(typeof(arch.partition)), split_explicit=$split_explicit]" begin
             @test all(isapprox.(up, us; rtol = 1e-12))
             @test all(isapprox.(vp, vs; rtol = 1e-12))
         end
