@@ -2,8 +2,6 @@
 ##### NormalRadiation (based on Orlanski 1976) open boundary scheme
 #####
 
-abstract type AbstractRadiationScheme{FT} end
-
 """
     NormalRadiation(; inflow_timescale = 0,
                       outflow_timescale = Inf,
@@ -38,7 +36,7 @@ fields such as tracers — where it updates the halo cell adjacent to the bounda
 [`NormalFlowBoundaryCondition`](@ref) for boundary-normal velocities — where it updates the
 boundary face value. Interior cells are never written.
 
-The previous-timestep interior value needed by the Orlanski phase-speed diagnosis is
+The interior value at the base of the stage, needed by the Orlanski phase-speed diagnosis, is
 stored in an array (`φ₁`) allocated automatically during boundary condition regularization.
 
 References
@@ -66,9 +64,8 @@ struct NormalRadiation{FT, S, TF} <: AbstractRadiationScheme{FT}
     outflow_timescale :: FT
     inflow_timescale  :: FT
     use_boundary_velocity :: Bool # advect Value fields with the boundary-face velocity instead of one cell in
-    φᵇ  :: S  # anchor boundary value (2D array or nothing)
-    φ₁  :: S  # anchor interior value (2D array or nothing)
-    φ₁ˡ :: S  # latest interior value (2D array or nothing)
+    φ⁻  :: S  # boundary value at the base of the stage (2D array or nothing)
+    φ₁  :: S  # interior value at the base of the stage (2D array or nothing)
     target_transport :: TF # prescribed net transport through the boundary, or nothing
 end
 
@@ -81,16 +78,15 @@ function NormalRadiation(FT = defaults.FloatType;
     outflow_timescale = convert(FT, outflow_timescale)
     inflow_timescale = convert(FT, inflow_timescale)
     target_transport = convert_target_transport(FT, target_transport)
-    return NormalRadiation(outflow_timescale, inflow_timescale, use_boundary_velocity, nothing, nothing, nothing, target_transport)
+    return NormalRadiation(outflow_timescale, inflow_timescale, use_boundary_velocity, nothing, nothing, target_transport)
 end
 
 Adapt.adapt_structure(to, r::NormalRadiation) =
     NormalRadiation(adapt(to, r.outflow_timescale),
               adapt(to, r.inflow_timescale),
               r.use_boundary_velocity,
-              adapt(to, r.φᵇ),
+              adapt(to, r.φ⁻),
               adapt(to, r.φ₁),
-              adapt(to, r.φ₁ˡ),
               adapt(to, r.target_transport))
 
 Base.summary(r::AbstractRadiationScheme{FT}) where FT = string(nameof(typeof(r)), "{$FT}")
@@ -109,65 +105,12 @@ has_target_transport(::NormalRadiation) = true
 get_target_transport(scheme::AbstractRadiationScheme, grid) = _eval_tt(scheme.target_transport, grid)
 get_target_transport(scheme::AbstractRadiationScheme) = scheme.target_transport
 
-const RVBC  = BoundaryCondition{<:Value{<:AbstractRadiationScheme}}
-const RNFBC = BoundaryCondition{<:NormalFlow{<:AbstractRadiationScheme}}
-const RBC   = Union{RVBC, RNFBC}
-
-#####
-##### Radiation storage allocation during BC regularization
-#####
-
-# `radiation_buffers` allocates the storage arrays a scheme needs; `radiation_storage` rebuilds the scheme from them.
-function materialize_radiation_storage(radiation::AbstractRadiationScheme, grid, loc, dim)
-    FT = eltype(grid)
-    Sx, Sy, Sz = size(grid, loc) # loc-aware: Face on Bounded gives N+1, matching the kernel range
-    Hx, Hy, _ = halo_size(grid)
-    arch = architecture(grid)
-
-    tangential_ranges = dim == 1 ? (connected_range(loc[2], topology(grid, 2), Sy, Hy), 1:Sz) :
-                        dim == 2 ? (connected_range(loc[1], topology(grid, 1), Sx, Hx), 1:Sz) :
-                                   (1:Sx, 1:Sy)
-
-    buffers = radiation_buffers(radiation, arch, FT, tangential_ranges)
-    return radiation_storage(radiation, buffers)
-end
-
-radiation_buffer(arch, FT, ranges...) = OffsetArray(zeros(arch, FT, map(length, ranges)...), map(r -> first(r) - 1, ranges)...)
-
-radiation_buffers(radiation::AbstractRadiationScheme, arch, FT, tangential_ranges) = ntuple(_ -> radiation_buffer(arch, FT, tangential_ranges...), 3) # φᵇ, φ₁, φ₁ˡ
-radiation_buffers(radiation::AbstractRadiationScheme) = (radiation.φᵇ, radiation.φ₁, radiation.φ₁ˡ)
-
-radiation_storage(radiation::AbstractRadiationScheme, (φᵇ, φ₁, φ₁ˡ)) =
-    unparameterized_type(typeof(radiation))(radiation.outflow_timescale, radiation.inflow_timescale,
-                                            radiation.use_boundary_velocity, φᵇ, φ₁, φ₁ˡ)
-
-radiation_storage(radiation::NormalRadiation, (φᵇ, φ₁, φ₁ˡ)) =
+radiation_storage(radiation::NormalRadiation, buffer) =
     NormalRadiation(radiation.outflow_timescale, radiation.inflow_timescale, radiation.use_boundary_velocity,
-                    φᵇ, φ₁, φ₁ˡ, radiation.target_transport)
-
-rebuild_classification(::Value, scheme) = Value(scheme)
-rebuild_classification(::NormalFlow, scheme) = NormalFlow(scheme)
-
-# Hook into the regularization pipeline to allocate radiation storage
-function regularize_boundary_condition(bc::RBC, grid, loc, dim, args...)
-    regularized_condition = regularize_boundary_condition(bc.condition, grid, loc, dim, args...)
-    radiation = bc.classification.scheme
-    materialized_radiation = materialize_radiation_storage(radiation, grid, loc, dim)
-    classification = rebuild_classification(bc.classification, materialized_radiation)
-    return BoundaryCondition(classification, regularized_condition)
-end
-
-Oceananigans.prognostic_state(bc::RBC) = map(b -> on_architecture(CPU(), b), radiation_buffers(bc.classification.scheme))
-
-function Oceananigans.restore_prognostic_state!(bc::RBC, from)
-    foreach(copyto!, radiation_buffers(bc.classification.scheme), from)
-    return bc
-end
-
-Oceananigans.restore_prognostic_state!(::RBC, ::Nothing) = nothing
+                    buffer(), buffer(), radiation.target_transport)
 
 #####
-##### NormalRadiation halo filling — Orlanski (1976) with Marchesiello et al. (2001) nudging
+##### NormalRadiation — Orlanski (1976) with Marchesiello et al. (2001) nudging
 #####
 
 # Inflow/outflow from boundary-normal velocity, not phase-speed sign: avoids extremum-exit blowup where ∂φ/∂ξ → 0.
@@ -190,236 +133,42 @@ Oceananigans.restore_prognostic_state!(::RBC, ::Nothing) = nothing
     return ifelse(τ == 0, φᵉˣᵗ, φᵇⁿ⁺¹)
 end
 
-@inline radiation_update(radiation::NormalRadiation, t, k, clock, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, outflow, Cᵃ) =
+@inline radiation_update(radiation, side, i, j, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, outflow, Cᵃ) =
     normal_radiation_update(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
 
-# The radiated point is the boundary face for NormalFlow (Face-located fields) and the first halo cell for Value
-# (Center-located fields): right boundaries coincide at N+1; left boundaries are 1 (Face) and 0 (Center).
-# The update is a convex combination of previous boundary, interior, and exterior values, so it is bounded.
+const ORBC = Union{BoundaryCondition{<:Value{<:Union{NormalRadiation, ObliqueRadiation}}},
+                   BoundaryCondition{<:NormalFlow{<:Union{NormalRadiation, ObliqueRadiation}}}}
 
-@inline function radiate_east_halo!(iᵇ, j, k, grid, c, bc, Uₙ, loc, clock, model_fields)
-    Δτ = stage_Δt(clock)
-    first_call = isinf(Δτ)
-    Δt = ifelse(first_call, zero(Δτ), Δτ)
-    anchored = anchored_fill(clock)
+# The Orlanski phase speed is diagnosed from the change of the first interior value over the stage
+@inline function cache_exterior_state!(side, i, j, grid, c, bc::ORBC, loc)
+    iᵇ, jᵇ, kᵇ = boundary_point(side, loc, grid, 0, i, j)
+    i₁, j₁, k₁ = boundary_point(side, loc, grid, 1, i, j)
     radiation = bc.classification.scheme
-    ℓx, ℓy, ℓz = loc
-
-    @inbounds begin
-        φᵉˣᵗ  = getbc(bc, j, k, grid, clock, model_fields)
-        φ₁ⁿ⁺¹ = c[iᵇ-1, j, k]
-        φ₂ⁿ⁺¹ = c[iᵇ-2, j, k]
-
-        φᵇᵃ = ifelse(anchored, c[iᵇ, j, k], radiation.φᵇ[j, k])
-        φ₁ᵃ = ifelse(anchored, radiation.φ₁ˡ[j, k], radiation.φ₁[j, k])
-        φᵇⁿ = ifelse(first_call, φ₁ⁿ⁺¹, φᵇᵃ)
-        φ₁ⁿ = ifelse(first_call, φ₁ⁿ⁺¹, φ₁ᵃ)
-        Uᵃ  = advecting_velocity(Uₙ, φ₁ⁿ⁺¹)
-        Cᵃ  = abs(Uᵃ) * Δt * Δx⁻¹ᶠᶜᶜ(iᵇ, j, k, grid)
-        outflow = Uᵃ >= 0
-
-        φᵇⁿ⁺¹  = radiation_update(radiation, j, k, clock, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, outflow, Cᵃ)
-        closed = immersed_peripheral_node(grid.Nx, j, k, grid, Center(), ℓy, ℓz)
-        c[iᵇ, j, k]         = ifelse(closed, zero(grid), φᵇⁿ⁺¹)
-        radiation.φᵇ[j, k]  = φᵇⁿ   # anchor old values for sub-stages
-        radiation.φ₁[j, k]  = φ₁ⁿ
-        radiation.φ₁ˡ[j, k] = φ₁ⁿ⁺¹ # latest interior, promoted at next anchored fill
-    end
-
+    @inbounds radiation.φ⁻[i, j] = c[iᵇ, jᵇ, kᵇ]
+    @inbounds radiation.φ₁[i, j] = c[i₁, j₁, k₁]
     return nothing
 end
 
-@inline function radiate_west_halo!(iᵇ, j, k, grid, c, bc, Uₙ, loc, clock, model_fields)
-    Δτ = stage_Δt(clock)
-    first_call = isinf(Δτ)
-    Δt = ifelse(first_call, zero(Δτ), Δτ)
-    anchored = anchored_fill(clock)
+# A convex combination of the boundary value at the base of the stage, the interior and the exterior value, so it is bounded
+@inline function step_exterior_state!(side, i, j, grid, c, bc::ORBC, loc, clock, model_fields, Δt)
+    iᵇ, jᵇ, kᵇ = boundary_point(side, loc, grid, 0, i, j)
+    i₁, j₁, k₁ = boundary_point(side, loc, grid, 1, i, j)
+    i₂, j₂, k₂ = boundary_point(side, loc, grid, 2, i, j)
     radiation = bc.classification.scheme
-    ℓx, ℓy, ℓz = loc
-
-    @inbounds begin
-        φᵉˣᵗ  = getbc(bc, j, k, grid, clock, model_fields)
-        φ₁ⁿ⁺¹ = c[iᵇ+1, j, k]
-        φ₂ⁿ⁺¹ = c[iᵇ+2, j, k]
-
-        φᵇᵃ = ifelse(anchored, c[iᵇ, j, k], radiation.φᵇ[j, k])
-        φ₁ᵃ = ifelse(anchored, radiation.φ₁ˡ[j, k], radiation.φ₁[j, k])
-        φᵇⁿ = ifelse(first_call, φ₁ⁿ⁺¹, φᵇᵃ)
-        φ₁ⁿ = ifelse(first_call, φ₁ⁿ⁺¹, φ₁ᵃ)
-        Uᵃ  = advecting_velocity(Uₙ, φ₁ⁿ⁺¹)
-        Cᵃ  = abs(Uᵃ) * Δt * Δx⁻¹ᶠᶜᶜ(iᵇ + 1, j, k, grid)
-        outflow = Uᵃ <= 0
-
-        φᵇⁿ⁺¹  = radiation_update(radiation, j, k, clock, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, outflow, Cᵃ)
-        closed = immersed_peripheral_node(1, j, k, grid, Center(), ℓy, ℓz)
-        c[iᵇ, j, k]         = ifelse(closed, zero(grid), φᵇⁿ⁺¹)
-        radiation.φᵇ[j, k]  = φᵇⁿ   # anchor old values for sub-stages
-        radiation.φ₁[j, k]  = φ₁ⁿ
-        radiation.φ₁ˡ[j, k] = φ₁ⁿ⁺¹ # latest interior, promoted at next anchored fill
-    end
-
-    return nothing
-end
-
-@inline function radiate_north_halo!(jᵇ, i, k, grid, c, bc, Uₙ, loc, clock, model_fields)
-    Δτ = stage_Δt(clock)
-    first_call = isinf(Δτ)
-    Δt = ifelse(first_call, zero(Δτ), Δτ)
-    anchored = anchored_fill(clock)
-    radiation = bc.classification.scheme
-    ℓx, ℓy, ℓz = loc
-
-    @inbounds begin
-        φᵉˣᵗ  = getbc(bc, i, k, grid, clock, model_fields)
-        φ₁ⁿ⁺¹ = c[i, jᵇ-1, k]
-        φ₂ⁿ⁺¹ = c[i, jᵇ-2, k]
-
-        φᵇᵃ = ifelse(anchored, c[i, jᵇ, k], radiation.φᵇ[i, k])
-        φ₁ᵃ = ifelse(anchored, radiation.φ₁ˡ[i, k], radiation.φ₁[i, k])
-        φᵇⁿ = ifelse(first_call, φ₁ⁿ⁺¹, φᵇᵃ)
-        φ₁ⁿ = ifelse(first_call, φ₁ⁿ⁺¹, φ₁ᵃ)
-        Uᵃ  = advecting_velocity(Uₙ, φ₁ⁿ⁺¹)
-        Cᵃ  = abs(Uᵃ) * Δt * Δy⁻¹ᶜᶠᶜ(i, jᵇ, k, grid)
-        outflow = Uᵃ >= 0
-
-        φᵇⁿ⁺¹  = radiation_update(radiation, i, k, clock, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, outflow, Cᵃ)
-        closed = immersed_peripheral_node(i, grid.Ny, k, grid, ℓx, Center(), ℓz)
-        c[i, jᵇ, k]         = ifelse(closed, zero(grid), φᵇⁿ⁺¹)
-        radiation.φᵇ[i, k]  = φᵇⁿ   # anchor old values for sub-stages
-        radiation.φ₁[i, k]  = φ₁ⁿ
-        radiation.φ₁ˡ[i, k] = φ₁ⁿ⁺¹ # latest interior, promoted at next anchored fill
-    end
-
-    return nothing
-end
-
-@inline function radiate_south_halo!(jᵇ, i, k, grid, c, bc, Uₙ, loc, clock, model_fields)
-    Δτ = stage_Δt(clock)
-    first_call = isinf(Δτ)
-    Δt = ifelse(first_call, zero(Δτ), Δτ)
-    anchored = anchored_fill(clock)
-    radiation = bc.classification.scheme
-    ℓx, ℓy, ℓz = loc
-
-    @inbounds begin
-        φᵉˣᵗ  = getbc(bc, i, k, grid, clock, model_fields)
-        φ₁ⁿ⁺¹ = c[i, jᵇ+1, k]
-        φ₂ⁿ⁺¹ = c[i, jᵇ+2, k]
-
-        φᵇᵃ = ifelse(anchored, c[i, jᵇ, k], radiation.φᵇ[i, k])
-        φ₁ᵃ = ifelse(anchored, radiation.φ₁ˡ[i, k], radiation.φ₁[i, k])
-        φᵇⁿ = ifelse(first_call, φ₁ⁿ⁺¹, φᵇᵃ)
-        φ₁ⁿ = ifelse(first_call, φ₁ⁿ⁺¹, φ₁ᵃ)
-        Uᵃ  = advecting_velocity(Uₙ, φ₁ⁿ⁺¹)
-        Cᵃ  = abs(Uᵃ) * Δt * Δy⁻¹ᶜᶠᶜ(i, jᵇ + 1, k, grid)
-        outflow = Uᵃ <= 0
-
-        φᵇⁿ⁺¹  = radiation_update(radiation, i, k, clock, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, outflow, Cᵃ)
-        closed = immersed_peripheral_node(i, 1, k, grid, ℓx, Center(), ℓz)
-        c[i, jᵇ, k]         = ifelse(closed, zero(grid), φᵇⁿ⁺¹)
-        radiation.φᵇ[i, k]  = φᵇⁿ   # anchor old values for sub-stages
-        radiation.φ₁[i, k]  = φ₁ⁿ
-        radiation.φ₁ˡ[i, k] = φ₁ⁿ⁺¹ # latest interior, promoted at next anchored fill
-    end
-
-    return nothing
-end
-
-@inline function radiate_top_halo!(kᵇ, i, j, grid, c, bc, Uₙ, loc, clock, model_fields)
-    Δτ = stage_Δt(clock)
-    first_call = isinf(Δτ)
-    Δt = ifelse(first_call, zero(Δτ), Δτ)
-    anchored = anchored_fill(clock)
-    radiation = bc.classification.scheme
-    ℓx, ℓy, ℓz = loc
 
     @inbounds begin
         φᵉˣᵗ  = getbc(bc, i, j, grid, clock, model_fields)
-        φ₁ⁿ⁺¹ = c[i, j, kᵇ-1]
-        φ₂ⁿ⁺¹ = c[i, j, kᵇ-2]
+        φ₁ⁿ⁺¹ = c[i₁, j₁, k₁]
+        φ₂ⁿ⁺¹ = c[i₂, j₂, k₂]
 
-        φᵇᵃ = ifelse(anchored, c[i, j, kᵇ], radiation.φᵇ[i, j])
-        φ₁ᵃ = ifelse(anchored, radiation.φ₁ˡ[i, j], radiation.φ₁[i, j])
-        φᵇⁿ = ifelse(first_call, φ₁ⁿ⁺¹, φᵇᵃ)
-        φ₁ⁿ = ifelse(first_call, φ₁ⁿ⁺¹, φ₁ᵃ)
-        Uᵃ  = advecting_velocity(Uₙ, φ₁ⁿ⁺¹)
-        Cᵃ  = abs(Uᵃ) * Δt * Δz⁻¹ᶜᶜᶠ(i, j, kᵇ, grid)
-        outflow = Uᵃ >= 0
+        n  = ifelse(radiation.use_boundary_velocity, 0, 1)
+        Uᵃ = advecting_velocity(bc, side, model_fields, grid, n, i, j, φ₁ⁿ⁺¹)
+        Cᵃ = abs(Uᵃ) * Δt * reciprocal_boundary_spacing(side, grid, i, j)
+        outflow = outward(side, Uᵃ) >= 0
 
-        φᵇⁿ⁺¹  = normal_radiation_update(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
-        closed = immersed_peripheral_node(i, j, grid.Nz, grid, ℓx, ℓy, Center())
-        c[i, j, kᵇ]         = ifelse(closed, zero(grid), φᵇⁿ⁺¹)
-        radiation.φᵇ[i, j]  = φᵇⁿ   # anchor old values for sub-stages
-        radiation.φ₁[i, j]  = φ₁ⁿ
-        radiation.φ₁ˡ[i, j] = φ₁ⁿ⁺¹ # latest interior, promoted at next anchored fill
+        φᵇⁿ⁺¹ = radiation_update(radiation, side, i, j, radiation.φ⁻[i, j], φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, radiation.φ₁[i, j], φᵉˣᵗ, Δt, outflow, Cᵃ)
+        c[iᵇ, jᵇ, kᵇ] = ifelse(immersed_boundary_point(side, loc, grid, i, j), zero(grid), φᵇⁿ⁺¹)
     end
 
     return nothing
 end
-
-@inline function radiate_bottom_halo!(kᵇ, i, j, grid, c, bc, Uₙ, loc, clock, model_fields)
-    Δτ = stage_Δt(clock)
-    first_call = isinf(Δτ)
-    Δt = ifelse(first_call, zero(Δτ), Δτ)
-    anchored = anchored_fill(clock)
-    radiation = bc.classification.scheme
-    ℓx, ℓy, ℓz = loc
-
-    @inbounds begin
-        φᵉˣᵗ  = getbc(bc, i, j, grid, clock, model_fields)
-        φ₁ⁿ⁺¹ = c[i, j, kᵇ+1]
-        φ₂ⁿ⁺¹ = c[i, j, kᵇ+2]
-
-        φᵇᵃ = ifelse(anchored, c[i, j, kᵇ], radiation.φᵇ[i, j])
-        φ₁ᵃ = ifelse(anchored, radiation.φ₁ˡ[i, j], radiation.φ₁[i, j])
-        φᵇⁿ = ifelse(first_call, φ₁ⁿ⁺¹, φᵇᵃ)
-        φ₁ⁿ = ifelse(first_call, φ₁ⁿ⁺¹, φ₁ᵃ)
-        Uᵃ  = advecting_velocity(Uₙ, φ₁ⁿ⁺¹)
-        Cᵃ  = abs(Uᵃ) * Δt * Δz⁻¹ᶜᶜᶠ(i, j, kᵇ + 1, grid)
-        outflow = Uᵃ <= 0
-
-        φᵇⁿ⁺¹  = normal_radiation_update(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
-        closed = immersed_peripheral_node(i, j, 1, grid, ℓx, ℓy, Center())
-        c[i, j, kᵇ]         = ifelse(closed, zero(grid), φᵇⁿ⁺¹)
-        radiation.φᵇ[i, j]  = φᵇⁿ   # anchor old values for sub-stages
-        radiation.φ₁[i, j]  = φ₁ⁿ
-        radiation.φ₁ˡ[i, j] = φ₁ⁿ⁺¹ # latest interior, promoted at next anchored fill
-    end
-
-    return nothing
-end
-
-# NormalFlow fields radiate with their own boundary value as advecting velocity (Uₙ = nothing);
-# Value fields (tracers, tangential velocities) are advected by the boundary-normal velocity
-@inline   _fill_east_halo!(j, k, grid, c, bc::RNFBC, loc::FAA, clock, model_fields) =   radiate_east_halo!(grid.Nx+1, j, k, grid, c, bc, nothing, loc, clock, model_fields)
-@inline   _fill_west_halo!(j, k, grid, c, bc::RNFBC, loc::FAA, clock, model_fields) =   radiate_west_halo!(1,         j, k, grid, c, bc, nothing, loc, clock, model_fields)
-@inline  _fill_north_halo!(i, k, grid, c, bc::RNFBC, loc::AFA, clock, model_fields) =  radiate_north_halo!(grid.Ny+1, i, k, grid, c, bc, nothing, loc, clock, model_fields)
-@inline  _fill_south_halo!(i, k, grid, c, bc::RNFBC, loc::AFA, clock, model_fields) =  radiate_south_halo!(1,         i, k, grid, c, bc, nothing, loc, clock, model_fields)
-@inline    _fill_top_halo!(i, j, grid, c, bc::RNFBC, loc::AAF, clock, model_fields) =    radiate_top_halo!(grid.Nz+1, i, j, grid, c, bc, nothing, loc, clock, model_fields)
-@inline _fill_bottom_halo!(i, j, grid, c, bc::RNFBC, loc::AAF, clock, model_fields) = radiate_bottom_halo!(1,         i, j, grid, c, bc, nothing, loc, clock, model_fields)
-
-# Clockless fallback: more specific than the NFBC catch-all, so getbc is never called without clock on GPU.
-@inline   _fill_east_halo!(j, k, grid, c, bc::RNFBC, loc, args...) = nothing
-@inline   _fill_west_halo!(j, k, grid, c, bc::RNFBC, loc, args...) = nothing
-@inline  _fill_north_halo!(i, k, grid, c, bc::RNFBC, loc, args...) = nothing
-@inline  _fill_south_halo!(i, k, grid, c, bc::RNFBC, loc, args...) = nothing
-@inline    _fill_top_halo!(i, j, grid, c, bc::RNFBC, loc, args...) = nothing
-@inline _fill_bottom_halo!(i, j, grid, c, bc::RNFBC, loc, args...) = nothing
-
-# Advect Value fields with the boundary-face velocity (`use_boundary_velocity`) or the one-cell-interior
-# velocity (default): the interior value is prognostic, the boundary value is radiation-extrapolated.
-@inline radiation_velocity_index(bc, boundary_index, interior_index) =
-    ifelse(bc.classification.scheme.use_boundary_velocity, boundary_index, interior_index)
-
-@inline _fill_east_halo!(j, k, grid, c, bc::RVBC, loc::CAA, clock, model_fields) =
-    radiate_east_halo!(grid.Nx+1, j, k, grid, c, bc, @inbounds(model_fields.u[radiation_velocity_index(bc, grid.Nx+1, grid.Nx), j, k]), loc, clock, model_fields)
-@inline _fill_west_halo!(j, k, grid, c, bc::RVBC, loc::CAA, clock, model_fields) =
-    radiate_west_halo!(0, j, k, grid, c, bc, @inbounds(model_fields.u[radiation_velocity_index(bc, 1, 2), j, k]), loc, clock, model_fields)
-@inline _fill_north_halo!(i, k, grid, c, bc::RVBC, loc::ACA, clock, model_fields) =
-    radiate_north_halo!(grid.Ny+1, i, k, grid, c, bc, @inbounds(model_fields.v[i, radiation_velocity_index(bc, grid.Ny+1, grid.Ny), k]), loc, clock, model_fields)
-@inline _fill_south_halo!(i, k, grid, c, bc::RVBC, loc::ACA, clock, model_fields) =
-    radiate_south_halo!(0, i, k, grid, c, bc, @inbounds(model_fields.v[i, radiation_velocity_index(bc, 1, 2), k]), loc, clock, model_fields)
-@inline _fill_top_halo!(i, j, grid, c, bc::RVBC, loc::AAC, clock, model_fields) =
-    radiate_top_halo!(grid.Nz+1, i, j, grid, c, bc, @inbounds(model_fields.w[i, j, radiation_velocity_index(bc, grid.Nz+1, grid.Nz)]), loc, clock, model_fields)
-@inline _fill_bottom_halo!(i, j, grid, c, bc::RVBC, loc::AAC, clock, model_fields) =
-    radiate_bottom_halo!(0, i, j, grid, c, bc, @inbounds(model_fields.w[i, j, radiation_velocity_index(bc, 1, 2)]), loc, clock, model_fields)

@@ -284,6 +284,10 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
         maybe_extend_halos(TX, TY, grid, substepping, free_surface.timestepper)
     end
 
+    # The barotropic fields live on `maybe_extended_grid`, whose halos size the exterior states of their open boundaries
+    barotropic_names = filter(∈((:U, :V, :η)), keys(bcs))
+    bcs = regularize_field_boundary_conditions(bcs[barotropic_names], maybe_extended_grid, keys(bcs))
+
     η = free_surface_displacement_field(velocities, free_surface, maybe_extended_grid; boundary_conditions = get(bcs, :η, nothing))
     η̅ = free_surface_displacement_field(velocities, free_surface, maybe_extended_grid)
 

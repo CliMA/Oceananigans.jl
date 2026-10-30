@@ -11,7 +11,8 @@ using Oceananigans.Utils: Utils, KernelParameters, configure_kernel, launch!, @a
 using Oceananigans.Operators: Az⁻¹ᶜᶜᶠ, Δx_qᶜᶠᶠ, Δy_qᶠᶜᶠ, Δzᶜᶠᶜ, Δzᶠᶜᶜ, Δxᶜᶠᵃ, Δyᶠᶜᵃ
 using Oceananigans.ImmersedBoundaries: column_depthTᶠᶜᵃ, column_depthTᶜᶠᵃ, column_depthᶠᶜᵃ, column_depthᶜᶠᵃ
 using Oceananigans.Operators: ∂xᵣTᶠᶜᶠ, ∂xᵣᶠᶜᶠ, ∂yᵣTᶜᶠᶠ, ∂yᵣᶜᶠᶠ, δxTᶜᵃᵃ, δyTᵃᶜᵃ, δxᶜᶜᶜ, δyᶜᶜᶜ
-using Oceananigans.BoundaryConditions: fill_halo_regions!, FieldBoundaryConditions, SurfaceWaveRadiationBoundaryCondition, gravity_wave_boundary_condition
+using Oceananigans.BoundaryConditions: fill_halo_regions!, FieldBoundaryConditions, SurfaceWaveRadiationBoundaryCondition, gravity_wave_boundary_condition,
+                                       cache_boundary_conditions!, step_boundary_conditions!, regularize_field_boundary_conditions
 using Oceananigans.Fields: Field, instantiated_location
 using Oceananigans.Grids: Center, Face, Periodic, topology, column_depthᶜᶠᵃ, column_depthᶠᶜᵃ, Connected, Open, TwoSided
 using Oceananigans.DistributedComputations: DistributedGrid, all_reduce, @root

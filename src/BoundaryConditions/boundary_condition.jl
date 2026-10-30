@@ -264,3 +264,5 @@ validate_boundary_condition_architecture(::Array, ::GPU, bc, side) =
     throw(ArgumentError("$side $bc must use `CuArray` rather than `Array` on GPU architectures!"))
 
 Oceananigans.prognostic_state(::BoundaryCondition) = nothing
+Oceananigans.restore_prognostic_state!(::BoundaryCondition, from) = nothing
+Oceananigans.restore_prognostic_state!(::BoundaryCondition, ::Nothing) = nothing
