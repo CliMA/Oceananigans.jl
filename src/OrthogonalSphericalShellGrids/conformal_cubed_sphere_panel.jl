@@ -5,7 +5,7 @@ using Oceananigans.Operators: Δx_qᶠᶜᶜ, Δy_qᶜᶠᶜ, δxᶠᶠᶜ, δy�
 using CubedSphere: GeometricSpacing, conformal_cubed_sphere_mapping, optimized_non_uniform_conformal_cubed_sphere_coordinates
 using CubedSphere.SphericalGeometry: cartesian_to_lat_lon, lat_lon_to_cartesian, spherical_area_quadrilateral
 using JLD2: jldopen
-using OffsetArrays: OffsetArray
+using OffsetArrays: OffsetArrays, AbstractOffsetArray
 
 struct CubedSphereConformalMapping{Rotation, Fξ, Fη, Cξ, Cη}
     rotation :: Rotation
@@ -847,7 +847,7 @@ import Oceananigans.Grids: static_column_depthᶠᶜᵃ, static_column_depthᶜ�
 
 import Oceananigans.BoundaryConditions: fill_halo_kernels
 
-@inline function fill_halo_kernels(bcs::FieldBoundaryConditions, data::OffsetArray, grid::ConformalCubedSpherePanelGridOfSomeKind, loc, indices)
+@inline function fill_halo_kernels(bcs::FieldBoundaryConditions, data::AbstractOffsetArray, grid::ConformalCubedSpherePanelGridOfSomeKind, loc, indices)
     reduced_dimensions = findall(x -> x isa Nothing, loc)
     reduced_dimensions = tuple(reduced_dimensions...)
     # Fill the bottom and top halos across the full horizontal span of `data`,

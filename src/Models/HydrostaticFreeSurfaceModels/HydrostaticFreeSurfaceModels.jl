@@ -26,7 +26,7 @@ import Oceananigans.Simulations: timestepper
 import Oceananigans.TimeSteppers: step_lagrangian_particles!, update_lagrangian_particle_state!
 
 # The only grid type that can support an FFT implicit free-surface solver
-const XYRegularStaticRG = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:StaticVerticalDiscretization, <:Number, <:Number}
+const XYRegularStaticRG = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:StaticVerticalDiscretization, <:Number, <:Any, <:Any, <:Any, <:Number}
 
 abstract type AbstractFreeSurface{E, G} end
 

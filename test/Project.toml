@@ -42,6 +42,7 @@ oneAPI = "8f75cd03-7ff8-4ecb-9b8f-daf728133b1b"
 
 [sources]
 Oceananigans = {path = ".."}
+OffsetArrays = {url = "https://github.com/simone-silvestri/OffsetArrays.jl", rev = "073659e14abc98add86f0362ec33412ee60abcd6"}
 ParallelTestRunner = {rev = "kill-workers-with-manager", url = "https://github.com/JuliaTesting/ParallelTestRunner.jl.git"}
 
 [compat]

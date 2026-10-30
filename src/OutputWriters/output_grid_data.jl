@@ -10,8 +10,8 @@ function construct_ossg_halo_padded_array(stored_data, variable_name, FT, arch, 
 
     three_dimensional_data = allocate_grid_data(FT, arch, (lx, ly, nothing),
                                                 topology_instances, grid_sizes, halo_sizes)
-    halo_array = OffsetArray(dropdims(parent(three_dimensional_data), dims=3),
-                             three_dimensional_data.offsets[1:2]...)
+    halo_array = StaticStridesOffsetArray(dropdims(parent(three_dimensional_data), dims=3),
+                             OffsetArrays.offsets(three_dimensional_data)[1:2]...)
 
     if file_has_halos
         destination = parent(halo_array)
@@ -40,7 +40,7 @@ function halo_fill_2d_metric(old_data, grid, LX, LY)
     Ni = Base.length(LX(), TX(), Nx)
     Nj = Base.length(LY(), TY(), Ny)
 
-    # Materialize the interior because a lazy view of a GPU-backed OffsetArray
+    # Materialize the interior because a lazy view of a GPU-backed StaticStridesOffsetArray
     # retains generic scalar indexing in its broadcast path.
     old_interior = old_data[1:Ni, 1:Nj]
 
@@ -60,8 +60,8 @@ function halo_fill_2d_metric(old_data, grid, LX, LY)
     # Every z level is identical; retain one while preserving the halo offsets.
     # Copy from the parent so the result is a plain offset matrix like the
     # metric arrays a natively constructed grid carries.
-    offsets = new_field.data.offsets
-    data = OffsetArray(copy(view(parent(new_field.data), :, :, 1)), offsets[1], offsets[2])
+    offsets = OffsetArrays.offsets(new_field.data)
+    data = StaticStridesOffsetArray(copy(view(parent(new_field.data), :, :, 1)), offsets[1], offsets[2])
     return on_architecture(architecture(grid), data)
 end
 

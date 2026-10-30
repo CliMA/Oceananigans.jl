@@ -11,7 +11,7 @@ DisambiguationTypes = Union{Array,
                             BitArray,
                             SubArray{<:Any, <:Any, <:Array},
                             ReshapedHostArray{<:Union{Missing, Real}},
-                            OffsetArray,
+                            AbstractOffsetArray,
                             Tuple,
                             NamedTuple}
 

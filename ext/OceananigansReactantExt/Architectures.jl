@@ -30,9 +30,10 @@ array_type(::ReactantState) = ConcreteRArray
 on_architecture(::ReactantState, a::Reactant.AnyTracedRArray) = a
 on_architecture(::CPU, a::AnyConcreteReactantArray) = Array(a)
 
-using OffsetArrays: OffsetArray
-const ConcreteReactantOffsetArray = OffsetArray{<:Any, <:Any, <:AnyConcreteReactantArray}
-on_architecture(::CPU, a::ConcreteReactantOffsetArray) = OffsetArray(Array(parent(a)), a.offsets)
+using OffsetArrays: OffsetArrays, AbstractOffsetArray
+using Oceananigans.Utils: StaticStridesOffsetArray
+const ConcreteReactantOffsetArray = StaticStridesOffsetArray{<:Any, <:Any, <:Any, <:Any, <:AnyConcreteReactantArray}
+on_architecture(::CPU, a::ConcreteReactantOffsetArray) = StaticStridesOffsetArray(Array(parent(a)), OffsetArrays.offsets(a)...)
 
 const ArraysToRArray = Union{Array,
     Reactant.AnyConcretePJRTArray,
@@ -112,7 +113,7 @@ Oceananigans.Grids.unwrapped_eltype(T::Type{<:Reactant.ConcreteIFRTNumber}) = Re
 _to_reactant(a::Number) = a
 _to_reactant(::Nothing) = nothing
 _to_reactant(a::AbstractArray) = Reactant.to_rarray(collect(a))
-_to_reactant(a::OffsetArray) = OffsetArray(Reactant.to_rarray(collect(parent(a))), a.offsets...)
+_to_reactant(a::AbstractOffsetArray) = StaticStridesOffsetArray(Reactant.to_rarray(collect(parent(a))), OffsetArrays.offsets(a)...)
 
 function _to_reactant(s::Oceananigans.Grids.StaticVerticalDiscretization)
     return Oceananigans.Grids.StaticVerticalDiscretization(

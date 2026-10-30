@@ -2,7 +2,7 @@ using Oceananigans.Grids: Grids, constructor_arguments, rnode
 using Oceananigans.Fields: Field, fill_halo_regions!, interior
 using Oceananigans.BoundaryConditions: FBC
 using Oceananigans.Utils: KernelParameters
-using OffsetArrays: OffsetArray
+using OffsetArrays: AbstractOffsetArray
 
 #####
 ##### GridFittedVerticalBoundaries (2.5D immersed boundary with modified bottom and top heights)
@@ -106,7 +106,7 @@ end
 
 set_bottom_height!(bottom_field, bottom_height) = set!(bottom_field, bottom_height)
 
-function set_bottom_height!(bottom_field, bottom_height::OffsetArray)
+function set_bottom_height!(bottom_field, bottom_height::AbstractOffsetArray)
     source = on_architecture(architecture(bottom_field), bottom_height_interior(bottom_height))
     copyto!(interior(bottom_field), source)
     return bottom_field
@@ -124,7 +124,7 @@ end
 $(TYPEDSIGNATURES)
 
 Return a `Field` at `(Center, Center, Nothing)` that wraps the bottom height of `grid`, which is
-stored on `grid.immersed_boundary` as a bare `OffsetArray`. The returned `Field` shares its data
+stored on `grid.immersed_boundary` as a bare `StaticStridesOffsetArray`. The returned `Field` shares its data
 with `grid`, so mutating it mutates the bottom height of `grid`. If `grid` has no immersed bottom,
 the returned `Field` is a copy filled with the bottom of the domain.
 """
@@ -207,7 +207,7 @@ Adapt.adapt_structure(to, ib::GridFittedVerticalBoundaries) =
 $(TYPEDSIGNATURES)
 
 Returns a new `ib` that holds the numerical `immersed_boundary`.
-If `ib` is an `AbstractGridFittedBottom`, `ib.bottom_height` is an `OffsetArray` holding the
+If `ib` is an `AbstractGridFittedBottom`, `ib.bottom_height` is a `StaticStridesOffsetArray` holding the
 z-coordinate of the top-most interface of the last ``immersed`` cell in the column (wrap it as a
 `Field` with [`bottom_height_field`](@ref)). If `ib` is a `GridFittedBoundary`, `ib.mask` is a `Field` of
 booleans that indicates whether a cell is immersed or not.
