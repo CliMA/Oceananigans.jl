@@ -162,7 +162,8 @@ fields are cached. Then, for each stage `m`:
    (the last stage, with `βⁿ = 1`, lands on `tⁿ + Δt`)
 4. Update the `model` state (fill halos, compute diagnostics, etc.)
 
-After all substeps, Lagrangian particles are stepped and the `model.clock` iteration is incremented.
+After all substeps, Lagrangian particles are advanced with a first-order forward Euler step,
+using the velocity at the end of the time step, and the `model.clock` iteration is incremented.
 """
 function time_step!(model::AbstractModel{<:SplitRungeKuttaTimeStepper}, Δt; callbacks=[])
 

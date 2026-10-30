@@ -75,13 +75,15 @@ Setting `euler=true` will take a forward Euler time step.
 The steps of the Quasi-Adams-Bashforth second-order (AB2) algorithm are:
 
 1. If this is the first time step (`model.clock.iteration == 0`), call `update_state!`.
-2. Call `ab2_step!(model, Δt, callbacks)` which:
+2. Advance Lagrangian particles with `x += Δt * ((3/2 + χ) * Uⁿ - (1/2 + χ) * U⁻)`, where `Uⁿ`
+   is the particle velocity at the beginning of the step and `U⁻` is the particle velocity at the
+   beginning of the previous step. See `substep_lagrangian_particles!`.
+3. Call `ab2_step!(model, Δt, callbacks)` which:
    - Computes tendencies for all prognostic fields
    - Advances fields using AB2: `U += Δt * ((3/2 + χ) * Gⁿ - (1/2 + χ) * G⁻)`
    - Applies model-specific corrections (e.g., pressure correction for incompressibility)
-3. Store the current tendencies in `G⁻` for use in the next time step.
-4. Update the model state (fill halos, compute diagnostics).
-5. Advance the clock and step Lagrangian particles.
+4. Store the current tendencies in `G⁻` for use in the next time step.
+5. Advance the clock and update the model state (fill halos, compute diagnostics).
 
 The specific implementation of `ab2_step!` varies by model type (e.g., `NonhydrostaticModel`
 includes a pressure correction step, while `HydrostaticFreeSurfaceModel` handles the
@@ -111,8 +113,8 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     χ₀ = ab2_timestepper.χ # Save initial value
     ab2_timestepper.χ = χ
 
+    substep_lagrangian_particles!(model, kernel_Δt, 1)
     ab2_step!(model, kernel_Δt, callbacks)
-    step_lagrangian_particles!(model, kernel_Δt)
     cache_previous_tendencies!(model)
 
     tick!(model.clock, Δt)

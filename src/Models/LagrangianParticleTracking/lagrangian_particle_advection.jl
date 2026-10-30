@@ -2,49 +2,6 @@ using Oceananigans.Utils: instantiate, KernelParameters
 using Oceananigans.Models: total_velocities
 using Oceananigans.Fields: interpolator, FractionalIndices
 
-#####
-##### Boundary conditions for Lagrangian particles
-#####
-
-# Functions for bouncing particles off walls to the right and left
-@inline function bounce_left(x, xᴸ, xᴿ, Cʳ)
-    xᵢ = xᴿ - Cʳ * (x - xᴿ)
-    # Keep the particle from bouncing so far left it leaves the domain
-    return ifelse(xᵢ < xᴸ, xᴸ, xᵢ)
-end
-
-@inline function bounce_right(x, xᴸ, xᴿ, Cʳ)
-    xᵢ = xᴸ + Cʳ * (xᴸ - x)
-    # Keep the particle from bouncing so far right it leaves the domain
-    return ifelse(xᵢ > xᴿ, xᴿ, xᵢ)
-end
-
-"""
-$(TYPEDSIGNATURES)
-
-Return a new particle position if the particle position `x`
-is outside the Bounded interval `(xᴸ, xᴿ)` by bouncing the particle off
-the interval edge with coefficient of restitution `Cʳ).
-"""
-@inline enforce_boundary_conditions(::Bounded, x, xᴸ, xᴿ, Cʳ) = ifelse(x > xᴿ, bounce_left(x, xᴸ, xᴿ, Cʳ),
-                                                                ifelse(x < xᴸ, bounce_right(x, xᴸ, xᴿ, Cʳ), x))
-
-"""
-$(TYPEDSIGNATURES)
-
-Return a new particle position if the particle position `x`
-is outside the Periodic interval `(xᴸ, xᴿ)`.
-"""
-@inline enforce_boundary_conditions(::Periodic, x, xᴸ, xᴿ, Cʳ) = ifelse(x > xᴿ, xᴸ + mod(x - xᴿ, xᴿ - xᴸ),
-                                                                 ifelse(x < xᴸ, xᴿ - mod(xᴸ - x, xᴿ - xᴸ), x))
-
-"""
-$(TYPEDSIGNATURES)
-
-Do nothing on Flat dimensions.
-"""
-@inline enforce_boundary_conditions(::Flat, x, xᴸ, xᴿ, Cʳ) = x
-
 const f = Face()
 const c = Center()
 
@@ -58,15 +15,16 @@ immersed_boundary_topology(grid_topology) = ifelse(grid_topology == Flat, Flat()
 """
 $(TYPEDSIGNATURES)
 
-Return a new particle position if the position `(x, y, z)` lies in an immersed cell, by
-bouncing the particle off the immersed boundary with a coefficient of `restitution`.
+Return a new particle position if the position `(x, y, z)` lies in an immersed cell, and whether
+the particle was absorbed, according to the immersed boundary condition `bc`.
 
-The particle is reflected back into the cell with indices `previous_particle_indices` that it
-occupied before it was advected, off the faces of that cell. The reflection is computed from the
-unwrapped position `(x̃, ỹ, z̃)` of the particle, i.e. its advected position before domain boundary
-conditions were applied.
+A [`ReflectingBoundary`](@ref) reflects the particle back into the cell with indices
+`previous_particle_indices` that it occupied before it was advected, off the faces of that cell.
+The reflection is computed from the unwrapped position `(x̃, ỹ, z̃)` of the particle, i.e. its
+advected position before domain boundary conditions were applied. An [`AbsorbingBoundary`](@ref)
+places the particle on the faces of its previous cell and flags it as absorbed.
 """
-@inline function bounce_immersed_particle((x, y, z), (x̃, ỹ, z̃), ibg, restitution, previous_particle_indices)
+@inline function bounce_immersed_particle((x, y, z), (x̃, ỹ, z̃), ibg, bc, previous_particle_indices)
     X = flattened_node((x, y, z), ibg)
 
     # Determine the cell the particle is in now from the interfaces
@@ -91,19 +49,19 @@ conditions were applied.
     yᴿ = ηnode(i⁻,     j⁻ + 1, k⁻,     ibg, f, f, f)
     zᴿ = rnode(i⁻,     j⁻,     k⁻ + 1, ibg, f, f, f)
 
-    # Reflect the particle back into the previous cell
+    # Return the particle to the previous cell
     tx, ty, tz = map(immersed_boundary_topology, topology(ibg))
-    Cʳ = restitution
 
-    xb⁺ = enforce_boundary_conditions(tx, x̃, xᴸ, xᴿ, Cʳ)
-    yb⁺ = enforce_boundary_conditions(ty, ỹ, yᴸ, yᴿ, Cʳ)
-    zb⁺ = enforce_boundary_conditions(tz, z̃, zᴸ, zᴿ, Cʳ)
+    xb⁺, _ = enforce_boundary_conditions(tx, x̃, xᴸ, xᴿ, bc, bc)
+    yb⁺, _ = enforce_boundary_conditions(ty, ỹ, yᴸ, yᴿ, bc, bc)
+    zb⁺, _ = enforce_boundary_conditions(tz, z̃, zᴸ, zᴿ, bc, bc)
 
     x⁺ = ifelse(immersed, xb⁺, x)
     y⁺ = ifelse(immersed, yb⁺, y)
     z⁺ = ifelse(immersed, zb⁺, z)
+    absorbed = immersed & absorbs(bc)
 
-    return (x⁺, y⁺, z⁺)
+    return (x⁺, y⁺, z⁺), absorbed
 end
 
 """
@@ -115,13 +73,18 @@ rightmost_interface_index(::Bounded, N)  = N + 1
 rightmost_interface_index(::Periodic, N) = N + 1
 rightmost_interface_index(::Flat, N) = N
 
+
 """
 $(TYPEDSIGNATURES)
 
-Return new position `(x⁺, y⁺, z⁺)` for a particle at current position (x, y, z),
-given `velocities`, time-step `Δt, and coefficient of `restitution`.
+Return the indices `(i, j, k)` of the cell that contains a particle at position `(x, y, z)`,
+and the velocity `(ẋ, ẏ, ż)` of the particle in the coordinates of `grid`; for example,
+in degrees per second for the horizontal coordinates of a `LatitudeLongitudeGrid`.
+
+The particle velocity is the fluid `velocities` interpolated to the particle position and
+then modified by `particle_u_velocity`, `particle_v_velocity`, and `particle_w_velocity`.
 """
-@inline function advect_particle((x, y, z), particles, p, restitution, grid, Δt, velocities)
+@inline function particle_coordinate_velocity((x, y, z), particles, p, grid, velocities)
     X = flattened_node((x, y, z), grid)
 
     # Obtain current particle indices, looking at the interfaces
@@ -130,8 +93,6 @@ given `velocities`, time-step `Δt, and coefficient of `restitution`.
     i, _, _ = interpolator(fi.i)
     j, _, _ = interpolator(fi.j)
     k, _, _ = interpolator(fi.k)
-
-    current_particle_indices = (i, j, k)
 
     uf = interpolate(X, velocities.u, (f, c, c), grid)
     vf = interpolate(X, velocities.v, (c, f, c), grid)
@@ -142,16 +103,24 @@ given `velocities`, time-step `Δt, and coefficient of `restitution`.
     vp = particle_v_velocity(particles, p, vf)
     wp = particle_w_velocity(particles, p, wf)
 
-    # Advect particles, calculating the advection metric for a curvilinear grid.
+    # Transform to coordinate velocities with the metric of a curvilinear grid.
     # Note that all supported grids use length coordinates in the vertical, so we do not
     # transform the vertical velocity nor invoke the k-index.
     ξ = x_metric(i, j, grid)
     η = y_metric(i, j, grid)
 
-    # Advected position, before boundary conditions are applied
-    x̃ = x + ξ * up * Δt
-    ỹ = y + η * vp * Δt
-    z̃ = z +     wp * Δt
+    return (i, j, k), (ξ * up, η * vp, wp)
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Return the position `(x⁺, y⁺, z⁺)` of a particle that was advected from the cell with
+indices `previous_particle_indices` to the position `(x̃, ỹ, z̃)`, after applying particle
+`boundary_conditions`, and whether the particle was absorbed at an [`AbsorbingBoundary`](@ref).
+"""
+@inline function enforce_particle_boundary_conditions((x̃, ỹ, z̃), previous_particle_indices, boundary_conditions, grid)
+    i, j, k = previous_particle_indices
 
     # Satisfy boundary conditions for particles: bounce off walls, travel over periodic boundaries.
     tx, ty, tz = map(instantiate, topology(grid))
@@ -171,17 +140,19 @@ given `velocities`, time-step `Δt, and coefficient of `restitution`.
     zᴿ = rnode(i,  j,  kᴿ, grid, f, f, f)
 
     # Enforce boundary conditions for particles.
-    Cʳ = restitution
-    x⁺ = enforce_boundary_conditions(tx, x̃, xᴸ, xᴿ, Cʳ)
-    y⁺ = enforce_boundary_conditions(ty, ỹ, yᴸ, yᴿ, Cʳ)
-    z⁺ = enforce_boundary_conditions(tz, z̃, zᴸ, zᴿ, Cʳ)
+    bcs = boundary_conditions
+    x⁺, absorbed_x = enforce_boundary_conditions(tx, x̃, xᴸ, xᴿ, bcs.west, bcs.east)
+    y⁺, absorbed_y = enforce_boundary_conditions(ty, ỹ, yᴸ, yᴿ, bcs.south, bcs.north)
+    z⁺, absorbed_z = enforce_boundary_conditions(tz, z̃, zᴸ, zᴿ, bcs.bottom, bcs.top)
+    absorbed = absorbed_x | absorbed_y | absorbed_z
 
     if grid isa ImmersedBoundaryGrid
-        previous_particle_indices = current_particle_indices # particle has been advected
-        (x⁺, y⁺, z⁺) = bounce_immersed_particle((x⁺, y⁺, z⁺), (x̃, ỹ, z̃), grid, Cʳ, previous_particle_indices)
+        (x⁺, y⁺, z⁺), absorbed_immersed = bounce_immersed_particle((x⁺, y⁺, z⁺), (x̃, ỹ, z̃), grid, bcs.immersed,
+                                                                   previous_particle_indices)
+        absorbed = absorbed | absorbed_immersed
     end
 
-    return (x⁺, y⁺, z⁺)
+    return (x⁺, y⁺, z⁺), absorbed
 end
 
 @inline particle_u_velocity(particles, p, uf) = uf
@@ -199,32 +170,63 @@ end
 @inline y_metric(i, j, grid::LatitudeLongitudeGrid{FT}) where FT = 1 / grid.radius * FT(360 / 2π)
 @inline y_metric(i, j, grid::ImmersedBoundaryGrid) = y_metric(i, j, grid.underlying_grid)
 
-@kernel function _advect_particles!(particles, restitution, grid::AbstractGrid, Δt, velocities)
+# The vertical position of drogued particles is fixed at `depths`; see `DroguedParticleDynamics`.
+drogue_depths(dynamics) = nothing
+
+@inline particle_z(particles, p, ::Nothing) = @inbounds particles.z[p]
+@inline particle_z(particles, p, depths) = @inbounds depths[p]
+
+@inline store_particle_z!(particles, p, z, ::Nothing) = @inbounds particles.z[p] = z
+@inline store_particle_z!(particles, p, z, depths) = nothing
+
+# Advance `particles` through one `stage` of a time-stepping scheme. `state` holds per-particle
+# storage for the scheme (or `nothing`), and `absorbed` flags the particles that were absorbed at an
+# `AbsorbingBoundary` during the current time step (or `nothing`). Absorbed particles stop
+# moving until they are removed at the end of the time step.
+@kernel function _advect_particles!(particles, state, stage, boundary_conditions, absorbed,
+                                    grid::AbstractGrid, Δt, velocities, depths)
     p = @index(Global)
 
     @inbounds begin
         x = particles.x[p]
         y = particles.y[p]
-        z = particles.z[p]
     end
 
-    x⁺, y⁺, z⁺ = advect_particle((x, y, z), particles, p, restitution, grid, Δt, velocities)
+    z = particle_z(particles, p, depths)
+
+    indices, Ẋ = particle_coordinate_velocity((x, y, z), particles, p, grid, velocities)
+    X̃ = advance_particle_position(stage, (x, y, z), Ẋ, Δt, state, p)
+    (x⁺, y⁺, z⁺), absorbed_now = enforce_particle_boundary_conditions(X̃, indices, boundary_conditions, grid)
+
+    absorbed_before = previously_absorbed(absorbed, p)
 
     @inbounds begin
-        particles.x[p] = x⁺
-        particles.y[p] = y⁺
-        particles.z[p] = z⁺
+        particles.x[p] = ifelse(absorbed_before, x, x⁺)
+        particles.y[p] = ifelse(absorbed_before, y, y⁺)
     end
+
+    store_particle_z!(particles, p, ifelse(absorbed_before, z, z⁺), depths)
+    record_absorption!(absorbed, p, absorbed_before | absorbed_now)
 end
 
-function advect_lagrangian_particles!(particles, model, Δt)
+"""
+$(TYPEDSIGNATURES)
+
+Advance the positions of `particles` through one `stage` of a time-stepping scheme, using the
+velocities of `model`. `stage` is returned by `particle_stage` and determines the scheme
+through `advance_particle_position`. `Δt` is the full time step.
+"""
+function advect_lagrangian_particles!(particles, model, Δt, stage)
     grid = model.grid
     arch = architecture(grid)
-    parameters = KernelParameters(1:length(particles))
+    Np = length(particles)
+    Np == 0 && return nothing
 
-    launch!(arch, grid, parameters,
+    launch!(arch, grid, KernelParameters(1:Np),
             _advect_particles!,
-            particles.properties, particles.restitution, model.grid, Δt, total_velocities(model))
+            particles.properties, time_stepper_state(particles.timestepper), stage,
+            particles.boundary_conditions, absorbed_flags(particles.removal),
+            grid, Δt, total_velocities(model), drogue_depths(particles.dynamics))
 
     return nothing
 end

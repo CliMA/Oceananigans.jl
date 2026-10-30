@@ -164,6 +164,8 @@ on_architecture(to, velocities::PrescribedVelocityFields) =
                              on_architecture(to, velocities.parameters))
 
 # If the model only tracks particles... do nothing but that!!!
+# Particles are advanced with a first-order forward Euler step, using the velocities at the end
+# of the time step, regardless of `model.timestepper`.
 const OnlyParticleTrackingModel = HydrostaticFreeSurfaceModel{TS, E, A, S, G, T, V, B, R, F, P, U, W, C} where
                  {TS, E, A, S, G, T, V, B, R, F, P<:AbstractLagrangianParticles, U<:PrescribedVelocityFields, W<:PrescribedVelocityFields, C<:NamedTuple{(), Tuple{}}}
 

@@ -6,7 +6,8 @@ export
     HydrostaticFreeSurfaceModel, ZStarCoordinate, ZCoordinate,
     ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
     PrescribedVelocityFields, PressureField,
-    LagrangianParticles, DroguedParticleDynamics,
+    LagrangianParticles, DroguedParticleDynamics, CountingSort, ComparisonSort,
+    ParticleBoundaryConditions, ReflectingBoundary, AbsorbingBoundary,
     BoundaryConditionOperation, ForcingOperation,
     seawater_density,
     BulkDrag, BulkDragFunction, BulkDragBoundaryCondition,
@@ -135,7 +136,8 @@ using .HydrostaticFreeSurfaceModels:
     PrescribedVelocityFields, ZStarCoordinate, ZCoordinate
 
 using .ShallowWaterModels: ShallowWaterModel, ConservativeFormulation, VectorInvariantFormulation
-using .LagrangianParticleTracking: LagrangianParticles, DroguedParticleDynamics
+using .LagrangianParticleTracking: LagrangianParticles, DroguedParticleDynamics, CountingSort, ComparisonSort,
+                                   ParticleBoundaryConditions, ReflectingBoundary, AbsorbingBoundary
 
 # BulkDrag for quadratic drag boundary conditions
 include("BulkDragBoundaryConditions.jl")
