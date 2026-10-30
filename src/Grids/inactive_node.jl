@@ -11,13 +11,13 @@ function build_condition(Topo, side, dim, array::Bool)
         else
             return :(($side < 1) | ($side > grid.$dim))
         end
-    elseif Topo == :(Sides{Connected, Closed})
+    elseif Topo == :(TwoSided{<:Union{Connected, Open}, Closed})
         if array
             return :((ReactantCore.materialize_traced_array($side) .> grid.$dim))
         else
             return :(($side > grid.$dim))
         end
-    else # Sides{Closed, Connected}
+    else # TwoSided{Closed, <:Union{Connected, Open}}
         if array
             return :((ReactantCore.materialize_traced_array($side) .< 1))
         else
@@ -35,15 +35,15 @@ $(TYPEDSIGNATURES)
 
 Return `true` when the tracer cell at `i, j, k` is "external" to the domain boundary.
 
-`inactive_cell`s include the halo cells beyond the `Closed` sides of `Bounded`, `Sides{Closed, Connected}` and `Sides{Connected, Closed}`
-directions, and cells within an immersed boundary.
+`inactive_cell`s include the halo cells beyond the `Closed` sides of directions whose sides are `Closed`, `Open` or `Connected`,
+and cells within an immersed boundary.
 Cells that are staggered with respect to tracer cells and which lie _on_ the boundary are considered active.
 """
 @inline inactive_cell(i, j, k, grid) = false
 @inline active_cell(i, j, k, grid) = !inactive_cell(i, j, k, grid)
 
 # Metaprogramming over the permutations of directions bounded on both sides, on the right, and on the left
-Topos = (:Bounded, :(Sides{Connected, Closed}), :(Sides{Closed, Connected}))
+Topos = (:Bounded, :(TwoSided{<:Union{Connected, Open}, Closed}), :(TwoSided{Closed, <:Union{Connected, Open}}))
 
 for PrimaryTopo in Topos
 
@@ -174,3 +174,10 @@ $(TYPEDSIGNATURES)
 Return `true` when the location `(LX, LY, LZ)` is the active cell just above the bottom.
 """
 @inline bottommost_active_node(i, j, k, grid, LX, LY, LZ) = active_node(i, j, k, grid, LX, LY, LZ) & inactive_node(i, j, k - 1, grid, LX, LY, LZ)
+
+"""
+$(TYPEDSIGNATURES)
+
+Return `true` when the location `(LX, LY, LZ)` is the active cell just below the top.
+"""
+@inline topmost_active_node(i, j, k, grid, LX, LY, LZ) = active_node(i, j, k, grid, LX, LY, LZ) & inactive_node(i, j, k + 1, grid, LX, LY, LZ)
