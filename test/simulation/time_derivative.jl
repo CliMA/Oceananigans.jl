@@ -223,14 +223,14 @@ function test_time_derivative_composite_output(arch)
     return nothing
 end
 
-# The derivative only has to be evaluated at the output and on the iteration before it, which
-# is all a difference across one time step needs
+# For a writer on `IterationInterval` the derivative is evaluated at the output and, with the default
+# `TimeStepProportionalPeriod(2)`, two iterations before it
 function test_time_derivative_output_schedule(arch)
-    model = relaxing_tracer_model(arch)
+    λ, Δt = 2, 1e-2
+    model = relaxing_tracer_model(arch, λ)
     ∂ₜc = TimeDerivative(model.tracers.c)
-    Δt = 1e-2
 
-    simulation = Simulation(model; Δt, stop_iteration=20)
+    simulation = Simulation(model; Δt, stop_iteration=20, verbose=false)
     simulation.output_writers[:derivative] = JLD2Writer(model, (; dcdt=∂ₜc);
                                                         filename = "test_dcdt_schedule.jld2",
                                                         schedule = IterationInterval(10),
@@ -238,20 +238,78 @@ function test_time_derivative_output_schedule(arch)
                                                         overwrite_files = true)
     run!(simulation)
 
+    cⁿ = Array(interior(model.tracers.c))
+    written = simulation.output_writers[:derivative].outputs.dcdt
+    @test all(isapprox.(Array(interior(written)), @.(cⁿ * (1 - exp(2λ * Δt)) / 2Δt), rtol=1e-4))
+
     name = only(filter(key -> startswith(string(key), "TimeDerivative"), collect(keys(simulation.callbacks))))
     schedule = simulation.callbacks[name].schedule
 
-    @test schedule isa PrecedingIterations
+    @test summary(schedule) == "OrSchedule(IterationInterval(10), IterationInterval(10) with offset -2)"
 
     actuations = filter(0:20) do iteration
         model.clock.iteration = iteration
-        model.clock.last_Δt = Δt
         schedule(model)
     end
 
-    @test actuations == [0, 9, 10, 19, 20]
+    @test actuations == [0, 8, 10, 18, 20]
 
     rm("test_dcdt_schedule.jld2", force=true)
+
+    return nothing
+end
+
+# For a writer on `TimeInterval` the derivative is differenced over `time_interval` before each output:
+# two time steps by default, and across consecutive outputs when `time_interval` is the output interval
+function test_time_derivative_time_interval(arch)
+    λ, Δt, output_interval = 2, 2.0^-10, 2.0^-6
+    model = relaxing_tracer_model(arch, λ)
+    c = model.tracers.c
+
+    time_intervals = (default = 2Δt, fixed = 4Δt, consecutive = output_interval)
+    outputs = (default = TimeDerivative(c),
+               fixed = TimeDerivative(c; time_interval = time_intervals.fixed),
+               consecutive = TimeDerivative(c; time_interval = time_intervals.consecutive))
+
+    callback_∂ₜc = TimeDerivativeCallback(c; schedule = TimeInterval(output_interval), time_interval = time_intervals.fixed)
+
+    simulation = Simulation(model; Δt, stop_time = 2output_interval, verbose = false)
+    simulation.callbacks[:callback_∂ₜc] = callback_∂ₜc
+    simulation.output_writers[:derivatives] = JLD2Writer(model, outputs;
+                                                         dir = mktempdir(),
+                                                         filename = "dcdt.jld2",
+                                                         schedule = TimeInterval(output_interval),
+                                                         with_halos = false)
+    run!(simulation)
+
+    written = simulation.output_writers[:derivatives].outputs
+    update_schedule(derivative) = only(cb.schedule for cb in values(simulation.callbacks) if cb.func === derivative)
+
+    @test summary(update_schedule(written.default)) == "TimeOffset(TimeInterval(15.625 ms), -TimeStepProportionalPeriod(2))"
+    @test summary(update_schedule(written.fixed)) == "TimeOffset(TimeInterval(15.625 ms), -3.906 ms)"
+    @test summary(update_schedule(written.consecutive)) == "TimeInterval(15.625 ms)"
+
+    cⁿ = Array(interior(c))
+
+    for name in keys(time_intervals)
+        δ = time_intervals[name]
+        @test all(isapprox.(Array(interior(written[name])), @.(cⁿ * (1 - exp(λ * δ)) / δ), rtol=1e-4))
+    end
+
+    @test Array(interior(callback_∂ₜc.func)) ≈ Array(interior(written.fixed))
+
+    @test_throws ArgumentError TimeDerivative(c; time_interval = 0)
+    @test_throws ArgumentError TimeDerivative(c; time_interval = -1)
+
+    # The time of a future iteration is unknown, so a fixed `time_interval` cannot be honored
+    model = relaxing_tracer_model(arch, λ)
+    outputs = (; dcdt = TimeDerivative(model.tracers.c; time_interval = 4Δt))
+    simulation = Simulation(model; Δt, stop_iteration = 1, verbose = false)
+    simulation.output_writers[:derivative] = JLD2Writer(model, outputs;
+                                                        dir = mktempdir(),
+                                                        filename = "dcdt.jld2",
+                                                        schedule = IterationInterval(10))
+    @test_throws ArgumentError run!(simulation)
 
     return nothing
 end
@@ -314,6 +372,59 @@ function test_time_derivative_checkpointing(arch)
     return nothing
 end
 
+# A checkpoint taken between the evaluation `time_interval` before an output and the output itself
+# resumes without evaluating the operand again
+function test_time_derivative_pickup_before_output(arch)
+    λ, Δt, output_interval = 2, 2.0^-10, 2.0^-6
+    dir = mktempdir()
+
+    function derivative_simulation(filename)
+        model = relaxing_tracer_model(arch, λ)
+        c = model.tracers.c
+        outputs = (default = TimeDerivative(c), fixed = TimeDerivative(c; time_interval = 4Δt))
+        simulation = Simulation(model; Δt, stop_time = output_interval, verbose = false)
+        simulation.output_writers[:derivatives] = JLD2Writer(model, outputs; dir, filename,
+                                                             schedule = TimeInterval(output_interval),
+                                                             with_halos = false)
+        simulation.output_writers[:checkpointer] = Checkpointer(model; dir, schedule = SpecifiedTimes(14Δt))
+        return simulation
+    end
+
+    uninterrupted = derivative_simulation("uninterrupted.jld2")
+    run!(uninterrupted)
+
+    resumed = derivative_simulation("resumed.jld2")
+    @test_logs (:info, r"^Picking up simulation from checkpoint") set!(resumed; iteration = 14)
+    run!(resumed)
+
+    for name in (:default, :fixed)
+        @test Array(interior(resumed.output_writers[:derivatives].outputs[name])) ≈
+              Array(interior(uninterrupted.output_writers[:derivatives].outputs[name]))
+    end
+
+    return nothing
+end
+
+# Picking up within the same session restores the state of the schedules the writers registered
+function test_time_derivative_pickup_in_session(arch)
+    model = relaxing_tracer_model(arch)
+    dir = mktempdir()
+
+    simulation = Simulation(model; Δt = 1e-3, stop_iteration = 10, verbose = false)
+    simulation.output_writers[:derivative] = JLD2Writer(model, (; dcdt = TimeDerivative(model.tracers.c)); dir,
+                                                        filename = "dcdt.jld2",
+                                                        schedule = IterationInterval(5),
+                                                        with_halos = false)
+    simulation.output_writers[:checkpointer] = Checkpointer(model; dir, schedule = IterationInterval(5))
+    run!(simulation)
+
+    simulation.stop_iteration = 20
+    @test_logs (:info, r"^Picking up simulation from checkpoint") run!(simulation; pickup = 10)
+    @test iteration(simulation) == 20
+
+    return nothing
+end
+
 #####
 ##### Run
 #####
@@ -337,10 +448,13 @@ end
 
             test_time_derivative_composite_output(arch)
             test_time_derivative_output_schedule(arch)
+            test_time_derivative_time_interval(arch)
         end
 
         @testset "TimeDerivative checkpointing [$(typeof(arch))]" begin
             test_time_derivative_checkpointing(arch)
+            test_time_derivative_pickup_before_output(arch)
+            test_time_derivative_pickup_in_session(arch)
         end
     end
 end

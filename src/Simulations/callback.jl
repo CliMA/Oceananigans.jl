@@ -1,8 +1,8 @@
 using Dates: Dates
 using Oceananigans: Oceananigans, initialize!, prognostic_state, restore_prognostic_state!,
                     TimeStepCallsite, TendencyCallsite, UpdateStateCallsite
-using Oceananigans.OutputWriters: WindowedTimeAverage, advance_time_average!, TimeDerivative
-using Oceananigans.Utils: prettysummary
+using Oceananigans.OutputWriters: WindowedTimeAverage, advance_time_average!, TimeDerivative, time_derivative_schedule
+using Oceananigans.Utils: prettysummary, TimeStepProportionalPeriod
 
 struct Callback{P, F, S, CS}
     func :: F
@@ -97,11 +97,14 @@ Callback(wta::WindowedTimeAverage, schedule; kw...) =
 const TimeDerivativeCallback = Callback{<:Any, <:TimeDerivative}
 
 """
-    TimeDerivativeCallback(operand, model=nothing; schedule=IterationInterval(1))
+    TimeDerivativeCallback(operand, model=nothing; schedule=IterationInterval(1),
+                           time_interval=TimeStepProportionalPeriod(2))
 
-Return a [`Callback`](@ref) that updates a [`TimeDerivative`](@ref) of `operand` on
-`schedule`, so that the derivative is differenced over the interval between actuations.
-The derivative itself is `callback.func`, whose `result` is a `Field`.
+Return a [`Callback`](@ref) that updates a [`TimeDerivative`](@ref) of `operand` so that, each
+time `schedule` actuates, the derivative is differenced over `time_interval`, just as it is when
+written by an output writer on `schedule`. A `time_interval` at least as long as the time between
+actuations differences consecutive actuations, as it does for the default
+`schedule = IterationInterval(1)`. The derivative itself is `callback.func`, whose `result` is a `Field`.
 
 Example
 =======
@@ -118,11 +121,14 @@ simulation = Simulation(model, Δt=1e-2, stop_iteration=10)
 simulation.callbacks[:∂ₜu] = TimeDerivativeCallback(model.velocities.u, schedule=TimeInterval(0.1))
 
 # output
-Callback of TimeDerivative of 4×4×4 Field{Face, Center, Center} on RectilinearGrid on CPU on TimeInterval(100 ms)
+Callback of TimeDerivative of 4×4×4 Field{Face, Center, Center} on RectilinearGrid on CPU on TimeOffset(TimeInterval(100 ms), -TimeStepProportionalPeriod(2))
 ```
 """
-TimeDerivativeCallback(operand, model=nothing; schedule=IterationInterval(1)) =
-    Callback(TimeDerivative(operand, model), schedule)
+function TimeDerivativeCallback(operand, model=nothing; schedule = IterationInterval(1),
+                                time_interval = TimeStepProportionalPeriod(2))
+    derivative = TimeDerivative(operand, model; time_interval)
+    return Callback(derivative, time_derivative_schedule(schedule, time_interval))
+end
 
 function Oceananigans.prognostic_state(callback::TimeDerivativeCallback)
     return (schedule = prognostic_state(callback.schedule),

@@ -273,15 +273,29 @@ The derivative is a backward difference,
 \partial_t a \approx \frac{a^n - a^{n-1}}{t^n - t^{n-1}} \, ,
 ```
 
-where ``a^n`` and ``a^{n-1}`` are the operand evaluated at the two most recent times the derivative
-was updated. The result is therefore centered at ``t^n - \Delta t / 2``, where ``\Delta t = t^n - t^{n-1}``.
-A `TimeDerivative` is zero until its operand has been evaluated twice, so the value written at the
-start of a simulation is zero.
+where ``a^n`` is the operand evaluated when the output is written and ``a^{n-1}`` the operand
+evaluated `time_interval` earlier. The result is therefore centered at ``t^n - \Delta t / 2``, where
+``\Delta t = t^n - t^{n-1}``. A `TimeDerivative` is zero until its operand has been evaluated twice, so
+the value written at the start of a simulation is zero.
 
 Unlike the spatial operators `∂x`, `∂y` and `∂z`, a `TimeDerivative` does not differentiate lazily: the
 difference is evaluated when its schedule actuates. It is an output that a writer interprets, and
-updating it is the job of a [`TimeDerivativeCallback`](@ref) (which a writer can add to
-`simulation.callbacks` on `IterationInterval(1)` for each `TimeDerivative` among its outputs).
+updating it is the job of a [`TimeDerivativeCallback`](@ref), which a writer adds to `simulation.callbacks`
+for each `TimeDerivative` among its outputs. The callback evaluates the operand when the writer writes
+and `time_interval` before:
+
+- For a writer scheduled on `TimeInterval` or `SpecifiedTimes`, the earlier evaluation is scheduled with a
+  [`TimeOffset`](@ref Oceananigans.Utils.TimeOffset) of the writer's schedule, which aligns the time step
+  so that it happens exactly `time_interval` before each output.
+- For a writer scheduled on `IterationInterval`, it happens a whole number of iterations before each output.
+- For a writer on any other schedule, the operand is evaluated every iteration, and the derivative is
+  differenced across the last time step before each output.
+
+The default `time_interval` is [`TimeStepProportionalPeriod(2)`](@ref Oceananigans.Utils.TimeStepProportionalPeriod),
+which spans two time steps and follows the time step when it changes, for example under a
+[`TimeStepWizard`](@ref). A `time_interval` may also be a time, which requires a writer scheduled on
+`TimeInterval` or `SpecifiedTimes`. A `time_interval` at least as long as the time between outputs
+differences consecutive outputs.
 
 ### Example
 
@@ -294,24 +308,27 @@ grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
 
 model = NonhydrostaticModel(grid, tracers=:c)
 
-simulation = Simulation(model, Δt=1, stop_iteration=10)
+simulation = Simulation(model, Δt=0.1, stop_iteration=10)
 
 ∂ₜ∫c² = TimeDerivative(Integral(model.tracers.c^2))
 
 simulation.output_writers[:budget] = JLD2Writer(model, (; ∂ₜ∫c²),
                                                 filename = "tracer_variance_budget.jld2",
-                                                schedule = TimeInterval(1))
+                                                schedule = TimeInterval(0.5))
 ```
 
-Output derivatives are differenced across consecutive time steps, which is what is needed when the
-other terms of a budget are evaluated every step. To difference over a longer interval, construct the
-updating callback yourself with a coarser `schedule`.
+Each output of `∂ₜ∫c²` is differenced over the two time steps before it. To difference over a fixed time
+instead, pass `time_interval`:
+
+```@example time_derivative
+∂ₜ∫c² = TimeDerivative(Integral(model.tracers.c^2), time_interval=0.3)
+```
 
 ### Use without an output writer
 
 An output writer is not required. A [`TimeDerivativeCallback`](@ref) added to `simulation.callbacks`
-keeps its `TimeDerivative` up to date on its own schedule, and the derivative can be read at any
-point during the run,
+keeps its `TimeDerivative` up to date on its own schedule, differenced over its `time_interval` as it
+would be for a writer on that schedule, and the derivative can be read at any point during the run,
 
 ```@example time_derivative
 ∂ₜc = TimeDerivativeCallback(model.tracers.c, schedule=IterationInterval(1))
