@@ -12,6 +12,7 @@ import Oceananigans.DistributedComputations: reconstruct_global_field, synchroni
 
 import ..OceananigansReactantExt: deconcretize
 import ..Grids: ReactantGrid
+import ..Architectures: AnyConcreteReactantArray
 import ..Grids: ShardedGrid
 
 const ReactantField{LX, LY, LZ, O} = Field{LX, LY, LZ, O, <:ReactantGrid}
@@ -65,6 +66,13 @@ function set_to_field!(u::ReactantField, v::ReactantField)
         interpolate!(cpu_u, cpu_v)
         copyto!(interior(u), interior(cpu_u))
     end
+    return u
+end
+
+# Without this method, Reactant arrays reach the generic `u .= a` fallback, which indexes `a` with the
+# field's own indices and so misreads windowed fields such as the free surface displacement.
+function set!(u::ReactantField, a::Union{AnyConcreteReactantArray, Reactant.AnyTracedRArray}, args...)
+    copyto!(interior(u), a)
     return u
 end
 
