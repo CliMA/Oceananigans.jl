@@ -65,7 +65,7 @@ function FFTBasedPoissonSolver(grid, planner_flag=FFTW.PATIENT)
     transforms = plan_transforms(grid, storage, planner_flag)
 
     # Need buffer for index permutations and transposes.
-    buffer_needed = arch isa GPU && any(T -> T <: BoundaryTopology, topo)
+    buffer_needed = arch isa FFTBasedDCTArchitecture && any(T -> T <: BoundaryTopology, topo)
     buffer = buffer_needed ? similar(storage) : nothing
 
     return FFTBasedPoissonSolver(grid, eigenvalues, storage, buffer, transforms)
@@ -101,7 +101,7 @@ function solve!(ϕ, solver::FFTBasedPoissonSolver, b=solver.storage, m=0)
     apply_transforms!(solver.transforms.forward, b, solver.buffer)
 
     # Solve the discrete screened Poisson equation (∇² + m) ϕ = b.
-    launch!(arch, solver.grid, :xyz, _spectral_poisson_solve!, ϕc, b, λx, λy, λz, m)
+    spectral_poisson_solve!(ϕc, b, λx, λy, λz, m, arch, solver.grid)
 
     # Apply backward transforms in order
     apply_transforms!(solver.transforms.backward, ϕc, solver.buffer)
@@ -110,6 +110,9 @@ function solve!(ϕ, solver::FFTBasedPoissonSolver, b=solver.storage, m=0)
 
     return ϕ
 end
+
+spectral_poisson_solve!(ϕc, b, λx, λy, λz, m, arch, grid) =
+    launch!(arch, grid, :xyz, _spectral_poisson_solve!, ϕc, b, λx, λy, λz, m)
 
 # The mode where λx + λy + λz - m = 0 (the zeroth mode when m = 0) is undetermined and is set to zero
 @kernel function _spectral_poisson_solve!(ϕc, b, λx, λy, λz, m)

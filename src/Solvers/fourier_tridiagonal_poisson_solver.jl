@@ -136,7 +136,7 @@ function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT; tridia
                                         tridiagonal_direction = tridiagonal_dir)
 
     # Need buffer for index permutations and transposes.
-    buffer_needed = arch isa GPU && any(T -> T <: BoundaryTopology, (T1, T2))
+    buffer_needed = arch isa FFTBasedDCTArchitecture && any(T -> T <: BoundaryTopology, (T1, T2))
     buffer = buffer_needed ? similar(sol_storage) : nothing
 
     # Storage space for right hand side of Poisson equation
