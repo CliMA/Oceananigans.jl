@@ -16,6 +16,7 @@ using Oceananigans.BoundaryConditions: BoundaryConditions, default_prognostic_bc
 using Oceananigans.BuoyancyFormulations: BuoyancyForce, BuoyancyTracer, SeawaterBuoyancy,
                                          TemperatureSeawaterBuoyancy, SalinitySeawaterBuoyancy,
                                          ∂z_b, top_buoyancy_flux
+using Oceananigans.DistributedComputations: DistributedGrid
 using Oceananigans.Fields: CenterField, XFaceField, YFaceField, ZFaceField, ZeroField
 using Oceananigans.Grids: Center, Face, peripheral_node, inactive_node, inactive_cell, static_column_depthᶜᶜᵃ
 using Oceananigans.Operators: Δzᶜᶜᶜ, Δzᶜᶠᶠ, Δzᶠᶜᶠ, Δz⁻¹ᶜᶜᶜ, Δz⁻¹ᶜᶠᶜ, Δz⁻¹ᶠᶜᶜ,
