@@ -3,12 +3,11 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 using Oceananigans
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 using Oceananigans.DistributedComputations: @handshake, ranks
-using Oceananigans.Models: is_local_dimension
-using Oceananigans.Grids: RightConnected, LeftConnected
+using Oceananigans.Grids: Closed, Connected
 using Oceananigans.Models.NonhydrostaticModels: buffer_parameters
 using Oceananigans.Fields: flattened_unique_values
 using Oceananigans.OutputReaders: extract_field_time_series, FieldTimeSeries
-using Oceananigans.Utils: pretty_filesize, work_layout, interior_work_layout
+using Oceananigans.Utils: pretty_filesize, work_layout, interior_work_layout, KernelParameters
 using Oceananigans.Architectures: convert_to_device
 using Oceananigans.Fields: instantiated_location
 
@@ -58,12 +57,12 @@ function time_step_allocations(model, Δt; samples=10)
 end
 
 const serial_memory_cpu = Dict(
-    (:hydrostatic,    :flat)            => 560,
-    (:hydrostatic,    :immersed)        => 592,
-    (:hydrostatic,    :active_immersed) => 640,
-    (:nonhydrostatic, :flat)            => 1600,
-    (:nonhydrostatic, :immersed)        => 1800,
-    (:nonhydrostatic, :active_immersed) => 10100,
+    (:hydrostatic,    :flat)            => 64,
+    (:hydrostatic,    :immersed)        => 64,
+    (:hydrostatic,    :active_immersed) => 64,
+    (:nonhydrostatic, :flat)            => 128,
+    (:nonhydrostatic, :immersed)        => 128,
+    (:nonhydrostatic, :active_immersed) => 128,
 )
 
 const serial_memory_gpu = Dict(
@@ -78,28 +77,28 @@ const serial_memory_gpu = Dict(
 # Distributed allocations depend on the partition, so baselines are keyed by `ranks(arch)`.
 const distributed_memory_cpu = Dict(
     (4, 1, 1) => Dict(
-        (:hydrostatic,    :flat)            => 6.0e4,
-        (:hydrostatic,    :immersed)        => 6.9e4,
-        (:hydrostatic,    :active_immersed) => 7.2e4,
-        (:nonhydrostatic, :flat)            => 1.3e5,
-        (:nonhydrostatic, :immersed)        => 1.5e5,
-        (:nonhydrostatic, :active_immersed) => 1.7e5,
+        (:hydrostatic,    :flat)            => 3.1e4,
+        (:hydrostatic,    :immersed)        => 3.4e4,
+        (:hydrostatic,    :active_immersed) => 3.5e4,
+        (:nonhydrostatic, :flat)            => 7.3e4,
+        (:nonhydrostatic, :immersed)        => 8.0e4,
+        (:nonhydrostatic, :active_immersed) => 9.3e4,
     ),
     (1, 4, 1) => Dict(
-        (:hydrostatic,    :flat)            => 6.0e4,
-        (:hydrostatic,    :immersed)        => 6.9e4,
-        (:hydrostatic,    :active_immersed) => 7.2e4,
-        (:nonhydrostatic, :flat)            => 1.3e5,
-        (:nonhydrostatic, :immersed)        => 1.5e5,
-        (:nonhydrostatic, :active_immersed) => 1.7e5,
+        (:hydrostatic,    :flat)            => 3.1e4,
+        (:hydrostatic,    :immersed)        => 3.4e4,
+        (:hydrostatic,    :active_immersed) => 3.5e4,
+        (:nonhydrostatic, :flat)            => 7.3e4,
+        (:nonhydrostatic, :immersed)        => 8.0e4,
+        (:nonhydrostatic, :active_immersed) => 9.3e4,
     ),
     (2, 2, 1) => Dict(
-        (:hydrostatic,    :flat)            => 6.9e5,
-        (:hydrostatic,    :immersed)        => 8.0e5,
-        (:hydrostatic,    :active_immersed) => 8.4e5,
-        (:nonhydrostatic, :flat)            => 1.5e6,
-        (:nonhydrostatic, :immersed)        => 1.8e6,
-        (:nonhydrostatic, :active_immersed) => 1.9e6,
+        (:hydrostatic,    :flat)            => 1.1e5,
+        (:hydrostatic,    :immersed)        => 1.1e5,
+        (:hydrostatic,    :active_immersed) => 1.2e5,
+        (:nonhydrostatic, :flat)            => 2.4e5,
+        (:nonhydrostatic, :immersed)        => 2.5e5,
+        (:nonhydrostatic, :active_immersed) => 2.7e5,
     ),
 )
 
@@ -133,13 +132,12 @@ const distributed_memory_gpu = Dict(
 # For distributed this includes only (4, 1), (1, 4) and (2, 2)
 archs = nonhydrostatic_regression_test_architectures()
 
-@testset "local_dimension predicate" begin
-    @test is_local_dimension(Periodic) === true
-    @test is_local_dimension(Bounded)  === true
-    @test is_local_dimension(Flat)     === true
-    @test is_local_dimension(RightConnected) === false
-    @test is_local_dimension(LeftConnected)  === false
-    @test @inferred(is_local_dimension(Periodic)) === true
+@testset "buffer_parameters includes only communicating sides" begin
+    params = ntuple(n -> ((n, n, n), (0, 0, 0)), 4)
+    right_connected_grid = RectilinearGrid(CPU(), size=(8, 8, 8), extent=(1, 1, 1), topology=((Closed, Connected), Periodic, Bounded))
+    connected_grid = RectilinearGrid(CPU(), size=(8, 8, 8), extent=(1, 1, 1), topology=(Periodic, Connected, Bounded))
+    @test buffer_parameters(params, right_connected_grid, CPU()) === (KernelParameters((2, 2, 2), (0, 0, 0)),)
+    @test buffer_parameters(params, connected_grid, CPU()) === (KernelParameters((3, 3, 3), (0, 0, 0)), KernelParameters((4, 4, 4), (0, 0, 0)))
 end
 
 @testset "buffer_parameters is type-stable and allocation-free" begin

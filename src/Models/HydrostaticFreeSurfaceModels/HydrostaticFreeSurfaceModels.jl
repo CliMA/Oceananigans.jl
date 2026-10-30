@@ -14,12 +14,13 @@ using Oceananigans.Fields: ZFaceField
 using Oceananigans.Grids: AbstractGrid, StaticVerticalDiscretization, OrthogonalSphericalShellGrid, Periodic, RectilinearGrid
 using Oceananigans.Operators: Δzᶜᶠᶜ, Δzᶠᶜᶜ
 using Oceananigans.TimeSteppers: TimeSteppers, SplitRungeKuttaTimeStepper, SplitRungeKuttaName, QuasiAdamsBashforth2TimeStepper
-using Oceananigans.Utils: Utils, launch!, @apply_regionally
+using Oceananigans.Utils: Utils, launch!, foreach_name, @apply_regionally
 
 import Oceananigans: fields, prognostic_fields, initialize!
 import Oceananigans.Advection: cell_advection_timescale
 import Oceananigans.Architectures: Architectures, on_architecture
 import Oceananigans.BoundaryConditions: fill_halo_regions!
+using Oceananigans.BoundaryConditions: step_boundary_conditions!
 import Oceananigans.Models: materialize_free_surface, default_free_surface_boundary_conditions
 import Oceananigans.Simulations: timestepper
 import Oceananigans.TimeSteppers: step_lagrangian_particles!, update_lagrangian_particle_state!

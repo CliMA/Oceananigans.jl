@@ -91,7 +91,9 @@ end
 @inline convert_to_0_360(x::Integer) = ((x % 360) + 360) % 360
 
 # Find n for which 360 * n ≤ λ ≤ 360 * (n + 1)
-@inline find_λ_range(λ) = ifelse((λ < 0) & (mod(λ, 360) != 0), λ ÷ 360 - 1, λ ÷ 360)
+# TODO: use `fld(λ, 360)` once Oceananigans can use a Metal release with JuliaGPU/Metal.jl#975.
+# On Julia ≥ 1.12, `fld(::Float32, ::Float32)` compiles to Float64 instructions, which Metal rejects: JuliaGPU/Metal.jl#972.
+@inline find_λ_range(λ) = floor(λ / 360)
 
 # Convert x to lie in the λ₀ : λ₀ + 360 range by accounting for the cyclic
 # nature of the longitude coordinate.
@@ -445,6 +447,13 @@ end
     @inbounds to_field[i, j, k] = interpolate(to_node, from_field, from_location, from_grid)
 end
 
+# Interpolation to a Flat dimension is supported only from a Flat dimension
+validate_flat_interpolation(to_topology, from_topology, dim) = nothing
+validate_flat_interpolation(::Type{Flat}, ::Type{Flat}, dim) = nothing
+validate_flat_interpolation(::Type{Flat}, from_topology, dim) =
+    throw(ArgumentError("Cannot interpolate! to a grid that is Flat in dimension $dim " *
+                        "from a grid that is $from_topology in dimension $dim."))
+
 """
 $(TYPEDSIGNATURES)
 
@@ -472,6 +481,8 @@ function interpolate!(to_field::Field, from_field::AbstractField, args...)
     # Make locations
     from_location = Tuple(L() for L in location(from_field))
     to_location   = Tuple(L() for L in location(to_field))
+
+    map(validate_flat_interpolation, topology(to_grid), topology(from_grid), (1, 2, 3))
 
     params = KernelParameters(interior_indices(to_field))
 

@@ -25,14 +25,10 @@ end
 
 const CellMaps = Union{AbstractArray, NamedTuple, Tuple}
 const ActiveInteriorIBG   = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:CellMaps}
-const NoActiveInteriorIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, Nothing}
 const ActiveZColumnsIBG   = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:CellMaps}
-const NoActiveZColumnsIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, Nothing}
 
-has_active_cells_map(::ActiveInteriorIBG) = true
-has_active_z_columns(::ActiveZColumnsIBG) = true
-has_active_cells_map(::NoActiveInteriorIBG) = false
-has_active_z_columns(::NoActiveZColumnsIBG) = false
+has_active_cells_map(ibg::ImmersedBoundaryGrid) = !isnothing(ibg.interior_active_cells)
+has_active_z_columns(ibg::ImmersedBoundaryGrid) = !isnothing(ibg.active_z_columns)
 
 """
     ImmersedBoundaryGrid(grid, ib::AbstractImmersedBoundary;
@@ -71,13 +67,9 @@ end
 
 function with_halo(halo, ibg::ImmersedBoundaryGrid)
     underlying_grid = with_halo(halo, ibg.underlying_grid)
-    materialized_ib = materialize_immersed_boundary(underlying_grid, ibg.immersed_boundary)
-    TX, TY, TZ = topology(underlying_grid)
-    # The active cells maps hold interior indices, which do not depend on the halo
-    return ImmersedBoundaryGrid{TX, TY, TZ}(underlying_grid,
-                                            materialized_ib,
-                                            ibg.interior_active_cells,
-                                            ibg.active_z_columns)
+    return ImmersedBoundaryGrid(underlying_grid, ibg.immersed_boundary;
+                                active_cells_map = has_active_cells_map(ibg),
+                                active_z_columns = has_active_z_columns(ibg))
 end
 
 const IBG = ImmersedBoundaryGrid
@@ -129,9 +121,9 @@ Grids.has_static_discretization(grid::IBG) = Grids.has_static_discretization(gri
 
 function Base.summary(grid::ImmersedBoundaryGrid)
     FT = eltype(grid)
-    TX, TY, TZ = topology(grid)
+    nTX, nTY, nTZ = map(prettysummary, topology(grid))
     return string(size_summary(grid),
-                  " ImmersedBoundaryGrid{$FT, $TX, $TY, $TZ} on ", summary(architecture(grid)),
+                  " ImmersedBoundaryGrid{$FT, $nTX, $nTY, $nTZ} on ", summary(architecture(grid)),
                   " with ", size_summary(halo_size(grid)), " halo")
 end
 
@@ -146,9 +138,13 @@ end
 @inline Base.zero(ibg::IBG) = zero(ibg.underlying_grid)
 
 function Architectures.on_architecture(arch, ibg::IBG)
-    underlying_grid   = on_architecture(arch, ibg.underlying_grid)
-    immersed_boundary = on_architecture(arch, ibg.immersed_boundary)
-    return ImmersedBoundaryGrid(underlying_grid, immersed_boundary)
+    TX, TY, TZ = topology(ibg)
+    underlying_grid       = on_architecture(arch, ibg.underlying_grid)
+    immersed_boundary     = on_architecture(arch, ibg.immersed_boundary)
+    interior_active_cells = on_architecture(arch, ibg.interior_active_cells)
+    active_z_columns      = on_architecture(arch, ibg.active_z_columns)
+    return ImmersedBoundaryGrid{TX, TY, TZ}(underlying_grid, immersed_boundary,
+                                            interior_active_cells, active_z_columns)
 end
 
 isrectilinear(ibg::IBG) = isrectilinear(ibg.underlying_grid)

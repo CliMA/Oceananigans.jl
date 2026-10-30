@@ -1,15 +1,12 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
-using Oceananigans.BoundaryConditions: Zipper, FPivot, UPivot
-using Oceananigans.Grids: get_cartesian_nodes_and_vertices, RightFaceFolded, RightCenterFolded
+using Oceananigans.BoundaryConditions: Zipper, FPivot, UPivot, TPivot, pivot_shift
+using Oceananigans.Grids: get_cartesian_nodes_and_vertices
 using Oceananigans.ImmersedBoundaries: immersed_cell
-using Oceananigans.Utils: KernelParameters, contiguousrange
+using Oceananigans.Utils: KernelParameters
 using Statistics
 
-Oceananigans.Utils.contiguousrange(::KernelParameters{spec, offset}) where {spec, offset} =
-    contiguousrange(spec, offset)
-
-fold_topologies = (RightCenterFolded, RightFaceFolded)
+fold_topologies = ((CenterFolded, UPivot), (CenterFolded, TPivot), (FaceFolded, FPivot))
 
 @kernel function compute_nonorthogonality_angle!(angle, grid, xF, yF, zF)
     i, j = @index(Global, NTuple)
@@ -42,7 +39,7 @@ end
 
 @testset "Unit tests..." begin
     for arch in archs
-        @testset "$fold_topology fold topology" for fold_topology in fold_topologies
+        @testset "$fold_topology $pivot fold topology" for (fold_topology, pivot) in fold_topologies
             first_pole_longitude = 75
             north_poles_latitude = 35
             southernmost_latitude = -35
@@ -52,7 +49,7 @@ end
                                 first_pole_longitude,
                                 north_poles_latitude,
                                 southernmost_latitude,
-                                fold_topology = fold_topology)
+                                fold_topology, pivot)
 
             @test grid isa TripolarGrid
 
@@ -93,11 +90,11 @@ end
 
 @testset "Flat-z (2D) construction: z = nothing builds a horizontal-only tripolar grid" begin
     for arch in archs
-        @testset "$fold_topology fold topology" for fold_topology in fold_topologies
+        @testset "$fold_topology $pivot fold topology" for (fold_topology, pivot) in fold_topologies
             # `z = nothing` builds a purely horizontal (2D) tripolar grid with a `Flat` vertical;
             # the vertical entry of `size`/`halo` is then optional.
-            grid_2tuple = TripolarGrid(arch; size = (4, 15),    z = nothing, halo = (3, 3),    fold_topology)
-            grid_3tuple = TripolarGrid(arch; size = (4, 15, 1), z = nothing, halo = (3, 3, 3), fold_topology)
+            grid_2tuple = TripolarGrid(arch; size = (4, 15),    z = nothing, halo = (3, 3),    fold_topology, pivot)
+            grid_3tuple = TripolarGrid(arch; size = (4, 15, 1), z = nothing, halo = (3, 3, 3), fold_topology, pivot)
 
             for grid in (grid_2tuple, grid_3tuple)
                 @test grid isa TripolarGrid
@@ -106,7 +103,7 @@ end
             end
 
             # The default Bounded-z grid is unchanged, and shares the same horizontal coordinates.
-            grid_bounded = TripolarGrid(arch; size = (4, 15, 1), z = (0, 1), halo = (3, 3, 3), fold_topology)
+            grid_bounded = TripolarGrid(arch; size = (4, 15, 1), z = (0, 1), halo = (3, 3, 3), fold_topology, pivot)
             @test topology(grid_bounded, 3) === Bounded
             @allowscalar begin
                 @test λnodes(grid_2tuple, Center(), Center()) ≈ λnodes(grid_bounded, Center(), Center())
@@ -116,34 +113,35 @@ end
     end
 end
 
+@testset "Conditional reductions on tripolar grids" begin
+    for arch in archs
+        @testset "$fold_topology $pivot fold topology [$(typeof(arch))]" for (fold_topology, pivot) in fold_topologies
+            grid = TripolarGrid(arch; size = (8, 10, 1), z = (0, 1), fold_topology, pivot)
+            c = Field{Center, Center, Nothing}(grid)
+            set!(c, (λ, φ) -> φ)
+
+            box = Field{Center, Center, Nothing}(grid, Bool)
+            set!(box, (λ, φ) -> -30 < φ < 30)
+            φ = Array(interior(c))
+            inside = Array(interior(box))
+
+            @test maximum(c; condition=box) == maximum(φ[inside])
+            @test minimum(c; condition=box) == minimum(φ[inside])
+            @test maximum(c; condition=interior(box)) == maximum(φ[inside])
+        end
+    end
+end
+
 @testset "Model tests..." begin
     for arch in archs
-        @testset "$fold_topology fold topology" for fold_topology in fold_topologies
-            grid = TripolarGrid(arch; size = (10, 10, 1), fold_topology = fold_topology)
-
-            # Wrong free surface
-            @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid)
+        @testset "$fold_topology $pivot fold topology" for (fold_topology, pivot) in fold_topologies
+            grid = TripolarGrid(arch; size = (10, 10, 1), fold_topology, pivot)
 
             free_surface = SplitExplicitFreeSurface(grid; substeps = 12)
             model = HydrostaticFreeSurfaceModel(grid; free_surface)
 
-            # Tests the grid has been extended
-            η = model.free_surface.displacement
-            P = model.free_surface.kernel_parameters
-
-            range = contiguousrange(P)
-
-            # Should have extended halos in the north
-            Hx, Hy, _ = halo_size(η.grid)
-            Nx, Ny, _ = size(grid)
-
-            @test P isa KernelParameters
-            @test range[1] == 1:Nx
-            @test range[2] == 1:Ny+Hy-1
-
-            @test Hx == halo_size(grid, 1)
-            @test Hy != halo_size(grid, 2)
-            @test Hy == length(free_surface.substepping.averaging_weights) + 2
+            # A serial fold substeps without extending the halos
+            @test halo_size(model.free_surface.displacement.grid) == halo_size(grid)
 
             @test begin
                 time_step!(model, 1.0)
@@ -155,9 +153,9 @@ end
 
 @testset "Grid construction error tests..." begin
     for FT in float_types
-        @testset "$fold_topology fold topology" for fold_topology in fold_topologies
-            @test_throws ArgumentError TripolarGrid(CPU(), FT; size=(10, 10, 4), fold_topology = fold_topology, z=[-50.0, -30.0, -20.0, 0.0]) # too few z-faces
-            @test_throws ArgumentError TripolarGrid(CPU(), FT; size=(10, 10, 4), fold_topology = fold_topology, z=[-2000.0, -1000.0, -50.0, -30.0, -20.0, 0.0]) # too many z-faces
+        @testset "$fold_topology $pivot fold topology" for (fold_topology, pivot) in fold_topologies
+            @test_throws ArgumentError TripolarGrid(CPU(), FT; size=(10, 10, 4), fold_topology, pivot, z=[-50.0, -30.0, -20.0, 0.0]) # too few z-faces
+            @test_throws ArgumentError TripolarGrid(CPU(), FT; size=(10, 10, 4), fold_topology, pivot, z=[-2000.0, -1000.0, -50.0, -30.0, -20.0, 0.0]) # too many z-faces
         end
     end
 end
@@ -182,7 +180,7 @@ end
 
         launch!(arch, cubed_sphere_panel, params, compute_nonorthogonality_angle!, angle_cubed_sphere, cubed_sphere_panel, xF, yF, zF)
 
-        @testset "$fold_topology fold topology" for fold_topology in fold_topologies
+        @testset "$fold_topology $pivot fold topology" for (fold_topology, pivot) in fold_topologies
             first_pole_longitude = λ¹ₚ = 75
             north_poles_latitude = φₚ  = 35
 
@@ -190,7 +188,7 @@ end
             λ³ₚ = λ²ₚ + 180
 
             # Build a tripolar grid at 1ᵒ
-            underlying_grid = TripolarGrid(arch; size = (360, 180, 1), first_pole_longitude, north_poles_latitude, fold_topology = fold_topology)
+            underlying_grid = TripolarGrid(arch; size = (360, 180, 1), first_pole_longitude, north_poles_latitude, fold_topology, pivot)
 
             # We need a bottom height field that ``masks'' the singularities
             bottom_height(λ, φ) = ((abs(λ - λ¹ₚ) < 5) & (abs(φₚ - φ) < 5)) |
@@ -231,9 +229,9 @@ isrot180antisymmetric(arr) = arr == -rot180(arr)
 
 @testset "Zipper boundary conditions..." begin
     for arch in archs
-        @testset "$fold_topology fold topology" for fold_topology in fold_topologies
+        @testset "$fold_topology $pivot fold topology" for (fold_topology, pivot) in fold_topologies
 
-            grid = TripolarGrid(arch; size = (10, 10, 1), fold_topology = fold_topology)
+            grid = TripolarGrid(arch; size = (10, 10, 1), fold_topology, pivot)
             Nx, Ny, _ = size(grid)
             Hx, Hy, _ = halo_size(grid)
 
@@ -248,12 +246,12 @@ isrot180antisymmetric(arr) = arr == -rot180(arr)
             u = XFaceField(grid, boundary_conditions=u_bcs)
             v = YFaceField(grid, boundary_conditions=v_bcs)
 
-            Pivot = (fold_topology == RightCenterFolded) ? UPivot : FPivot
+            s = pivot_shift(pivot)
 
             fields = (CC, FC, CF, FF, u, v)
 
             @testset "BC type" for f in fields
-                @test f.boundary_conditions.north.classification isa Zipper{Pivot}
+                @test f.boundary_conditions.north.classification isa Zipper{pivot}
             end
 
             # The velocity fields are reversed at the north boundary
@@ -288,9 +286,9 @@ isrot180antisymmetric(arr) = arr == -rot180(arr)
             #          │           │           │           │           │           │           │
             # Ny+1 ─▶  u     c     u     c     u     c     u     c     u     c     u     c     u
             #          │           │           │           │           │           │           │
-            # Ny+1 ─▶  ├──── v ────┼──── v ────┼──── v ─── F ─── v ────┼──── v ────┼───  v ────┤ ◀─ Fold (RightFaceFolded)
+            # Ny+1 ─▶  ├──── v ────┼──── v ────┼──── v ─── F ─── v ────┼──── v ────┼───  v ────┤ ◀─ Fold (FaceFolded)
             #          │           │           │           │           │           │           │
-            #   Ny ─▶  u     c     u     c     u     c     U     c     u     c     u     c     u ◀─ Fold (RightCenterFolded)
+            #   Ny ─▶  u     c     u     c     u     c     U     c     u     c     u     c     u ◀─ Fold (CenterFolded)
             #          │           │           │           │           │           │           │
             #   Ny ─▶  ├──── v ────┼──── v ────┼──── v ────┼──── v ────┼──── v ────┼──── v ────┤
             #          │           │           │           │           │           │           │
@@ -304,26 +302,26 @@ isrot180antisymmetric(arr) = arr == -rot180(arr)
 
             # Use half-indices for the pivot-point index, which depends on the topology and location.
             # pivotjᶜ is the pivot index for center fields, and pivotjᶠ for face fields.
-            pivotjᶜ, pivotjᶠ = (fold_topology == RightFaceFolded) ? (Ny + 1/2, Ny + 1) : (Ny, Ny + 1/2)
+            pivotjᶜ, pivotjᶠ = (fold_topology == FaceFolded) ? (Ny + 1/2, Ny + 1) : (Ny, Ny + 1/2)
 
             # Then we take views centered around the pivot and rotate that view by 180°.
             # However we cannot rotate the entire grid and must restrict ourselves to those indices
             # that remain within the interior + halo after 180° rotation.
             maxjᶜ = Ny + Hy # max j for center fields
-            maxjᶠ = Ny + Hy + (fold_topology == RightFaceFolded) # +1 for y-face fields if FPivot
+            maxjᶠ = Ny + Hy + (fold_topology == FaceFolded) # +1 for y-face fields if FPivot
             jᶜ = pivotable_indices(1 - Hy, maxjᶜ, pivotjᶜ)
             jᶠ = pivotable_indices(1 - Hy, maxjᶠ, pivotjᶠ)
 
             # Enforce zero velocities on the pivot points where u = -u and v = -v!
-            # Only u velocity can be on pivot point for UPointPivot grid (RightCenterFolded)
-            if fold_topology == RightCenterFolded
+            # Only u velocity can be on pivot point for UPointPivot grid (CenterFolded)
+            if pivot == UPivot
                 u.data[[1, Nx ÷ 2 + 1, Nx + 1], pivotjᶜ, :] .= 0.0
             end
 
             # Test part of the halo with 180° rotation
             # (We cannot do it over all i indices because of the staggered grid)
-            iᶜ = 1-Hx:Nx+Hx
-            iᶠ = 1-Hx+1:Nx+Hx # <- skip the first (= westmost) index for rot180
+            iᶜ = 1-Hx:Nx+Hx+s
+            iᶠ = 1-Hx+1+s:Nx+Hx # <- skip the first (= westmost) index for rot180
             @testset "Test halo fill with rot180" begin
                 @test isrot180symmetric(view(CC.data, iᶜ, jᶜ, 1))
                 @test isrot180symmetric(view(FC.data, iᶠ, jᶜ, 1))
@@ -335,9 +333,9 @@ isrot180antisymmetric(arr) = arr == -rot180(arr)
 
             # Test over all i indices by applying reverse on each index and mod1 for i indices
             iᶜ = 1-Hx:Nx+Hx
-            iᶜ′ = mod1.(reverse(iᶜ), Nx)
+            iᶜ′ = mod1.(reverse(iᶜ) .+ s, Nx)
             iᶠ = 1-Hx:Nx+Hx
-            iᶠ′ = mod1.(reverse(iᶠ) .+ 1, Nx)
+            iᶠ′ = mod1.(reverse(iᶠ) .+ 1 .+ s, Nx)
             jᶜ′ = reverse(jᶜ)
             jᶠ′ = reverse(jᶠ)
             # Test that the northern halo region has been correctly rotated and sign-changed
@@ -350,10 +348,23 @@ isrot180antisymmetric(arr) = arr == -rot180(arr)
                 @test view( v.data, iᶜ, jᶠ, 1) == -view( v.data, iᶜ′, jᶠ′, 1)
             end
 
+            # The fold row is its own mirror at every level, vertical halos included
+            @testset "Test fold row vertical halos" begin
+                if fold_topology == FaceFolded
+                    @test view(CF.data, iᶜ, Ny+1, :) ==  view(CF.data, iᶜ′, Ny+1, :)
+                    @test view(FF.data, iᶠ, Ny+1, :) ==  view(FF.data, iᶠ′, Ny+1, :)
+                    @test view( v.data, iᶜ, Ny+1, :) == -view( v.data, iᶜ′, Ny+1, :)
+                else
+                    @test view(CC.data, iᶜ, Ny, :) ==  view(CC.data, iᶜ′, Ny, :)
+                    @test view(FC.data, iᶠ, Ny, :) ==  view(FC.data, iᶠ′, Ny, :)
+                    @test view( u.data, iᶠ, Ny, :) == -view( u.data, iᶠ′, Ny, :)
+                end
+            end
+
             # Test that bottom height for an immersed boundary grid is also
             # correctly rotated and symmetric around the pivot point
             @testset "Test GridFittedBottom halo fill" begin
-                grid = TripolarGrid(arch; size = (10, 10, 1), fold_topology = fold_topology)
+                grid = TripolarGrid(arch; size = (10, 10, 1), fold_topology, pivot)
                 bottom(x, y) = rand()
                 grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
                 bottom_height = on_architecture(CPU(), grid.immersed_boundary.bottom_height)
@@ -368,9 +379,9 @@ using Oceananigans.Grids: with_halo, topology, halo_size
 
 @testset "with_halo for TripolarGrid" begin
     for arch in archs
-        @testset "$fold_topology fold topology [$arch]" for fold_topology in fold_topologies
+        @testset "$fold_topology $pivot fold topology [$arch]" for (fold_topology, pivot) in fold_topologies
             grid = TripolarGrid(arch; size = (20, 10, 4), z = (-100, 0), halo = (3, 3, 3),
-                                fold_topology)
+                                fold_topology, pivot)
 
             new_grid = with_halo((5, 5, 5), grid)
 
@@ -414,8 +425,8 @@ end
 
 @testset "Invalid north BC on tripolar grids" begin
     for arch in archs
-        @testset "$fold_topology fold topology" for fold_topology in fold_topologies
-            grid = TripolarGrid(arch; size = (10, 10, 1), fold_topology = fold_topology)
+        @testset "$fold_topology $pivot fold topology" for (fold_topology, pivot) in fold_topologies
+            grid = TripolarGrid(arch; size = (10, 10, 1), fold_topology, pivot)
             bad_bcs = FieldBoundaryConditions(north = GradientBoundaryCondition(0))
 
             # Field validation rejects the non-Zipper north BC. `regularize` does not

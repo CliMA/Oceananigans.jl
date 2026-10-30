@@ -4,11 +4,22 @@ using Glob
 using NCDatasets
 
 using Oceananigans: prognostic_state, restore_prognostic_state!, prognostic_fields
+using Oceananigans.Biogeochemistry: AbstractBiogeochemistry
 using Oceananigans.TurbulenceClosures.Smagorinskys: Smagorinsky,
     DirectionallyAveragedDynamicSmagorinsky, LagrangianAveragedDynamicSmagorinsky
 using Oceananigans.Models.ShallowWaterModels: ShallowWaterScalarDiffusivity
 using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: ForwardBackwardScheme
 using Oceananigans.Grids: MutableVerticalDiscretization
+
+import Oceananigans.Biogeochemistry: update_biogeochemical_state!
+
+pickup_log = (:info, r"^Picking up simulation from checkpoint file .+\.jld2; last modified \(UTC\): ")
+checkpointing_log = (:info, r"^Checkpointing done: time=.+, size=.+$")
+default_checkpoint_log(filepath) = (:warn, "No checkpointer (or multiple checkpointers) found, using default filepath: $filepath")
+
+shallow_water_log = (:warn, r"^The ShallowWaterModel is currently unvalidated")
+ri_based_log = (:warn, r"^RiBasedVerticalDiffusivity is an experimental turbulence closure")
+pressure_solver_log = (:warn, r"^The FFT-based pressure_solver for NonhydrostaticModels on ImmersedBoundaryGrid")
 
 """
     test_prognostic_state_equality(test_state, true_state; atol=0)
@@ -17,6 +28,7 @@ Recursively test that two nested prognostic states, as returned by `prognostic_s
 are equal. Their leaves are host arrays or scalars.
 """
 test_prognostic_state_equality(test_state, true_state; atol=0) = @test test_state == true_state
+
 
 function test_prognostic_state_equality(test_state::Union{Tuple, NamedTuple},
                                         true_state::Union{Tuple, NamedTuple}; atol=0)
@@ -122,7 +134,7 @@ function test_minimal_restore(arch, FT, model_type)
         model = HydrostaticFreeSurfaceModel(grid; buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     end
 
-    simulation = Simulation(model; Δt=1.0, stop_time=3.0)
+    simulation = Simulation(model; Δt=1.0, stop_time=3.0, verbose=false)
 
     prefix = "mwe_checkpointer_$(model_type)_$(typeof(arch))_$(FT)"
 
@@ -134,7 +146,7 @@ function test_minimal_restore(arch, FT, model_type)
 
     simulation.output_writers[:checkpointer] = checkpointer
 
-    @test_nowarn run!(simulation)
+    @test_logs ntuple(_ -> checkpointing_log, 4)... run!(simulation)
 
     @test isfile("$(prefix)_iteration0.jld2")
     @test isfile("$(prefix)_iteration1.jld2")
@@ -148,7 +160,6 @@ function test_minimal_restore(arch, FT, model_type)
 
     for pickup_method in (:boolean, :iteration, :filepath)
         @testset "Minimal restore [$model_type, $pickup_method] [$(typeof(arch))]" begin
-            @info "  Testing minimal restore [$model_type, $pickup_method] [$(typeof(arch))]..."
 
             new_grid = RectilinearGrid(arch, FT,
                                        size = (N, N, N),
@@ -163,7 +174,7 @@ function test_minimal_restore(arch, FT, model_type)
 
             new_stop_time = 4.0
             new_checkpoint_interval = 0.5
-            new_simulation = Simulation(new_model; Δt=1.0, stop_time=new_stop_time)
+            new_simulation = Simulation(new_model; Δt=1.0, stop_time=new_stop_time, verbose=false)
 
             new_checkpointer = Checkpointer(new_model;
                                             schedule = TimeInterval(new_checkpoint_interval),
@@ -174,11 +185,11 @@ function test_minimal_restore(arch, FT, model_type)
             new_simulation.output_writers[:checkpointer] = new_checkpointer
 
             if pickup_method == :boolean
-                @test_nowarn set!(new_simulation; checkpoint=:latest)
+                @test_logs pickup_log set!(new_simulation; checkpoint=:latest)
             elseif pickup_method == :iteration
-                @test_nowarn set!(new_simulation; iteration=3)
+                @test_logs pickup_log set!(new_simulation; iteration=3)
             elseif pickup_method == :filepath
-                @test_nowarn set!(new_simulation; checkpoint="$(prefix)_iteration3.jld2")
+                @test_logs pickup_log set!(new_simulation; checkpoint="$(prefix)_iteration3.jld2")
             end
 
             @test iteration(new_simulation) == 3
@@ -197,7 +208,7 @@ end
 function test_checkpointer_cleanup(arch)
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
     model = NonhydrostaticModel(grid; buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
-    simulation = Simulation(model, Δt=0.2, stop_iteration=10)
+    simulation = Simulation(model; Δt=0.2, stop_iteration=10, verbose=false)
 
     prefix = "checkpointer_cleanup_$(typeof(arch))"
     simulation.output_writers[:checkpointer] = Checkpointer(model;
@@ -240,13 +251,13 @@ function test_thermal_bubble_checkpointing(arch, timestepper, model_type::Symbol
     # Reference run: 10 iterations continuously
     ref_model = make_model()
     set!(ref_model, T=bubble, S=bubble)
-    ref_simulation = Simulation(ref_model, Δt=Δt, stop_iteration=10)
+    ref_simulation = Simulation(ref_model; Δt=Δt, stop_iteration=10, verbose=false)
     @test_nowarn run!(ref_simulation)
 
     # Checkpointed run: 5 iterations, checkpoint, then another 5 iterations
     model = make_model()
     set!(model, T=bubble, S=bubble)
-    simulation = Simulation(model, Δt=Δt, stop_iteration=5)
+    simulation = Simulation(model; Δt=Δt, stop_iteration=5, verbose=false)
 
     prefix = "thermal_bubble_checkpointing_$(model_type)_$(typeof(arch))"
     simulation.output_writers[:checkpointer] = Checkpointer(model,
@@ -257,12 +268,12 @@ function test_thermal_bubble_checkpointing(arch, timestepper, model_type::Symbol
 
     # Restore and continue for 5 more iterations
     new_model = make_model()
-    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=10)
+    new_simulation = Simulation(new_model; Δt=Δt, stop_iteration=10, verbose=false)
     new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
                                                                 schedule = IterationInterval(5),
                                                                 prefix = prefix)
 
-    @test_nowarn set!(new_simulation; checkpoint=:latest)
+    @test_logs pickup_log set!(new_simulation; checkpoint=:latest)
     @test_nowarn run!(new_simulation)
 
     # Compare final states at iteration 10
@@ -282,9 +293,9 @@ function test_minimal_restore_shallow_water(arch, FT)
                            topology = (Periodic, Periodic, Flat),
                            extent = (L, L))
 
-    model = ShallowWaterModel(grid; gravitational_acceleration=1)
+    model = @test_logs shallow_water_log ShallowWaterModel(grid; gravitational_acceleration=1)
     set!(model, h=1)
-    simulation = Simulation(model; Δt=1.0, stop_time=3.0)
+    simulation = Simulation(model; Δt=1.0, stop_time=3.0, verbose=false)
 
     prefix = "mwe_checkpointer_shallow_water_$(typeof(arch))_$(FT)"
 
@@ -296,7 +307,7 @@ function test_minimal_restore_shallow_water(arch, FT)
 
     simulation.output_writers[:checkpointer] = checkpointer
 
-    @test_nowarn run!(simulation)
+    @test_logs ntuple(_ -> checkpointing_log, 4)... run!(simulation)
 
     @test isfile("$(prefix)_iteration0.jld2")
     @test isfile("$(prefix)_iteration1.jld2")
@@ -310,17 +321,16 @@ function test_minimal_restore_shallow_water(arch, FT)
 
     for pickup_method in (:boolean, :iteration, :filepath)
         @testset "Minimal restore shallow water [$(typeof(arch)), $(pickup_method)]" begin
-            @info "  Testing minimal restore shallow water [$(typeof(arch)), $(pickup_method)]..."
 
             new_grid = RectilinearGrid(arch, FT,
                                        size = (N, N),
                                        topology = (Periodic, Periodic, Flat),
                                        extent = (L, L))
 
-            new_model = ShallowWaterModel(new_grid; gravitational_acceleration=1)
+            new_model = @test_logs shallow_water_log ShallowWaterModel(new_grid; gravitational_acceleration=1)
             new_stop_time = 4.0
             new_checkpoint_interval = 0.5
-            new_simulation = Simulation(new_model; Δt=1.0, stop_time=new_stop_time)
+            new_simulation = Simulation(new_model; Δt=1.0, stop_time=new_stop_time, verbose=false)
 
             new_checkpointer = Checkpointer(new_model;
                                             schedule = TimeInterval(new_checkpoint_interval),
@@ -331,11 +341,11 @@ function test_minimal_restore_shallow_water(arch, FT)
             new_simulation.output_writers[:checkpointer] = new_checkpointer
 
             if pickup_method == :boolean
-                @test_nowarn set!(new_simulation; checkpoint=:latest)
+                @test_logs pickup_log set!(new_simulation; checkpoint=:latest)
             elseif pickup_method == :iteration
-                @test_nowarn set!(new_simulation; iteration=3)
+                @test_logs pickup_log set!(new_simulation; iteration=3)
             elseif pickup_method == :filepath
-                @test_nowarn set!(new_simulation; checkpoint="$(prefix)_iteration3.jld2")
+                @test_logs pickup_log set!(new_simulation; checkpoint="$(prefix)_iteration3.jld2")
             end
 
             @test iteration(new_simulation) == 3
@@ -360,7 +370,7 @@ function test_height_perturbation_checkpointing_shallow_water(arch, timestepper)
 
     function make_model()
         grid = RectilinearGrid(arch, size=(Nx, Ny), extent=(Lx, Ly), topology=(Periodic, Periodic, Flat))
-        return ShallowWaterModel(grid; timestepper,
+        return @test_logs shallow_water_log ShallowWaterModel(grid; timestepper,
                                  gravitational_acceleration = 1,
                                  closure = ShallowWaterScalarDiffusivity(ν=4e-2, ξ=0))
     end
@@ -368,13 +378,13 @@ function test_height_perturbation_checkpointing_shallow_water(arch, timestepper)
     # Reference run: 10 iterations continuously
     ref_model = make_model()
     set!(ref_model, h=perturbation)
-    ref_simulation = Simulation(ref_model, Δt=Δt, stop_iteration=10)
+    ref_simulation = Simulation(ref_model; Δt=Δt, stop_iteration=10, verbose=false)
     @test_nowarn run!(ref_simulation)
 
     # Checkpointed run: 5 iterations, checkpoint
     model = make_model()
     set!(model, h=perturbation)
-    simulation = Simulation(model, Δt=Δt, stop_iteration=5)
+    simulation = Simulation(model; Δt=Δt, stop_iteration=5, verbose=false)
 
     prefix = "height_perturbation_checkpointing_shallow_water_$(typeof(arch))"
     simulation.output_writers[:checkpointer] = Checkpointer(model,
@@ -385,12 +395,12 @@ function test_height_perturbation_checkpointing_shallow_water(arch, timestepper)
 
     # Restore and continue for 5 more iterations
     new_model = make_model()
-    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=10)
+    new_simulation = Simulation(new_model; Δt=Δt, stop_iteration=10, verbose=false)
     new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
                                                                 schedule = IterationInterval(5),
                                                                 prefix = prefix)
 
-    @test_nowarn set!(new_simulation; checkpoint=:latest)
+    @test_logs pickup_log set!(new_simulation; checkpoint=:latest)
     @test_nowarn run!(new_simulation)
 
     # Compare final states at iteration 10
@@ -419,13 +429,13 @@ function test_checkpointing_split_explicit_free_surface(arch, timestepper, free_
     # Reference run: 10 iterations continuously
     ref_model = make_model()
     set!(ref_model, T=bubble, S=bubble)
-    ref_simulation = Simulation(ref_model, Δt=Δt, stop_iteration=10)
+    ref_simulation = Simulation(ref_model; Δt=Δt, stop_iteration=10, verbose=false)
     @test_nowarn run!(ref_simulation)
 
     # Checkpointed run: 5 iterations, checkpoint
     model = make_model()
     set!(model, T=bubble, S=bubble)
-    simulation = Simulation(model, Δt=Δt, stop_iteration=5)
+    simulation = Simulation(model; Δt=Δt, stop_iteration=5, verbose=false)
 
     fs_ts_name = nameof(typeof(free_surface_timestepper))
     prefix = "split_explicit_checkpointing_$(typeof(arch))_$(timestepper)_$(fs_ts_name)"
@@ -437,12 +447,12 @@ function test_checkpointing_split_explicit_free_surface(arch, timestepper, free_
 
     # Restore and continue for 5 more iterations
     new_model = make_model()
-    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=10)
+    new_simulation = Simulation(new_model; Δt=Δt, stop_iteration=10, verbose=false)
     new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
                                                                 schedule = IterationInterval(5),
                                                                 prefix = prefix)
 
-    @test_nowarn set!(new_simulation; checkpoint=:latest)
+    @test_logs pickup_log set!(new_simulation; checkpoint=:latest)
     @test_nowarn run!(new_simulation)
 
     # Compare final states at iteration 10
@@ -475,13 +485,13 @@ function test_checkpointing_zstar_coordinate(arch, timestepper)
     # Reference run: 10 iterations continuously
     ref_model = make_model()
     set!(ref_model, T=T_init, S=35, u=u_init)
-    ref_simulation = Simulation(ref_model, Δt=Δt, stop_iteration=10)
+    ref_simulation = Simulation(ref_model; Δt=Δt, stop_iteration=10, verbose=false)
     @test_nowarn run!(ref_simulation)
 
     # Checkpointed run: 5 iterations, checkpoint
     model = make_model()
     set!(model, T=T_init, S=35, u=u_init)
-    simulation = Simulation(model, Δt=Δt, stop_iteration=5)
+    simulation = Simulation(model; Δt=Δt, stop_iteration=5, verbose=false)
 
     prefix = "zstar_checkpointing_$(typeof(arch))_$(timestepper)"
     simulation.output_writers[:checkpointer] = Checkpointer(model,
@@ -492,12 +502,12 @@ function test_checkpointing_zstar_coordinate(arch, timestepper)
 
     # Restore and continue for 5 more iterations
     new_model = make_model()
-    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=10)
+    new_simulation = Simulation(new_model; Δt=Δt, stop_iteration=10, verbose=false)
     new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
                                                                 schedule = IterationInterval(5),
                                                                 prefix = prefix)
 
-    @test_nowarn set!(new_simulation; checkpoint=:latest)
+    @test_logs pickup_log set!(new_simulation; checkpoint=:latest)
     @test_nowarn run!(new_simulation)
 
     # Compare final states at iteration 10
@@ -537,13 +547,13 @@ function test_checkpointing_implicit_free_surface(arch, solver_method)
     # Reference run: 10 iterations continuously
     ref_model = make_model()
     set!(ref_model, T=bubble, S=bubble)
-    ref_simulation = Simulation(ref_model, Δt=Δt, stop_iteration=10)
+    ref_simulation = Simulation(ref_model; Δt=Δt, stop_iteration=10, verbose=false)
     @test_nowarn run!(ref_simulation)
 
     # Checkpointed run: 5 iterations, checkpoint
     model = make_model()
     set!(model, T=bubble, S=bubble)
-    simulation = Simulation(model, Δt=Δt, stop_iteration=5)
+    simulation = Simulation(model; Δt=Δt, stop_iteration=5, verbose=false)
 
     prefix = "implicit_free_surface_checkpointing_$(typeof(arch))_$(solver_method)"
     simulation.output_writers[:checkpointer] = Checkpointer(model,
@@ -554,12 +564,12 @@ function test_checkpointing_implicit_free_surface(arch, solver_method)
 
     # Restore and continue for 5 more iterations
     new_model = make_model()
-    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=10)
+    new_simulation = Simulation(new_model; Δt=Δt, stop_iteration=10, verbose=false)
     new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
                                                                 schedule = IterationInterval(5),
                                                                 prefix = prefix)
 
-    @test_nowarn set!(new_simulation; checkpoint=:latest)
+    @test_logs pickup_log set!(new_simulation; checkpoint=:latest)
     @test_nowarn run!(new_simulation)
 
     # Compare final states at iteration 10
@@ -592,13 +602,13 @@ function test_checkpointing_lagrangian_particles(arch, timestepper)
     # Reference run: 10 iterations continuously
     ref_model = make_model()
     set!(ref_model, u=1, v=0.5, w=0)
-    ref_simulation = Simulation(ref_model, Δt=Δt, stop_iteration=10)
+    ref_simulation = Simulation(ref_model; Δt=Δt, stop_iteration=10, verbose=false)
     @test_nowarn run!(ref_simulation)
 
     # Checkpointed run: 5 iterations, checkpoint
     model = make_model()
     set!(model, u=1, v=0.5, w=0)
-    simulation = Simulation(model, Δt=Δt, stop_iteration=5)
+    simulation = Simulation(model; Δt=Δt, stop_iteration=5, verbose=false)
 
     prefix = "lagrangian_particles_checkpointing_$(typeof(arch))_$(timestepper)"
     simulation.output_writers[:checkpointer] = Checkpointer(model,
@@ -609,12 +619,12 @@ function test_checkpointing_lagrangian_particles(arch, timestepper)
 
     # Restore and continue for 5 more iterations
     new_model = make_model()
-    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=10)
+    new_simulation = Simulation(new_model; Δt=Δt, stop_iteration=10, verbose=false)
     new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
                                                                 schedule = IterationInterval(5),
                                                                 prefix = prefix)
 
-    @test_nowarn set!(new_simulation; checkpoint=:latest)
+    @test_logs pickup_log set!(new_simulation; checkpoint=:latest)
     @test_nowarn run!(new_simulation)
 
     # Compare final states at iteration 10
@@ -640,22 +650,22 @@ function test_checkpointing_immersed_boundary_grid(arch, boundary_type)
         elseif boundary_type == :PartialCellBottom
             grid = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(bottom))
         end
-        return NonhydrostaticModel(grid;
-                                   closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
-                                   buoyancy = SeawaterBuoyancy(),
-                                   tracers = (:T, :S))
+        return @test_logs pressure_solver_log NonhydrostaticModel(grid;
+                                                                  closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
+                                                                  buoyancy = SeawaterBuoyancy(),
+                                                                  tracers = (:T, :S))
     end
 
     # Reference run: 10 iterations continuously
     ref_model = make_model()
     set!(ref_model, T=bubble, S=bubble)
-    ref_simulation = Simulation(ref_model, Δt=Δt, stop_iteration=10)
+    ref_simulation = Simulation(ref_model; Δt=Δt, stop_iteration=10, verbose=false)
     @test_nowarn run!(ref_simulation)
 
     # Checkpointed run: 5 iterations, checkpoint
     model = make_model()
     set!(model, T=bubble, S=bubble)
-    simulation = Simulation(model, Δt=Δt, stop_iteration=5)
+    simulation = Simulation(model; Δt=Δt, stop_iteration=5, verbose=false)
 
     prefix = "immersed_boundary_checkpointing_$(typeof(arch))_$(boundary_type)"
     simulation.output_writers[:checkpointer] = Checkpointer(model,
@@ -666,12 +676,12 @@ function test_checkpointing_immersed_boundary_grid(arch, boundary_type)
 
     # Restore and continue for 5 more iterations
     new_model = make_model()
-    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=10)
+    new_simulation = Simulation(new_model; Δt=Δt, stop_iteration=10, verbose=false)
     new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
                                                                 schedule = IterationInterval(5),
                                                                 prefix = prefix)
 
-    @test_nowarn set!(new_simulation; checkpoint=:latest)
+    @test_logs pickup_log set!(new_simulation; checkpoint=:latest)
     @test_nowarn run!(new_simulation)
 
     # Compare final states at iteration 10
@@ -704,13 +714,13 @@ function test_checkpointing_latitude_longitude_grid(arch)
     # Reference run: 10 iterations continuously
     ref_model = make_model()
     set!(ref_model, T=T_init, S=35)
-    ref_simulation = Simulation(ref_model, Δt=Δt, stop_iteration=10)
+    ref_simulation = Simulation(ref_model; Δt=Δt, stop_iteration=10, verbose=false)
     @test_nowarn run!(ref_simulation)
 
     # Checkpointed run: 5 iterations, checkpoint
     model = make_model()
     set!(model, T=T_init, S=35)
-    simulation = Simulation(model, Δt=Δt, stop_iteration=5)
+    simulation = Simulation(model; Δt=Δt, stop_iteration=5, verbose=false)
 
     prefix = "lat_lon_grid_checkpointing_$(typeof(arch))"
     simulation.output_writers[:checkpointer] = Checkpointer(model,
@@ -721,12 +731,12 @@ function test_checkpointing_latitude_longitude_grid(arch)
 
     # Restore and continue for 5 more iterations
     new_model = make_model()
-    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=10)
+    new_simulation = Simulation(new_model; Δt=Δt, stop_iteration=10, verbose=false)
     new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
                                                                 schedule = IterationInterval(5),
                                                                 prefix = prefix)
 
-    @test_nowarn set!(new_simulation; checkpoint=:latest)
+    @test_logs pickup_log set!(new_simulation; checkpoint=:latest)
     @test_nowarn run!(new_simulation)
 
     # Compare final states at iteration 10
@@ -750,13 +760,13 @@ function test_checkpointing_float32(arch)
     # Reference run: 10 iterations continuously
     ref_model = make_model()
     set!(ref_model, u=1, v=0.5)
-    ref_simulation = Simulation(ref_model, Δt=Float32(Δt), stop_iteration=10)
+    ref_simulation = Simulation(ref_model; Δt=Float32(Δt), stop_iteration=10, verbose=false)
     @test_nowarn run!(ref_simulation)
 
     # Checkpointed run: 5 iterations, checkpoint
     model = make_model()
     set!(model, u=1, v=0.5)
-    simulation = Simulation(model, Δt=Float32(Δt), stop_iteration=5)
+    simulation = Simulation(model; Δt=Float32(Δt), stop_iteration=5, verbose=false)
 
     prefix = "float32_checkpointing_$(typeof(arch))"
     simulation.output_writers[:checkpointer] = Checkpointer(model,
@@ -767,12 +777,12 @@ function test_checkpointing_float32(arch)
 
     # Restore and continue for 5 more iterations
     new_model = make_model()
-    new_simulation = Simulation(new_model, Δt=Float32(Δt), stop_iteration=10)
+    new_simulation = Simulation(new_model; Δt=Float32(Δt), stop_iteration=10, verbose=false)
     new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
                                                                 schedule = IterationInterval(5),
                                                                 prefix = prefix)
 
-    @test_nowarn set!(new_simulation; checkpoint=:latest)
+    @test_logs pickup_log set!(new_simulation; checkpoint=:latest)
     @test_nowarn run!(new_simulation)
 
     # Compare final states at iteration 10
@@ -800,14 +810,14 @@ function test_checkpointing_auxiliary_fields(arch)
     ref_model = make_model()
     set!(ref_model.auxiliary_fields.custom_field, custom_field_init)
     set!(ref_model, u=1, v=0.5)
-    ref_simulation = Simulation(ref_model, Δt=Δt, stop_iteration=10)
+    ref_simulation = Simulation(ref_model; Δt=Δt, stop_iteration=10, verbose=false)
     @test_nowarn run!(ref_simulation)
 
     # Checkpointed run: 5 iterations, checkpoint
     model = make_model()
     set!(model.auxiliary_fields.custom_field, custom_field_init)
     set!(model, u=1, v=0.5)
-    simulation = Simulation(model, Δt=Δt, stop_iteration=5)
+    simulation = Simulation(model; Δt=Δt, stop_iteration=5, verbose=false)
 
     prefix = "auxiliary_fields_checkpointing_$(typeof(arch))"
     simulation.output_writers[:checkpointer] = Checkpointer(model,
@@ -818,18 +828,107 @@ function test_checkpointing_auxiliary_fields(arch)
 
     # Restore and continue for 5 more iterations
     new_model = make_model()
-    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=10)
+    new_simulation = Simulation(new_model; Δt=Δt, stop_iteration=10, verbose=false)
     new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
                                                                 schedule = IterationInterval(5),
                                                                 prefix = prefix)
 
-    @test_nowarn set!(new_simulation; checkpoint=:latest)
+    @test_logs pickup_log set!(new_simulation; checkpoint=:latest)
     @test_nowarn run!(new_simulation)
 
     # Compare final states at iteration 10
     test_model_equality(new_model, ref_model)
 
     rm.(glob("$(prefix)_iteration*.jld2"), force=true)
+
+    return nothing
+end
+
+function stateless_auxiliary_fields_simulation(arch, Model, dir)
+    grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+    clock = Clock(grid)
+    c = CenterField(grid)
+
+    auxiliary_fields = (operation = 2c,
+                        function_field = FunctionField{Center, Center, Center}((x, y, z, t) -> t, grid; clock))
+
+    model = Model(grid; clock, auxiliary_fields)
+    simulation = Simulation(model; Δt=0.1, stop_iteration=5, verbose=false)
+    simulation.output_writers[:checkpointer] = Checkpointer(model; schedule=IterationInterval(5), dir)
+    return simulation
+end
+
+function test_checkpointing_stateless_auxiliary_fields(arch, Model)
+    dir = mktempdir()
+
+    simulation = stateless_auxiliary_fields_simulation(arch, Model, dir)
+    @test_nowarn run!(simulation)
+
+    # Operations and FunctionFields are computed on the fly, so they add nothing to checkpoints
+    @test prognostic_state(simulation.model.auxiliary_fields) == (operation = nothing, function_field = nothing)
+
+    restored_simulation = stateless_auxiliary_fields_simulation(arch, Model, dir)
+    @test_logs pickup_log set!(restored_simulation; checkpoint=:latest)
+    @test iteration(restored_simulation) == 5
+
+    rm(dir; recursive=true)
+
+    return nothing
+end
+
+# A stand-in for a sediment model: `sediment` evolves with the model but is not a tracer,
+# so the biogeochemistry checkpoints it by extending `prognostic_state`
+struct SedimentBiogeochemistry{S} <: AbstractBiogeochemistry
+    sediment :: S
+end
+
+function update_biogeochemical_state!(bgc::SedimentBiogeochemistry, model)
+    interior(bgc.sediment) .+= 1
+    return nothing
+end
+
+Oceananigans.prognostic_state(bgc::SedimentBiogeochemistry) = (; sediment = prognostic_state(bgc.sediment))
+
+function Oceananigans.restore_prognostic_state!(bgc::SedimentBiogeochemistry, from)
+    restore_prognostic_state!(bgc.sediment, from.sediment)
+    return bgc
+end
+
+Oceananigans.restore_prognostic_state!(::SedimentBiogeochemistry, ::Nothing) = nothing
+
+# Most biogeochemical models keep all of their state in `model.tracers`
+struct StatelessBiogeochemistry <: AbstractBiogeochemistry end
+
+function sediment_simulation(arch, Model, dir)
+    grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+    biogeochemistry = SedimentBiogeochemistry(Field{Center, Center, Nothing}(grid))
+    model = Model(grid; biogeochemistry)
+    simulation = Simulation(model; Δt=0.1, stop_iteration=5, verbose=false)
+    simulation.output_writers[:checkpointer] = Checkpointer(model; schedule=IterationInterval(5), dir)
+    return simulation
+end
+
+function test_checkpointing_biogeochemistry(arch, Model)
+    dir = mktempdir()
+
+    simulation = sediment_simulation(arch, Model, dir)
+    @test_nowarn run!(simulation)
+    sediment = Array(interior(simulation.model.biogeochemistry.sediment))
+
+    restored_simulation = sediment_simulation(arch, Model, dir)
+    fresh_sediment = Array(interior(restored_simulation.model.biogeochemistry.sediment))
+    @test fresh_sediment != sediment
+
+    @test_logs pickup_log set!(restored_simulation; checkpoint=:latest)
+    restored_sediment = Array(interior(restored_simulation.model.biogeochemistry.sediment))
+    @test restored_sediment == sediment
+
+    # Biogeochemistry without state of its own adds nothing to checkpoints
+    grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+    stateless_model = Model(grid; biogeochemistry=StatelessBiogeochemistry())
+    @test isnothing(prognostic_state(stateless_model).biogeochemistry)
+
+    rm(dir; recursive=true)
 
     return nothing
 end
@@ -855,13 +954,13 @@ function test_checkpointing_closure_fields(arch, FT)
     # Reference run: 10 iterations continuously
     ref_model = make_model()
     set!(ref_model, u=u₀, v=v₀, T=T₀, S=S₀)
-    ref_simulation = Simulation(ref_model, Δt=Δt, stop_iteration=10)
+    ref_simulation = Simulation(ref_model; Δt=Δt, stop_iteration=10, verbose=false)
     @test_nowarn run!(ref_simulation)
 
     # Checkpointed run: 5 iterations, checkpoint
     model = make_model()
     set!(model, u=u₀, v=v₀, T=T₀, S=S₀)
-    simulation = Simulation(model, Δt=Δt, stop_iteration=5)
+    simulation = Simulation(model; Δt=Δt, stop_iteration=5, verbose=false)
 
     prefix = "closure_fields_checkpointing_$(typeof(arch))_$(FT)"
     simulation.output_writers[:checkpointer] = Checkpointer(model,
@@ -872,12 +971,12 @@ function test_checkpointing_closure_fields(arch, FT)
 
     # Restore and continue for 5 more iterations
     new_model = make_model()
-    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=10)
+    new_simulation = Simulation(new_model; Δt=Δt, stop_iteration=10, verbose=false)
     new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
                                                                 schedule = IterationInterval(5),
                                                                 prefix = prefix)
 
-    @test_nowarn set!(new_simulation; checkpoint=:latest)
+    @test_logs pickup_log set!(new_simulation; checkpoint=:latest)
 
     # Compare with the model that wrote the checkpoint, before time-stepping recomputes the closure fields
     test_closure_fields_equality(new_model, model)
@@ -910,14 +1009,14 @@ function test_checkpointing_smagorinsky_closure(arch, FT, timestepper, closure, 
     ref_model = make_model()
     set!(ref_model, u=u_init)
     set!(ref_model, T=20, S=35)
-    ref_simulation = Simulation(ref_model, Δt=Δt, stop_iteration=10)
+    ref_simulation = Simulation(ref_model; Δt=Δt, stop_iteration=10, verbose=false)
     @test_nowarn run!(ref_simulation)
 
     # Checkpointed run: 5 iterations, checkpoint
     model = make_model()
     set!(model, u=u_init)
     set!(model, T=20, S=35)
-    simulation = Simulation(model, Δt=Δt, stop_iteration=5)
+    simulation = Simulation(model; Δt=Δt, stop_iteration=5, verbose=false)
 
     prefix = "$(closure_name)_checkpointing_$(typeof(arch))_$(FT)_$(timestepper)"
     simulation.output_writers[:checkpointer] = Checkpointer(model,
@@ -928,12 +1027,12 @@ function test_checkpointing_smagorinsky_closure(arch, FT, timestepper, closure, 
 
     # Restore and continue for 5 more iterations
     new_model = make_model()
-    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=10)
+    new_simulation = Simulation(new_model; Δt=Δt, stop_iteration=10, verbose=false)
     new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
                                                                 schedule = IterationInterval(5),
                                                                 prefix = prefix)
 
-    @test_nowarn set!(new_simulation; checkpoint=:latest)
+    @test_logs pickup_log set!(new_simulation; checkpoint=:latest)
 
     # Compare with the model that wrote the checkpoint, before time-stepping recomputes the closure fields
     test_closure_fields_equality(new_model, model)
@@ -973,8 +1072,8 @@ function test_checkpointing_ri_based_closure(arch, FT, timestepper)
 
     function make_model()
         grid = RectilinearGrid(arch, FT, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-        return HydrostaticFreeSurfaceModel(grid; timestepper,
-                                           closure = RiBasedVerticalDiffusivity(FT, Cᵃᵛ=0.6),
+        return @test_logs ri_based_log HydrostaticFreeSurfaceModel(grid; timestepper,
+                                                                   closure = RiBasedVerticalDiffusivity(FT, Cᵃᵛ=0.6),
                                            buoyancy = SeawaterBuoyancy(FT),
                                            tracers = (:T, :S))
     end
@@ -982,13 +1081,13 @@ function test_checkpointing_ri_based_closure(arch, FT, timestepper)
     # Reference run: 10 iterations continuously
     ref_model = make_model()
     set!(ref_model, T=T_init, S=35, u=u_init)
-    ref_simulation = Simulation(ref_model, Δt=Δt, stop_iteration=10)
+    ref_simulation = Simulation(ref_model; Δt=Δt, stop_iteration=10, verbose=false)
     @test_nowarn run!(ref_simulation)
 
     # Checkpointed run: 5 iterations, checkpoint
     model = make_model()
     set!(model, T=T_init, S=35, u=u_init)
-    simulation = Simulation(model, Δt=Δt, stop_iteration=5)
+    simulation = Simulation(model; Δt=Δt, stop_iteration=5, verbose=false)
 
     prefix = "ri_based_checkpointing_$(typeof(arch))_$(FT)_$(timestepper)"
     simulation.output_writers[:checkpointer] = Checkpointer(model,
@@ -999,12 +1098,12 @@ function test_checkpointing_ri_based_closure(arch, FT, timestepper)
 
     # Restore and continue for 5 more iterations
     new_model = make_model()
-    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=10)
+    new_simulation = Simulation(new_model; Δt=Δt, stop_iteration=10, verbose=false)
     new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
                                                                 schedule = IterationInterval(5),
                                                                 prefix = prefix)
 
-    @test_nowarn set!(new_simulation; checkpoint=:latest)
+    @test_logs pickup_log set!(new_simulation; checkpoint=:latest)
 
     # Compare with the model that wrote the checkpoint, before time-stepping recomputes the closure fields
     test_closure_fields_equality(new_model, model)
@@ -1042,13 +1141,13 @@ function test_checkpointing_catke_closure(arch, FT, timestepper, closure=CATKEVe
     # Reference run: 10 iterations continuously
     ref_model = make_model()
     set!(ref_model, T=T_init, S=35, u=u_init)
-    ref_simulation = Simulation(ref_model, Δt=Δt, stop_iteration=10)
+    ref_simulation = Simulation(ref_model; Δt=Δt, stop_iteration=10, verbose=false)
     @test_nowarn run!(ref_simulation)
 
     # Checkpointed run: 5 iterations, checkpoint
     model = make_model()
     set!(model, T=T_init, S=35, u=u_init)
-    simulation = Simulation(model, Δt=Δt, stop_iteration=5)
+    simulation = Simulation(model; Δt=Δt, stop_iteration=5, verbose=false)
 
     closure_prefix = closure isa CATKEVerticalDiffusivity ? "catke" :
                      closure isa NTuple{1} && closure[1] isa CATKEVerticalDiffusivity ? "catke" :
@@ -1064,12 +1163,12 @@ function test_checkpointing_catke_closure(arch, FT, timestepper, closure=CATKEVe
 
     # Restore and continue for 5 more iterations
     new_model = make_model()
-    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=10)
+    new_simulation = Simulation(new_model; Δt=Δt, stop_iteration=10, verbose=false)
     new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
                                                                 schedule = IterationInterval(5),
                                                                 prefix = prefix)
 
-    @test_nowarn set!(new_simulation; checkpoint=:latest)
+    @test_logs pickup_log set!(new_simulation; checkpoint=:latest)
 
     # Compare with the model that wrote the checkpoint, before time-stepping recomputes the closure fields
     test_closure_fields_equality(new_model, model)
@@ -1106,7 +1205,7 @@ function test_checkpointing_tke_dissipation_closure(arch, FT, timestepper)
     # Reference run: 10 iterations continuously
     ref_model = make_model()
     set!(ref_model, T=T_init, S=35, u=u_init)
-    ref_simulation = Simulation(ref_model, Δt=Δt, stop_iteration=10)
+    ref_simulation = Simulation(ref_model; Δt=Δt, stop_iteration=10, verbose=false)
 
     if timestepper == :SplitRungeKutta3
         # See: https://github.com/CliMA/Oceananigans.jl/issues/5127
@@ -1119,7 +1218,7 @@ function test_checkpointing_tke_dissipation_closure(arch, FT, timestepper)
     # Checkpointed run: 5 iterations, checkpoint
     model = make_model()
     set!(model, T=T_init, S=35, u=u_init)
-    simulation = Simulation(model, Δt=Δt, stop_iteration=5)
+    simulation = Simulation(model; Δt=Δt, stop_iteration=5, verbose=false)
 
     prefix = "tke_dissipation_checkpointing_$(typeof(arch))_$(FT)_$(timestepper)"
     simulation.output_writers[:checkpointer] = Checkpointer(model,
@@ -1130,12 +1229,12 @@ function test_checkpointing_tke_dissipation_closure(arch, FT, timestepper)
 
     # Restore and continue for 5 more iterations
     new_model = make_model()
-    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=10)
+    new_simulation = Simulation(new_model; Δt=Δt, stop_iteration=10, verbose=false)
     new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
                                                                 schedule = IterationInterval(5),
                                                                 prefix = prefix)
 
-    @test_nowarn set!(new_simulation; checkpoint=:latest)
+    @test_logs pickup_log set!(new_simulation; checkpoint=:latest)
 
     # Compare with the model that wrote the checkpoint, before time-stepping recomputes the closure fields
     test_closure_fields_equality(new_model, model)
@@ -1174,7 +1273,7 @@ function test_checkpoint_continuation_matches_direct(arch, timestepper)
     bubble(x, y, z) = 0.01 * exp(-100 * ((x - Lx/2)^2 + (y - Ly/2)^2 + (z - Lz/2)^2) / (Lx^2 + Ly^2 + Lz^2))
     set!(model_A, T=bubble, S=bubble, u=0.1)
 
-    simulation_A = Simulation(model_A, Δt=Δt, stop_iteration=10)
+    simulation_A = Simulation(model_A; Δt=Δt, stop_iteration=10, verbose=false)
     @test_nowarn run!(simulation_A)
 
     # Run B: Run 5 iterations, checkpoint, restore, run 5 more
@@ -1186,7 +1285,7 @@ function test_checkpoint_continuation_matches_direct(arch, timestepper)
 
     set!(model_B, T=bubble, S=bubble, u=0.1)
 
-    simulation_B = Simulation(model_B, Δt=Δt, stop_iteration=5)
+    simulation_B = Simulation(model_B; Δt=Δt, stop_iteration=5, verbose=false)
 
     prefix = "continuation_test_$(typeof(arch))_$(timestepper)"
     simulation_B.output_writers[:checkpointer] = Checkpointer(model_B,
@@ -1202,13 +1301,13 @@ function test_checkpoint_continuation_matches_direct(arch, timestepper)
                                       buoyancy = SeawaterBuoyancy(),
                                       tracers = (:T, :S))
 
-    simulation_B_new = Simulation(model_B_new, Δt=Δt, stop_iteration=10)
+    simulation_B_new = Simulation(model_B_new; Δt=Δt, stop_iteration=10, verbose=false)
 
     simulation_B_new.output_writers[:checkpointer] = Checkpointer(model_B_new,
                                                                   schedule = IterationInterval(5),
                                                                   prefix = prefix)
 
-    @test_nowarn set!(simulation_B_new; checkpoint=:latest)
+    @test_logs pickup_log set!(simulation_B_new; checkpoint=:latest)
 
     # Continue running for 5 more iterations (to iteration 10)
     @test_nowarn run!(simulation_B_new)
@@ -1247,7 +1346,7 @@ function test_stateful_schedule_checkpointing(arch, schedule_type)
         schedule = WallTimeInterval(0.5)  # 0.5 seconds
     end
 
-    simulation = Simulation(model, Δt=Δt, stop_iteration=15)
+    simulation = Simulation(model; Δt=Δt, stop_iteration=15, verbose=false)
 
     prefix = "schedule_checkpointing_$(typeof(arch))_$(schedule_type)"
     simulation.output_writers[:checkpointer] = Checkpointer(model,
@@ -1264,7 +1363,7 @@ function test_stateful_schedule_checkpointing(arch, schedule_type)
     new_grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
     new_model = NonhydrostaticModel(new_grid)
 
-    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=15)
+    new_simulation = Simulation(new_model; Δt=Δt, stop_iteration=15, verbose=false)
 
     new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
                                                                 schedule = IterationInterval(10),
@@ -1283,7 +1382,7 @@ function test_stateful_schedule_checkpointing(arch, schedule_type)
 
     new_simulation.callbacks[:test_schedule] = Callback(_ -> nothing, new_schedule)
 
-    @test_nowarn set!(new_simulation; checkpoint=:latest)
+    @test_logs pickup_log set!(new_simulation; checkpoint=:latest)
 
     # Run the restored simulation to completion
     @test_nowarn run!(new_simulation)
@@ -1326,7 +1425,7 @@ Oceananigans.restore_prognostic_state!(::ActuationCounter, ::Nothing) = nothing
 
 function test_stateful_callback_checkpointing(arch)
     grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
-    simulation = Simulation(NonhydrostaticModel(grid), Δt=0.1, stop_iteration=10)
+    simulation = Simulation(NonhydrostaticModel(grid); Δt=0.1, stop_iteration=10, verbose=false)
 
     prefix = "stateful_callback_checkpointing_$(typeof(arch))"
     simulation.output_writers[:checkpointer] = Checkpointer(simulation.model, schedule=IterationInterval(10), prefix=prefix)
@@ -1336,11 +1435,11 @@ function test_stateful_callback_checkpointing(arch)
     checkpointed_actuations = simulation.callbacks[:counter].func.actuations
     @test checkpointed_actuations > 0
 
-    new_simulation = Simulation(NonhydrostaticModel(RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))), Δt=0.1, stop_iteration=10)
+    new_simulation = Simulation(NonhydrostaticModel(RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))); Δt=0.1, stop_iteration=10, verbose=false)
     new_simulation.output_writers[:checkpointer] = Checkpointer(new_simulation.model, schedule=IterationInterval(10), prefix=prefix)
     new_simulation.callbacks[:counter] = Callback(ActuationCounter(0), IterationInterval(1))
 
-    set!(new_simulation; checkpoint=:latest)
+    @test_logs pickup_log set!(new_simulation; checkpoint=:latest)
     @test new_simulation.callbacks[:counter].func.actuations == checkpointed_actuations
 
     rm.(glob("$(prefix)_iteration*.jld2"), force=true)
@@ -1360,7 +1459,7 @@ function test_windowed_time_average_checkpointing(arch, WriterType)
     u_init(x, y, z) = sin(2π * x / Lx)
     set!(model, u=u_init)
 
-    simulation = Simulation(model, Δt=Δt, stop_iteration=8)
+    simulation = Simulation(model; Δt=Δt, stop_iteration=8, verbose=false)
 
     # Writer-specific settings
     if WriterType == JLD2Writer
@@ -1399,7 +1498,7 @@ function test_windowed_time_average_checkpointing(arch, WriterType)
     new_grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     new_model = NonhydrostaticModel(new_grid)
 
-    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=15)
+    new_simulation = Simulation(new_model; Δt=Δt, stop_iteration=15, verbose=false)
 
     new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
                                                                 schedule = IterationInterval(8),
@@ -1411,7 +1510,7 @@ function test_windowed_time_average_checkpointing(arch, WriterType)
                                                           overwrite_files = true)
 
     # Restore from checkpoint at iteration 8
-    @test_nowarn set!(new_simulation; iteration=8)
+    @test_logs pickup_log set!(new_simulation; iteration=8)
 
     # Verify WindowedTimeAverage state was restored
     new_writer = new_simulation.output_writers[:averaged]
@@ -1483,7 +1582,7 @@ function test_windowed_time_average_continuation_correctness(arch, WriterType)
     u_init(x, y, z) = sin(2π * x / Lx) * cos(2π * y / Ly)
     set!(model_A, u=u_init, v=0.1)
 
-    simulation_A = Simulation(model_A, Δt=Δt, stop_iteration=10)
+    simulation_A = Simulation(model_A; Δt=Δt, stop_iteration=10, verbose=false)
 
     simulation_A.output_writers[:averaged] = WriterType(model_A, model_A.velocities,
                                                        schedule = AveragedTimeInterval(1.0, window=0.5),
@@ -1497,7 +1596,7 @@ function test_windowed_time_average_continuation_correctness(arch, WriterType)
     model_B = NonhydrostaticModel(grid_B)
     set!(model_B, u=u_init, v=0.1)
 
-    simulation_B = Simulation(model_B, Δt=Δt, stop_iteration=7)
+    simulation_B = Simulation(model_B; Δt=Δt, stop_iteration=7, verbose=false)
 
     simulation_B.output_writers[:checkpointer] = Checkpointer(model_B,
                                                               schedule = IterationInterval(7),
@@ -1517,7 +1616,7 @@ function test_windowed_time_average_continuation_correctness(arch, WriterType)
     grid_B_new = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     model_B_new = NonhydrostaticModel(grid_B_new)
 
-    simulation_B_new = Simulation(model_B_new, Δt=Δt, stop_iteration=10)
+    simulation_B_new = Simulation(model_B_new; Δt=Δt, stop_iteration=10, verbose=false)
 
     simulation_B_new.output_writers[:checkpointer] = Checkpointer(model_B_new,
                                                                   schedule = IterationInterval(7),
@@ -1527,7 +1626,7 @@ function test_windowed_time_average_continuation_correctness(arch, WriterType)
                                                             filename = "$(prefix_B)_restored$(ext)",
                                                             overwrite_files = true)
 
-    @test_nowarn set!(simulation_B_new; checkpoint=:latest)
+    @test_logs pickup_log set!(simulation_B_new; checkpoint=:latest)
     @test_nowarn run!(simulation_B_new)
 
     # Compare at iteration 10 (time 1.0) - first window just completed
@@ -1557,7 +1656,7 @@ function test_changed_averaged_time_interval(arch)
 
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
     partial_model = NonhydrostaticModel(grid)
-    partial_simulation = Simulation(partial_model, Δt=0.1days, stop_time=0.5days)
+    partial_simulation = Simulation(partial_model; Δt=0.1days, stop_time=0.5days, verbose=false)
     partial_simulation.output_writers[:checkpointer] =
         Checkpointer(partial_model, schedule=IterationInterval(5), prefix=prefix)
     partial_simulation.output_writers[:averaged] =
@@ -1574,7 +1673,7 @@ function test_changed_averaged_time_interval(arch)
     @test only(Array(partial_average.result)) ≈ 0.3days
 
     restored_model = NonhydrostaticModel(grid)
-    restored_simulation = Simulation(restored_model, Δt=0.1days, stop_time=2days)
+    restored_simulation = Simulation(restored_model; Δt=0.1days, stop_time=2days, verbose=false)
     restored_simulation.output_writers[:checkpointer] =
         Checkpointer(restored_model, schedule=IterationInterval(5), prefix=prefix)
     restored_simulation.output_writers[:averaged] =
@@ -1583,7 +1682,7 @@ function test_changed_averaged_time_interval(arch)
                    filename = restored_file,
                    overwrite_files = true)
 
-    @test_nowarn set!(restored_simulation; checkpoint="$(prefix)_iteration5.jld2")
+    @test_logs pickup_log set!(restored_simulation; checkpoint="$(prefix)_iteration5.jld2")
     restored_cache = only(values(restored_simulation.output_writers[:averaged].outputs))
     @test restored_cache.previous_collection_time - restored_cache.window_start_time == 0.5days
     @test only(Array(restored_cache.result)) ≈ 0.3days
@@ -1618,7 +1717,7 @@ function test_inconsistent_averaged_time_interval_checkpoint(arch)
 
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
     partial_model = NonhydrostaticModel(grid)
-    partial_simulation = Simulation(partial_model, Δt=0.1days, stop_time=3days)
+    partial_simulation = Simulation(partial_model; Δt=0.1days, stop_time=3days, verbose=false)
     partial_simulation.output_writers[:checkpointer] =
         Checkpointer(partial_model, schedule=IterationInterval(30), prefix=prefix)
     partial_simulation.output_writers[:averaged] =
@@ -1641,7 +1740,7 @@ function test_inconsistent_averaged_time_interval_checkpoint(arch)
     @test_nowarn checkpoint(partial_simulation)
 
     restored_model = NonhydrostaticModel(grid)
-    restored_simulation = Simulation(restored_model, Δt=0.1days, stop_time=8days)
+    restored_simulation = Simulation(restored_model; Δt=0.1days, stop_time=8days, verbose=false)
     restored_simulation.output_writers[:checkpointer] =
         Checkpointer(restored_model, schedule=IterationInterval(30), prefix=prefix)
     restored_simulation.output_writers[:averaged] =
@@ -1650,7 +1749,7 @@ function test_inconsistent_averaged_time_interval_checkpoint(arch)
                    filename = restored_file,
                    overwrite_files = true)
 
-    @test_nowarn set!(restored_simulation; checkpoint="$(prefix)_iteration30.jld2")
+    @test_logs pickup_log set!(restored_simulation; checkpoint="$(prefix)_iteration30.jld2")
 
     restored_writer = restored_simulation.output_writers[:averaged]
     restored_average = only(values(restored_writer.outputs))
@@ -1686,13 +1785,13 @@ function test_checkpoint_empty_tracers(arch)
     # Reference run: 10 iterations continuously
     ref_model = make_model()
     set!(ref_model, u=1, v=0.5)
-    ref_simulation = Simulation(ref_model, Δt=Δt, stop_iteration=10)
+    ref_simulation = Simulation(ref_model; Δt=Δt, stop_iteration=10, verbose=false)
     @test_nowarn run!(ref_simulation)
 
     # Checkpointed run: 5 iterations, checkpoint
     model = make_model()
     set!(model, u=1, v=0.5)
-    simulation = Simulation(model, Δt=Δt, stop_iteration=5)
+    simulation = Simulation(model; Δt=Δt, stop_iteration=5, verbose=false)
 
     prefix = "empty_tracers_checkpointing_$(typeof(arch))"
     simulation.output_writers[:checkpointer] = Checkpointer(model,
@@ -1703,12 +1802,12 @@ function test_checkpoint_empty_tracers(arch)
 
     # Restore and continue for 5 more iterations
     new_model = make_model()
-    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=10)
+    new_simulation = Simulation(new_model; Δt=Δt, stop_iteration=10, verbose=false)
     new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
                                                                 schedule = IterationInterval(5),
                                                                 prefix = prefix)
 
-    @test_nowarn set!(new_simulation; checkpoint=:latest)
+    @test_logs pickup_log set!(new_simulation; checkpoint=:latest)
     @test_nowarn run!(new_simulation)
 
     # Compare final states at iteration 10
@@ -1727,7 +1826,7 @@ function test_checkpoint_missing_file_warning(arch)
     grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
     model = NonhydrostaticModel(grid)
 
-    simulation = Simulation(model, Δt=Δt, stop_iteration=5)
+    simulation = Simulation(model; Δt=Δt, stop_iteration=5, verbose=false)
 
     # Use a unique prefix that doesn't have any checkpoint files
     prefix = "nonexistent_checkpoint_$(typeof(arch))_$(rand(1:100000))"
@@ -1752,7 +1851,7 @@ function test_pickup_mode_selection_and_default(arch)
     function make_simulation(; stop_iteration=3)
         grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
         model = NonhydrostaticModel(grid)
-        return Simulation(model, Δt=Δt, stop_iteration=stop_iteration)
+        return Simulation(model; Δt=Δt, stop_iteration=stop_iteration, verbose=false)
     end
 
     prefix = "pickup_mode_selection_$(typeof(arch))_$(rand(UInt))"
@@ -1805,7 +1904,7 @@ function test_pickup_mode_selection_and_default(arch)
                                                                  schedule = IterationInterval(1),
                                                                  prefix = prefix,
                                                                  cleanup = false)
-        @test_nowarn run!(default_sim; pickup=true)
+        @test_logs pickup_log run!(default_sim; pickup=true)
         @test iteration(default_sim) == 2
     finally
         rm.(glob("$(prefix)_iteration*.jld2"), force=true)
@@ -1827,13 +1926,13 @@ function test_manual_checkpoint_with_checkpointer(arch)
     # Reference run: 10 iterations continuously
     ref_model = make_model()
     set!(ref_model, u=1, v=0.5)
-    ref_simulation = Simulation(ref_model, Δt=Δt, stop_iteration=10)
+    ref_simulation = Simulation(ref_model; Δt=Δt, stop_iteration=10, verbose=false)
     @test_nowarn run!(ref_simulation)
 
     # Checkpointed run: 5 iterations, manual checkpoint
     model = make_model()
     set!(model, u=1, v=0.5)
-    simulation = Simulation(model, Δt=Δt, stop_iteration=5)
+    simulation = Simulation(model; Δt=Δt, stop_iteration=5, verbose=false)
 
     prefix = "manual_checkpoint_with_checkpointer_$(typeof(arch))"
     simulation.output_writers[:checkpointer] = Checkpointer(model,
@@ -1848,12 +1947,12 @@ function test_manual_checkpoint_with_checkpointer(arch)
 
     # Restore and continue for 5 more iterations
     new_model = make_model()
-    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=10)
+    new_simulation = Simulation(new_model; Δt=Δt, stop_iteration=10, verbose=false)
     new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
                                                                 schedule = IterationInterval(10),
                                                                 prefix = prefix)
 
-    @test_nowarn set!(new_simulation; checkpoint=expected_filepath)
+    @test_logs pickup_log set!(new_simulation; checkpoint=expected_filepath)
     @test iteration(new_simulation) == 5
 
     @test_nowarn run!(new_simulation)
@@ -1879,13 +1978,13 @@ function test_manual_checkpoint_without_checkpointer(arch)
     # Reference run: 10 iterations continuously
     ref_model = make_model()
     set!(ref_model, u=1, v=0.5)
-    ref_simulation = Simulation(ref_model, Δt=Δt, stop_iteration=10)
+    ref_simulation = Simulation(ref_model; Δt=Δt, stop_iteration=10, verbose=false)
     @test_nowarn run!(ref_simulation)
 
     # Checkpointed run: 5 iterations, manual checkpoint (no Checkpointer configured)
     model = make_model()
     set!(model, u=1, v=0.5)
-    simulation = Simulation(model, Δt=Δt, stop_iteration=5)
+    simulation = Simulation(model; Δt=Δt, stop_iteration=5, verbose=false)
 
     @test_nowarn run!(simulation)
 
@@ -1898,9 +1997,9 @@ function test_manual_checkpoint_without_checkpointer(arch)
 
     # Restore and continue for 5 more iterations
     new_model = make_model()
-    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=10)
+    new_simulation = Simulation(new_model; Δt=Δt, stop_iteration=10, verbose=false)
 
-    @test_nowarn set!(new_simulation; checkpoint=expected_filepath)
+    @test_logs pickup_log set!(new_simulation; checkpoint=expected_filepath)
     @test iteration(new_simulation) == 5
 
     @test_nowarn run!(new_simulation)
@@ -1926,13 +2025,13 @@ function test_manual_checkpoint_with_filepath(arch)
     # Reference run: 10 iterations continuously
     ref_model = make_model()
     set!(ref_model, u=1, v=0.5)
-    ref_simulation = Simulation(ref_model, Δt=Δt, stop_iteration=10)
+    ref_simulation = Simulation(ref_model; Δt=Δt, stop_iteration=10, verbose=false)
     @test_nowarn run!(ref_simulation)
 
     # Checkpointed run: 5 iterations, manual checkpoint with custom filepath
     model = make_model()
     set!(model, u=1, v=0.5)
-    simulation = Simulation(model, Δt=Δt, stop_iteration=5)
+    simulation = Simulation(model; Δt=Δt, stop_iteration=5, verbose=false)
 
     # Add a Checkpointer with a different prefix
     prefix = "should_not_use_this_$(typeof(arch))"
@@ -1951,9 +2050,9 @@ function test_manual_checkpoint_with_filepath(arch)
 
     # Restore and continue for 5 more iterations
     new_model = make_model()
-    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=10)
+    new_simulation = Simulation(new_model; Δt=Δt, stop_iteration=10, verbose=false)
 
-    @test_nowarn set!(new_simulation; checkpoint=custom_filepath)
+    @test_logs pickup_log set!(new_simulation; checkpoint=custom_filepath)
     @test iteration(new_simulation) == 5
 
     @test_nowarn run!(new_simulation)
@@ -1979,7 +2078,7 @@ function test_checkpoint_at_end(arch)
     # Test with checkpoint_at_end=false (default) - should NOT create checkpoint
     grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
     model = NonhydrostaticModel(grid)
-    simulation = Simulation(model, Δt=Δt, stop_iteration=5)
+    simulation = Simulation(model; Δt=Δt, stop_iteration=5, verbose=false)
 
     @test_nowarn run!(simulation)
 
@@ -1989,9 +2088,9 @@ function test_checkpoint_at_end(arch)
     grid2 = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
     model2 = NonhydrostaticModel(grid2)
     set!(model2, u=1, v=0.5)
-    simulation2 = Simulation(model2, Δt=Δt, stop_iteration=5)
+    simulation2 = Simulation(model2; Δt=Δt, stop_iteration=5, verbose=false)
 
-    @test_nowarn run!(simulation2, checkpoint_at_end=true)  # Should create checkpoint
+    @test_logs default_checkpoint_log(expected_filepath) run!(simulation2, checkpoint_at_end=true)  # Should create checkpoint
 
     @test isfile(expected_filepath)
     rm(expected_filepath, force=true)
@@ -1999,7 +2098,7 @@ function test_checkpoint_at_end(arch)
     # Test with checkpoint_at_end=true and NaN-triggered stop - should NOT create checkpoint
     grid3 = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
     model3 = NonhydrostaticModel(grid3)
-    simulation3 = Simulation(model3, Δt=Δt, stop_iteration=5)
+    simulation3 = Simulation(model3; Δt=Δt, stop_iteration=5, verbose=false)
     model3.velocities.u[1, 1, 1] = NaN
 
     @test_logs match_mode=:any (:info, r"NaN found in field") (:info, r"Skipping end-of-run checkpoint") begin
@@ -2012,10 +2111,10 @@ function test_checkpoint_at_end(arch)
     # This exercises nan_detected(::Any) and reset_nan_checker!(::Any).
     grid4 = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
     model4 = NonhydrostaticModel(grid4)
-    simulation4 = Simulation(model4, Δt=Δt, stop_iteration=5)
+    simulation4 = Simulation(model4; Δt=Δt, stop_iteration=5, verbose=false)
     simulation4.callbacks[:nan_checker] = Callback(_ -> nothing, IterationInterval(1))
 
-    @test_nowarn run!(simulation4, checkpoint_at_end=true)
+    @test_logs default_checkpoint_log(expected_filepath) run!(simulation4, checkpoint_at_end=true)
     @test isfile(expected_filepath)
     rm.(glob("checkpoint_iteration*.jld2"), force=true)
 
@@ -2040,12 +2139,14 @@ function test_open_boundary_condition_scheme_checkpointing(arch, timestepper, sc
     Δt = 0.5
 
     function make_simulation(stop_iteration)
-        grid = RectilinearGrid(arch, topology=(Bounded, Bounded, Bounded), size=(Nx, Ny, Nz), extent=(10, 10, 10))
+        grid = RectilinearGrid(arch, topology=(Open, Bounded, Bounded), size=(Nx, Ny, Nz), extent=(10, 10, 10))
         obc = NormalFlowBoundaryCondition(0.1, scheme=scheme)
         u_bcs = FieldBoundaryConditions(west=obc, east=obc)
-        model = NonhydrostaticModel(grid; timestepper, boundary_conditions=(u=u_bcs,), tracers=:c)
+        reservoir = ValueBoundaryCondition(1, scheme=Oceananigans.BoundaryConditions.TracerReservoir(inflow_length_scale=1))
+        c_bcs = FieldBoundaryConditions(west=reservoir, east=reservoir)
+        model = NonhydrostaticModel(grid; timestepper, boundary_conditions=(u=u_bcs, c=c_bcs), tracers=:c)
         set!(model, c=1)
-        return Simulation(model, Δt=Δt, stop_iteration=stop_iteration)
+        return Simulation(model; Δt=Δt, stop_iteration=stop_iteration, verbose=false)
     end
 
     # Run simulation and checkpoint
@@ -2064,7 +2165,7 @@ function test_open_boundary_condition_scheme_checkpointing(arch, timestepper, sc
     restored_simulation.output_writers[:checkpointer] = Checkpointer(restored_simulation.model,
                                                                      schedule=IterationInterval(3),
                                                                      prefix=prefix)
-    @test_nowarn set!(restored_simulation; checkpoint=:latest)
+    @test_logs pickup_log set!(restored_simulation; checkpoint=:latest)
 
     restored_bt = restored_simulation.model.boundary_transport
 
@@ -2077,6 +2178,11 @@ function test_open_boundary_condition_scheme_checkpointing(arch, timestepper, sc
         restored_field = getproperty(restored_bt, field_name)
         @test original_field == restored_field
     end
+
+    @test prognostic_state(restored_simulation.model.velocities.u.boundary_conditions) ==
+          prognostic_state(simulation.model.velocities.u.boundary_conditions)
+    @test prognostic_state(restored_simulation.model.tracers.c.boundary_conditions) ==
+          prognostic_state(simulation.model.tracers.c.boundary_conditions)
 
     # Test that the restored simulation can continue running
     @test_nowarn run!(restored_simulation)
@@ -2109,7 +2215,7 @@ function test_checkpointing_with_file_splitting(arch, WriterType)
 
     grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
     model = NonhydrostaticModel(grid, tracers=:c)
-    simulation = Simulation(model, Δt=1, stop_time=10)
+    simulation = Simulation(model; Δt=1, stop_time=10, verbose=false)
 
     simulation.output_writers[:fields] = WriterType(model, model.tracers;
                                                     filename = "split_ckpt",
@@ -2133,7 +2239,7 @@ function test_checkpointing_with_file_splitting(arch, WriterType)
     # Pickup from checkpoint and continue
     grid2 = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
     model2 = NonhydrostaticModel(grid2, tracers=:c)
-    sim2 = Simulation(model2, Δt=1, stop_time=20)
+    sim2 = Simulation(model2; Δt=1, stop_time=20, verbose=false)
 
     sim2.output_writers[:fields] = WriterType(model2, model2.tracers;
                                               filename = "split_ckpt",
@@ -2149,7 +2255,12 @@ function test_checkpointing_with_file_splitting(arch, WriterType)
                                                         overwrite_files = true,
                                                         cleanup = true)
 
-    run!(sim2, pickup=true)
+    if WriterType == JLD2Writer
+        # Appending to the existing part must not re-write its metadata
+        @test_logs min_level=Logging.Warn run!(sim2, pickup=true)
+    else
+        run!(sim2, pickup=true)
+    end
 
     w2 = sim2.output_writers[:fields]
 
@@ -2192,7 +2303,7 @@ function test_checkpointing_with_moved_parts(arch)
 
     grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
     model = NonhydrostaticModel(grid, tracers=:c)
-    simulation = Simulation(model, Δt=1, stop_time=10)
+    simulation = Simulation(model; Δt=1, stop_time=10, verbose=false)
 
     simulation.output_writers[:fields] = JLD2Writer(model, model.tracers;
                                                      filename = "moved_test",
@@ -2221,7 +2332,7 @@ function test_checkpointing_with_moved_parts(arch)
     # Pickup and continue
     grid2 = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
     model2 = NonhydrostaticModel(grid2, tracers=:c)
-    sim2 = Simulation(model2, Δt=1, stop_time=15)
+    sim2 = Simulation(model2; Δt=1, stop_time=15, verbose=false)
 
     sim2.output_writers[:fields] = JLD2Writer(model2, model2.tracers;
                                                filename = "moved_test",
@@ -2237,8 +2348,8 @@ function test_checkpointing_with_moved_parts(arch)
                                                         overwrite_files = true,
                                                         cleanup = true)
 
-    # Should not error — writer appends to existing part4
-    run!(sim2, pickup=true)
+    # Should not error or warn — writer appends to existing part4
+    @test_logs min_level=Logging.Warn run!(sim2, pickup=true)
 
     w2 = sim2.output_writers[:fields]
     @test w2.part > 4
@@ -2254,7 +2365,6 @@ for arch in archs
     end
 
     @testset "Checkpointer cleanup [$(typeof(arch))]" begin
-        @info "  Testing checkpointer cleanup [$(typeof(arch))]..."
         test_checkpointer_cleanup(arch)
     end
 
@@ -2265,7 +2375,6 @@ for arch in archs
 
         for timestepper in timesteppers
             @testset "Thermal bubble checkpointing [$model_type, $timestepper] [$(typeof(arch))]" begin
-                @info "  Testing thermal bubble checkpointing [$model_type, $timestepper] [$(typeof(arch))]..."
                 test_thermal_bubble_checkpointing(arch, timestepper, model_type)
             end
         end
@@ -2275,7 +2384,6 @@ for arch in archs
 
     for timestepper in (:QuasiAdamsBashforth2, :RungeKutta3)
         @testset "Height perturbation checkpointing shallow water [$(typeof(arch)), $(timestepper)]" begin
-            @info "  Testing height perturbation checkpointing shallow water [$(typeof(arch)), $(timestepper)]..."
             test_height_perturbation_checkpointing_shallow_water(arch, timestepper)
         end
     end
@@ -2284,57 +2392,60 @@ for arch in archs
         free_surface_timestepper = ForwardBackwardScheme()
         fs_ts_name = nameof(typeof(free_surface_timestepper))
         @testset "SplitExplicitFreeSurface checkpointing [$(typeof(arch)), $timestepper, $fs_ts_name]" begin
-            @info "  Testing SplitExplicitFreeSurface checkpointing [$(typeof(arch)), $timestepper, $ForwardBackwardScheme]..."
             test_checkpointing_split_explicit_free_surface(arch, timestepper, free_surface_timestepper)
         end
     end
 
     for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
         @testset "ZStarCoordinate checkpointing [$(typeof(arch)), $timestepper]" begin
-            @info "  Testing ZStarCoordinate checkpointing [$(typeof(arch)), $timestepper]..."
             test_checkpointing_zstar_coordinate(arch, timestepper)
         end
     end
 
     for solver_method in (:PreconditionedConjugateGradient,)
         @testset "ImplicitFreeSurface checkpointing [$(typeof(arch)), $solver_method]" begin
-            @info "  Testing ImplicitFreeSurface checkpointing [$(typeof(arch)), $solver_method]..."
             test_checkpointing_implicit_free_surface(arch, solver_method)
         end
     end
 
     for timestepper in (:QuasiAdamsBashforth2, :RungeKutta3)
         @testset "Lagrangian particles checkpointing [$(typeof(arch)), $timestepper]" begin
-            @info "  Testing Lagrangian particles checkpointing [$(typeof(arch)), $timestepper]..."
             test_checkpointing_lagrangian_particles(arch, timestepper)
         end
     end
 
     for boundary_type in (:GridFittedBottom, :PartialCellBottom)
         @testset "ImmersedBoundaryGrid checkpointing [$(typeof(arch)), $boundary_type]" begin
-            @info "  Testing ImmersedBoundaryGrid checkpointing [$(typeof(arch)), $boundary_type]..."
             test_checkpointing_immersed_boundary_grid(arch, boundary_type)
         end
     end
 
     @testset "LatitudeLongitudeGrid checkpointing [$(typeof(arch))]" begin
-        @info "  Testing LatitudeLongitudeGrid checkpointing [$(typeof(arch))]..."
         test_checkpointing_latitude_longitude_grid(arch)
     end
 
     @testset "Float32 checkpointing [$(typeof(arch))]" begin
-        @info "  Testing Float32 checkpointing [$(typeof(arch))]..."
         test_checkpointing_float32(arch)
     end
 
     @testset "Auxiliary fields checkpointing [$(typeof(arch))]" begin
-        @info "  Testing auxiliary fields checkpointing [$(typeof(arch))]..."
         test_checkpointing_auxiliary_fields(arch)
+    end
+
+    for Model in (NonhydrostaticModel, HydrostaticFreeSurfaceModel)
+        @testset "Stateless auxiliary fields checkpointing [$(nameof(Model))] [$(typeof(arch))]" begin
+            test_checkpointing_stateless_auxiliary_fields(arch, Model)
+        end
+    end
+
+    for Model in (NonhydrostaticModel, HydrostaticFreeSurfaceModel)
+        @testset "Biogeochemistry checkpointing [$(nameof(Model))] [$(typeof(arch))]" begin
+            test_checkpointing_biogeochemistry(arch, Model)
+        end
     end
 
     for FT in (Float64, Float32)
         @testset "Closure fields checkpointing [$(typeof(arch)), $FT]" begin
-            @info "  Testing closure fields checkpointing [$(typeof(arch)), $FT]..."
             test_checkpointing_closure_fields(arch, FT)
         end
 
@@ -2348,7 +2459,6 @@ for arch in archs
         for timestepper in (:QuasiAdamsBashforth2, :RungeKutta3)
             for (closure, name) in smagorinsky_closures
                 @testset "$name closure checkpointing [$(typeof(arch)), $FT, $timestepper]" begin
-                    @info "  Testing $name closure checkpointing [$(typeof(arch)), $FT, $timestepper]..."
                     test_checkpointing_smagorinsky_closure(arch, FT, timestepper, closure, name)
                 end
             end
@@ -2356,23 +2466,22 @@ for arch in archs
 
         for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
             @testset "RiBasedVerticalDiffusivity closure checkpointing [$(typeof(arch)), $FT, $timestepper]" begin
-                @info "  Testing RiBasedVerticalDiffusivity closure checkpointing [$(typeof(arch)), $FT, $timestepper]..."
                 test_checkpointing_ri_based_closure(arch, FT, timestepper)
             end
 
             if timestepper == :SplitRungeKutta3 # currently, CATKE and TKE-ε tests fail with :QuasiAdamsBashforth2
                 @testset "CATKE closure checkpointing [$(typeof(arch)), $FT, $timestepper]" begin
-                    @info "  Testing CATKE closure checkpointing [$(typeof(arch)), $FT, $timestepper]..."
                     test_checkpointing_catke_closure(arch, FT, timestepper, CATKEVerticalDiffusivity(FT))
                     test_checkpointing_catke_closure(arch, FT, timestepper, (CATKEVerticalDiffusivity(FT),))
-                    @info "  Testing CATKE+another closure checkpointing [$(typeof(arch)), $FT, $timestepper]..."
+                end
+
+                @testset "CATKE+another closure checkpointing [$(typeof(arch)), $FT, $timestepper]" begin
                     test_checkpointing_catke_closure(arch, FT, timestepper, (CATKEVerticalDiffusivity(FT), VerticalScalarDiffusivity(FT, κ=1e-5)))
                 end
 
                 # TKEDissipationVerticalDiffusivity does not work with Float32 yet: on GPU, building the model corrupts the CUDA context
                 if FT == Float64
                     @testset "TKEDissipationVerticalDiffusivity closure checkpointing [$(typeof(arch)), $FT, $timestepper]" begin
-                        @info "  Testing TKEDissipationVerticalDiffusivity closure checkpointing [$(typeof(arch)), $FT, $timestepper]..."
                         test_checkpointing_tke_dissipation_closure(arch, FT, timestepper)
                     end
                 end
@@ -2382,68 +2491,60 @@ for arch in archs
 
     for timestepper in (:QuasiAdamsBashforth2, :RungeKutta3)
         @testset "Checkpoint continuation [$(typeof(arch)), $timestepper]" begin
-            @info "  Testing checkpoint continuation consistency [$(typeof(arch)), $timestepper]..."
             test_checkpoint_continuation_matches_direct(arch, timestepper)
         end
     end
 
     for schedule_type in (:SpecifiedTimes, :ConsecutiveIterations, :TimeInterval, :WallTimeInterval)
         @testset "Stateful schedule checkpointing [$schedule_type] [$(typeof(arch))]" begin
-            @info "  Testing stateful schedule checkpointing [$schedule_type] [$(typeof(arch))]..."
             test_stateful_schedule_checkpointing(arch, schedule_type)
         end
     end
 
     @testset "Stateful callback checkpointing [$(typeof(arch))]" begin
-        @info "  Testing stateful callback checkpointing [$(typeof(arch))]..."
         test_stateful_callback_checkpointing(arch)
     end
 
     for WriterType in (JLD2Writer, NetCDFWriter)
         @testset "WindowedTimeAverage checkpointing [$WriterType] [$(typeof(arch))]" begin
-            @info "  Testing WindowedTimeAverage checkpointing [$WriterType] [$(typeof(arch))]..."
             test_windowed_time_average_checkpointing(arch, WriterType)
         end
     end
 
     for WriterType in (JLD2Writer, NetCDFWriter)
         @testset "WindowedTimeAverage continuation correctness [$WriterType] [$(typeof(arch))]" begin
-            @info "  Testing WindowedTimeAverage continuation correctness [$WriterType] [$(typeof(arch))]..."
             test_windowed_time_average_continuation_correctness(arch, WriterType)
         end
     end
 
     @testset "Changed AveragedTimeInterval checkpointing [$(typeof(arch))]" begin
-        @info "  Testing changed AveragedTimeInterval checkpointing [$(typeof(arch))]..."
         test_changed_averaged_time_interval(arch)
     end
 
     @testset "Inconsistent AveragedTimeInterval checkpointing [$(typeof(arch))]" begin
-        @info "  Testing inconsistent AveragedTimeInterval checkpointing [$(typeof(arch))]..."
         test_inconsistent_averaged_time_interval_checkpoint(arch)
     end
 
     schemes = [
         PerturbationAdvection(inflow_timescale=2, outflow_timescale=1),
+        NormalRadiation(),
+        Oceananigans.BoundaryConditions.ObliqueRadiation(),
     ]
 
     for timestepper in (:QuasiAdamsBashforth2, :RungeKutta3), scheme in schemes
         scheme_name = replace(string(typeof(scheme)), "." => "_")
         @testset "NormalFlowBoundaryCondition with $scheme_name checkpointing [$(typeof(arch)), $timestepper]" begin
-            @info "  Testing NormalFlowBoundaryCondition with $scheme_name checkpointing [$(typeof(arch)), $timestepper]..."
             test_open_boundary_condition_scheme_checkpointing(arch, timestepper, scheme)
         end
     end
 
     @testset "Edge cases [$(typeof(arch))]" begin
-        @info "  Testing edge cases [$(typeof(arch))]..."
         test_checkpoint_empty_tracers(arch)
         test_checkpoint_missing_file_warning(arch)
         test_pickup_mode_selection_and_default(arch)
     end
 
     @testset "Manual checkpointing [$(typeof(arch))]" begin
-        @info "  Testing manual checkpointing [$(typeof(arch))]..."
         test_manual_checkpoint_with_checkpointer(arch)
         test_manual_checkpoint_without_checkpointer(arch)
         test_manual_checkpoint_with_filepath(arch)
@@ -2452,13 +2553,11 @@ for arch in archs
 
     for WriterType in (JLD2Writer, NetCDFWriter)
         @testset "Checkpointing with file splitting [$WriterType, $(typeof(arch))]" begin
-            @info "  Testing checkpointing with file splitting [$WriterType, $(typeof(arch))]..."
             test_checkpointing_with_file_splitting(arch, WriterType)
         end
     end
 
     @testset "Checkpointing with moved-away part files [$(typeof(arch))]" begin
-        @info "  Testing checkpointing with moved-away part files [$(typeof(arch))]..."
         test_checkpointing_with_moved_parts(arch)
     end
 end

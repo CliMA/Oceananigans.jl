@@ -10,7 +10,7 @@ const CAVD = ConvectiveAdjustmentVerticalDiffusivity
 @testset "`HydrostaticFreeSurfaceModel` using a `SingleColumnGrid`" begin
 
     Nz = 3
-    Hz = 1
+    Hz = 2
     single_column_topology = (Flat, Flat, Bounded)
     periodic_topology = (Periodic, Periodic, Bounded)
 
@@ -21,8 +21,8 @@ const CAVD = ConvectiveAdjustmentVerticalDiffusivity
 
     Δt = 0.01
 
-    model_kwargs = (; tracers=:c, buoyancy=nothing, closure, coriolis)
-    simulation_kwargs = (; Δt, stop_iteration=100)
+    model_kwargs = (; tracers=:c, momentum_advection=nothing, tracer_advection=nothing, closure, coriolis)
+    simulation_kwargs = (; Δt, stop_iteration=100, verbose=false)
 
     sic_model = HydrostaticFreeSurfaceModel(single_column_grid; model_kwargs...)
     per_model = HydrostaticFreeSurfaceModel(periodic_grid; model_kwargs...)
@@ -40,6 +40,25 @@ const CAVD = ConvectiveAdjustmentVerticalDiffusivity
     @test all(sic_model.velocities.u.data[1, 1, :] .≈ per_model.velocities.u.data[1, 1, :])
     @test all(sic_model.velocities.v.data[1, 1, :] .≈ per_model.velocities.v.data[1, 1, :])
     @test all(sic_model.tracers.c.data[1, 1, :]    .≈ per_model.tracers.c.data[1, 1, :])
+
+    sic_grid = ImmersedBoundaryGrid(single_column_grid, GridFittedBottom(-0.5))
+    per_grid = ImmersedBoundaryGrid(periodic_grid, GridFittedBottom(-0.5))
+
+    sic_model = HydrostaticFreeSurfaceModel(sic_grid; model_kwargs...)
+    per_model = HydrostaticFreeSurfaceModel(per_grid; model_kwargs...)
+
+    set!(sic_model, c = z         -> exp(-z^2), u = 1, v = 1)
+    set!(per_model, c = (x, y, z) -> exp(-z^2), u = 1, v = 1)
+
+    sic_simulation = Simulation(sic_model; simulation_kwargs...)
+    per_simulation = Simulation(per_model; simulation_kwargs...)
+
+    run!(sic_simulation)
+    run!(per_simulation)
+
+    @test all(interior(sic_model.velocities.u, 1, 1, :) .≈ interior(per_model.velocities.u, 1, 1, :))
+    @test all(interior(sic_model.velocities.v, 1, 1, :) .≈ interior(per_model.velocities.v, 1, 1, :))
+    @test all(interior(sic_model.tracers.c, 1, 1, :)    .≈ interior(per_model.tracers.c, 1, 1, :))
 end
 
 @testset "Ensembles of `HydrostaticFreeSurfaceModel` with different closures" begin
@@ -61,7 +80,7 @@ end
     Δt = 0.01 * grid.z.Δᵃᵃᶜ^2
 
     model_kwargs = (; tracers=:c, buoyancy=nothing, coriolis=nothing)
-    simulation_kwargs = (; Δt, stop_iteration=100)
+    simulation_kwargs = (; Δt, stop_iteration=100, verbose=false)
 
     models = [HydrostaticFreeSurfaceModel(grid; closure=closures[i, j], model_kwargs...)
               for i=1:ensemble_size[1], j=1:ensemble_size[2]]
@@ -113,7 +132,7 @@ end
     @test coriolises[2, 2].f == 1.2
 
     model_kwargs = (; tracers=nothing, buoyancy=nothing, closure=nothing)
-    simulation_kwargs = (; Δt, stop_iteration=100)
+    simulation_kwargs = (; Δt, stop_iteration=100, verbose=false)
 
     models = [HydrostaticFreeSurfaceModel(grid; coriolis=coriolises[i, j], model_kwargs...)
               for i=1:ensemble_size[1], j=1:ensemble_size[2]]
@@ -166,7 +185,7 @@ end
     @test coriolises[2].f == 1.1
 
     model_kwargs = (; tracers=nothing, buoyancy=nothing, closure=nothing)
-    simulation_kwargs = (; Δt, stop_iteration=100)
+    simulation_kwargs = (; Δt, stop_iteration=100, verbose=false)
 
     models = [HydrostaticFreeSurfaceModel(grid; coriolis=coriolises[i], model_kwargs...) for i=1:ensemble_size[1]]
 

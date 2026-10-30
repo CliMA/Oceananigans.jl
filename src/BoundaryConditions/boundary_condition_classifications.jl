@@ -128,21 +128,31 @@ abstract type AbstractPivot end
 """
     struct UPivot <: AbstractPivot
 
-The type representing a U-point pivot for Zipper boundary conditions.
+The type representing a U-point pivot for Zipper boundary conditions, pivots at (Face, Center) locations
 
 See [`TripolarGrid`](@ref) for examples.
 """
 struct UPivot <: AbstractPivot end
 
 """
+    struct TPivot <: AbstractPivot
+
+The type representing a T-point pivot for Zipper boundary conditions, pivots at (Center, Center) locations
+
+See [`TripolarGrid`](@ref) for examples.
+"""
+struct TPivot <: AbstractPivot end
+
+"""
     struct FPivot <: AbstractPivot
 
-The type representing a F-point pivot for Zipper boundary conditions.
+The type representing a F-point pivot for Zipper boundary conditions, pivots at (Face, Face) locations
 
 See [`TripolarGrid`](@ref) for examples.
 """
 struct FPivot <: AbstractPivot end
 
+@inline pivot_shift(P) = ifelse(P === TPivot, -1, 0)
 
 """
     Zipper{P} <: AbstractBoundaryConditionClassification
@@ -152,6 +162,7 @@ The points where the zipper starts and ends act as "pivots", and the grid cell l
 is encoded in the type parameter `P`.
 `P` can be set to either:
 - `UPivot`: pivots on (Face, Center)
+- `TPivot`: pivots on (Center, Center)
 - `FPivot`: pivots on (Face, Face)
 
 See [`TripolarGrid`](@ref) for examples.

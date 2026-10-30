@@ -405,7 +405,7 @@ stash_vertical_velocity!(transport_velocities, velocities, free_surface) = updat
 stash_vertical_velocity!(transport_velocities, velocities, ::Union{SplitExplicitFreeSurface, ImplicitFreeSurface}) = nothing
 
 # Only concrete Field types are duplicated (see `copy_velocity` above)
-update_transport_velocity_data!(dst::Field, src::Field) = parent(dst) .= parent(src)
+update_transport_velocity_data!(dst::Field, src::Field) = copyto!(parent(dst), parent(src))
 update_transport_velocity_data!(dst, src) = nothing
 
 validate_velocity_boundary_conditions(grid, velocities) = validate_vertical_velocity_boundary_conditions(velocities.w)
@@ -460,8 +460,10 @@ function prognostic_state(model::HydrostaticFreeSurfaceModel)
             closure_fields = prognostic_state(model.closure_fields),
             timestepper = prognostic_state(model.timestepper),
             free_surface = prognostic_state(model.free_surface),
+            coriolis = prognostic_state(model.coriolis),
             auxiliary_fields = prognostic_state(model.auxiliary_fields),
-            vertical_coordinate = prognostic_state(model.vertical_coordinate, model.grid))
+            vertical_coordinate = prognostic_state(model.vertical_coordinate, model.grid),
+            biogeochemistry = prognostic_state(model.biogeochemistry))
 end
 
 function restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel, from)
@@ -470,10 +472,12 @@ function restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel, from)
     restore_prognostic_state!(restored.velocities, from.velocities)
     restore_prognostic_state!(restored.timestepper, from.timestepper)
     restore_prognostic_state!(restored.free_surface, from.free_surface)
+    restore_prognostic_state!(restored.coriolis, from.coriolis)
     restore_prognostic_state!(restored.tracers, from.tracers)
     restore_prognostic_state!(restored.closure_fields, from.closure_fields)
     restore_prognostic_state!(restored.auxiliary_fields, from.auxiliary_fields)
     restore_prognostic_state!(restored.vertical_coordinate, restored.grid, from.vertical_coordinate)
+    restore_prognostic_state!(restored.biogeochemistry, from.biogeochemistry)
     return restored
 end
 

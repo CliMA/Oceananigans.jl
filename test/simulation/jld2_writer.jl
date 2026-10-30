@@ -1,10 +1,36 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
-using Oceananigans.Fields: FunctionField
+using Oceananigans.Fields: FunctionField, ZeroField, OneField, ConstantField
 
 #####
 ##### JLD2Writer tests
 #####
+
+function test_jld2_constant_field_output(arch)
+    grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
+    model = NonhydrostaticModel(grid)
+    simulation = Simulation(model; Δt=1, stop_iteration=1, verbose=false)
+    outputs = (z = ZeroField(), o = OneField(), c = ConstantField(10))
+
+    dir = mktempdir()
+    filepath = joinpath(dir, "test_constants.jld2")
+    simulation.output_writers[:constants] = JLD2Writer(model, outputs;
+                                                       dir,
+                                                       schedule = TimeInterval(1),
+                                                       filename = "test_constants.jld2",
+                                                       overwrite_files = true)
+    run!(simulation)
+
+    jldopen(filepath) do file
+        @test file["timeseries/z/0"] == 0
+        @test file["timeseries/o/0"] == 1
+        @test file["timeseries/c/0"] == 10
+    end
+
+    rm(dir; recursive=true)
+
+    return nothing
+end
 
 function jld2_sliced_field_output(model, outputs=model.velocities)
 
@@ -15,7 +41,7 @@ function jld2_sliced_field_output(model, outputs=model.velocities)
                 v = (x, y, z) -> rand(),
                 w = (x, y, z) -> rand())
 
-    simulation = Simulation(model, Δt=1, stop_iteration=1)
+    simulation = Simulation(model; Δt=1, stop_iteration=1, verbose=false)
 
     simulation.output_writers[:velocities] = JLD2Writer(model, outputs,
                                                         schedule = TimeInterval(1),
@@ -48,7 +74,7 @@ function test_jld2_size_file_splitting(arch, compress)
     # Random velocities do not compress, so the same threshold splits the output
     # into several parts whether or not the file is compressed
     set!(model; u=(x, y, z) -> 1e-3 * rand())
-    simulation = Simulation(model; Δt=1, stop_iteration=20)
+    simulation = Simulation(model; Δt=1, stop_iteration=20, verbose=false)
 
     function fake_bc_init(file, model)
         file["boundary_conditions/fake"] = π
@@ -70,7 +96,7 @@ function test_jld2_size_file_splitting(arch, compress)
                                                      compress,
                                                      overwrite_files = true)
 
-        run!(simulation)
+        @test_logs min_level=Logging.Warn run!(simulation)
 
         part_filename(n) = joinpath(dir, "test_part$n.jld2")
 
@@ -86,6 +112,7 @@ function test_jld2_size_file_splitting(arch, compress)
             jldopen(part_filename(n), "r") do file
                 # Test to make sure all files contain structs from `including`.
                 @test file["grid/Nx"] == Nx
+                @test file["serialized/grid"] isa RectilinearGrid
 
                 # Test to make sure all files contain info from `init` function.
                 @test file["boundary_conditions/fake"] == π
@@ -99,7 +126,7 @@ end
 function test_jld2_time_file_splitting(arch)
     grid = RectilinearGrid(arch, size=(16, 16, 16), extent=(1, 1, 1), halo=(1, 1, 1))
     model = NonhydrostaticModel(grid; buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
-    simulation = Simulation(model, Δt=1, stop_iteration=10)
+    simulation = Simulation(model; Δt=1, stop_iteration=10, verbose=false)
 
     function fake_bc_init(file, model)
         file["boundary_conditions/fake"] = π
@@ -116,13 +143,14 @@ function test_jld2_time_file_splitting(arch)
                                                  file_splitting = TimeInterval(3seconds),
                                                  overwrite_files = true)
 
-    run!(simulation)
+    @test_logs min_level=Logging.Warn run!(simulation)
 
     for n in string.(1:3)
         filename = "test_part$n.jld2"
         jldopen(filename, "r") do file
             # Test to make sure all files contain structs from `including`.
             @test file["grid/Nx"] == 16
+            @test file["serialized/grid"] isa RectilinearGrid
 
             # Test to make sure all files contain the same number of snapshots.
             dimlength = length(file["timeseries/t"])
@@ -166,17 +194,21 @@ function test_jld2_compression(arch)
     grid = RectilinearGrid(arch, size=(16, 16, 16), extent=(1, 1, 1))
     model = NonhydrostaticModel(grid; tracers=:c)
 
-    file_sizes = Dict{Bool, Int}()
+    compressors = ("none" => false,
+                   "deflate" => true,
+                   "zstd" => ZstdFilter(),
+                   "shuffle-zstd" => [Shuffle(), ZstdFilter(1)])
+    file_sizes = Dict{String, Int}()
 
     mktempdir() do dir
-        for compress in (false, true)
+        for (label, compress) in compressors
             model.clock.iteration = 0
             model.clock.time = 0.0
             set!(model, c=(x, y, z) -> exp(z))
 
-            simulation = Simulation(model, Δt=1, stop_iteration=1)
+            simulation = Simulation(model; Δt=1, stop_iteration=1, verbose=false)
 
-            filename = joinpath(dir, "compression_test_$compress.jld2")
+            filename = joinpath(dir, "compression_test_$label.jld2")
             simulation.output_writers[:tracers] = JLD2Writer(model, model.tracers;
                                                              filename,
                                                              schedule = IterationInterval(1),
@@ -185,14 +217,16 @@ function test_jld2_compression(arch)
 
             run!(simulation)
 
-            file_sizes[compress] = filesize(filename)
+            file_sizes[label] = filesize(filename)
         end
 
-        c_uncompressed = FieldTimeSeries(joinpath(dir, "compression_test_false.jld2"), "c")
-        c_compressed = FieldTimeSeries(joinpath(dir, "compression_test_true.jld2"), "c")
+        c_uncompressed = FieldTimeSeries(joinpath(dir, "compression_test_none.jld2"), "c")
 
-        @test parent(c_compressed) == parent(c_uncompressed)
-        @test file_sizes[true] < file_sizes[false]
+        for label in ("deflate", "zstd", "shuffle-zstd")
+            c_compressed = FieldTimeSeries(joinpath(dir, "compression_test_$label.jld2"), "c")
+            @test parent(c_compressed) == parent(c_uncompressed)
+            @test file_sizes[label] < file_sizes["none"]
+        end
     end
     return nothing
 end
@@ -206,8 +240,9 @@ function test_jld2_compress_keyword_precedence(arch)
                                      schedule = IterationInterval(1),
                                      kwargs...)
 
-    @test writer().jld2_kw[:compress] == true
+    @test writer().jld2_kw[:compress] == [Shuffle(), ZstdFilter(1)]
     @test writer(compress=false).jld2_kw[:compress] == false
+    @test writer(compress=true).jld2_kw[:compress] == true
     @test writer(jld2_kw=Dict{Symbol, Any}(:compress => true)).jld2_kw[:compress] == true
 
     # An explicit :compress entry in jld2_kw takes precedence over the compress keyword
@@ -237,7 +272,7 @@ function test_jld2_time_averaging_of_horizontal_averages(model)
     T .= 4
 
     Δt = 0.1
-    simulation = Simulation(model, Δt=Δt, stop_iteration=5)
+    simulation = Simulation(model; Δt=Δt, stop_iteration=5, verbose=false)
 
     average_fluxes = (wu = Field(Average(w * u, dims=(1, 2))),
                       uv = Field(Average(u * v, dims=(1, 2))),
@@ -307,7 +342,7 @@ function test_jld2_time_averaging(arch)
             set!(model, c1=1, c2=1)
 
             Δt = 0.01 # Floating point number chosen conservatively to flag rounding errors
-            simulation = Simulation(model, Δt=Δt, stop_time=50Δt)
+            simulation = Simulation(model; Δt=Δt, stop_time=50Δt, verbose=false)
 
             ∫c1_dxdy = Field(Average(model.tracers.c1, dims=(1, 2)))
             ∫c2_dxdy = Field(Average(model.tracers.c2, dims=(1, 2)))
@@ -423,7 +458,7 @@ for arch in archs
                     v = (x, y, z) -> rand(),
                     w = (x, y, z) -> rand())
 
-        simulation = Simulation(model, Δt=1.0, stop_iteration=1)
+        simulation = Simulation(model; Δt=1.0, stop_iteration=1, verbose=false)
 
         # Flavors of output: functions, AbstractOperations, FunctionFields
         clock = model.clock
@@ -569,7 +604,7 @@ for arch in archs
         grid = RectilinearGrid(arch, size=(4, 4, 4), x=(0, 1), y=(0, 1), z=(0, 1))
         free_surface = SplitExplicitFreeSurface(substeps=10)
         model = HydrostaticFreeSurfaceModel(grid; free_surface)
-        simulation = Simulation(model, Δt=1, stop_iteration=2)
+        simulation = Simulation(model; Δt=1, stop_iteration=2, verbose=false)
         filename = "test_free_surface_output.jld2"
         ow = JLD2Writer(model, (; η=model.free_surface.displacement); filename,
                         schedule = IterationInterval(1),
@@ -579,5 +614,7 @@ for arch in archs
         run!(simulation)
         ηt = FieldTimeSeries(filename, "η")
         @test size(parent(ηt[1])) == (4, 4, 1)
+
+        test_jld2_constant_field_output(arch)
     end
 end

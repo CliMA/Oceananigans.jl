@@ -6,7 +6,8 @@ export
     inject_halo_communication_boundary_conditions,
     DistributedFFTBasedPoissonSolver, TransposableField, mpi_initialized, mpi_rank,
     mpi_size, global_barrier, global_communicator, sanitize_environ!,
-    @root, @onrank, @distribute, @handshake
+    @root, @onrank, @distribute, @handshake,
+    SimplifiedGeneralizedBlockDistribution, create_cost_map, create_balanced_partition
 
 using MPI
 
@@ -14,7 +15,7 @@ using Oceananigans
 using Oceananigans.Utils
 using Oceananigans.Grids
 using OffsetArrays
-using Oceananigans.Grids: XYZRegularRG
+using Oceananigans.Grids: BoundaryTopology, XYZRegularRG
 using Oceananigans.Solvers: GridWithFourierTridiagonalSolver
 
 import Oceananigans.Solvers: fft_poisson_solver
@@ -28,8 +29,11 @@ include("distributed_grids.jl")
 include("distributed_immersed_boundaries.jl")
 include("distributed_on_architecture.jl")
 include("distributed_kernel_launching.jl")
+include("events.jl")
 include("halo_communication_bcs.jl")
+include("communication_state.jl")
 include("communication_buffers.jl")
+include("progress_worker.jl")
 include("distributed_fields.jl")
 include("halo_communication.jl")
 include("transposable_field.jl")
@@ -37,6 +41,7 @@ include("distributed_transpose.jl")
 include("plan_distributed_transforms.jl")
 include("distributed_fft_based_poisson_solver.jl")
 include("distributed_fft_tridiagonal_solver.jl")
+include("load_balancing.jl")
 
 function NCCLDistributed end
 
