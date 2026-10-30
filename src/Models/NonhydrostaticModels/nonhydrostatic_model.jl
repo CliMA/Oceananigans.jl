@@ -11,7 +11,8 @@ using Oceananigans.Grids: topology, inflate_halo_size, with_halo, architecture, 
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models: AbstractModel, extract_boundary_conditions, materialize_free_surface, validate_tracer_advection, materialize_tracers, timestepper_name
 using Oceananigans.Solvers: FFTBasedPoissonSolver
-using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!, materialize_clock!, AbstractLagrangianParticles, time_discretization
+using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!, materialize_clock!, AbstractLagrangianParticles, time_discretization,
+                                 materialize_lagrangian_particles
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_closure_fields, implicit_diffusion_solver, VerticallyImplicitTimeDiscretization, initialize_closure_fields!
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE
 using Oceananigans.Utils: tupleit
@@ -346,6 +347,7 @@ function build_nonhydrostatic_model(grid, ::Val{tracer_names}, timestepper,
     advecting_vertical_velocity = needs_implicit_solver(advection) ? ZFaceField(grid) : nothing
 
     timestepper = TimeStepper(timestepper, grid, prognostic_fields; implicit_solver)
+    particles = materialize_lagrangian_particles(particles, timestepper)
 
     # Materialize forcing for model tracer and velocity fields.
     forcing = model_forcing(forcing, model_fields, prognostic_fields)
