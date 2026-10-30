@@ -169,10 +169,10 @@ end
             fᵏ = get_coefficient(i, j, k, grid, f, p, tridiagonal_direction, args...)
 
             # If the problem is not diagonally-dominant such that `β ≈ 0`,
-            # the algorithm is unstable and we elide the forward pass update of ϕ.
+            # the algorithm is unstable and we store the right-hand side instead.
             definitely_diagonally_dominant = abs(β) > 10 * eps(float_eltype(ϕ))
             ϕ★ = (fᵏ - aᵏ⁻¹ * ϕ[i-1, j, k]) / β
-            definitely_diagonally_dominant && (ϕ[i, j, k] = ϕ★)
+            ϕ[i, j, k] = ifelse(definitely_diagonally_dominant, ϕ★, fᵏ)
         end
 
         for i = Nx-1:-1:1
@@ -204,10 +204,10 @@ end
             fᵏ = get_coefficient(i, j, k, grid, f, p, tridiagonal_direction, args...)
 
             # If the problem is not diagonally-dominant such that `β ≈ 0`,
-            # the algorithm is unstable and we elide the forward pass update of ϕ.
+            # the algorithm is unstable and we store the right-hand side instead.
             definitely_diagonally_dominant = abs(β) > 10 * eps(float_eltype(ϕ))
             ϕ★ = (fᵏ - aᵏ⁻¹ * ϕ[i, j-1, k]) / β
-            definitely_diagonally_dominant && (ϕ[i, j, k] = ϕ★)
+            ϕ[i, j, k] = ifelse(definitely_diagonally_dominant, ϕ★, fᵏ)
         end
 
         for j = Ny-1:-1:1
@@ -238,10 +238,10 @@ end
             fᵏ = get_coefficient(i, j, k, grid, f, p, tridiagonal_direction, args...)
 
             # If the problem is not diagonally-dominant such that `β ≈ 0`,
-            # the algorithm is unstable and we elide the forward pass update of `ϕ`.
+            # the algorithm is unstable and we store the right-hand side instead.
             definitely_diagonally_dominant = abs(β) > 10 * eps(float_eltype(ϕ))
             ϕ★ = (fᵏ - masked_multiply(aᵏ⁻¹, ϕ[i, j, k-1])) / β
-            definitely_diagonally_dominant && (ϕ[i, j, k] = ϕ★)
+            ϕ[i, j, k] = ifelse(definitely_diagonally_dominant, ϕ★, fᵏ)
         end
 
         for k = Nz-1:-1:1
