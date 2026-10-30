@@ -362,23 +362,39 @@ the phase velocity parallel to ``\boldsymbol{\nabla} \phi``, which gives
     c_n = - \frac{\partial_t \phi \, \partial_n \phi}{(\partial_n \phi)^2 + (\partial_s \phi)^2} \, , \qquad
     c_s = - \frac{\partial_t \phi \, \partial_s \phi}{(\partial_n \phi)^2 + (\partial_s \phi)^2} \, .
 ```
-The Courant numbers are diagnosed at the first interior point from the differences
-``\delta_t \phi = \phi_1^{n+1} - \phi_1^n`` and ``\delta_n \phi = \phi_1^{n+1} - \phi_2^{n+1}``, and from a
+The coefficients are diagnosed at the first interior point from the differences
+``\delta_t \phi = \phi_1^n - \phi_1^{n+1}`` and ``\delta_n \phi = \phi_1^{n+1} - \phi_2^{n+1}``, and from a
 tangential difference ``\delta_s \phi`` of ``\phi_1`` that is upwinded with respect to the sign of ``c_s``,
 ```math
-    C_n = - \frac{\delta_t \phi \, \delta_n \phi}{(\delta_n \phi)^2 + (\delta_s \phi)^2} \, , \qquad
-    C_s = - \frac{\delta_t \phi \, \delta_s \phi}{(\delta_n \phi)^2 + (\delta_s \phi)^2} \, .
+    r_n = \min \left ( \delta_t \phi \, \delta_n \phi, c \right ) \, , \qquad
+    r_s = \mathrm{clamp} \left ( \delta_t \phi \, \delta_s \phi, -c, c \right ) \, , \qquad
+    c = \max \left ( (\delta_n \phi)^2 + (\delta_s \phi)^2, \epsilon \right ) \, ,
 ```
-On outflow ``C_n`` is bounded as in normal radiation and ``C_s`` is bounded to ``[-1, 1]``. On inflow both
-are zero. The tangential term is discretized explicitly with upwind differences of the boundary values,
+so that ``c_n = r_n / c`` and ``c_s = r_s / c``. A phase velocity that points into the domain
+(``\delta_t \phi \, \delta_n \phi < 0``) is set to zero: the scheme only radiates waves out. Unlike normal
+radiation, inflow and outflow are therefore distinguished by the direction of the phase velocity rather than
+by the boundary-normal velocity. The coefficients ``r_n``, ``r_s`` and ``c`` are averaged in time,
 ```math
-    \phi^{b, n+1} = \frac{\phi^{b, n} + C_n \phi_1^{n+1} - \max(C_s, 0) \, \delta_s^- \phi^b - \min(C_s, 0) \, \delta_s^+ \phi^b + \tilde{\tau} \phi^{\mathrm{ext}}}{1 + C_n + \tilde{\tau}} \, ,
+    \bar r = (1 - w) \bar r^{\,n} + w \, r \, , \qquad w = \text{\texttt{phase\_speed\_weight}} \, ,
 ```
-where ``\delta_s^-`` and ``\delta_s^+`` are backward and forward differences along the boundary. All
-tangential differences use the values of the previous time step and are zero at the ends of the boundary.
-Where ``\delta_s \phi = 0`` the scheme reduces to \eqref{eq:normal_radiation_update}. The tangential term
-is applied on lateral boundaries only, so top and bottom boundaries use normal radiation. The treatment of
-inflow and outflow, the advecting velocity, and the stored values are the same as in normal radiation.
+where ``\bar r^{\,n}`` is the average at the start of the time step, so every stage of a multi-stage time
+stepper averages from the same value. The average is the only state that outlives a time step, and is
+checkpointed. The boundary value is advanced with the averaged coefficients and the upwind differences
+``\delta_s^-`` and ``\delta_s^+`` of the boundary values at the start of the stage, and is then nudged toward
+the exterior value,
+```math
+    \phi^{r} = \frac{\bar c \, \phi^{b, n} + \bar r_n \phi_1^{n+1} - \max(\bar r_s, 0) \, \delta_s^- \phi^b - \min(\bar r_s, 0) \, \delta_s^+ \phi^b}{\bar c + \bar r_n} \, , \qquad
+    \phi^{b, n+1} = \left ( 1 - \frac{\Delta t}{\tau + \Delta t} \right ) \phi^{r} + \frac{\Delta t}{\tau + \Delta t} \phi^{\mathrm{ext}} \, ,
+```
+with ``\tau`` equal to `outflow_timescale` where the phase velocity points out of the domain and to
+`inflow_timescale` otherwise, and ``\phi^{b, n+1} = \phi^{\mathrm{ext}}`` where ``\tau = 0``. The tangential
+differences are zero at the ends of the boundary, and wrap around to the other end of a periodic boundary. The
+tangential term is applied on lateral boundaries only.
+
+The velocity component tangential to a lateral boundary radiates with the coefficients of the boundary-normal
+velocity at the two normal-velocity points adjacent to it, averaged, and is nudged with `inflow_timescale`
+only while the averaged normal coefficient ``\bar r_n`` is zero. With `phase_speed_weight = 1` it uses its own
+phase velocity, like any other field.
 
 ### Tracer reservoir
 
