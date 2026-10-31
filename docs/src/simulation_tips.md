@@ -53,6 +53,21 @@ certainty_, since Julia and KernelAbstractions.jl (needed for GPU runs) already 
 functions automatically. However, it is generally a good idea to at least investigate this aspect in
 your code as the benefits can potentially be significant.
 
+### Use `fma` in the advection kernels for results that do not depend on the rank layout
+
+The advection kernels use `muladd`, which leaves it to the compiler whether to fuse a multiplication and an addition.
+On the CPU, kernels compiled for different grid types, such as the grid of a single rank and the grid of a rank in a
+distributed run, can then differ in the last bit. The `fused_multiply_add` preference replaces `muladd` in the advection
+kernels by `fma`, which always fuses:
+
+```julia
+using Oceananigans, Preferences
+
+set_preferences!(Oceananigans, "fused_multiply_add" => "fma")
+```
+
+The accepted values are `"muladd"` (the default) and `"fma"`. Oceananigans is recompiled the next time Julia starts.
+
 ## GPU simulation tips
 
 Running on GPUs can be very different from running on CPUs. Oceananigans makes most of the necessary
