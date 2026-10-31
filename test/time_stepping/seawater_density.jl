@@ -164,6 +164,22 @@ end
         end
     end
 
+    @testset "Windowed seawater density inputs" begin
+        grid = RectilinearGrid(CPU(), size=(3, 3, 4), extent=(1, 1, 1))
+        buoyancy = SeawaterBuoyancy(Float64; equation_of_state=TEOS10_eos)
+        model = NonhydrostaticModel(grid; buoyancy, tracers)
+        temperature = CenterField(grid; indices=(:, :, 2:3))
+        salinity = CenterField(grid)
+        set!(temperature, ST_testvals.T)
+        set!(salinity, ST_testvals.S)
+
+        density = seawater_density(model; temperature, salinity, geopotential_height=0)
+        @test Oceananigans.Fields.indices(density) == (:, :, 2:3)
+        density_field = compute!(Field(density))
+        @test size(interior(density_field)) == (3, 3, 2)
+        @test all(interior(density_field) .≈ ρ(ST_testvals.T, ST_testvals.S, 0, TEOS10_eos))
+    end
+
     @testset "Potential density computation tests" begin
         @info "Testing a potential density comnputation..."
 
