@@ -7,7 +7,7 @@ export
     DistributedFFTBasedPoissonSolver, TransposableField, mpi_initialized, mpi_rank,
     mpi_size, global_barrier, global_communicator, sanitize_environ!,
     @root, @onrank, @distribute, @handshake,
-    SimplifiedGeneralizedBlockDistribution, create_cost_map, create_balanced_partition
+    SimplifiedGeneralizedBlockDistribution, JaggedBlockDistribution, create_cost_map, create_balanced_partition
 
 using MPI
 
@@ -32,6 +32,7 @@ include("distributed_kernel_launching.jl")
 include("events.jl")
 include("halo_communication_bcs.jl")
 include("communication_state.jl")
+include("halo_overlaps.jl")
 include("communication_buffers.jl")
 include("progress_worker.jl")
 include("distributed_fields.jl")

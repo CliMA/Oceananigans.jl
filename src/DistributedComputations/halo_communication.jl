@@ -5,41 +5,13 @@ using Oceananigans.Fields: instantiated_location
 using Oceananigans.BoundaryConditions
 using Oceananigans.BoundaryConditions:
     DistributedFillHalo,
-    get_boundary_kernels
+    get_boundary_kernels,
+    extract_bc
 
 import Oceananigans.BoundaryConditions: fill_halo_event!, fill_halo_regions!
 
-#####
-##### MPI tags for halo communication BCs
-#####
-
-const sides = (:west, :east, :south, :north, :southwest, :southeast, :northwest, :northeast)
-const side_id = Dict(side => n-1 for (n, side) in enumerate(sides))
-
-const opposite_side = Dict(
-    :west => :east,
-    :east => :west,
-    :south => :north,
-    :north => :south,
-    :southwest => :northeast,
-    :southeast => :northwest,
-    :northwest => :southeast,
-    :northeast => :southwest,
-)
-
-# Each field gets `halo_tag_slots` consecutive MPI tags: one per side (0-7) and three for the tripolar fold (8-10)
-const halo_tag_slots = 11
-
-for side in sides
-    send_tag_fn_name = Symbol("$(side)_send_tag")
-    recv_tag_fn_name = Symbol("$(side)_recv_tag")
-    send_slot = side_id[side]
-    recv_slot = side_id[opposite_side[side]]
-    @eval begin
-        $send_tag_fn_name(arch, grid, field_tag) = Int(halo_tag_slots * field_tag + $send_slot)
-        $recv_tag_fn_name(arch, grid, field_tag) = Int(halo_tag_slots * field_tag + $recv_slot)
-    end
-end
+# Each field gets `halo_tag_slots` consecutive MPI tags, one per message exchanged with a given rank
+const halo_tag_slots = 32
 
 #####
 ##### Filling halos for halo communication boundary conditions
@@ -75,7 +47,6 @@ function distributed_fill_halo_regions!(arch, c, boundary_conditions, indices, l
 
     kernels!, bcs = get_boundary_kernels(boundary_conditions, c, grid, loc, indices)
     distributed_fill_halo_events!(c, values(kernels!), values(bcs), loc, arch, grid, buffers, args; only_local_halos, kwargs...)
-    fill_corners!(c, arch.connectivity, arch, grid, buffers; only_local_halos, kwargs...)
     return nothing
 end
 
@@ -86,54 +57,6 @@ end
     distributed_fill_halo_events!(c, Base.tail(kernels!), Base.tail(bcs), loc, arch, grid, buffers, args; kwargs...)
     return nothing
 end
-
-
-# corner passing routine
-function fill_corners!(c, connectivity, arch, grid, buffers; async=false, only_local_halos=false, kw...)
-
-    # No corner filling needed!
-    only_local_halos && return nothing
-
-    # Skip corners entirely if no corner neighbors exist (avoids unnecessary sync_device!)
-    isnothing(connectivity.southwest) && isnothing(connectivity.southeast) &&
-    isnothing(connectivity.northwest) && isnothing(connectivity.northeast) && return nothing
-
-    fill_send_buffers!(c, buffers, grid, Val(:corners))
-
-    if async && (arch isa AsynchronousDistributed)
-        async_corner_halo_comms(connectivity, arch, grid, buffers)
-    else
-        sync_corner_halo_comms(c, connectivity, arch, grid, buffers)
-    end
-
-    return nothing
-end
-
-function sync_corner_halo_comms(c, connectivity, arch, grid, buffers)
-    sync_device!(arch)
-    post_corner_messages!(connectivity, arch, grid, posted_by_main_thread(buffers))
-    wait_for_messages!(buffers)
-    recv_from_buffers!(c, buffers, grid, Val(:corners))
-    return nothing
-end
-
-function async_corner_halo_comms(connectivity, arch, grid, buffers)
-    record_event!(buffers.state.pack_event, arch)
-    post_corner_messages!(connectivity, arch, grid, buffers)
-    return nothing
-end
-
-function post_corner_messages!(connectivity, arch, grid, buffers)
-    fill_southwest_halo!(connectivity.southwest, arch, grid, buffers, buffers.southwest)
-    fill_southeast_halo!(connectivity.southeast, arch, grid, buffers, buffers.southeast)
-    fill_northwest_halo!(connectivity.northwest, arch, grid, buffers, buffers.northwest)
-    fill_northeast_halo!(connectivity.northeast, arch, grid, buffers, buffers.northeast)
-    return nothing
-end
-
-waitall_requests!(requests::Tuple) = foreach(waitall_requests!, requests)
-waitall_requests!(::Nothing) = nothing
-waitall_requests!(requests::MPI.UnsafeMultiRequest) = MPI.Waitall(requests)
 
 # Fallback: for serial boundary conditions fall back to `fill_halo_event!` but prune out the additional `buffers`
 # argument used only for distributed halo-filling boundary conditions
@@ -147,146 +70,32 @@ function distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, loc,
 
     only_local_halos && return nothing # No need to do anything here
 
-    buffer_side = kernel!.side
+    # The buffers of the sides of this fill, picked like their boundary conditions
+    sides = extract_bc(buffers, kernel!.side)
 
-    fill_send_buffers!(c, buffers, grid, buffer_side)
+    fill_send_buffers!(c, sides)
     record_event!(buffers.state.pack_event, arch)
 
     if async && (arch isa AsynchronousDistributed)
-        kernel!(bcs..., grid, arch, buffers)
+        post_messages!(arch, buffers.state, sides)
     else
         # The main thread waits for these messages anyway
-        kernel!(bcs..., grid, arch, posted_by_main_thread(buffers))
+        post_messages!(arch, posted_by_main_thread(buffers.state), sides)
         wait_for_messages!(buffers)
-        recv_from_buffers!(c, buffers, grid, buffer_side)
+        recv_from_buffers!(c, sides)
     end
 
     return nothing
 end
 
-#####
-##### fill_$corner_halo! where corner = [:southwest, :southeast, :northwest, :northeast]
-#####
-
-for side in [:southwest, :southeast, :northwest, :northeast]
-    fill_corner_halo! = Symbol("fill_$(side)_halo!")
-    send_side_halo  = Symbol("send_$(side)_halo")
-    recv_side_halo! = Symbol("recv_$(side)_halo!")
-
-    @eval begin
-        $fill_corner_halo!(corner, arch, grid, buffers, ::Nothing) = nothing
-
-        function $fill_corner_halo!(corner, arch, grid, buffers, _)
-            local_rank = arch.local_rank
-
-            $recv_side_halo!(grid, arch, local_rank, corner, buffers)
-            $send_side_halo(grid, arch, local_rank, corner, buffers)
-
-            return nothing
+function post_messages!(arch, state, sides)
+    for side in sides
+        for buffer in side.recv
+            irecv!(state, buffer.data, buffer.rank, buffer.tag, arch.communicator, buffer.requests)
+        end
+        for buffer in side.send
+            isend!(state, buffer.data, buffer.rank, buffer.tag, arch.communicator, buffer.requests)
         end
     end
-end
-
-#####
-##### Double-sided Distributed fill_halo!s
-#####
-
-function (::DistributedFillHalo{<:WestAndEast})(west_bc, east_bc, grid, arch, buffers)
-    @assert west_bc.condition.from == east_bc.condition.from  # Extra protection in case of bugs
-    local_rank = west_bc.condition.from
-
-    recv_west_halo!(grid, arch, local_rank, west_bc.condition.to, buffers)
-    recv_east_halo!(grid, arch, local_rank, east_bc.condition.to, buffers)
-
-    send_west_halo(grid, arch, local_rank, west_bc.condition.to, buffers)
-    send_east_halo(grid, arch, local_rank, east_bc.condition.to, buffers)
-
     return nothing
-end
-
-function (::DistributedFillHalo{<:SouthAndNorth})(south_bc, north_bc, grid, arch, buffers)
-    @assert south_bc.condition.from == north_bc.condition.from  # Extra protection in case of bugs
-    local_rank = south_bc.condition.from
-
-    recv_south_halo!(grid, arch, local_rank, south_bc.condition.to, buffers)
-    recv_north_halo!(grid, arch, local_rank, north_bc.condition.to, buffers)
-
-    send_south_halo(grid, arch, local_rank, south_bc.condition.to, buffers)
-    send_north_halo(grid, arch, local_rank, north_bc.condition.to, buffers)
-
-    return nothing
-end
-
-#####
-##### Single-sided Distributed fill_halo!s
-#####
-
-function (::DistributedFillHalo{<:West})(bc, grid, arch, buffers)
-    local_rank = bc.condition.from
-    recv_west_halo!(grid, arch, local_rank, bc.condition.to, buffers)
-    send_west_halo(grid, arch, local_rank, bc.condition.to, buffers)
-    return nothing
-end
-
-function (::DistributedFillHalo{<:East})(bc, grid, arch, buffers)
-    local_rank = bc.condition.from
-    recv_east_halo!(grid, arch, local_rank, bc.condition.to, buffers)
-    send_east_halo(grid, arch, local_rank, bc.condition.to, buffers)
-    return nothing
-end
-
-function (::DistributedFillHalo{<:South})(bc, grid, arch, buffers)
-    local_rank = bc.condition.from
-    recv_south_halo!(grid, arch, local_rank, bc.condition.to, buffers)
-    send_south_halo(grid, arch, local_rank, bc.condition.to, buffers)
-    return nothing
-end
-
-function (::DistributedFillHalo{<:North})(bc, grid, arch, buffers)
-    local_rank = bc.condition.from
-    recv_north_halo!(grid, arch, local_rank, bc.condition.to, buffers)
-    send_north_halo(grid, arch, local_rank, bc.condition.to, buffers)
-    return nothing
-end
-
-#####
-##### No communication in the vertical direction
-#####
-
-(::DistributedFillHalo{<:BottomAndTop})(args...) = nothing
-(::DistributedFillHalo{<:Bottom})(args...) = nothing
-(::DistributedFillHalo{<:Top})(args...) = nothing
-
-#####
-##### Sending and receiving halos
-#####
-
-for side in sides
-    side_str = string(side)
-    send_side_halo = Symbol("send_$(side)_halo")
-    recv_side_halo! = Symbol("recv_$(side)_halo!")
-    side_send_tag = Symbol("$(side)_send_tag")
-    side_recv_tag = Symbol("$(side)_recv_tag")
-
-    @eval begin
-        function $send_side_halo(grid, arch, local_rank, rank_to_send_to, buffers)
-            send_buffer = buffers.$side.send
-            send_tag = $side_send_tag(arch, grid, buffers.state.tag)
-
-            @debug "Sending " * $side_str * " halo: local_rank=$local_rank, rank_to_send_to=$rank_to_send_to, send_tag=$send_tag"
-            isend!(buffers.state, send_buffer, rank_to_send_to, send_tag, arch.communicator, buffers.state.requests.$side)
-
-            return nothing
-        end
-
-        function $recv_side_halo!(grid, arch, local_rank, rank_to_recv_from, buffers)
-            recv_buffer = buffers.$side.recv
-            recv_tag = $side_recv_tag(arch, grid, buffers.state.tag)
-
-            @debug "Receiving " * $side_str * " halo: local_rank=$local_rank, rank_to_recv_from=$rank_to_recv_from, recv_tag=$recv_tag"
-            irecv!(buffers.state, recv_buffer, rank_to_recv_from, recv_tag, arch.communicator, buffers.state.requests.$side)
-
-            return nothing
-        end
-    end
 end

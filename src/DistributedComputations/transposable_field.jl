@@ -171,8 +171,8 @@ function twin_grid(grid::DistributedGrid; local_direction = :y)
     new_arch  = Distributed(child_arch; partition = Partition(ranks...), field_count = arch.field_count)
     global_sz = global_size(new_arch, (nnx, nny, nnz))
     global_sz = deflate_tuple(TX, TY, TZ, global_sz)
-    global_hl = halo_size(grid)
-    global_hl = deflate_tuple(TX, TY, TZ, global_hl)
+    # Transposed fields hold interior cells only, so the twin grid takes the smallest halo
+    global_hl = deflate_tuple(TX, TY, TZ, (1, 1, 1))
 
     return construct_grid(grid, new_arch, FT;
                           size = global_sz,

@@ -1,49 +1,24 @@
 using Oceananigans.BoundaryConditions:
     DistributedCommunicationBoundaryCondition,
-    FieldBoundaryConditions
+    FieldBoundaryConditions,
+    DCBC,
+    ZBC
 
-struct HaloCommunicationRanks{F, T}
-    from :: F
-      to :: T
-end
+# The sign of the fold, held by the zipper and by the halo communication that replaces it
+zipper_sign(bc::Union{ZBC, DCBC}) = bc.condition
+zipper_sign(bc) = nothing
 
-HaloCommunicationRanks(; from, to) = HaloCommunicationRanks(from, to)
+inject_halo_communication_boundary_conditions(::Nothing, loc, local_rank, connectivity) = nothing
+inject_halo_communication_boundary_conditions(::Missing, loc, local_rank, connectivity) = missing
 
-Base.summary(hcr::HaloCommunicationRanks) = "HaloCommunicationRanks from rank $(hcr.from) to rank $(hcr.to)"
+function inject_halo_communication_boundary_conditions(field_bcs, loc, local_rank, connectivity)
+    communicating = communicating_sides(connectivity, local_rank, loc)
+    communication = DistributedCommunicationBoundaryCondition(nothing)
 
-function inject_halo_communication_boundary_conditions(field_bcs, loc, local_rank, connectivity, topology)
-    rank_east   = connectivity.east
-    rank_west   = connectivity.west
-    rank_north  = connectivity.north
-    rank_south  = connectivity.south
+    west  = communicating.west  ? communication : field_bcs.west
+    east  = communicating.east  ? communication : field_bcs.east
+    south = communicating.south ? communication : field_bcs.south
+    north = communicating.north ? DistributedCommunicationBoundaryCondition(zipper_sign(field_bcs.north)) : field_bcs.north
 
-    east_comm_ranks  = HaloCommunicationRanks(from=local_rank, to=rank_east)
-    west_comm_ranks  = HaloCommunicationRanks(from=local_rank, to=rank_west)
-    north_comm_ranks = HaloCommunicationRanks(from=local_rank, to=rank_north)
-    south_comm_ranks = HaloCommunicationRanks(from=local_rank, to=rank_south)
-
-    east_comm_bc  = DistributedCommunicationBoundaryCondition(east_comm_ranks)
-    west_comm_bc  = DistributedCommunicationBoundaryCondition(west_comm_ranks)
-    north_comm_bc = DistributedCommunicationBoundaryCondition(north_comm_ranks)
-    south_comm_bc = DistributedCommunicationBoundaryCondition(south_comm_ranks)
-
-    TX, TY, _ = topology
-
-    # `rank == nothing`indicates no partitioning in that specific direction.
-    # Communication is required only if the direction is "connected"
-    inject_west  = !isnothing(rank_west)  && (TX <: TwoSided{<:CommunicatingSide})         && !isnothing(loc[1])
-    inject_east  = !isnothing(rank_east)  && (TX <: TwoSided{<:Any, <:CommunicatingSide}) && !isnothing(loc[1])
-    inject_south = !isnothing(rank_south) && (TY <: TwoSided{<:CommunicatingSide})         && !isnothing(loc[2])
-    inject_north = !isnothing(rank_north) && (TY <: TwoSided{<:Any, <:CommunicatingSide}) && !isnothing(loc[2])
-
-    west  = inject_west  ? west_comm_bc  : field_bcs.west
-    east  = inject_east  ? east_comm_bc  : field_bcs.east
-    south = inject_south ? south_comm_bc : field_bcs.south
-    north = inject_north ? north_comm_bc : field_bcs.north
-
-    bottom   = field_bcs.bottom
-    top      = field_bcs.top
-    immersed = field_bcs.immersed
-
-    return FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
+    return FieldBoundaryConditions(west, east, south, north, field_bcs.bottom, field_bcs.top, field_bcs.immersed)
 end
