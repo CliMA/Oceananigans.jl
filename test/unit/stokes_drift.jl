@@ -54,4 +54,147 @@ end
             @test location(stokes_drift.∂t_vˢ) === (Nothing, Nothing, Center)
         end
     end
+
+    @testset "FieldStokesDrift" begin
+        for arch in archs
+            grid = RectilinearGrid(arch; size=(4, 4, 8), halo=(3, 3, 3),
+                                   x=(0, 4), y=(0, 4), z=(-1, 0),
+                                   topology=(Periodic, Periodic, Bounded))
+
+            sd = FieldStokesDrift(grid)
+            uˢ, vˢ, wˢ = sd.uˢ, sd.vˢ, sd.wˢ
+            ∂t_uˢ, ∂t_vˢ, ∂t_wˢ = sd.∂t_uˢ, sd.∂t_vˢ, sd.∂t_wˢ
+
+            # All six slots are Fields with the expected staggered locations.
+            @test Oceananigans.Fields.location(uˢ)    == (Face,   Center, Center)
+            @test Oceananigans.Fields.location(vˢ)    == (Center, Face,   Center)
+            @test Oceananigans.Fields.location(wˢ)    == (Center, Center, Face  )
+            @test Oceananigans.Fields.location(∂t_uˢ) == (Face,   Center, Center)
+            @test Oceananigans.Fields.location(∂t_vˢ) == (Center, Face,   Center)
+            @test Oceananigans.Fields.location(∂t_wˢ) == (Center, Center, Face  )
+
+            # Per-slot kwarg overrides: pass a Field, the rest still default.
+            my_uˢ = Field{Face, Center, Center}(grid)
+            sd_override = FieldStokesDrift(grid; uˢ=my_uˢ)
+            @test sd_override.uˢ === my_uˢ
+            @test sd_override.vˢ isa Field
+
+            # Zero state → zero contributions.
+            @test Oceananigans.StokesDrifts.∂t_uˢ(2, 2, 2, grid, sd, 0.0) == 0
+            @test Oceananigans.StokesDrifts.∂t_vˢ(2, 2, 2, grid, sd, 0.0) == 0
+            @test Oceananigans.StokesDrifts.∂t_wˢ(2, 2, 2, grid, sd, 0.0) == 0
+
+            fake_U = (u=Field{Face,   Center, Center}(grid),
+                      v=Field{Center, Face,   Center}(grid),
+                      w=Field{Center, Center, Face  }(grid))
+            @test Oceananigans.StokesDrifts.x_curl_Uˢ_cross_U(2, 2, 2, grid, sd, fake_U, 0.0) == 0
+            @test Oceananigans.StokesDrifts.y_curl_Uˢ_cross_U(2, 2, 2, grid, sd, fake_U, 0.0) == 0
+            @test Oceananigans.StokesDrifts.z_curl_Uˢ_cross_U(2, 2, 2, grid, sd, fake_U, 0.0) == 0
+
+            # Linear vertical shear uˢ = α·z and uniform w = W gives
+            # x_curl_Uˢ_cross_U = W·α at every interior point.
+            α, W = 0.7, 0.3
+            set!(uˢ, (x, y, z) -> α * z); Oceananigans.BoundaryConditions.fill_halo_regions!(uˢ)
+            set!(fake_U.w, W); Oceananigans.BoundaryConditions.fill_halo_regions!(fake_U.w)
+            for k in 2:grid.Nz - 1, j in 2:grid.Ny - 1, i in 2:grid.Nx - 1
+                @test Oceananigans.StokesDrifts.x_curl_Uˢ_cross_U(i, j, k, grid, sd, fake_U, 0.0) ≈ W * α atol=1e-12
+            end
+
+            # Cross-derivative term: uˢ = β·y, v = V, w = 0 →
+            # x_curl_Uˢ_cross_U = -V·(∂x vˢ - ∂y uˢ) = V·β.
+            # UniformStokesDrift would drop this term entirely.
+            β, V = 0.5, 0.2
+            set!(uˢ, (x, y, z) -> β * y); Oceananigans.BoundaryConditions.fill_halo_regions!(uˢ)
+            set!(fake_U.w, 0); Oceananigans.BoundaryConditions.fill_halo_regions!(fake_U.w)
+            set!(fake_U.v, V); Oceananigans.BoundaryConditions.fill_halo_regions!(fake_U.v)
+            for k in 2:grid.Nz - 1, j in 2:grid.Ny - 1, i in 2:grid.Nx - 1
+                @test Oceananigans.StokesDrifts.x_curl_Uˢ_cross_U(i, j, k, grid, sd, fake_U, 0.0) ≈ V * β atol=1e-12
+            end
+
+            # wˢ = γ x z + γ y z: the derivatives ∂x wˢ = ∂y wˢ = γ z depend on where they are evaluated
+            γ = 0.4
+            set!(wˢ, (x, y, z) -> γ * (x + y) * z)
+            for k in 2:grid.Nz, j in 2:grid.Ny - 1, i in 2:grid.Nx - 1
+                zᶜ = Oceananigans.Grids.znode(k, grid, Center())
+                zᶠ = Oceananigans.Grids.znode(k, grid, Face())
+                @test Oceananigans.StokesDrifts.∂x_wˢ_fcc(i, j, k, grid, sd, 0.0) ≈ γ * zᶜ
+                @test Oceananigans.StokesDrifts.∂x_wˢ_ccf(i, j, k, grid, sd, 0.0) ≈ γ * zᶠ
+                @test Oceananigans.StokesDrifts.∂y_wˢ_cfc(i, j, k, grid, sd, 0.0) ≈ γ * zᶜ
+                @test Oceananigans.StokesDrifts.∂y_wˢ_ccf(i, j, k, grid, sd, 0.0) ≈ γ * zᶠ
+            end
+            set!(wˢ, 0)
+
+            # ∂t_uˢ, ∂t_vˢ: constant value comes through at every point.
+            a_u, a_v = 0.13, -0.27
+            set!(∂t_uˢ, a_u); Oceananigans.BoundaryConditions.fill_halo_regions!(∂t_uˢ)
+            set!(∂t_vˢ, a_v); Oceananigans.BoundaryConditions.fill_halo_regions!(∂t_vˢ)
+            for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
+                @test Oceananigans.StokesDrifts.∂t_uˢ(i, j, k, grid, sd, 0.0) ≈ a_u atol=1e-14
+                @test Oceananigans.StokesDrifts.∂t_vˢ(i, j, k, grid, sd, 0.0) ≈ a_v atol=1e-14
+            end
+
+            # compute_stokes_drift! fills wˢ from continuity. With uˢ varying
+            # in x and vˢ in y, ∂x uˢ + ∂y vˢ ≠ 0, so wˢ should be nonzero
+            # on faces below the surface.
+            sd_dyn = FieldStokesDrift(grid)
+            set!(sd_dyn.uˢ, (x, y, z) -> 0.1 * cos(2π * x / 4))
+            set!(sd_dyn.vˢ, (x, y, z) -> 0.1 * sin(2π * y / 4))
+            Oceananigans.BoundaryConditions.fill_halo_regions!((sd_dyn.uˢ, sd_dyn.vˢ))
+            Oceananigans.StokesDrifts.compute_stokes_drift!(sd_dyn, grid)
+            @test maximum(abs, interior(sd_dyn.wˢ)) > 1e-6
+
+            # The vortex force reads the halos of wˢ near the boundaries
+            wˢ_cpu = on_architecture(CPU(), sd_dyn.wˢ)
+            Nx, Ny = size(grid, 1), size(grid, 2)
+            @test wˢ_cpu.data[0, 1:Ny, :] == wˢ_cpu.data[Nx, 1:Ny, :]
+            @test wˢ_cpu.data[1:Nx, 0, :] == wˢ_cpu.data[1:Nx, Ny, :]
+
+            # compute_stokes_drift! is a no-op for function-mode StokesDrift.
+            @test Oceananigans.StokesDrifts.compute_stokes_drift!(StokesDrift(), grid) === nothing
+        end
+    end
+
+    @testset "Time stepping NonhydrostaticModel with FieldStokesDrift" begin
+        for arch in archs
+            grid = RectilinearGrid(arch; size=(4, 4, 8), halo=(3, 3, 3),
+                                   x=(0, 4), y=(0, 4), z=(-1, 0),
+                                   topology=(Periodic, Periodic, Bounded))
+
+            stokes_drift = FieldStokesDrift(grid)
+            model = NonhydrostaticModel(grid; stokes_drift)
+
+            # A reference FieldStokesDrift whose wˢ is computed directly with compute_stokes_drift!
+            reference = FieldStokesDrift(grid)
+
+            # Change uˢ, vˢ between time steps, as a coupled wave model would; update_state!
+            # must recompute wˢ from continuity after every time step.
+            for U in (0.1, -0.2)
+                uˢ(x, y, z) = U * cos(2π * x / 4) * exp(z)
+                vˢ(x, y, z) = U * sin(2π * y / 4) * exp(z)
+                set!(stokes_drift.uˢ, uˢ)
+                set!(stokes_drift.vˢ, vˢ)
+                set!(reference.uˢ, uˢ)
+                set!(reference.vˢ, vˢ)
+                Oceananigans.StokesDrifts.compute_stokes_drift!(reference, grid)
+
+                time_step!(model, 1e-3)
+
+                @test maximum(abs, interior(stokes_drift.wˢ)) > 1e-6
+                @test Array(interior(stokes_drift.wˢ)) ≈ Array(interior(reference.wˢ))
+            end
+
+            # A uniform ∂t_uˢ with uˢ = vˢ = 0 accelerates a fluid at rest uniformly
+            model = NonhydrostaticModel(grid; stokes_drift=FieldStokesDrift(grid))
+            a, Δt = 0.13, 1e-2
+            set!(model.stokes_drift.∂t_uˢ, a)
+
+            for _ in 1:3
+                time_step!(model, Δt)
+            end
+
+            @test all(Array(interior(model.velocities.u)) .≈ a * 3Δt)
+            @test maximum(abs, interior(model.velocities.v)) < 1e-12
+            @test maximum(abs, interior(model.stokes_drift.∂t_wˢ)) < 1e-12
+        end
+    end
 end

@@ -10,6 +10,7 @@ using Oceananigans.Forcings: compute_forcing!
 using Oceananigans.Grids: surface_kernel_parameters
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 using Oceananigans.Models: update_model_field_time_series!
+using Oceananigans.StokesDrifts: compute_stokes_drift!
 using Oceananigans.TimeSteppers: compute_tendencies!
 using Oceananigans.TurbulenceClosures: compute_closure_fields!, step_closure_prognostics!
 
@@ -39,6 +40,11 @@ function update_state!(model::NonhydrostaticModel, callbacks=[])
     # skip NormalFlow fills here with `fill_normal_flow_bcs=false`. Tracer open boundaries are
     # `Value` conditions, which are not gated by this flag, so they still fire.
     fill_halo_regions!(merge(model.velocities, model.tracers), model.clock, fields(model); fill_normal_flow_bcs=false, async=true)
+
+    # Refresh Stokes-drift Fields (computes wˢ and ∂t_wˢ from uˢ, vˢ and
+    # ∂t_uˢ, ∂t_vˢ by vertical integration of continuity). No-op in the
+    # function-only mode.
+    compute_stokes_drift!(model.stokes_drift, model.grid)
 
     # Compute auxiliary fields
     for aux_field in model.auxiliary_fields
