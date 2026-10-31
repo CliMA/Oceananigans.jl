@@ -11,7 +11,7 @@ function substep_coriolis_test_model(arch, timestepper, coriolis, scheme; H = 70
     grid = RectilinearGrid(arch; size = (50, 100, 5), x = (0, Lx), y = (0, Ly), z = (-H, 0),
                            topology = (TX, Bounded, Bounded), halo = (6, 6, 6))
 
-    free_surface = SplitExplicitFreeSurface(grid; cfl = 0.1, fixed_Δt = Δt, timestepper = scheme)
+    free_surface = SplitExplicitFreeSurface(grid; cfl = 0.7, fixed_Δt = Δt, timestepper = scheme)
 
     model = HydrostaticFreeSurfaceModel(grid; free_surface, coriolis, timestepper,
                                         closure = (VerticalScalarDiffusivity(ν = 1e-3),
@@ -28,7 +28,7 @@ end
 velocity_norm(model) = sqrt(sum(abs2, Array(interior(model.velocities.u))) +
                             sum(abs2, Array(interior(model.velocities.v))))
 
-function velocity_growth(model; Δt = 3600, Nwarmup = 60, Nsteps = 200)
+function velocity_growth(model; Δt = 3600, Nwarmup = 30, Nsteps = 100)
     for _ in 1:Nwarmup
         time_step!(model, Δt)
     end
