@@ -5,12 +5,14 @@ using Dates: Millisecond
 using TimesDates: TimeDate
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Grids: topological_tuple_length
-using Oceananigans.TimeSteppers: Clock
+using Oceananigans.TimeSteppers: Clock, AbstractLagrangianParticles
 using Oceananigans.Utils: kernel_time_step
 using Oceananigans.Advection: EnergyConserving, EnstrophyConserving
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 using Oceananigans.TurbulenceClosures.Smagorinskys: LagrangianAveraging, DynamicSmagorinsky, Smagorinsky
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ImplicitFreeSurface
+
+import Oceananigans.TimeSteppers: step_lagrangian_particles!, update_lagrangian_particle_state!
 
 function time_stepping_works_with_flat_dimensions(arch, topology)
     size = Tuple(1 for i = 1:topological_tuple_length(topology...))
@@ -27,6 +29,18 @@ mutable struct ΔtTypeRecorder
 end
 
 (recorder::ΔtTypeRecorder)(particles, model, Δt) = (recorder.Δt_type = typeof(Δt); nothing)
+
+# Particles that advance their own state by `clock.last_stage_Δt` in `update_lagrangian_particle_state!`
+mutable struct ElapsedTimeParticles <: AbstractLagrangianParticles
+    elapsed_time :: Float64
+end
+
+step_lagrangian_particles!(::ElapsedTimeParticles, model, Δt) = nothing
+
+function update_lagrangian_particle_state!(particles::ElapsedTimeParticles, model)
+    particles.elapsed_time += model.clock.last_stage_Δt
+    return nothing
+end
 
 # ∂c/∂t = -c + t with c(0) = 0 has the exact solution c(t) = t - 1 + exp(-t).
 # The right-hand side is affine in (t, c), so an N-stage SplitRungeKutta scheme is
@@ -472,6 +486,26 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                 @test model.clock.last_Δt == 1
                 time_step!(model, 2)
                 @test model.clock.last_Δt == 2
+            end
+        end
+    end
+
+    @testset "Lagrangian particle state advances with the clock" begin
+        for arch in archs
+            grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 1, 1))
+
+            for timestepper in (:QuasiAdamsBashforth2, :RungeKutta3)
+                model = NonhydrostaticModel(grid; timestepper, particles=ElapsedTimeParticles(0))
+                time_step!(model, 1)
+                time_step!(model, 2)
+                @test model.particles.elapsed_time ≈ model.clock.time
+            end
+
+            for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta2, :SplitRungeKutta3, :SplitRungeKutta4, :SplitRungeKutta5)
+                model = HydrostaticFreeSurfaceModel(grid; timestepper, particles=ElapsedTimeParticles(0))
+                time_step!(model, 1)
+                time_step!(model, 2)
+                @test model.particles.elapsed_time ≈ model.clock.time
             end
         end
     end

@@ -77,7 +77,7 @@ function validate_boundary_conditions(loc, grid, bcs)
         validate_boundary_condition_topology(bc, topo, side)
 
         # Check that boundary condition is valid given field location
-        topo isa Bounded && validate_boundary_condition_location(bc, ℓ, side)
+        topo isa BoundaryTopology && validate_boundary_condition_location(bc, ℓ, side)
 
         # Check that boundary condition arrays, if used, are on the right architecture
         validate_boundary_condition_architecture(bc, architecture(grid), side)
@@ -917,9 +917,9 @@ Base.extrema(f, c::AbstractField; kwargs...) = (minimum(f, c; kwargs...), maximu
 # The search is fused: a lazy broadcast of (value, linear index) pairs is folded in place
 # on the CPU, or consumed by `mapreducedim!` on the GPU — which GPUArrays dispatches on
 # the one-element destination — so neither the operand nor the pairs are materialized.
-function locate_extremum(better, c::AbstractField, condition, mask)
-    mask = convert_mask(eltype(c), mask)
-    operand = condition_operand(c, condition, mask)
+function locate_extremum(better, f, c::AbstractField, condition, mask)
+    mask = convert_mask(mapped_eltype(f, c), mask)
+    operand = condition_operand(f, c, condition, mask)
 
     # Ties resolve to the smaller linear index, matching Base
     tiebreak((x, i), (y, j)) = better(x, y) ? (y, j) :
@@ -927,7 +927,7 @@ function locate_extremum(better, c::AbstractField, condition, mask)
 
     # Everything is 1-based from here: a windowed interior is a 1-based view and a
     # `ConditionalOperation` has 1-based axes, so no offset axes enter the search
-    values = operand === c ? interior(c) : operand
+    values = search_values(c, operand)
 
     value, i = fold_pairs(architecture(c), tiebreak, values, (mask, 1))
     positional = CartesianIndices(size(values))[i]
@@ -936,6 +936,10 @@ function locate_extremum(better, c::AbstractField, condition, mask)
     # windowed fields too; for default fields the shift vanishes
     return value, CartesianIndex(Tuple(positional) .+ first.(axes(c)) .- 1)
 end
+
+# Dispatch detects when `condition_operand` passed `c` through; `operand === c` can be false for windowed fields
+@inline search_values(c::C, operand::C) where C = interior(c)
+@inline search_values(c, operand) = operand
 
 function fold_pairs(::Architectures.CPU, tiebreak, values, init)
     result = init
@@ -954,8 +958,10 @@ function fold_pairs(arch, tiebreak, values, init)
     return first(Array(result))
 end
 
-Base.findmax(c::AbstractField; condition = nothing, mask = -Inf) = locate_extremum(Base.isless,    c, condition, mask)
-Base.findmin(c::AbstractField; condition = nothing, mask = Inf)  = locate_extremum(Base.isgreater, c, condition, mask)
+Base.findmax(f, c::AbstractField; condition = nothing, mask = -Inf) = locate_extremum(Base.isless,    f, c, condition, mask)
+Base.findmin(f, c::AbstractField; condition = nothing, mask = Inf)  = locate_extremum(Base.isgreater, f, c, condition, mask)
+Base.findmax(c::AbstractField; kwargs...) = findmax(identity, c; kwargs...)
+Base.findmin(c::AbstractField; kwargs...) = findmin(identity, c; kwargs...)
 Base.argmax(c::AbstractField; kwargs...) = last(findmax(c; kwargs...))
 Base.argmin(c::AbstractField; kwargs...) = last(findmin(c; kwargs...))
 
