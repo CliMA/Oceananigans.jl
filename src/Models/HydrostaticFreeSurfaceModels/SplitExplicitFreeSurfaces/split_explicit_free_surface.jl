@@ -160,8 +160,10 @@ Keyword Arguments
                       `averaging_kernel > 0`. By default, the averaging kernel described by
                       [Shchepetkin and McWilliams (2005)](@cite Shchepetkin2005) is used.
 
-- `timestepper`: Time stepping scheme used for the barotropic advancement. Only one supported:
+- `timestepper`: Time stepping scheme used for the barotropic advancement:
   * `ForwardBackwardScheme()` (default): `η = f(U)` then `U = f(η)`,
+  * `CoriolisForwardBackwardScheme()`: as above, and also advances the barotropic Coriolis force inside
+    the substeps (see [`CoriolisForwardBackwardScheme`](@ref)).
 
 References
 ==========
@@ -206,13 +208,17 @@ end
 # A free surface where halos are explicitly filled at each substep
 const FillHaloSplitExplicit = SplitExplicitFreeSurface{<:Union{LocalHaloFilling, CompleteHaloFilling}}
 
-# Substeps between two halo exchanges: a halo of H cells in a Connected direction holds H - 2 substeps
+# Substeps between two halo exchanges: a halo of H cells in a Connected direction holds (H - 2) ÷ reach substeps
+@inline substeps_per_halo(H, reach) = max(1, (H - 2) ÷ reach)
+
 @inline halo_exchange_interval(::SplitExplicitFreeSurface{CompleteHaloFilling}, grid, Nsubsteps) = 1
 
 function halo_exchange_interval(free_surface, grid, Nsubsteps)
     TX, TY, _ = topology(grid)
     Hx, Hy, _ = halo_size(grid)
-    return min(TX() isa ConnectedTopology ? Hx - 2 : Nsubsteps, TY() isa ConnectedTopology ? Hy - 2 : Nsubsteps)
+    reach = substep_halo_reach(free_surface.timestepper)
+    return min(TX() isa ConnectedTopology ? substeps_per_halo(Hx, reach) : Nsubsteps,
+               TY() isa ConnectedTopology ? substeps_per_halo(Hy, reach) : Nsubsteps)
 end
 
 # Extended halos start the substeps filled, while `CompleteHaloFilling` exchanges before every substep
@@ -279,7 +285,7 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
     maybe_extended_grid = if strategy isa CompleteHaloFilling
         grid
     else
-        maybe_extend_halos(TX, TY, grid, substepping)
+        maybe_extend_halos(TX, TY, grid, substepping, free_surface.timestepper)
     end
 
     # The barotropic fields live on `maybe_extended_grid`, whose halos size the exterior states of their open boundaries
@@ -425,27 +431,32 @@ Base.show(io::IO, sefs::SplitExplicitFreeSurface) = print(io, "$(summary(sefs))\
 #####
 
 # Extending halos is not allowed with variable time-stepping
-maybe_extend_halos(TX, TY, grid, ::FixedTimeStepSize) = grid
+maybe_extend_halos(TX, TY, grid, ::FixedTimeStepSize, timestepper) = grid
 
-function maybe_extend_halos(TX, TY, grid, substepping::FixedSubstepNumber)
+# Stale halo data spreads one cell per substep, or two when the substeps also carry Coriolis
+@inline substep_halo_reach(timestepper) = 1
+@inline substep_halo_reach(::CoriolisForwardBackwardScheme) = 2
+
+function maybe_extend_halos(TX, TY, grid, substepping::FixedSubstepNumber, timestepper)
     old_halos = halo_size(grid)
     Nsubsteps = length(substepping.averaging_weights)
+    reach = substep_halo_reach(timestepper)
 
     # Every rank shares the same halo, so it is capped at the smallest local size
     Nx = all_reduce(min, size(grid, 1), architecture(grid))
     Ny = all_reduce(min, size(grid, 2), architecture(grid))
 
-    Hx = TX() isa ConnectedTopology ? min(max(Nsubsteps+2, old_halos[1]), Nx) : old_halos[1]
-    Hy = TY() isa ConnectedTopology ? min(max(Nsubsteps+2, old_halos[2]), Ny) : old_halos[2]
+    Hx = TX() isa ConnectedTopology ? min(max(reach * Nsubsteps + 2, old_halos[1]), Nx) : old_halos[1]
+    Hy = TY() isa ConnectedTopology ? min(max(reach * Nsubsteps + 2, old_halos[2]), Ny) : old_halos[2]
 
     new_halos = (Hx, Hy, old_halos[3])
 
-    x_capped = TX() isa ConnectedTopology && Hx < Nsubsteps + 2
-    y_capped = TY() isa ConnectedTopology && Hy < Nsubsteps + 2
+    x_capped = TX() isa ConnectedTopology && Hx < reach * Nsubsteps + 2
+    y_capped = TY() isa ConnectedTopology && Hy < reach * Nsubsteps + 2
 
     if x_capped || y_capped
-        exchange_interval = min(TX() isa ConnectedTopology ? Hx - 2 : Nsubsteps,
-                                TY() isa ConnectedTopology ? Hy - 2 : Nsubsteps)
+        exchange_interval = min(TX() isa ConnectedTopology ? substeps_per_halo(Hx, reach) : Nsubsteps,
+                                TY() isa ConnectedTopology ? substeps_per_halo(Hy, reach) : Nsubsteps)
         Nexchanges = cld(Nsubsteps, exchange_interval) - 1
         @root @info "SplitExplicitFreeSurface: the extended halos $((Hx, Hy)) are capped by the smallest local grid size $((Nx, Ny)), " *
                     "so the $Nsubsteps barotropic substeps fill the halos $Nexchanges more time(s) per time step." maxlog=1
@@ -485,6 +496,7 @@ Adapt.adapt_structure(to, free_surface::SplitExplicitFreeSurface{extend_halos}) 
                                            Adapt.adapt(to, free_surface.boundary_transport))
 
 for Type in (SplitExplicitFreeSurface,
+             CoriolisForwardBackwardScheme,
              FixedTimeStepSize,
              FixedSubstepNumber)
 
