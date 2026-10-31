@@ -57,7 +57,7 @@ export intrinsic_vector, extrinsic_vector
 export cosαᶜᶜᵃ, cosαᶠᶜᵃ, cosαᶜᶠᵃ, cosαᶠᶠᵃ, sinαᶜᶜᵃ, sinαᶠᶜᵃ, sinαᶜᶠᵃ, sinαᶠᶠᵃ
 
 # Variable grid operators
-export σⁿ, σ⁻, ∂t_σ
+export σⁿ, σ⁻, σ⁻¹ⁿ, ∂t_σ
 
 using Oceananigans.Grids: LatitudeLongitudeGrid, LLGOTF, XRegLLGOTF, YRegLLGOTF,
     OrthogonalSphericalShellGrid, SphericalGrid, ZRegSphericalGrid, AnySphericalShellGrid,
@@ -104,9 +104,9 @@ include("difference_operators.jl")
 include("interpolation_operators.jl")
 include("interpolation_utils.jl")
 
-include("reciprocal_metric_operators.jl")
 include("spacings_and_areas_and_volumes.jl")
 include("coordinate_angle_operators.jl")
+include("reciprocal_metric_operators.jl")
 include("products_between_fields_and_grid_metrics.jl")
 
 include("derivative_operators.jl")

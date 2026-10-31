@@ -2,7 +2,8 @@ include(joinpath(@__DIR__, "..", "setup", "reactant_test_utils.jl"))
 
 using CUDA
 using Statistics: mean
-using Oceananigans.OutputReaders: cpu_interpolating_time_indices, Clamp, Cyclical
+using Oceananigans.OutputReaders: cpu_interpolating_time_indices, Clamp, Cyclical, update_field_time_series!, InMemory,
+                                  TimeSeriesInterpolation
 using Oceananigans.Units: Time
 
 arch = ReactantState()
@@ -145,6 +146,11 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
         constant_ibg = OceananigansReactantExt.constant_with_arch(cpu_ibg, ReactantState())
         @test architecture(constant_ibg) isa ReactantState
         @test architecture(constant_ibg.immersed_boundary.bottom_height) isa CPU
+
+        top_ibg = ImmersedBoundaryGrid(llg, GridFittedVerticalBoundaries(bottom_height=ridge, top_height=0.9))
+        top_ib′ = OceananigansReactantExt.deconcretize(top_ibg.immersed_boundary)
+        @test parent(top_ib′.bottom_height) isa Array
+        @test parent(top_ib′.top_height) isa Array
 
         @info "  Testing constantified OrthogonalSphericalShellGrid construction [$FT]..."
         rllg = RotatedLatitudeLongitudeGrid(arch, FT; size = (4, 4, 4),
@@ -447,4 +453,66 @@ end
                               topology = (Periodic, Flat, Bounded))
     δρᵢ  = CenterField(grid_ad)
     @test maximum(δρᵢ) == maximum(Array(interior(δρᵢ)))
+end
+
+# Host data with missing values (a NetCDF read) reaches ReactantState as a float array with NaN, plain, viewed or
+# reshaped, and reshaped host data keeps its shape
+@testset "on_architecture of host data with missing values and reshaped host data" begin
+    data = Union{Missing, Float32}[1, missing, 1, 2]
+    for (host, expected) in ((data, Float32[1, NaN, 1, 2]),
+                             (view(data, 1:3), Float32[1, NaN, 1]),
+                             (reshape(data, 2, 2), Float32[1 1; NaN 2]),
+                             (reshape(view(data, 1:4), 2, 2), Float32[1 1; NaN 2]),
+                             (reshape(view(Float32[1, 2, 3, 4], 1:4), 1, 4), Float32[1 2 3 4]))
+        device = on_architecture(ReactantState(), host)
+        @test device isa Reactant.AbstractConcreteArray{Float32}
+        @test size(device) == size(host)
+        @test isequal(Array(device), expected)
+    end
+end
+
+@testset "Updating a FieldTimeSeries whose window holds every snapshot, at a traced time" begin
+    times = [0.0, 1.0, 2.0, 3.0]
+    grid = RectilinearGrid(ReactantState(); size = (2, 2, 2), extent = (1, 1, 1))
+    fts = FieldTimeSeries{Center, Center, Center}(grid, times; backend = InMemory(length(times)))
+    refresh!(fts, t) = (update_field_time_series!(fts, Time(t)); nothing)
+
+    t = Reactant.ConcreteRNumber(1.5)
+    @jit refresh!(fts, t)
+    @test fts.backend.start == 1
+    @test length(fts.backend) == length(times)
+end
+
+@testset "A Field of a TimeSeriesInterpolation on a device clock, at a traced time" begin
+    grid = RectilinearGrid(ReactantState(); size = (2, 2, 2), extent = (1, 1, 1))
+    fts = FieldTimeSeries{Center, Center, Center}(grid, [0.0, 10.0])
+    set!(fts[1], 1)
+    set!(fts[2], 3)
+    clock = Clock(grid)
+    interpolated = Field(TimeSeriesInterpolation(fts, grid; clock))
+
+    refresh!(field, clock, t) = (clock.time = t; compute!(field); nothing)
+    @jit raise = true refresh!(interpolated, clock, Reactant.ConcreteRNumber(5.0))
+    @test all(Array(interior(interpolated)) .≈ 2)
+end
+
+@kernel function _store_adaptive_Δt!(c, td)
+    i, j, k = @index(Global, NTuple)
+    @inbounds c[i, j, k] = td.Δt
+end
+
+function store_adaptive_Δt!(c, td, Δt)
+    td.Δt[] = Δt
+    grid = c.grid
+    launch!(architecture(grid), grid, :xyz, _store_adaptive_Δt!, c, td)
+    return nothing
+end
+
+# A traced Δt held by AdaptiveVerticallyImplicitDiscretization must be adapted when it is passed to a kernel
+@testset "AdaptiveVerticallyImplicitDiscretization with a traced Δt in a kernel" begin
+    grid = RectilinearGrid(ReactantState(); size = (2, 2, 2), extent = (1, 1, 1))
+    c = CenterField(grid)
+    td = Oceananigans.TimeSteppers.AdaptiveVerticallyImplicitDiscretization(0.5, Ref(Reactant.ConcreteRNumber(0.0)))
+    @jit store_adaptive_Δt!(c, td, Reactant.ConcreteRNumber(3.0))
+    @test all(Array(interior(c)) .== 3)
 end

@@ -180,6 +180,9 @@ function BoundaryConditions.regularize_field_boundary_conditions(bcs::FieldBound
                                            immersed = reg_bcs.immersed)
 end
 
+BoundaryConditions.regularize_field_boundary_conditions(bcs::MultiRegionObject, mrg::MultiRegionGrids, field_name::Symbol, prognostic_field_name=nothing) =
+    construct_regionally(regularize_field_boundary_conditions, bcs, mrg, field_name, prognostic_field_name)
+
 function inject_regional_bcs(grid, connectivity, loc, indices;
                              west = default_auxiliary_bc(grid, Val(:west), loc),
                              east = default_auxiliary_bc(grid, Val(:east), loc),

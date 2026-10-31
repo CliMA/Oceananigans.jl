@@ -18,6 +18,7 @@ using Oceananigans.Fields: AbstractField, fieldify_function, instantiated_locati
 using Oceananigans.Grids: Center, Face, unwrapped_eltype
 using Oceananigans.Operators: interpolation_operator
 
+import Oceananigans: prognostic_state
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.Fields: compute_at!, indices
 
@@ -36,6 +37,9 @@ const Location = Union{Face, Center, Nothing}
 
 # We have no halos to fill
 @inline fill_halo_regions!(::AbstractOperation, args...; kwargs...) = nothing
+
+# Operations are computed from their operands, so they have no state of their own to checkpoint
+prognostic_state(::AbstractOperation) = nothing
 
 Architectures.architecture(a::AbstractOperation) = architecture(a.grid)
 

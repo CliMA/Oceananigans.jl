@@ -40,7 +40,7 @@ prefix            = "targeted_flux_xy"
 
 # ── Grid ──────────────────────────────────────────────────────────────────────
 grid = RectilinearGrid(arch;
-                       topology = (Bounded, Bounded, Flat),
+                       topology = (Open, Open, Flat),
                        size = (Nx, Ny),
                        x = (0, Lx),
                        y = (0, Ly),

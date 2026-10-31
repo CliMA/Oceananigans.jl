@@ -463,7 +463,8 @@ function prognostic_state(model::HydrostaticFreeSurfaceModel)
             free_surface = prognostic_state(model.free_surface),
             coriolis = prognostic_state(model.coriolis),
             auxiliary_fields = prognostic_state(model.auxiliary_fields),
-            vertical_coordinate = prognostic_state(model.vertical_coordinate, model.grid))
+            vertical_coordinate = prognostic_state(model.vertical_coordinate, model.grid),
+            biogeochemistry = prognostic_state(model.biogeochemistry))
 end
 
 function restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel, from)
@@ -477,6 +478,7 @@ function restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel, from)
     restore_prognostic_state!(restored.closure_fields, from.closure_fields)
     restore_prognostic_state!(restored.auxiliary_fields, from.auxiliary_fields)
     restore_prognostic_state!(restored.vertical_coordinate, restored.grid, from.vertical_coordinate)
+    restore_prognostic_state!(restored.biogeochemistry, from.biogeochemistry)
     return restored
 end
 

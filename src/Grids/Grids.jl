@@ -2,7 +2,7 @@ module Grids
 
 export Center, Face
 export AbstractTopology, topology
-export Periodic, Flat, Sides, Bounded, Closed, Connected, CenterFolded, FaceFolded, CenterFoldConnected, FaceFoldConnected
+export Periodic, Flat, TwoSided, Bounded, Closed, Open, Connected, CenterFolded, FaceFolded, CenterFoldConnected, FaceFoldConnected
 export RightCenterFolded, RightFaceFolded
 export SerialFoldedTopology, SlabFoldedTopology, PencilFoldedTopology, DistributedFoldedTopology, FoldedTopology
 export AbstractGrid, AbstractUnderlyingGrid, grid, halo_size, total_size
@@ -81,13 +81,16 @@ is uniform and does not vary.
 struct Flat <: AbstractTopology end
 
 """
-    Sides{L, R}
+    TwoSided{L, R}
 
 Grid topology for dimensions whose left side has topology `L` and right side has topology `R`.
-The topology of a side is `Closed`, `Connected`, `CenterFolded`, `FaceFolded`, `CenterFoldConnected`, or
+The topology of a side is `Closed`, `Open`, `Connected`, `CenterFolded`, `FaceFolded`, `CenterFoldConnected`, or
 `FaceFoldConnected`. A side topology used on its own, for example `Closed`, applies to both sides.
 """
-struct Sides{L, R} <: AbstractTopology end
+struct TwoSided{L, R} <: AbstractTopology end
+
+# TODO: remove once ConservativeRegridding imports `TwoSided`
+const Sides = TwoSided
 
 """
     Closed
@@ -97,11 +100,18 @@ Topology of a side closed by a wall.
 struct Closed end
 
 """
+    Open
+
+Topology of a side where the domain continues into an exterior.
+"""
+struct Open end
+
+"""
     Bounded
 
 Grid topology for dimensions closed by walls on both sides.
 """
-const Bounded = Sides{Closed, Closed}
+const Bounded = TwoSided{Closed, Closed}
 
 """
     Connected
@@ -143,14 +153,14 @@ struct FaceFoldConnected end
 
 Grid topology for dimensions closed by a wall on the left side and `CenterFolded` on the right side.
 """
-const RightCenterFolded = Sides{Closed, CenterFolded}
+const RightCenterFolded = TwoSided{Closed, CenterFolded}
 
 """
     RightFaceFolded
 
 Grid topology for dimensions closed by a wall on the left side and `FaceFolded` on the right side.
 """
-const RightFaceFolded = Sides{Closed, FaceFolded}
+const RightFaceFolded = TwoSided{Closed, FaceFolded}
 
 # Pre-0.115 topology names, kept unexported for downstream code that imports them explicitly
 const FullyConnected = Sides{Connected, Connected}

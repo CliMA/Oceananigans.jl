@@ -11,7 +11,7 @@ export
     # Grids
     Center, Face,
     Periodic, Bounded, Flat,
-    CenterFolded, FaceFolded,
+    Closed, Open, CenterFolded, FaceFolded,
     slice,
     RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid,
     SphericalGrid, ThinShell, DeepShell, EquiangularGnomonicPanelGrid, isorthogonal,
@@ -29,6 +29,7 @@ export
     # Immersed boundaries
     ImmersedBoundaryGrid,
     GridFittedBoundary, GridFittedBottom, PartialCellBottom,
+    GridFittedVerticalBoundaries, PartialCellVerticalBoundaries,
     ImmersedBoundaryCondition, bottom_height_field,
 
     # Distributed
