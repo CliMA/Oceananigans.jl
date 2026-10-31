@@ -4,9 +4,10 @@ using Oceananigans.Architectures: architecture
 using Oceananigans.Diagnostics: nan_detected, reset_nan_checker!
 using Oceananigans.DistributedComputations: all_reduce, check_field_tags
 using Oceananigans.Fields: set!
-using Oceananigans.OutputWriters: WindowedTimeAverage, TimeFilteredOutput, TimeDerivative, checkpoint_path, load_checkpoint_state
+using Oceananigans.OutputWriters: WindowedTimeAverage, TimeFilteredOutput, TimeDerivative, time_derivative_schedule,
+                                  checkpoint_path, load_checkpoint_state
 using Oceananigans.TimeSteppers: time_step!, update_state!, unit_time
-using Oceananigans.Utils: PrecedingIterations, schedule_aligned_time_step
+using Oceananigans.Utils: resume_offset!, schedule_aligned_time_step
 
 # Simulations are for running
 
@@ -301,13 +302,15 @@ function add_dependency!(sim, output::TimeFilteredOutput, schedule)
     end
 end
 
-# Update the derivative when the writer writes and on the iteration before, which is all that
-# a difference across one time step needs
+# Update the derivative when the writer writes and `time_interval` before, which is all that its
+# difference needs. A schedule built after a checkpoint pickup resumes from the derivative's last update.
 function add_dependency!(sim, derivative::TimeDerivative, schedule)
     callbacks = sim.callbacks
     if !any(cb -> cb.func === derivative, values(callbacks))
+        update_schedule = time_derivative_schedule(schedule, derivative.time_interval)
+        sim.model.clock.iteration > 0 && resume_offset!(update_schedule, derivative.previous_time)
         name = next_dependency_name("TimeDerivative", keys(callbacks))
-        callbacks[name] = Callback(derivative, PrecedingIterations(schedule; derivative.expected_max_time_step_growth))
+        callbacks[name] = Callback(derivative, update_schedule)
     end
 end
 

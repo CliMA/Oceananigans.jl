@@ -1,10 +1,11 @@
 using Adapt: Adapt
 using Base: @propagate_inbounds
-using Dates: AbstractDateTime
+using Dates: AbstractDateTime, Period
 using Oceananigans: AbstractModel, defaults, instantiated_location
 using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Fields: Fields, AbstractField, Scan
-using Oceananigans.Utils: time_difference_seconds
+using Oceananigans.Utils: SpecifiedTimes, OrSchedule, PrecedingIterations, TimeOffset, TimeStepProportionalPeriod,
+                          period_sign, period_to_seconds, time_difference_seconds
 
 import Oceananigans: initialize!, prognostic_state, restore_prognostic_state!
 import Oceananigans.Fields: indices, interior
@@ -13,24 +14,24 @@ import Oceananigans.Fields: indices, interior
     mutable struct TimeDerivative <: AbstractField
 
 Container that holds the state required to compute the time derivative of an `operand`
-as a simulation runs: the `operand` evaluated at the `previous_time`, and the most
-recently computed `result`. Both are `Field`s at `location(operand)`, and the container
-reads as `result`.
+as a simulation runs: the `operand` evaluated at the `previous_time`, the most recently
+computed `result`, and the `time_interval` the derivative is differenced over. Both `result`
+and `previous` are `Field`s at `location(operand)`, and the container reads as `result`.
 """
-mutable struct TimeDerivative{LX, LY, LZ, G, T, O, R, TT, FT} <: AbstractField{LX, LY, LZ, G, T, 3}
-                           result :: R
-                          operand :: O
-                         previous :: R
-                    previous_time :: TT
-    expected_max_time_step_growth :: FT
-                             grid :: G
+mutable struct TimeDerivative{LX, LY, LZ, G, T, O, R, TT, TI} <: AbstractField{LX, LY, LZ, G, T, 3}
+           result :: R
+          operand :: O
+         previous :: R
+    previous_time :: TT
+    time_interval :: TI
+             grid :: G
 end
 
 materialize_operand(operand) = operand
 materialize_operand(operand::Union{AbstractOperation, Scan}) = Field(operand)
 
 """
-    TimeDerivative(operand, model=nothing; expected_max_time_step_growth=1.2)
+    TimeDerivative(operand, model=nothing; time_interval=TimeStepProportionalPeriod(2))
 
 Return an object that computes the time derivative of `operand` while a simulation runs,
 
@@ -47,9 +48,19 @@ reductions are materialized into a `Field` on construction. Δt is measured in s
 
 An output writer updates a `TimeDerivative` among its outputs through a
 [`TimeDerivativeCallback`](@ref) that it registers itself; construct the callback directly
-to use one without a writer. The writer's next actuation is anticipated by assuming that the
-time step grows by at most a factor `expected_max_time_step_growth` in one iteration, as
-described in [`PrecedingIterations`](@ref).
+to use one without a writer. Each time the writer writes, the derivative is differenced over
+`time_interval`: a time (in seconds, or a `Dates.Period` when the clock keeps a `DateTime`) or a
+[`TimeStepProportionalPeriod`](@ref). The default, `TimeStepProportionalPeriod(2)`, spans two time
+steps and follows the time step as it changes. To this end the operand is also evaluated
+
+- `time_interval` before each output, for writers scheduled on `TimeInterval` or `SpecifiedTimes`.
+  A [`TimeOffset`](@ref) of the writer's schedule aligns the time step with that time.
+- the `TimeStepProportionalPeriod` factor, rounded to whole iterations, before each output, for
+  writers scheduled on `IterationInterval`.
+- every iteration, for writers on any other schedule, which differences across the last time step.
+
+A `time_interval` at least as long as the time between outputs differences consecutive outputs.
+A `time_interval` given as a time requires a writer scheduled on `TimeInterval` or `SpecifiedTimes`.
 
 A `TimeDerivative` is an `AbstractField` that reads as its `result`, so it can be indexed,
 reduced, and composed into operations like any other field. Reading it, including through
@@ -95,7 +106,9 @@ JLD2Writer scheduled on TimeInterval(1 second):
 └── file size: 0 bytes (file not yet created)
 ```
 """
-function TimeDerivative(operand, model=nothing; expected_max_time_step_growth = 1.2)
+function TimeDerivative(operand, model=nothing; time_interval = TimeStepProportionalPeriod(2))
+    period_sign(time_interval) > 0 || throw(ArgumentError("time_interval must be positive; got $time_interval."))
+
     operand = materialize_operand(operand)
 
     result = similar_field(operand)
@@ -105,10 +118,10 @@ function TimeDerivative(operand, model=nothing; expected_max_time_step_growth = 
     grid = operand.grid
     LX, LY, LZ = location(operand)
     G, T, O, R = typeof(grid), eltype(operand), typeof(operand), typeof(result)
-    TT, FT = typeof(previous_time), typeof(expected_max_time_step_growth)
+    TT, TI = typeof(previous_time), typeof(time_interval)
 
-    derivative = TimeDerivative{LX, LY, LZ, G, T, O, R, TT, FT}(result, operand, previous, previous_time,
-                                                              expected_max_time_step_growth, grid)
+    derivative = TimeDerivative{LX, LY, LZ, G, T, O, R, TT, TI}(result, operand, previous, previous_time,
+                                                              time_interval, grid)
 
     isnothing(model) || initialize!(derivative, model)
 
@@ -117,6 +130,44 @@ end
 
 similar_field(operand) = Field(instantiated_location(operand), operand.grid, eltype(operand),
                                indices = indices(operand))
+
+#####
+##### The schedule on which a `TimeDerivative` is updated
+#####
+
+"""
+$(TYPEDSIGNATURES)
+
+Return the schedule on which a `TimeDerivative` must be updated so that, each time `schedule`
+actuates, the derivative is differenced over `time_interval`.
+"""
+time_derivative_schedule(schedule, time_interval) = unanticipated_schedule(schedule, time_interval)
+
+function time_derivative_schedule(schedule::Union{TimeInterval, SpecifiedTimes}, time_interval)
+    parent = deepcopy(schedule)
+    exhausted = Utils.next_actuation_time(parent) === Inf
+    (exhausted || spans_actuation_interval(parent, time_interval)) && return parent
+    return TimeOffset(parent, -time_interval)
+end
+
+function time_derivative_schedule(schedule::IterationInterval, time_interval::TimeStepProportionalPeriod)
+    preceding_iterations = max(1, round(Int, time_interval.factor))
+    preceding_iterations < schedule.interval || return schedule
+    evaluation_before_actuation = IterationInterval(schedule.interval; offset = schedule.offset - preceding_iterations)
+    return OrSchedule(schedule, evaluation_before_actuation)
+end
+
+unanticipated_schedule(schedule, ::TimeStepProportionalPeriod) = PrecedingIterations(schedule)
+
+unanticipated_schedule(schedule, time_interval) =
+    throw(ArgumentError(string("A time_interval of ", time_interval, " requires a schedule with known actuation ",
+                               "times, such as TimeInterval or SpecifiedTimes, but got ", summary(schedule), ". ",
+                               "Use a TimeStepProportionalPeriod time_interval instead.")))
+
+spans_actuation_interval(schedule, time_interval) = false
+
+spans_actuation_interval(schedule::TimeInterval{<:Union{Number, Period}}, time_interval::Union{Number, Period}) =
+    period_to_seconds(time_interval) >= period_to_seconds(schedule.interval)
 
 #####
 ##### Read a `TimeDerivative` like the `Field` it computes

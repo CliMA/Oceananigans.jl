@@ -83,5 +83,5 @@ end
 
 function construct_output(derivative::TimeDerivative, indices, with_halos)
     output = construct_output(derivative.operand, indices, with_halos)
-    return TimeDerivative(output; expected_max_time_step_growth = derivative.expected_max_time_step_growth)
+    return TimeDerivative(output; derivative.time_interval)
 end
