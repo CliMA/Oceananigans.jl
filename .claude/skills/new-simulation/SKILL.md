@@ -1,6 +1,6 @@
 ---
 name: new-simulation
-description: Set up and validate a new Oceananigans simulation, with or without a reference paper
+description: Use when setting up, running, or visualizing a new simulation, including reproducing a published case. Covers checking geometry and initial conditions before long runs, and plotting Fields with the Makie extension.
 ---
 
 # New Simulation
