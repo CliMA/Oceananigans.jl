@@ -391,9 +391,9 @@ copy_velocity(c) = c
 # A generic free surface transports with the stashed pre-step velocity, so there is nothing left to do
 compute_transport_velocities!(model, free_surface) = nothing
 
-# Not if `transport === velocities`
+# Identity is tested on the data: `===` on large immutable Fields miscompiles on Julia ≥ 1.12 and skips the copy
 function update_transport_velocities!(transport_velocities, velocities, free_surface)
-    transport_velocities === velocities && return nothing
+    parent(transport_velocities.u) === parent(velocities.u) && return nothing
     update_transport_velocity_data!(transport_velocities.u, velocities.u)
     update_transport_velocity_data!(transport_velocities.v, velocities.v)
     stash_vertical_velocity!(transport_velocities, velocities, free_surface)

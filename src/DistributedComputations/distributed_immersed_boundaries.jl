@@ -79,12 +79,12 @@ local_height_array(height, arch, local_size) = partition(bottom_height_interior(
 """
     function resize_immersed_boundary!(ib, grid)
 
-If the immersed condition is an `OffsetArray`, resize it to match
+If the immersed condition is an `AbstractOffsetArray`, resize it to match
 the total size of `grid`
 """
 resize_immersed_boundary(ib::GridFittedBoundary, grid) = ib
 
-function resize_immersed_boundary(ib::GridFittedBoundary{<:OffsetArray}, grid)
+function resize_immersed_boundary(ib::GridFittedBoundary{<:AbstractOffsetArray}, grid)
 
     Nx, Ny, Nz = size(grid)
     Hx, Hy, Hz = halo_size(grid)

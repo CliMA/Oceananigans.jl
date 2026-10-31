@@ -85,7 +85,7 @@ end
 
 const CenterOrFace = Union{Center, Face}
 const SerialGrid = AbstractGrid{<:Any, <:Any, <:Any, <:Any, <:Union{CPU, GPU}}
-const TupledFillField = Field{<:CenterOrFace, <:CenterOrFace, <:CenterOrFace, <:Any, <:SerialGrid, <:Tuple{Colon, Colon, Colon}, <:OffsetArray}
+const TupledFillField = Field{<:CenterOrFace, <:CenterOrFace, <:CenterOrFace, <:Any, <:SerialGrid, <:Tuple{Colon, Colon, Colon}, <:AbstractOffsetArray}
 
 # Whether the halos of `field` may be filled together with those of other fields
 @inline tupled_fillable(field) = false
