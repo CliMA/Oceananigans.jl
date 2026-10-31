@@ -73,6 +73,7 @@ export
     VerticalScalarBiharmonicDiffusivity,
     HorizontalScalarBiharmonicDiffusivity,
     ScalarBiharmonicDiffusivity,
+    EnergyBudgetBackscatter,
     SmagorinskyLilly,
     DynamicSmagorinsky,
     AnisotropicMinimumDissipation,
