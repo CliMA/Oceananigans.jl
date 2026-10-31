@@ -3,11 +3,13 @@ using Oceananigans.Architectures: AbstractArchitecture, ReactantState
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions, needs_implicit_solver, regularize_field_boundary_conditions, validate_implicit_explicit_flux_locations
 using Oceananigans.BuoyancyFormulations: validate_buoyancy, materialize_buoyancy
-using Oceananigans.DistributedComputations: Distributed
+using Oceananigans.DistributedComputations: Distributed, DistributedGrid, all_reduce, @root
 using Oceananigans.Fields: Field, CenterField, ZeroField, tracernames, TracerFields
 using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: AbstractHorizontallyCurvilinearGrid, architecture, halo_size, MutableVerticalDiscretization, Face, Center
+using Oceananigans.Grids: AbstractHorizontallyCurvilinearGrid, architecture, halo_size, MutableVerticalDiscretization, Face, Center,
+                          minimum_xspacing, minimum_yspacing
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
+using .SplitExplicitFreeSurfaces: extended_halos_fit
 using Oceananigans.Models: AbstractModel, validate_model_halo, validate_tracer_advection, extract_boundary_conditions, materialize_tracers, timestepper_name
 using Oceananigans.TimeSteppers: Clock, TimeStepper, AbstractLagrangianParticles, materialize_clock!, time_discretization
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_closure_fields, add_closure_specific_boundary_conditions,
@@ -75,11 +77,41 @@ end
 
 supported_timesteppers = (:QuasiAdamsBashforth2, :SplitRungeKutta2, :SplitRungeKutta3, :SplitRungeKutta4, :SplitRungeKutta5)
 
-default_free_surface(grid::XYRegularStaticRG; gravitational_acceleration=defaults.gravitational_acceleration) =
-    ImplicitFreeSurface(; gravitational_acceleration)
+default_free_surface(grid; gravitational_acceleration=defaults.gravitational_acceleration, args...) =
+    SplitExplicitFreeSurface(grid; cfl=0.7, gravitational_acceleration)
 
-default_free_surface(grid; gravitational_acceleration=defaults.gravitational_acceleration) =
-    SplitExplicitFreeSurface(grid; cfl = 0.7, gravitational_acceleration)
+# A heuristic computation of a possible maximum Δt for a HydrostaticFreeSurfaceModel,
+# given the grid spacings, a hypothetical `maximum_speed` (assumed to be around 3 m/s)
+# and a conservative `cfl` (0.3 by default). Note that this computation only considers the ``advective''
+# CFL, as we assume that at a high enough resolution advective processes are the bottleneck.
+function estimate_maximum_Δt(grid; maximum_speed = 3, cfl = 0.7)
+    Δx  = minimum_xspacing(grid)
+    Δy  = minimum_yspacing(grid)
+    Δs  = sqrt((Δx^2 + Δy^2) / 2)
+    return Δs * cfl / maximum_speed
+end
+
+function default_free_surface(grid::DistributedGrid;
+                              gravitational_acceleration = defaults.gravitational_acceleration,
+                              cfl = 0.7,
+                              Δt = estimate_maximum_Δt(grid))
+
+    free_surface = SplitExplicitFreeSurface(grid; cfl, fixed_Δt=Δt, gravitational_acceleration)
+
+    # Substep into extended halos only if they fit within every rank's subdomain
+    arch = architecture(grid)
+    extend_halos = true
+
+    if !extend_halos
+        Nsubsteps = length(free_surface.substepping.averaging_weights)
+        @root arch.communicator @info string("The default SplitExplicitFreeSurface uses $Nsubsteps substeps, which require halos ",
+                                             "larger than some ranks' subdomains. Halos are not extended and the barotropic ",
+                                             "solver will communicate at every substep. To avoid this, use fewer ranks or ",
+                                             "provide a `free_surface` explicitly.")
+    end
+
+    return SplitExplicitFreeSurface(grid; cfl, fixed_Δt=Δt, gravitational_acceleration, extend_halos)
+end
 
 """
     HydrostaticFreeSurfaceModel(grid;
@@ -88,7 +120,7 @@ default_free_surface(grid; gravitational_acceleration=defaults.gravitational_acc
                                 tracer_advection = Centered(),
                                 buoyancy = nothing,
                                 coriolis = nothing,
-                                free_surface = [default_free_surface],
+                                free_surface = default_free_surface(grid),
                                 forcing::NamedTuple = NamedTuple(),
                                 closure = nothing,
                                 timestepper = :QuasiAdamsBashforth2,
@@ -118,11 +150,11 @@ Keyword arguments
   - `tracer_advection`: The scheme that advects tracers. See `Oceananigans.Advection`.
   - `buoyancy`: The buoyancy model. See `Oceananigans.BuoyancyFormulations`.
   - `coriolis`: Parameters for the background rotation rate of the model.
-  - `free_surface`: The free surface model. The default free-surface solver depends on the
-                    geometry of the `grid`. If the `grid` is a `RectilinearGrid` that is
-                    regularly spaced in the horizontal the default is an `ImplicitFreeSurface`
-                    solver with `solver_method = :FFTBasedPoissonSolver`. In all other cases,
-                    the default is a `SplitExplicitFreeSurface`.
+  - `free_surface`: The free surface model. The default is a `SplitExplicitFreeSurface` with
+                    a number of substeps corresponding to a barotropic CFL of 0.7. On distributed
+                    grids, the number of substeps is fixed and computed from a heuristic estimate of
+                    the maximum baroclinic time step; halos are extended for substepping only if
+                    the extended halos fit within every rank's subdomain.
   - `tracers`: A tuple of symbols defining the names of the modeled tracers, or a `NamedTuple` of
                preallocated `CenterField`s.
   - `forcing`: `NamedTuple` of user-defined forcing functions that contribute to solution tendencies.
