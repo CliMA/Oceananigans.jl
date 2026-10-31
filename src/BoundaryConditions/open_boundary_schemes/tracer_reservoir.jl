@@ -37,8 +37,7 @@ TracerReservoir{Float64}
 struct TracerReservoir{FT, S} <: AbstractRadiationScheme{FT}
     inflow_length_scale  :: FT
     outflow_length_scale :: FT
-    cʳ  :: S  # anchor reservoir value (2D array or nothing)
-    cʳˡ :: S  # latest reservoir value (2D array or nothing)
+    φ⁻ :: S  # reservoir value at the base of the stage (2D array or nothing)
 end
 
 function TracerReservoir(FT = defaults.FloatType;
@@ -51,14 +50,13 @@ function TracerReservoir(FT = defaults.FloatType;
     inflow_length_scale  >= 0 || throw(ArgumentError("inflow_length_scale must be non-negative"))
     outflow_length_scale >= 0 || throw(ArgumentError("outflow_length_scale must be non-negative"))
 
-    return TracerReservoir(inflow_length_scale, outflow_length_scale, nothing, nothing)
+    return TracerReservoir(inflow_length_scale, outflow_length_scale, nothing)
 end
 
 Adapt.adapt_structure(to, r::TracerReservoir) =
     TracerReservoir(adapt(to, r.inflow_length_scale),
                     adapt(to, r.outflow_length_scale),
-                    adapt(to, r.cʳ),
-                    adapt(to, r.cʳˡ))
+                    adapt(to, r.φ⁻))
 
 Base.summary(::TracerReservoir{FT}) where FT = "TracerReservoir{$FT}"
 
@@ -70,15 +68,7 @@ end
 
 const TRVBC = BoundaryCondition{<:Value{<:TracerReservoir}}
 
-#####
-##### Storage allocation during BC regularization
-#####
-
-radiation_buffers(reservoir::TracerReservoir, arch, FT, tangential_ranges) = ntuple(_ -> radiation_buffer(arch, FT, tangential_ranges...), 2) # cʳ, cʳˡ
-radiation_buffers(reservoir::TracerReservoir) = (reservoir.cʳ, reservoir.cʳˡ)
-
-radiation_storage(reservoir::TracerReservoir, (cʳ, cʳˡ)) =
-    TracerReservoir(reservoir.inflow_length_scale, reservoir.outflow_length_scale, cʳ, cʳˡ)
+radiation_storage(reservoir::TracerReservoir, buffer) = TracerReservoir(reservoir.inflow_length_scale, reservoir.outflow_length_scale, buffer())
 
 #####
 ##### The reservoir update
@@ -92,77 +82,26 @@ radiation_storage(reservoir::TracerReservoir, (cʳ, cʳˡ)) =
     return ifelse(L == 0, c★, (cʳ + a * c★) / (1 + a))
 end
 
-# `cʳ` anchors the reservoir at the start of the time step; every stage relaxes from it with
-# its own `Δt` into `cʳˡ`, which becomes next step's anchor.
-@inline function reservoir_halo!(cᵇ, cᴵ, l, m, grid, c, bc, uₙ, outflow, closed, clock, model_fields)
-    Δτ = stage_Δt(clock)
-    first_call = isinf(Δτ)
-    Δt = ifelse(first_call, zero(Δτ), Δτ)
-    anchored = anchored_fill(clock)
+# The flow advects `d = |uₙ| Δt` across the boundary face, with the normal velocity taken at the face
+@inline function step_exterior_state!(side, i, j, grid, c, bc::TRVBC, loc, clock, model_fields, Δt)
+    iᵇ, jᵇ, kᵇ = boundary_point(side, loc, grid, 0, i, j)
+    i₁, j₁, k₁ = boundary_point(side, loc, grid, 1, i, j)
     reservoir = bc.classification.scheme
 
     @inbounds begin
-        cᵉˣᵗ = getbc(bc, l, m, grid, clock, model_fields)
-
-        cʳᵃ = ifelse(anchored, reservoir.cʳˡ[l, m], reservoir.cʳ[l, m])
-        cʳⁿ = ifelse(first_call, cᵉˣᵗ, cʳᵃ)
-
+        cᵉˣᵗ = getbc(bc, i, j, grid, clock, model_fields)
+        uₙ = normal_velocity(side, model_fields, grid, 0, i, j)
         d = abs(uₙ) * Δt
-        cʳⁿ⁺¹ = reservoir_update(cʳⁿ, c[cᴵ...], cᵉˣᵗ, d, outflow, reservoir)
-
-        c[cᵇ...] = ifelse(closed, zero(grid), cʳⁿ⁺¹)
-        reservoir.cʳ[l, m]  = cʳⁿ   # anchor for later stages
-        reservoir.cʳˡ[l, m] = cʳⁿ⁺¹ # latest, promoted at the next anchored fill
+        cʳ = reservoir_update(reservoir.φ⁻[i, j], c[i₁, j₁, k₁], cᵉˣᵗ, d, outward(side, uₙ) >= 0, reservoir)
+        c[iᵇ, jᵇ, kᵇ] = ifelse(immersed_boundary_point(side, loc, grid, i, j), zero(grid), cʳ)
     end
 
     return nothing
 end
 
-#####
-##### Halo filling — Center-located fields on the six boundaries
-#####
-
-@inline function _fill_east_halo!(j, k, grid, c, bc::TRVBC, loc::CAA, clock, model_fields)
-    ℓx, ℓy, ℓz = loc
-    i = grid.Nx + 1
-    uₙ = @inbounds model_fields.u[i, j, k]
-    closed = immersed_peripheral_node(grid.Nx, j, k, grid, Center(), ℓy, ℓz)
-    return reservoir_halo!((i, j, k), (i-1, j, k), j, k, grid, c, bc, uₙ, uₙ >= 0, closed, clock, model_fields)
-end
-
-@inline function _fill_west_halo!(j, k, grid, c, bc::TRVBC, loc::CAA, clock, model_fields)
-    ℓx, ℓy, ℓz = loc
-    uₙ = @inbounds model_fields.u[1, j, k]
-    closed = immersed_peripheral_node(1, j, k, grid, Center(), ℓy, ℓz)
-    return reservoir_halo!((0, j, k), (1, j, k), j, k, grid, c, bc, uₙ, uₙ <= 0, closed, clock, model_fields)
-end
-
-@inline function _fill_north_halo!(i, k, grid, c, bc::TRVBC, loc::ACA, clock, model_fields)
-    ℓx, ℓy, ℓz = loc
-    j = grid.Ny + 1
-    uₙ = @inbounds model_fields.v[i, j, k]
-    closed = immersed_peripheral_node(i, grid.Ny, k, grid, ℓx, Center(), ℓz)
-    return reservoir_halo!((i, j, k), (i, j-1, k), i, k, grid, c, bc, uₙ, uₙ >= 0, closed, clock, model_fields)
-end
-
-@inline function _fill_south_halo!(i, k, grid, c, bc::TRVBC, loc::ACA, clock, model_fields)
-    ℓx, ℓy, ℓz = loc
-    uₙ = @inbounds model_fields.v[i, 1, k]
-    closed = immersed_peripheral_node(i, 1, k, grid, ℓx, Center(), ℓz)
-    return reservoir_halo!((i, 0, k), (i, 1, k), i, k, grid, c, bc, uₙ, uₙ <= 0, closed, clock, model_fields)
-end
-
-@inline function _fill_top_halo!(i, j, grid, c, bc::TRVBC, loc::AAC, clock, model_fields)
-    ℓx, ℓy, ℓz = loc
-    k = grid.Nz + 1
-    uₙ = @inbounds model_fields.w[i, j, k]
-    closed = immersed_peripheral_node(i, j, grid.Nz, grid, ℓx, ℓy, Center())
-    return reservoir_halo!((i, j, k), (i, j, k-1), i, j, grid, c, bc, uₙ, uₙ >= 0, closed, clock, model_fields)
-end
-
-@inline function _fill_bottom_halo!(i, j, grid, c, bc::TRVBC, loc::AAC, clock, model_fields)
-    ℓx, ℓy, ℓz = loc
-    uₙ = @inbounds model_fields.w[i, j, 1]
-    closed = immersed_peripheral_node(i, j, 1, grid, ℓx, ℓy, Center())
-    return reservoir_halo!((i, j, 0), (i, j, 1), i, j, grid, c, bc, uₙ, uₙ <= 0, closed, clock, model_fields)
+# The reservoir starts at the exterior value
+@inline function initialize_exterior_state!(side, i, j, grid, c, bc::TRVBC, loc, clock, model_fields)
+    iᵇ, jᵇ, kᵇ = boundary_point(side, loc, grid, 0, i, j)
+    @inbounds c[iᵇ, jᵇ, kᵇ] = getbc(bc, i, j, grid, clock, model_fields)
+    return nothing
 end

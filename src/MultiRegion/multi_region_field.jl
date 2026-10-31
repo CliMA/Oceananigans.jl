@@ -3,7 +3,7 @@ using Oceananigans.BoundaryConditions: FieldBoundaryConditions, NoFluxBoundaryCo
 using Oceananigans.Diagnostics: Diagnostics, hasnan
 using Oceananigans.DistributedComputations: reconstruct_global_field, CommunicationBuffers
 using Oceananigans.Fields: FunctionField, AbstractField, ZeroField, Scan, compute!, compute_at!, data_summary
-using Oceananigans.Fields: instantiated_location, interior, set!, validate_indices
+using Oceananigans.Fields: Fields, indices, instantiated_location, interior, set!, validate_indices
 using Oceananigans.Grids: xnodes, ynodes
 using Oceananigans.Operators: assumed_field_location
 using Oceananigans.OutputWriters: output_indices
@@ -22,6 +22,8 @@ const GriddedMultiRegionFieldNamedTuple{S, N} = NamedTuple{S, N} where {S, N<:Gr
 
 # Utils
 Base.size(f::GriddedMultiRegionField) = size(getregion(f, 1))
+Fields.axes_indices(f::AbstractField{<:Any, <:Any, <:Any, <:MultiRegionGrids}) = getregion(something(indices(f), (:, :, :)), 1)
+Base.:(==)(a::MultiRegionField, b::MultiRegionField) = all(construct_regionally(==, a, b).regional_objects)
 @inline Utils.isregional(f::GriddedMultiRegionField) = true
 @inline Utils.regions(f::GriddedMultiRegionField) = regions(f.grid)
 
@@ -175,6 +177,9 @@ function BoundaryConditions.regularize_field_boundary_conditions(bcs::FieldBound
                                            top = reg_bcs.top,
                                            immersed = reg_bcs.immersed)
 end
+
+BoundaryConditions.regularize_field_boundary_conditions(bcs::MultiRegionObject, mrg::MultiRegionGrids, field_name::Symbol, prognostic_field_name=nothing) =
+    construct_regionally(regularize_field_boundary_conditions, bcs, mrg, field_name, prognostic_field_name)
 
 function inject_regional_bcs(grid, connectivity, loc, indices;
                              west = default_auxiliary_bc(grid, Val(:west), loc),

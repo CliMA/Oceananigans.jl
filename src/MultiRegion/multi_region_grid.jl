@@ -4,14 +4,14 @@ using Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid, metrics_precom
                           pop_flat_elements, grid_name, new_data, halo_size, with_halo,
                           minimum_xspacing, minimum_yspacing, minimum_zspacing
 using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary,
-                                       bottom_height_field, set_bottom_height!
+                                       height_field, set_bottom_height!
 using Oceananigans.Models: PrescribedVelocityFields
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModels
 using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: SplitExplicitFreeSurfaces,
                                                                                   SplitExplicitFreeSurface,
                                                                                   FixedSubstepNumber,
                                                                                   FixedTimeStepSize,
-                                                                                  maybe_augmented_kernel_parameters
+                                                                                  materialize_kernel_parameters
 
 struct MultiRegionGrid{FT, TX, TY, TZ, CZ, P, C, G, Arch <: AbstractSerialArchitecture} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, Arch, Nothing}
     architecture :: Arch
@@ -178,13 +178,13 @@ function DistributedComputations.reconstruct_global_grid(mrg::ImmersedMultiRegio
 end
 
 function reconstruct_global_immersed_boundary(ib::GridFittedBottom, mrg::MultiRegionGrids)
-    bottom_field  = bottom_height_field(ib.bottom_height, mrg)
+    bottom_field  = height_field(ib.bottom_height, mrg)
     global_bottom = reconstruct_global_field(bottom_field)
     return GridFittedBottom(interior(global_bottom), ib.immersed_condition)
 end
 
 function reconstruct_global_immersed_boundary(ib::PartialCellBottom, mrg::MultiRegionGrids)
-    bottom_field  = bottom_height_field(ib.bottom_height, mrg)
+    bottom_field  = height_field(ib.bottom_height, mrg)
     global_bottom = reconstruct_global_field(bottom_field)
     return PartialCellBottom(interior(global_bottom), ib.minimum_fractional_cell_height)
 end
@@ -193,11 +193,12 @@ reconstruct_global_immersed_boundary(g::GridFittedBoundary{<:Field}, ::MultiRegi
 
 # The immersed boundary of a connected region is materialized on the whole multi-region grid, so it moves to
 # another architecture as it is, without being materialized again on the region alone.
-const RegionalConnectedTopology = Union{FullyConnected, LeftConnected, RightConnected}
+# Distributed local grids also have connected topologies, but every rank must materialize them (with a halo exchange).
+const RegionalConnectedTopology = Union{TwoSided{Connected, Connected}, TwoSided{Connected, <:BoundarySide}, TwoSided{<:BoundarySide, Connected}}
 const RegionalGrid = Union{RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid}
 
-const ImmersedRegionalGrid = Union{ImmersedBoundaryGrid{<:Any, <:RegionalConnectedTopology, <:Any, <:Any, <:RegionalGrid},
-                                   ImmersedBoundaryGrid{<:Any, <:Any, <:RegionalConnectedTopology, <:Any, <:RegionalGrid}}
+const ImmersedRegionalGrid = Union{ImmersedBoundaryGrid{<:Any, <:RegionalConnectedTopology, <:Any, <:Any, <:RegionalGrid, <:Any, <:Any, <:Any, <:AbstractSerialArchitecture},
+                                   ImmersedBoundaryGrid{<:Any, <:Any, <:RegionalConnectedTopology, <:Any, <:RegionalGrid, <:Any, <:Any, <:Any, <:AbstractSerialArchitecture}}
 
 function Oceananigans.Architectures.on_architecture(arch, ibg::ImmersedRegionalGrid)
     underlying_grid = on_architecture(arch, ibg.underlying_grid)
@@ -262,10 +263,10 @@ function Grids.on_architecture(arch, mrg::MultiRegionGrid{FT, TX, TY, TZ, CZ}) w
 end
 
 Base.summary(mrg::MultiRegionGrids{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
-    "MultiRegionGrid{$FT, $(nameof(TX)), $(nameof(TY)), $(nameof(TZ))} with $(summary(mrg.partition)) on $(nameof(typeof(mrg.region_grids[1])))"
+    "MultiRegionGrid{$FT, $(prettysummary(TX)), $(prettysummary(TY)), $(prettysummary(TZ))} with $(summary(mrg.partition)) on $(nameof(typeof(mrg.region_grids[1])))"
 
 function Base.show(io::IO, mrg::MultiRegionGrids{FT}) where FT
-    nTX, nTY, nTZ = map(nameof, topology(mrg))
+    nTX, nTY, nTZ = map(prettysummary, topology(mrg))
     return print(io, "$(grid_name(mrg)){$FT, $nTX, $nTY, $nTZ} partitioned on $(summary(architecture(mrg))): \n",
                      "├── region_grids: $(summary(mrg.region_grids[1])) \n",
                      "├── partition: $(summary(mrg.partition)) \n",
@@ -329,17 +330,17 @@ end
 @inline augmented_kernel_offsets(grid, ::XPartition) = (-halo_size(grid)[1] + 1, 0)
 @inline augmented_kernel_offsets(grid, ::YPartition) = (0, -halo_size(grid)[2] + 1)
 
-function SplitExplicitFreeSurfaces.maybe_augmented_kernel_parameters(TX, TY, grid::MultiRegionGrids, substepping::FixedSubstepNumber)
-    @apply_regionally kernel_parameters = maybe_augmented_kernel_parameters(TX, TY, grid, grid.partition, substepping)
+function SplitExplicitFreeSurfaces.materialize_kernel_parameters(TX, TY, grid::MultiRegionGrids, substepping::FixedSubstepNumber, strategy)
+    @apply_regionally kernel_parameters = materialize_kernel_parameters(TX, TY, grid, grid.partition, substepping)
     return kernel_parameters
 end
 
-function SplitExplicitFreeSurfaces.maybe_augmented_kernel_parameters(TX, TY, grid::MultiRegionGrids, substepping::FixedTimeStepSize)
-    @apply_regionally kernel_parameters = maybe_augmented_kernel_parameters(TX, TY, grid, substepping)
+function SplitExplicitFreeSurfaces.materialize_kernel_parameters(TX, TY, grid::MultiRegionGrids, substepping::FixedTimeStepSize, strategy)
+    @apply_regionally kernel_parameters = materialize_kernel_parameters(TX, TY, grid, substepping, strategy)
     return kernel_parameters
 end
 
-function SplitExplicitFreeSurfaces.maybe_augmented_kernel_parameters(TX, TY, grid, partition::Union{XPartition, YPartition}, ::FixedSubstepNumber)
+function SplitExplicitFreeSurfaces.materialize_kernel_parameters(TX, TY, grid, partition::Union{XPartition, YPartition}, ::FixedSubstepNumber)
     kernel_size    = augmented_kernel_size(grid, partition)
     kernel_offsets = augmented_kernel_offsets(grid, partition)
 

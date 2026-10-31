@@ -1,5 +1,6 @@
 using Oceananigans.ImmersedBoundaries: immersed_peripheral_node, inactive_node
 using Oceananigans.Fields: ZeroField
+using Oceananigans.Grids: Open
 
 const IBG = ImmersedBoundaryGrid
 
@@ -39,48 +40,6 @@ end
 @inline _advective_tracer_flux_x(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)
 @inline _advective_tracer_flux_y(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)
 @inline _advective_tracer_flux_z(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)
-
-# Fallback for `nothing` advection
-@inline _advective_momentum_flux_Uu(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)
-@inline _advective_momentum_flux_Uv(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)
-@inline _advective_momentum_flux_Uw(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)
-@inline _advective_momentum_flux_Vu(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)
-@inline _advective_momentum_flux_Vv(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)
-@inline _advective_momentum_flux_Vw(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)
-@inline _advective_momentum_flux_Wu(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)
-@inline _advective_momentum_flux_Wv(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)
-@inline _advective_momentum_flux_Ww(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)
-
-# dx(uu), dy(vu), dz(wu)
-# ccc,    ffc,    fcf
-@inline _advective_momentum_flux_Uu(i, j, k, ibg::IBG, scheme, U, u) = conditional_flux_ccc(i, j, k, ibg, zero(ibg), advective_momentum_flux_Uu(i, j, k, ibg, scheme, TimeSteppers.time_discretization(scheme), U, u))
-@inline _advective_momentum_flux_Vu(i, j, k, ibg::IBG, scheme, V, u) = conditional_flux_ffc(i, j, k, ibg, zero(ibg), advective_momentum_flux_Vu(i, j, k, ibg, scheme, TimeSteppers.time_discretization(scheme), V, u))
-@inline _advective_momentum_flux_Wu(i, j, k, ibg::IBG, scheme, W, u) = conditional_flux_fcf(i, j, k, ibg, zero(ibg), advective_momentum_flux_Wu(i, j, k, ibg, scheme, TimeSteppers.time_discretization(scheme), W, u))
-
-# dx(uv), dy(vv), dz(wv)
-# ffc,    ccc,    cff
-@inline _advective_momentum_flux_Uv(i, j, k, ibg::IBG, scheme, U, v) = conditional_flux_ffc(i, j, k, ibg, zero(ibg), advective_momentum_flux_Uv(i, j, k, ibg, scheme, TimeSteppers.time_discretization(scheme), U, v))
-@inline _advective_momentum_flux_Vv(i, j, k, ibg::IBG, scheme, V, v) = conditional_flux_ccc(i, j, k, ibg, zero(ibg), advective_momentum_flux_Vv(i, j, k, ibg, scheme, TimeSteppers.time_discretization(scheme), V, v))
-@inline _advective_momentum_flux_Wv(i, j, k, ibg::IBG, scheme, W, v) = conditional_flux_cff(i, j, k, ibg, zero(ibg), advective_momentum_flux_Wv(i, j, k, ibg, scheme, TimeSteppers.time_discretization(scheme), W, v))
-
-# dx(uw), dy(vw), dz(ww)
-# fcf,    cff,    ccc
-@inline _advective_momentum_flux_Uw(i, j, k, ibg::IBG, scheme, U, w) = conditional_flux_fcf(i, j, k, ibg, zero(ibg), advective_momentum_flux_Uw(i, j, k, ibg, scheme, TimeSteppers.time_discretization(scheme), U, w))
-@inline _advective_momentum_flux_Vw(i, j, k, ibg::IBG, scheme, V, w) = conditional_flux_cff(i, j, k, ibg, zero(ibg), advective_momentum_flux_Vw(i, j, k, ibg, scheme, TimeSteppers.time_discretization(scheme), V, w))
-@inline _advective_momentum_flux_Ww(i, j, k, ibg::IBG, scheme, W, w) = conditional_flux_ccc(i, j, k, ibg, zero(ibg), advective_momentum_flux_Ww(i, j, k, ibg, scheme, TimeSteppers.time_discretization(scheme), W, w))
-
-# Disambiguation for `FluxForm` momentum fluxes....
-@inline _advective_momentum_flux_Uu(i, j, k, ibg::IBG, scheme::FluxFormAdvection, U, u) = _advective_momentum_flux_Uu(i, j, k, ibg, scheme.x, U, u)
-@inline _advective_momentum_flux_Vu(i, j, k, ibg::IBG, scheme::FluxFormAdvection, V, u) = _advective_momentum_flux_Vu(i, j, k, ibg, scheme.y, V, u)
-@inline _advective_momentum_flux_Wu(i, j, k, ibg::IBG, scheme::FluxFormAdvection, W, u) = _advective_momentum_flux_Wu(i, j, k, ibg, scheme.z, W, u)
-
-@inline _advective_momentum_flux_Uv(i, j, k, ibg::IBG, scheme::FluxFormAdvection, U, v) = _advective_momentum_flux_Uv(i, j, k, ibg, scheme.x, U, v)
-@inline _advective_momentum_flux_Vv(i, j, k, ibg::IBG, scheme::FluxFormAdvection, V, v) = _advective_momentum_flux_Vv(i, j, k, ibg, scheme.y, V, v)
-@inline _advective_momentum_flux_Wv(i, j, k, ibg::IBG, scheme::FluxFormAdvection, W, v) = _advective_momentum_flux_Wv(i, j, k, ibg, scheme.z, W, v)
-
-@inline _advective_momentum_flux_Uw(i, j, k, ibg::IBG, scheme::FluxFormAdvection, U, w) = _advective_momentum_flux_Uw(i, j, k, ibg, scheme.x, U, w)
-@inline _advective_momentum_flux_Vw(i, j, k, ibg::IBG, scheme::FluxFormAdvection, V, w) = _advective_momentum_flux_Vw(i, j, k, ibg, scheme.y, V, w)
-@inline _advective_momentum_flux_Ww(i, j, k, ibg::IBG, scheme::FluxFormAdvection, W, w) = _advective_momentum_flux_Ww(i, j, k, ibg, scheme.z, W, w)
 
 # Disambiguation for `FluxForm` tracer fluxes....
 @inline _advective_tracer_flux_x(i, j, k, ibg::IBG, scheme::FluxFormAdvection, U, c) =
@@ -181,6 +140,29 @@ for side in (:ᶜ, :ᶠ)
             @inline $near_x_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(inside_immersed_boundary(buffer, :interior, :x, side)...))
             @inline $near_y_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(inside_immersed_boundary(buffer, :interior, :y, side)...))
             @inline $near_z_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(inside_immersed_boundary(buffer, :interior, :z, side)...))
+        end
+    end
+
+    # The halos beyond an Open side are active, so order reduction there comes from the topology
+    for (ξ, d) in ((:x, 1), (:y, 2), (:z, 3))
+        open_topology = :(Union{TwoSided{Open}, TwoSided{<:Any, Open}})
+        open_grid = d == 1 ? :(IBG{<:Any, <:$open_topology}) :
+                    d == 2 ? :(IBG{<:Any, <:Any, <:$open_topology}) :
+                             :(IBG{<:Any, <:Any, <:Any, <:$open_topology})
+
+        N = (:Nx, :Ny, :Nz)[d]
+        index = (:i, :j, :k)[d]
+
+        for bias in (:symmetric, :biased)
+            near_boundary = Symbol(:near_, ξ, :_immersed_boundary_, bias, side)
+            outside_halo  = Symbol(:outside_, bias, :_halo_, ξ, side)
+            shift = bias == :symmetric ? :none : :interior
+
+            for buffer in advection_buffers
+                inactive_cells = inside_immersed_boundary(buffer, shift, ξ, side)
+                @eval @inline $near_boundary(i, j, k, ibg::$open_grid, scheme::AbstractAdvectionScheme{$buffer}) =
+                    (|)($(inactive_cells...)) | !$outside_halo($index, topology(ibg, $d), ibg.$N, scheme)
+            end
         end
     end
 end
