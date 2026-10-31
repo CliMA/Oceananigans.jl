@@ -162,7 +162,8 @@ fields are cached. Then, for each stage `m`:
    (the last stage, with `βⁿ = 1`, lands on `tⁿ + Δt`)
 4. Update the `model` state (fill halos, compute diagnostics, etc.)
 
-After all substeps, Lagrangian particles are stepped and the `model.clock` iteration is incremented.
+After all substeps, Lagrangian particles are stepped, the `model.clock` iteration is incremented,
+and the Lagrangian particle state (for example, tracked fields) is updated.
 """
 function time_step!(model::AbstractModel{<:SplitRungeKuttaTimeStepper}, Δt; callbacks=[])
 
@@ -171,6 +172,7 @@ function time_step!(model::AbstractModel{<:SplitRungeKuttaTimeStepper}, Δt; cal
     maybe_prepare_first_time_step!(model, Δt, callbacks)
 
     cache_current_fields!(model)
+    cache_boundary_conditions!(model)
     grid = model.grid
 
     # Every stage restarts from the state cached at tⁿ, so the state after stage m approximates
@@ -214,6 +216,9 @@ function time_step!(model::AbstractModel{<:SplitRungeKuttaTimeStepper}, Δt; cal
 
     model.clock.iteration += 1
 
+    # Once per time step: the particle state is not reset to tⁿ between stages, so per-stage updates would compound
+    update_lagrangian_particle_state!(model)
+
     return nothing
 end
 
@@ -253,6 +258,7 @@ function maybe_prepare_first_time_step!(model::AbstractModel{<:SplitRungeKuttaTi
         model.clock.last_Δt = Δt
         model.clock.last_stage_Δt = Δt / model.timestepper.β[1]
         reconcile_state!(model)
+        initialize_boundary_conditions!(model)
         update_state!(model, callbacks)
     end
     return nothing
