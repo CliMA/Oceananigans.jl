@@ -1105,6 +1105,29 @@ end
         @test extract_field_time_series(CenterField(grid)) == ()
         @test Base.return_types(extract_field_time_series, (typeof(CenterField(grid)),))[1] === Tuple{}
     end
+
+    @testset "A clocked halo fill moves the window of a series held by a boundary condition [$(typeof(arch))]" begin
+        grid  = RectilinearGrid(arch, size=(4, 4, 2), extent=(1, 1, 1))
+        times = [0.5, 1.5, 2.5, 3.5]
+        path  = joinpath(mktempdir(), "top_value.jld2")
+
+        ondisk = FieldTimeSeries{Center, Center, Nothing}(grid, times; backend=OnDisk(), path, name="b")
+        sample = Field{Center, Center, Nothing}(grid)
+        for n in 1:4
+            set!(sample, n)
+            set!(ondisk, sample, n)
+        end
+
+        fts = FieldTimeSeries(path, "b"; architecture=arch, backend=InMemory(2), time_indexing=Cyclical())
+        c_bcs = FieldBoundaryConditions(top=ValueBoundaryCondition(fts))
+        model = HydrostaticFreeSurfaceModel(grid; tracers=:c, buoyancy=nothing, boundary_conditions=(; c=c_bcs))
+
+        fts[3] # holds snapshots 3 and 4 in memory
+        set!(model, c=0)
+
+        # At t = 0 the cyclical series is halfway between snapshots 4 and 1
+        @test @allowscalar model.tracers.c[1, 1, 3] ≈ 2 * 2.5
+    end
     end
 
     for arch in archs
