@@ -116,16 +116,31 @@ end
 """
 $(TYPEDSIGNATURES)
 
-`total` faces spaced by `(c₂ - c₁) / N`, of which faces `H + 1` to `H + N + 1` are `range(c₁, c₂, length = N + 1)`.
+`total` nodes at location `ℓ` spaced by `(c₂ - c₁) / N`, of which faces `H + 1` to `H + N + 1` go from `c₁` to `c₂`
+and centers lie halfway between faces.
 """
-function regular_faces(FT, c₁, c₂, N, H, total)
-    interior = range(FT(c₁), FT(c₂), length = N + 1)
-    faces = StepRangeLen{FT}(interior.ref, interior.step, max(total, interior.offset + H), interior.offset + H)
-    return faces[1:total]
+function regular_nodes(FT, ℓ, c₁, c₂, N, H, total)
+    R = promote_type(FT, Float64)
+    Δ = (c₂ - c₁) / N
+    shift = ℓ isa Center ? 1/2 : 0
+    # Anchored at the node nearest zero, so that a node at zero is exact
+    k = clamp(round(Int, - c₁ / Δ - shift), 0, N)
+    anchor = clamp(H + 1 + k, 1, total)
+    reference = c₁ + (anchor - H - 1 + shift) * Δ
+    return StepRangeLen{FT, R, R}(R(reference), R(Δ), total, anchor)
 end
 
-# The `total` cell centers between the regular faces `F`
-regular_centers(F, total) = StepRangeLen{eltype(F)}(F.ref + F.step / 2, F.step, total, F.offset)
+# No public type is wider than Float64, so Float64 nodes take the extended-precision reference and step of `range`
+function regular_nodes(::Type{Float64}, ℓ, c₁, c₂, N, H, total)
+    interior = range(Float64(c₁), Float64(c₂), length = N + 1)
+    if !(interior isa StepRangeLen)
+        error("Regular Float64 coordinates need `range` to return a `StepRangeLen`, but it returned a $(typeof(interior))")
+    end
+    reference = ℓ isa Center ? interior.ref + interior.step / 2 : interior.ref
+    anchor = interior.offset + H
+    nodes = StepRangeLen{Float64}(reference, interior.step, max(total, anchor), anchor)
+    return nodes[1:total]
+end
 
 # Generate a regularly-spaced coordinate passing the domain extent (2-tuple) and number of points
 function generate_coordinate(FT, topo::AT, N, H, node_interval::Tuple{<:Number, <:Number}, coordinate_name, arch)
@@ -147,8 +162,8 @@ function generate_coordinate(FT, topo::AT, N, H, node_interval::Tuple{<:Number, 
     TF = total_length(Face(),   topo, N, H)
     TC = total_length(Center(), topo, N, H)
 
-    F = regular_faces(FT, c₁, c₂, N, H, TF)
-    C = regular_centers(F, TC)
+    F = regular_nodes(FT, Face(),   c₁, c₂, N, H, TF)
+    C = regular_nodes(FT, Center(), c₁, c₂, N, H, TC)
 
     F = on_architecture(arch, F)
     C = on_architecture(arch, C)

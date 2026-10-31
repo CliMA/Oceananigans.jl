@@ -7,7 +7,7 @@ using Oceananigans.Grids: AbstractGrid, topology, size, halo_size, architecture,
                           generate_coordinate, with_precomputed_metrics,
                           cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z,
                           metrics_precomputed, constructor_arguments,
-                          AbstractTopology, StaticVerticalDiscretization, regular_faces, regular_centers, total_length
+                          AbstractTopology, StaticVerticalDiscretization, regular_nodes, total_length
 
 
 import Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid,
@@ -21,8 +21,8 @@ function generate_coordinate(FT, topo::AbstractTopology, n, H, p::PartitionedInt
     TF = total_length(Face(),   topo, n, H)
     TC = total_length(Center(), topo, n, H)
 
-    whole_F = regular_faces(FT, c₁, c₂, p.N, H, p.N + 2H + p.offset + TF)
-    whole_C = regular_centers(whole_F, length(whole_F))
+    whole_F = regular_nodes(FT, Face(),   c₁, c₂, p.N, H, p.N + 2H + p.offset + TF)
+    whole_C = regular_nodes(FT, Center(), c₁, c₂, p.N, H, p.N + 2H + p.offset + TF)
 
     F = OffsetArray(on_architecture(arch, [whole_F[p.offset + i] for i in 1:TF]), -H)
     C = OffsetArray(on_architecture(arch, [whole_C[p.offset + i] for i in 1:TC]), -H)
