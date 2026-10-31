@@ -1,3 +1,4 @@
+using LinearAlgebra: norm
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions
 using Oceananigans.DistributedComputations: reconstruct_global_grid
 using Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid, metrics_precomputed,
@@ -64,6 +65,8 @@ Grids.minimum_zspacing(grid::MultiRegionGrid, ℓx, ℓy, ℓz) =
 # the default free surface solver; see Models.HydrostaticFreeSurfaceModels
 HydrostaticFreeSurfaceModels.default_free_surface(grid::MultiRegionGrid; gravitational_acceleration=Oceananigans.defaults.gravitational_acceleration) =
     SplitExplicitFreeSurface(; substeps=50, gravitational_acceleration)
+
+HydrostaticFreeSurfaceModels.default_residual_norm(::MultiRegionGrids) = norm
 
 BoundaryConditions.FieldBoundaryConditions(mrg::MultiRegionGrids, loc::Tuple, indices=(:, :, :); kwargs...) =
     construct_regionally(inject_regional_bcs, mrg, mrg.connectivity, Reference(loc), indices; kwargs...)
