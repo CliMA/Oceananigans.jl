@@ -7,6 +7,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     ImplicitFreeSurface,
     FFTImplicitFreeSurfaceSolver,
     PCGImplicitFreeSurfaceSolver,
+    DiagonallyDominantInversePreconditioner,
     step_free_surface!,
     implicit_free_surface_linear_operation!
 
@@ -119,6 +120,12 @@ end
 
             @info "Testing PreconditionedConjugateGradient implicit free surface solver [$A, $G]..."
             free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient,
+                                               abstol=1e-15, reltol=0)
+            run_implicit_free_surface_solver_tests(arch, grid, free_surface)
+
+            @info "Testing PreconditionedConjugateGradient implicit free surface solver with DiagonallyDominantInversePreconditioner [$A, $G]..."
+            free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient,
+                                               preconditioner=DiagonallyDominantInversePreconditioner(),
                                                abstol=1e-15, reltol=0)
             run_implicit_free_surface_solver_tests(arch, grid, free_surface)
         end
