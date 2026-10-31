@@ -40,7 +40,7 @@ end
 #
 # The free surface field η and its average η̄ are located on `Face`s at the surface (grid.Nz +1). All other intermediate
 # variables (U, V, Ū, V̄) are barotropic fields (`ReducedField`) for which a k index is not defined.
-@kernel function _split_explicit_barotropic_velocity!(transport_weight, grid, filled_halos, Δτ, η, U, V, Gᵁ, Gⱽ, g, Ũ, Ṽ, timestepper)
+@kernel function _split_explicit_barotropic_velocity!(grid, filled_halos, Δτ, η, U, V, Gᵁ, Gⱽ, g, timestepper)
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
 
@@ -57,14 +57,10 @@ end
     @inbounds begin
         U[i, j, 1] += Δτ * (- g * Hᶠᶜ * ∂xᵣ(i, j, k_top, grid, η★, timestepper, η) + Gᵁ[i, j, 1])
         V[i, j, 1] += Δτ * (- g * Hᶜᶠ * ∂yᵣ(i, j, k_top, grid, η★, timestepper, η) + Gⱽ[i, j, 1])
-
-        # Averaging the transport
-        Ũ[i, j, 1] += transport_weight * U[i, j, 1]
-        Ṽ[i, j, 1] += transport_weight * V[i, j, 1]
     end
 end
 
-@kernel function _split_explicit_free_surface!(averaging_weight, grid, filled_halos, Δτ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)
+@kernel function _split_explicit_free_surface!(averaging_weight, transport_weight, grid, filled_halos, Δτ, η, U, V, F, clock, η̅, U̅, V̅, Ũ, Ṽ, timestepper)
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
 
@@ -83,7 +79,34 @@ end
         η̅[i, j, k_top] += averaging_weight * η[i, j, k_top]
         U̅[i, j, 1]     += averaging_weight * U[i, j, 1]
         V̅[i, j, 1]     += averaging_weight * V[i, j, 1]
+
+        # Averaging the transport that advanced η, so that the filtered transport is consistent with η̅
+        Ũ[i, j, 1] += transport_weight * U★(i, j, 1, grid, timestepper, U)
+        Ṽ[i, j, 1] += transport_weight * U★(i, j, 1, grid, timestepper, V)
     end
+
+    TX, TY, _ = topology(grid)
+    Nx, Ny, _ = size(grid)
+    accumulate_edge_U_transport!(TX(), i, j, Nx, transport_weight, Ũ, timestepper, grid, U)
+    accumulate_edge_V_transport!(TY(), i, j, Ny, transport_weight, Ṽ, timestepper, grid, V)
+end
+
+# Fallback...
+@inline accumulate_edge_U_transport!(TX, i, j, args...) = nothing
+@inline accumulate_edge_V_transport!(TY, i, j, args...) = nothing
+
+@inline function accumulate_edge_U_transport!(::TwoSided{<:Any, Open}, i, j, Nx, transport_weight, Ũ, timestepper, grid, U)
+    if i == Nx
+        @inbounds Ũ[i+1, j, 1] += transport_weight * U★(i+1, j, 1, grid, timestepper, U)
+    end
+    return nothing
+end
+
+@inline function accumulate_edge_V_transport!(::TwoSided{<:Any, Open}, i, j, Ny, transport_weight, Ṽ, timestepper, grid, V)
+    if j == Ny
+        @inbounds Ṽ[i, j+1, 1] += transport_weight * U★(i, j+1, 1, grid, timestepper, V)
+    end
+    return nothing
 end
 
 # Change name
@@ -123,8 +146,8 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
     @apply_regionally velocity_kernel!, _     = configure_kernel(arch, grid, workspec, _split_explicit_barotropic_velocity!)
     @apply_regionally free_surface_kernel!, _ = configure_kernel(arch, grid, workspec, _split_explicit_free_surface!)
 
-    U_args = (grid, Val(true), Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, Ũ, Ṽ, timestepper)
-    η_args = (grid, Val(true), Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)
+    U_args = (grid, Val(true), Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, timestepper)
+    η_args = (grid, Val(true), Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, Ũ, Ṽ, timestepper)
 
     barotropic_model_fields = (; U, V, η)
 
@@ -151,13 +174,13 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
 
             maybe_distributed_fill_halo_regions!(arch, η_halo_args[1:end-1]..., substep_clock, η_halo_args[end]; only_local_halos)
             @apply_regionally cache_boundary_conditions!((U, V, η), substep_clock, barotropic_model_fields)
-            @apply_regionally apply_barotropic_kernel!(velocity_kernel!, transport_weight, converted_U_args)
+            @apply_regionally apply_barotropic_kernel!(velocity_kernel!, (), converted_U_args)
             @apply_regionally step_boundary_conditions!((U, V), substep_clock, barotropic_model_fields, Δτᴮ)
 
             maybe_distributed_fill_halo_regions!(arch, U_halo_args[1:end-1]..., substep_clock, U_halo_args[end]; only_local_halos)
             maybe_distributed_fill_halo_regions!(arch, V_halo_args[1:end-1]..., substep_clock, V_halo_args[end]; only_local_halos)
             pin_barotropic_faces!(face_pins)
-            @apply_regionally apply_barotropic_kernel!(free_surface_kernel!, averaging_weight, converted_η_args)
+            @apply_regionally apply_barotropic_kernel!(free_surface_kernel!, (averaging_weight, transport_weight), converted_η_args)
             @apply_regionally step_boundary_conditions!((η,), substep_clock, barotropic_model_fields, Δτᴮ)
         end
     end
@@ -165,7 +188,7 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
     return nothing
 end
 
-@inline apply_barotropic_kernel!(kernel, weight, args) = kernel(weight, args...)
+@inline apply_barotropic_kernel!(kernel, weights, args) = kernel(weights..., args...)
 
 function iterate_split_explicit_in_halo!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, F::Fη, clock, weights, transport_weights, ::Val{Nsubsteps}) where {Fη, Nsubsteps}
     arch = architecture(grid)
@@ -188,8 +211,8 @@ function iterate_split_explicit_in_halo!(free_surface, grid, GUⁿ, GVⁿ, Δτ�
 
     exchange_interval = halo_exchange_interval(free_surface, grid, Nsubsteps)
 
-    U_args = (grid, Val(false), Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, Ũ, Ṽ, timestepper)
-    η_args = (grid, Val(false), Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)
+    U_args = (grid, Val(false), Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, timestepper)
+    η_args = (grid, Val(false), Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, Ũ, Ṽ, timestepper)
 
     GC.@preserve U_args η_args begin
         # We need to perform ~50 time-steps which means launching ~100 very small kernels: we are limited by latency of
@@ -205,8 +228,8 @@ function iterate_split_explicit_in_halo!(free_surface, grid, GUⁿ, GVⁿ, Δτ�
                 fill_halo_regions!((U, V, η))
             end
 
-            barotropic_velocity_kernel!(transport_weight, converted_U_args...)
-            free_surface_kernel!(averaging_weight, converted_η_args...)
+            barotropic_velocity_kernel!(converted_U_args...)
+            free_surface_kernel!(averaging_weight, transport_weight, converted_η_args...)
         end
     end
 
@@ -230,11 +253,9 @@ end
 
 # Open boundaries read model fields while filling the barotropic halos; `ExtendedHalos` has none, so it
 # fills without threading them, which avoids a per-step allocation on distributed grids.
-@inline fill_barotropic_state_halos!(field, ::SplitExplicitFreeSurface{ExtendedHalos}, model) =
-    fill_halo_regions!(field; async=true)
+@inline fill_barotropic_state_halos!(field, ::SplitExplicitFreeSurface{ExtendedHalos}, model; kwargs...) = fill_halo_regions!(field; async=true, kwargs...)
 
-@inline fill_barotropic_state_halos!(field, ::FillHaloSplitExplicit, model) =
-    fill_halo_regions!(field, model.clock, fields(model); async=true)
+@inline fill_barotropic_state_halos!(field, ::FillHaloSplitExplicit, model; kwargs...) = fill_halo_regions!(field, model.clock, fields(model); async=true, kwargs...)
 
 function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroclinic_timestepper, Δt)
     # Note: free_surface.displacement.grid != model.grid for DistributedSplitExplicitFreeSurface since
@@ -283,8 +304,8 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
     # Update eta and velocities for the next timestep. The halos are updated in the `update_state!` function.
     @apply_regionally launch!(architecture(free_surface_grid), free_surface_grid, :xy, _update_split_explicit_state!, η, U, V, free_surface_grid, filtered_state)
 
-    # Fill all the barotropic state.
-    fill_barotropic_state_halos!((filtered_state.Ũ, filtered_state.Ṽ), free_surface, model)
+    # Fill all the barotropic state. Ũ and Ṽ accumulate their boundary faces, so their normal-flow sides stay in place.
+    fill_barotropic_state_halos!((filtered_state.Ũ, filtered_state.Ṽ), free_surface, model; fill_normal_flow_bcs = false)
     fill_barotropic_state_halos!((U, V), free_surface, model)
     fill_barotropic_state_halos!(η, free_surface, model)
 
@@ -292,7 +313,6 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
     arch = architecture(free_surface_grid)
     boundary_transport = free_surface.boundary_transport
     enforce_barotropic_transport_targets!(arch, free_surface_grid, U, V, boundary_transport)
-    enforce_barotropic_transport_targets!(arch, free_surface_grid, filtered_state.Ũ, filtered_state.Ṽ, boundary_transport)
 
     return nothing
 end
