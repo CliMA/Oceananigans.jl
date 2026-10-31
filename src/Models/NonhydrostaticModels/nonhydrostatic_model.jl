@@ -402,7 +402,8 @@ function prognostic_state(model::NonhydrostaticModel)
             closure_fields = prognostic_state(model.closure_fields),
             timestepper = prognostic_state(model.timestepper),
             auxiliary_fields = prognostic_state(model.auxiliary_fields),
-            boundary_transport = prognostic_state(model.boundary_transport))
+            boundary_transport = prognostic_state(model.boundary_transport),
+            biogeochemistry = prognostic_state(model.biogeochemistry))
 end
 
 function restore_prognostic_state!(restored::NonhydrostaticModel, from)
@@ -414,6 +415,7 @@ function restore_prognostic_state!(restored::NonhydrostaticModel, from)
     restore_prognostic_state!(restored.closure_fields, from.closure_fields)
     restore_prognostic_state!(restored.auxiliary_fields, from.auxiliary_fields)
     restore_prognostic_state!(restored.boundary_transport, from.boundary_transport)
+    restore_prognostic_state!(restored.biogeochemistry, from.biogeochemistry)
     return restored
 end
 

@@ -31,7 +31,7 @@ $(TYPEDSIGNATURES)
 `FFTW.REDFT01` needs to be normalized by 1/2N.
 See: http://www.fftw.org/fftw3_doc/1d-Real_002deven-DFTs-_0028DCTs_0029.html#g_t1d-Real_002deven-DFTs-_0028DCTs_0029
 """
-normalization_factor(::CPU, ::Bounded, ::Backward, N) = 1 / 2N
+normalization_factor(::CPU, ::BoundaryTopology, ::Backward, N) = 1 / 2N
 
 #####
 ##### Twiddle factors
@@ -51,7 +51,7 @@ function twiddle_factors(arch::GPU, grid, dims)
     dim = dims[1]
 
     topo = topology(grid)
-    topo[dim] != Bounded && return nothing
+    topo[dim] <: BoundaryTopology || return nothing
 
     Ns = size(grid)
     N = Ns[dim]
@@ -137,7 +137,7 @@ end
 
 maybe_permute_indices!(A, B, arch, grid, dim, dim_topo) = nothing
 
-function maybe_permute_indices!(A, B, arch::GPU, grid, dim, ::Bounded)
+function maybe_permute_indices!(A, B, arch::GPU, grid, dim, ::BoundaryTopology)
     permute_indices!(B, A, arch, grid, dim)
     copyto!(A, B)
     return nothing
@@ -145,7 +145,7 @@ end
 
 maybe_unpermute_indices!(A, B, arch, grid, dim, dim_topo) = nothing
 
-function maybe_unpermute_indices!(A, B, arch::GPU, grid, dim, ::Bounded)
+function maybe_unpermute_indices!(A, B, arch::GPU, grid, dim, ::BoundaryTopology)
     unpermute_indices!(B, A, arch, grid, dim)
     copyto!(A, B)
     @. A = real(A)

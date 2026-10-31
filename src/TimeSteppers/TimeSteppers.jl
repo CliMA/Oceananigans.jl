@@ -17,12 +17,13 @@ using Adapt: Adapt
 using DocStringExtensions: TYPEDSIGNATURES
 using KernelAbstractions: @kernel, @index
 
-using Oceananigans: Oceananigans, AbstractModel, initialize!, prognostic_fields
+using Oceananigans: Oceananigans, AbstractModel, initialize!, fields, prognostic_fields
+using Oceananigans.BoundaryConditions: BoundaryConditions, cache_boundary_conditions!, initialize_boundary_conditions!
 using Oceananigans.Architectures: architecture
 using Oceananigans.Utils: AbstractTimeDiscretization, ExplicitTimeDiscretization,
                           VerticallyImplicitTimeDiscretization,
                           AdaptiveVerticallyImplicitDiscretization,
-                          kernel_time_step
+                          kernel_time_step, @apply_regionally
 
 """
     abstract type AbstractTimeStepper
@@ -42,11 +43,19 @@ step_closure_prognostics!(model, Δt::Number) = nothing
 # Reconcile auxiliary state with prognostic fields (fallback is a no-op).
 reconcile_state!(model) = nothing
 
+# The exterior states of open boundaries are prognostic, like the fields they belong to
+BoundaryConditions.cache_boundary_conditions!(model::AbstractModel{<:AbstractTimeStepper}) = @apply_regionally cache_boundary_conditions!(prognostic_fields(model), model.clock, fields(model))
+BoundaryConditions.initialize_boundary_conditions!(model::AbstractModel{<:AbstractTimeStepper}) = @apply_regionally initialize_boundary_conditions!(prognostic_fields(model), model.clock, fields(model))
+
+# Models without a time stepper need not define `prognostic_fields` or `fields`
+BoundaryConditions.initialize_boundary_conditions!(model) = nothing
+
 # Prepare the model for the first time step, in case run! is not used.
 function maybe_prepare_first_time_step!(model, Δt, callbacks)
     if model.clock.iteration == 0
         model.clock.last_Δt = Δt
         reconcile_state!(model)
+        initialize_boundary_conditions!(model)
         update_state!(model, callbacks)
     end
     return nothing

@@ -1,6 +1,7 @@
 using Oceananigans.Architectures: architecture
 using Oceananigans.Utils: configure_kernel
-using Oceananigans.TimeSteppers: _rk3_substep_field!
+using Oceananigans.BoundaryConditions: step_boundary_conditions!
+using Oceananigans.TimeSteppers: _rk3_substep_field!, stage_Δt
 
 import Oceananigans.TimeSteppers: rk3_substep!
 
@@ -34,6 +35,8 @@ function rk3_substep!(model::ShallowWaterModel, Δt, γⁿ, ζⁿ, callbacks)
 
         _tracer_kernel!(c, Δt, γⁿ, ζⁿ, Gcⁿ, Gc⁻)
     end
+
+    step_boundary_conditions!(prognostic_fields(model), model.clock, fields(model), stage_Δt(Δt, γⁿ, ζⁿ))
 
     return nothing
 end

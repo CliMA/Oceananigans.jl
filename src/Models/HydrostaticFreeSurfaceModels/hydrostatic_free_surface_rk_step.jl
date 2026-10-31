@@ -161,6 +161,7 @@ function rk_substep_velocities!(velocities, model, Δt)
     fill_halos_read_by_implicit_step!(velocities.u, velocities)
     implicit_substep_velocity!(model, Δt, Val(:v))
     add_barotropic_acceleration!(velocities, model.grid, model.free_surface, ηⁿ, -Δt)
+    step_boundary_conditions!(velocities, model.clock, fields(model), Δt)
 
     return nothing
 end
@@ -223,6 +224,7 @@ function rk_substep_tracers!(tracers, model, Δt)
     foreach_name(tracers) do val_tracer_index, val_tracer_name
         rk_substep_tracer!(model, Δt, val_tracer_index, val_tracer_name)
     end
+    step_boundary_conditions!(tracers, model.clock, fields(model), Δt)
     return nothing
 end
 
@@ -271,6 +273,6 @@ end
 # accounting for the stretching factors from the new and the previous time step.
 @kernel function _rk_substep_tracer_field!(c, grid, Δt, Gⁿ, σc⁻)
     i, j, k = @index(Global, NTuple)
-    σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
-    @inbounds c[i, j, k] = (σc⁻[i, j, k] + Δt * Gⁿ[i, j, k]) / σᶜᶜⁿ
+    σ⁻¹ᶜᶜⁿ = σ⁻¹ⁿ(i, j, k, grid, Center(), Center(), Center())
+    @inbounds c[i, j, k] = (σc⁻[i, j, k] + Δt * Gⁿ[i, j, k]) * σ⁻¹ᶜᶜⁿ
 end

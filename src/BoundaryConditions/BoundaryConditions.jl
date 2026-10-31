@@ -26,9 +26,10 @@ using KernelAbstractions: @index, @kernel
 
 using Oceananigans: Oceananigans, defaults
 using Oceananigans.Architectures: Architectures, CPU, GPU, architecture, on_architecture
-using Oceananigans.Grids: Grids, AbstractGrid, Center, Connected, Face, Flat, LatitudeLongitudeGrid, Sides,
+using Oceananigans.Grids: Grids, AbstractGrid, Center, CenterFolded, CenterFoldConnected, Closed, Connected, Face, FaceFolded,
+                          FaceFoldConnected, Flat, LatitudeLongitudeGrid, Open, TwoSided,
                           connected_range, halo_size, node, λnode, φnode, λnodes, φnodes, topology
-using Oceananigans.Operators: Ax, Ay, Az, volume, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
+using Oceananigans.Operators: Ax, Ay, Az, V⁻¹, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
 using Oceananigans.Utils: AbstractTimeDiscretization, ExplicitTimeDiscretization, launch!, named_tuple
 
 # All possible fill_halo! kernels
@@ -70,8 +71,8 @@ include("polar_boundary_condition.jl")
 include("open_boundary_schemes/open_boundary_utils.jl")
 include("open_boundary_schemes/perturbation_advection.jl")
 include("open_boundary_schemes/gravity_wave_schemes.jl")
-include("open_boundary_schemes/normal_radiation.jl")
 include("open_boundary_schemes/oblique_radiation.jl")
+include("open_boundary_schemes/normal_radiation.jl")
 include("open_boundary_schemes/tracer_reservoir.jl")
 include("open_boundary_schemes/tidal_forcing.jl")
 
