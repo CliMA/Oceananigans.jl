@@ -77,7 +77,7 @@ function plan_transforms(grid::XYZRegularRG, storage, planner_flag)
 
     arch = architecture(grid)
 
-    if arch isa GPU && !(unflattened_topo in batchable_GPU_topologies)
+    if arch isa FFTBasedDCTArchitecture && !(unflattened_topo in batchable_GPU_topologies)
 
         reshaped_storage = reshape(storage, (Ny, Nx, Nz))
         forward_plan_x = plan_forward_transform(storage,          topo[1](), [1], planner_flag)
