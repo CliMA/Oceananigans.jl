@@ -1,7 +1,8 @@
 import Oceananigans: prognostic_state, restore_prognostic_state!
 using Oceananigans.BoundaryConditions:  construct_boundary_conditions_kernels, halo_fill_args, NFBC, MCBC,
     BoundaryCondition, AbstractBoundaryConditionClassification, LeftBoundary, RightBoundary,
-    Zipper, validate_boundary_condition_architecture, validate_boundary_condition_topology
+    Zipper, validate_boundary_condition_architecture, validate_boundary_condition_topology,
+    materialize_default_boundary_conditions
 using Oceananigans.Grids: parent_index_range, default_indices, validate_indices,
     index_range_contains, halo_size, offset_data, interior_parent_indices
 using Oceananigans.Utils: @apply_regionally, getregion
@@ -99,6 +100,7 @@ validate_boundary_condition_location(bc::Zipper, loc::Face, side) =
 
 # Common outer constructor for all field flavors that performs input validation
 Base.@constprop :aggressive function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::AbstractGrid, data, bcs, indices, op=nothing, status=nothing) where {LX, LY, LZ}
+    @apply_regionally bcs = materialize_default_boundary_conditions(bcs, grid, loc)
     @apply_regionally indices = validate_indices(indices, loc, grid)
     @apply_regionally validate_field_data(loc, data, grid, indices)
     @apply_regionally validate_boundary_conditions(loc, grid, bcs)
