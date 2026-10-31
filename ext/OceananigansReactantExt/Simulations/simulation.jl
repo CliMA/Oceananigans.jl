@@ -25,6 +25,9 @@ What differs from the eager `Simulation`:
   steps and then one final step of exactly the remaining time, as the eager `run!` does with
   `align_time_step`. That final step is a [`RemainderStep`](@ref) stored in `sim.stop_time`,
   sized on the host here, since the model's kernels take a plain-number step. Not both.
+- `stop_iteration` is held as a device number, the step count of [`run!`](@ref), which a compiled
+  `run!` reads at each call: setting `sim.stop_iteration = n` between calls runs `n` steps with
+  the same compiled program, without recompiling. A remainder step stays as it was sized here.
 - `callbacks` starts empty. The eager constructor installs the stop-criterion callbacks, which
   here are the loop bound, and a NaN checker, whose data-dependent error cannot exist inside a
   program. `add_callback!` works as usual, converting a `TimeInterval` to an `IterationInterval`;
@@ -57,10 +60,11 @@ function Simulation(model::ReactantModel; Δt,
     diagnostics = nothing
     output_writers = nothing
     callbacks = OrderedDict{Symbol, Callback}()
+    stop_iteration = isfinite(stop_iteration) ? device_step_count(model, stop_iteration) : nothing
 
     return Simulation(model,
                       Δt,
-                      Float64(stop_iteration),
+                      stop_iteration,
                       stop_time,
                       Float64(wall_time_limit),
                       diagnostics,
@@ -73,6 +77,22 @@ function Simulation(model::ReactantModel; Δt,
                       verbose,
                       Float64(minimum_relative_step),
                       automatic_differentiation)
+end
+
+# The step count as a device number, replicated across the devices of a distributed model as its
+# clock is, so that it is an input of the compiled program rather than a constant of it.
+function device_step_count(model, steps)
+    steps ≥ 0 || throw(ArgumentError("stop_iteration = $steps: a compiled run! takes a nonnegative number of steps."))
+    arch = architecture(model)
+    sharding = arch isa Distributed ? Sharding.Replicated(arch.connectivity) : Sharding.NoSharding()
+    return ConcreteRNumber(Int(steps); sharding)
+end
+
+function Base.setproperty!(sim::ReactantSimulation, name::Symbol, value)
+    if name === :stop_iteration && !(value isa ConcreteRNumber)
+        value = device_step_count(sim.model, value)
+    end
+    return setfield!(sim, name, convert(fieldtype(typeof(sim), name), value))
 end
 
 """

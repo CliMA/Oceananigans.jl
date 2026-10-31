@@ -11,7 +11,7 @@ using OrderedCollections: OrderedDict
 using ..Architectures: ReactantState
 using ..TimeSteppers: ReactantModel
 
-using Oceananigans: run_diagnostic!, Callback, TimeStepCallsite, TimeInterval, IterationInterval, TimeStepWizard, TimeDerivative
+using Oceananigans: run_diagnostic!, Callback, TimeStepCallsite, TimeInterval, IterationInterval, TimeStepWizard, TimeDerivative, Distributed
 using Oceananigans.Architectures: architecture
 using Oceananigans.BoundaryConditions: initialize_boundary_conditions!
 using Oceananigans.Diagnostics: NaNChecker
