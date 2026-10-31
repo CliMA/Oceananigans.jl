@@ -93,8 +93,7 @@ import Oceananigans.OutputWriters:
     convert_for_netcdf,
     materialize_from_netcdf,
     reconstruct_grid,
-    trilocation_dim_name,
-    dimension_name_generator_free_surface
+    trilocation_dim_name
 
 const c = Center()
 const f = Face()
