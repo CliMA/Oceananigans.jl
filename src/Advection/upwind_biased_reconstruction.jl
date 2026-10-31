@@ -14,30 +14,15 @@ end
 function UpwindBiased(FT::DataType = Oceananigans.defaults.FloatType;
                       order = 3,
                       time_discretization = ExplicitTimeDiscretization(),
-                      buffer_scheme = DecreasingOrderAdvectionScheme(),
-                      minimum_buffer_upwind_order = 1)
+                      buffer_scheme = DecreasingOrderAdvectionScheme())
 
     mod(order, 2) == 0 && throw(ArgumentError("UpwindBiased reconstruction scheme is defined only for odd orders"))
 
     N = Int((order + 1) ÷ 2)
     advecting_velocity_scheme = Centered(FT; order = 2)
 
-    if N > 1
-        # coefficients = Tuple(nothing for i in 1:6)
-        # Stretched coefficient seem to be more unstable that constant spacing ones for
-        # linear (non-WENO) upwind reconstruction. We keep constant coefficients for the moment
-        # Some tests are needed to verify why this is the case (and if it is expected)
-        # coefficients = compute_reconstruction_coefficients(grid, FT, :Upwind; order)
-        if buffer_scheme isa DecreasingOrderAdvectionScheme
-            if order ≤ minimum_buffer_upwind_order
-                # At minimum order, switch to Centered scheme
-                buffer_scheme = Centered(FT; order=2)
-            else
-                buffer_scheme = UpwindBiased(FT; order = order - 2, minimum_buffer_upwind_order)
-            end
-        end
-    else
-        buffer_scheme  = nothing
+    if buffer_scheme isa DecreasingOrderAdvectionScheme
+        buffer_scheme = N > 1 ? UpwindBiased(FT; order=order-2, buffer_scheme) : buffer_scheme.boundary_scheme
     end
 
     return UpwindBiased{N, FT}(buffer_scheme, advecting_velocity_scheme, time_discretization)
