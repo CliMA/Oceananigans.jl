@@ -103,6 +103,7 @@ include("products_between_fields_and_grid_metrics.jl")
 
 include("derivative_operators.jl")
 include("constant_r_derivative_operators.jl")
+include("fourth_order_derivative_operators.jl")
 include("divergence_operators.jl")
 include("topology_aware_operators.jl")
 include("vorticity_operators.jl")
