@@ -113,7 +113,7 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
     G2 = Reactant.traced_type_inner(G, seen, mode, track_numbers, sharding, runtime)
     K2 = Reactant.traced_type_inner(K, seen, mode, track_numbers, sharding, runtime)
     D2 = Reactant.traced_type_inner(D, seen, mode, track_numbers, sharding, runtime)
-    T2 = eltype(G2)
+    T2 = Reactant.traced_type_inner(T, seen, mode, track_numbers, sharding, runtime)
     return Oceananigans.AbstractOperations.KernelFunctionOperation{LX2, LY2, LZ2, G2, T2, K2, D2}
 end
 
