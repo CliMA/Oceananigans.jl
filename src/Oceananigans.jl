@@ -282,8 +282,8 @@ include("Simulations/Simulations.jl")
 include("Coriolis/Coriolis.jl")
 include("BuoyancyFormulations/BuoyancyFormulations.jl")
 include("StokesDrifts.jl")
-include("TurbulenceClosures/TurbulenceClosures.jl")
 include("Forcings/Forcings.jl")
+include("TurbulenceClosures/TurbulenceClosures.jl")
 include("Biogeochemistry.jl")
 
 # TODO: move above
