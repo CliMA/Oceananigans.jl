@@ -1,6 +1,6 @@
 using Oceananigans.Operators: Δzᶜᶜᶜ, Δzᶜᶜᶠ
 using Oceananigans.ImmersedBoundaries: PartialCellVerticalBoundaries, ImmersedBoundaryGrid
-using Oceananigans.Grids: topology
+using Oceananigans.Grids: topology, Periodic
 using Oceananigans.Fields: instantiated_location
 using Oceananigans.BoundaryConditions: _fill_bottom_and_top_halo!
 
@@ -34,12 +34,15 @@ const PCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:PCB}
 update_hydrostatic_pressure!(pHY′, arch, ibg::PCBIBG, buoyancy, tracers; parameters = surface_kernel_parameters(ibg.underlying_grid)) =
     update_hydrostatic_pressure!(pHY′, arch, ibg.underlying_grid, buoyancy, tracers; parameters)
 
-# The vertical halos are filled over the same columns, which include the horizontal halos
+# The vertical halos are filled over the same columns, which include the horizontal halos.
+# A periodic vertical direction is filled by the periodic halo fill.
 function update_hydrostatic_pressure!(pHY′, arch, grid, buoyancy, tracers; parameters = surface_kernel_parameters(grid))
     launch!(arch, grid, parameters, _update_hydrostatic_pressure!, pHY′, grid, buoyancy, tracers)
 
-    bcs = pHY′.boundary_conditions
-    launch!(arch, grid, parameters, _fill_bottom_and_top_halo!, pHY′, bcs.bottom, bcs.top, instantiated_location(pHY′), grid, ())
+    if topology(grid, 3) !== Periodic
+        bcs = pHY′.boundary_conditions
+        launch!(arch, grid, parameters, _fill_bottom_and_top_halo!, pHY′, bcs.bottom, bcs.top, instantiated_location(pHY′), grid, ())
+    end
 
     return nothing
 end
