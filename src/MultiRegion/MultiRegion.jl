@@ -4,6 +4,7 @@ export MultiRegionGrid, MultiRegionField
 export XPartition, YPartition, Connectivity
 export CubedSpherePartition, ConformalCubedSphereGrid, CubedSphereField, synchronize_shared_edges!, fill_cgrid_pair_halo_regions!,
     fill_dgrid_pair_halo_regions!
+export CGridPairExchange, DGridPairExchange, SharedEdgeExchange, CenterScalarExchange
 export SphericalCubedSphereGrid, EquiangularCubedSphereGrid
 export YinYangGrid, YinYangConservationFixer, owned_weights
 
@@ -65,6 +66,7 @@ include("cubed_sphere_field.jl")
 include("cubed_sphere_boundary_conditions.jl")
 include("cubed_sphere_dgrid_halos.jl")
 include("cubed_sphere_cgrid_halos.jl")
+include("cubed_sphere_exchange_plans.jl")
 include("spherical_cubed_sphere_grid.jl")
 include("yin_yang_grid.jl")
 include("yin_yang_halo_reconstruction.jl")
