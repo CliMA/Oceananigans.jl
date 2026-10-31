@@ -859,4 +859,29 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
         @test bare  ∈ collected
         @test param ∈ collected
     end
+
+    @testset "FieldTimeSeries reduced in x and z read their y index on x and z boundaries [$(summary(arch))]" for arch in archs
+        # A single level used to be read as a west-east call, and several levels as a bottom-top call
+        for Nz in (1, 5)
+            Nx, Ny = 3, 4
+            grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(1, 1, 1), topology=(Bounded, Bounded, Bounded))
+            times = [0.0, 1.0]
+            series = FieldTimeSeries{Nothing, Center, Nothing}(grid, times)
+            for n in eachindex(times)
+                interior(series, 1, :, 1, n) .= on_architecture(arch, collect(1:Ny) .+ times[n])
+            end
+
+            bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center());
+                                          east = ValueBoundaryCondition(series),
+                                          top = ValueBoundaryCondition(series))
+            c = CenterField(grid; boundary_conditions=bcs)
+            clock = Clock(time=0.5)
+            fill_halo_regions!(c, clock, (; c))
+
+            # The interior is zero, so the halo is twice the boundary value
+            c = on_architecture(CPU(), c)
+            @test all(c[Nx+1, j, k] ≈ 2 * (j + 0.5) for j in 1:Ny, k in 1:Nz)
+            @test all(c[i, j, Nz+1] ≈ 2 * (j + 0.5) for i in 1:Nx, j in 1:Ny)
+        end
+    end
 end
