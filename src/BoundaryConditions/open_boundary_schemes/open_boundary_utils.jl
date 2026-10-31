@@ -113,10 +113,10 @@ function update_exterior_state!(update!, bc, side, field, args...)
 end
 
 step_boundary_condition!(bc::RBC, side, field, clock, model_fields, Δt) = update_exterior_state!(step_exterior_state!, bc, side, field, clock, model_fields, Δt)
-cache_boundary_condition!(bc::RBC, side, field, clock, model_fields) = update_exterior_state!(cache_exterior_state!, bc, side, field)
+cache_boundary_condition!(bc::RBC, side, field, clock, model_fields) = update_exterior_state!(cache_exterior_state!, bc, side, field, clock, model_fields)
 initialize_boundary_condition!(bc::RBC, side, field, clock, model_fields) = update_exterior_state!(initialize_exterior_state!, bc, side, field, clock, model_fields)
 
-@inline function cache_exterior_state!(side, i, j, grid, c, bc, loc)
+@inline function cache_exterior_state!(side, i, j, grid, c, bc, loc, clock, model_fields)
     iᵇ, jᵇ, kᵇ = boundary_point(side, loc, grid, 0, i, j)
     @inbounds bc.classification.scheme.φ⁻[i, j] = c[iᵇ, jᵇ, kᵇ]
     return nothing
@@ -131,6 +131,28 @@ end
     @inbounds c[iᵇ, jᵇ, kᵇ] = c[i₁, j₁, k₁]
     return nothing
 end
+
+"""
+    boundary_state_field(grid, loc, dim)
+
+A field on `grid` at the location `loc` of a boundary-conditioned field, reduced in the direction `dim` normal to the
+boundary, to hold state that an open boundary scheme reads along the boundary, together with the halos along it.
+"""
+function boundary_state_field end
+
+# The values of a field reduced in direction `dim`, indexed along the boundary and in the other direction
+along_boundary(f, dim) = dim == 1 ? view(f.data, 1, :, :) :
+                         dim == 2 ? view(f.data, :, 1, :) :
+                                    view(f.data, :, :, 1)
+
+# Whether a neighbouring rank, or the other end of a periodic domain, supplies the halo to the left or the right
+has_left_neighbour(::Type{Grids.Periodic}) = true
+has_left_neighbour(::Type{<:Grids.TwoSided{<:Grids.CommunicatingSide, <:Any}}) = true
+has_left_neighbour(T) = false
+
+has_right_neighbour(::Type{Grids.Periodic}) = true
+has_right_neighbour(::Type{<:Grids.TwoSided{<:Any, <:Grids.CommunicatingSide}}) = true
+has_right_neighbour(T) = false
 
 # A `target_transport` is `nothing`, a fixed transport, or a callable of the grid (kept as is).
 convert_target_transport(FT, ::Nothing) = nothing

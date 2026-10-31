@@ -140,7 +140,7 @@ const ORBC = Union{BoundaryCondition{<:Value{<:Union{NormalRadiation, ObliqueRad
                    BoundaryCondition{<:NormalFlow{<:Union{NormalRadiation, ObliqueRadiation}}}}
 
 # The Orlanski phase speed is diagnosed from the change of the first interior value over the stage
-@inline function cache_exterior_state!(side, i, j, grid, c, bc::ORBC, loc)
+@inline function cache_exterior_state!(side, i, j, grid, c, bc::ORBC, loc, clock, model_fields)
     iᵇ, jᵇ, kᵇ = boundary_point(side, loc, grid, 0, i, j)
     i₁, j₁, k₁ = boundary_point(side, loc, grid, 1, i, j)
     radiation = bc.classification.scheme

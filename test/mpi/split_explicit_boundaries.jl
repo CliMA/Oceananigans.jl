@@ -5,7 +5,7 @@ MPI.Initialized() || MPI.Init(threadlevel=:multiple)
 
 using Oceananigans.DistributedComputations: child_architecture, cpu_architecture, partition, reconstruct_global_grid
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, immersed_peripheral_node
-using Oceananigans.BoundaryConditions: NormalRadiation, GravityWaveRadiationBoundaryCondition
+using Oceananigans.BoundaryConditions: NormalRadiation, ObliqueRadiation, GravityWaveRadiationBoundaryCondition
 using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: LocalHaloFilling, CompleteHaloFilling
 
 # # Distributed SplitExplicitFreeSurface boundary handling
@@ -223,7 +223,7 @@ end
         cpu_arch = cpu_architecture(arch)
 
         grid = RectilinearGrid(arch, size=(40, 20, 2), x=(0, 1), y=(0, 1), z=(-1, 0),
-                               halo=(4, 4, 2), topology=(Bounded, Periodic, Bounded))
+                               halo=(4, 4, 2), topology=(Open, Periodic, Bounded))
         global_grid = reconstruct_global_grid(grid)
 
         mp = build_rotating_open(grid; timestepper)
@@ -241,6 +241,133 @@ end
             @test all(isapprox.(up, us))
             @test all(isapprox.(vp, vs))
             @test all(isapprox.(ηp, ηs))
+        end
+    end
+end
+
+# # Distributed oblique radiation
+#
+# A tracer leaving through south and north boundaries with `ObliqueRadiation`, varying along them; `x` is
+# periodic, so the tangential differences cross the rank edges and the periodic ends.
+
+function build_oblique(grid)
+    scheme = ObliqueRadiation(inflow_timescale = 100.0, outflow_timescale = 100.0)
+
+    v_bcs = FieldBoundaryConditions(south = NormalFlowBoundaryCondition(0; scheme),
+                                    north = NormalFlowBoundaryCondition(0; scheme))
+
+    V_bcs = FieldBoundaryConditions(grid, (Center(), Face(), nothing);
+                                    south = GravityWaveRadiationBoundaryCondition((0.0, 0.0)),
+                                    north = GravityWaveRadiationBoundaryCondition((0.0, 0.0)))
+
+    c_bcs = FieldBoundaryConditions(south = ValueBoundaryCondition(0; scheme),
+                                    north = ValueBoundaryCondition(0; scheme))
+
+    free_surface = SplitExplicitFreeSurface(grid; substeps=8)
+
+    model = HydrostaticFreeSurfaceModel(grid; free_surface,
+                                        boundary_conditions = (v = v_bcs, V = V_bcs, c = c_bcs),
+                                        momentum_advection = nothing,
+                                        buoyancy = nothing,
+                                        tracers = :c)
+
+    set!(model, η = (x, y, z) -> 0.01 * exp(-(y - 0.5)^2 / 0.08) * (1 + 0.2 * cos(2π * x)),
+                c = (x, y, z) -> (1 + 0.5 * sin(2π * x)) * y)
+
+    for _ in 1:60
+        time_step!(model, 5e-3)
+    end
+
+    return model
+end
+
+@testset "Distributed oblique radiation" begin
+    oblique_archs = (Distributed(child_arch; synchronized_communication=false, partition=Partition(4)),
+                     Distributed(child_arch; synchronized_communication=false, partition=Partition(2, 2)))
+
+    for arch in oblique_archs
+        cpu_arch = cpu_architecture(arch)
+
+        grid = RectilinearGrid(arch, size=(40, 20, 2), x=(0, 1), y=(0, 1), z=(-1, 0),
+                               halo=(4, 4, 2), topology=(Periodic, Open, Bounded))
+
+        mp = build_oblique(grid)                           # partitioned
+        ms = build_oblique(reconstruct_global_grid(grid))  # serial reference
+
+        cp = interior(on_architecture(cpu_arch, mp.tracers.c))
+        cs = partition(interior(on_architecture(CPU(), ms.tracers.c)), cpu_arch, size(cp))
+
+        @testset "oblique radiation [$(typeof(arch.partition))]" begin
+            @test all(isapprox.(cp, cs))
+        end
+    end
+end
+
+# # Distributed tangential velocity
+#
+# The velocity along the open boundaries radiates with the phase speed of the velocity across them, and is nudged toward
+# an exterior value that varies along them and with depth, so that the neighbours across the rank edges and the periodic
+# ends matter. With a split-explicit free surface the barotropic correction replaces the depth mean of the velocity at the
+# boundary, so the exterior value has a vertical shear.
+
+function build_oblique_tangential(grid; split_explicit)
+    scheme = ObliqueRadiation(inflow_timescale = 100.0, outflow_timescale = 100.0)
+    nudged = ObliqueRadiation(inflow_timescale = 0.05, outflow_timescale = 0.05)
+    exterior(x, z, t) = 0.3 * (1 + sin(2π * 3 * x)) * (1 + 0.5 * (z + 0.5))
+
+    u_bcs = FieldBoundaryConditions(south = ValueBoundaryCondition(exterior; scheme = nudged),
+                                    north = ValueBoundaryCondition(exterior; scheme = nudged))
+
+    v_bcs = FieldBoundaryConditions(south = NormalFlowBoundaryCondition(0; scheme),
+                                    north = NormalFlowBoundaryCondition(0; scheme))
+
+    boundary_conditions = (u = u_bcs, v = v_bcs)
+    free_surface = nothing
+
+    if split_explicit
+        V_bcs = FieldBoundaryConditions(grid, (Center(), Face(), nothing);
+                                        south = GravityWaveRadiationBoundaryCondition((0.0, 0.0)),
+                                        north = GravityWaveRadiationBoundaryCondition((0.0, 0.0)))
+        boundary_conditions = merge(boundary_conditions, (V = V_bcs,))
+        free_surface = SplitExplicitFreeSurface(grid; substeps = 8)
+    end
+
+    model = HydrostaticFreeSurfaceModel(grid; free_surface, boundary_conditions,
+                                        momentum_advection = Centered(),
+                                        buoyancy = nothing,
+                                        tracers = ())
+
+    set!(model, u = (x, y, z) -> 0.1 * (1 + 0.5 * sin(2π * x)) * (1 + y),
+                v = (x, y, z) -> 0.1 * y * (1 + 0.8 * sin(2π * 13 * x) + 0.5 * cos(2π * 7 * x)))
+
+    for _ in 1:60
+        time_step!(model, 5e-3)
+    end
+
+    return model
+end
+
+@testset "Distributed oblique radiation of the tangential velocity" begin
+    for arch in (Distributed(child_arch; synchronized_communication=false, partition=Partition(4)),
+                 Distributed(child_arch; synchronized_communication=false, partition=Partition(2, 2))),
+        split_explicit in (false, true)
+
+        cpu_arch = cpu_architecture(arch)
+
+        grid = RectilinearGrid(arch, size=(40, 20, 2), x=(0, 1), y=(0, 1), z=(-1, 0),
+                               halo=(4, 4, 2), topology=(Periodic, Open, Bounded))
+
+        mp = build_oblique_tangential(grid; split_explicit)                           # partitioned
+        ms = build_oblique_tangential(reconstruct_global_grid(grid); split_explicit)  # serial reference
+
+        up = interior(on_architecture(cpu_arch, mp.velocities.u))
+        vp = interior(on_architecture(cpu_arch, mp.velocities.v))
+        us = partition(interior(on_architecture(CPU(), ms.velocities.u)), cpu_arch, size(up))
+        vs = partition(interior(on_architecture(CPU(), ms.velocities.v)), cpu_arch, size(vp))
+
+        @testset "tangential oblique radiation [$(typeof(arch.partition)), split_explicit=$split_explicit]" begin
+            @test all(isapprox.(up, us; rtol = 1e-12))
+            @test all(isapprox.(vp, vs; rtol = 1e-12))
         end
     end
 end
