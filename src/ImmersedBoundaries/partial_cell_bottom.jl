@@ -1,5 +1,7 @@
 using Oceananigans.Fields: Field, fill_halo_regions!, set!
 using Oceananigans.Grids: Grids, AbstractStaticGrid, constructor_arguments
+
+import Oceananigans.Grids: peripheral_node
 using Oceananigans.Utils: prettysummary, KernelParameters
 
 import Oceananigans.Operators: Δrᶜᶜᶜ, Δrᶜᶜᶠ, Δrᶜᶠᶜ, Δrᶜᶠᶠ, Δrᶠᶜᶜ, Δrᶠᶜᶠ, Δrᶠᶠᶜ, Δrᶠᶠᶠ,
@@ -351,8 +353,46 @@ end
     return bottom_Δr - top_deficit
 end
 
-@inline Δrᶠᶜᶜ(i, j, k, ibg::PCBIBG) = min(Δrᶜᶜᶜ(i-1, j, k, ibg), Δrᶜᶜᶜ(i, j, k, ibg))
-@inline Δrᶜᶠᶜ(i, j, k, ibg::PCBIBG) = min(Δrᶜᶜᶜ(i, j-1, k, ibg), Δrᶜᶜᶜ(i, j, k, ibg))
+# The wet interval of cell k, in units of its spacing and measured from the face below it
+@inline function wet_interval(i, j, k, ib)
+    φᵇ, φᵗ, at_the_bottom, at_the_top = partial_fractions(i, j, k, ib)
+    lower = ifelse(at_the_bottom, 1 - φᵇ, zero(φᵇ))
+    upper = ifelse(at_the_top, φᵗ, one(φᵗ))
+    return lower, upper
+end
+
+# Where a top cell faces a bottom cell their wet intervals are staggered, and overlap by less than either is wet
+@inline function staggered_overlap(i⁻, j⁻, i, j, k, ib)
+    l⁻, u⁻ = wet_interval(i⁻, j⁻, k, ib)
+    l,  u  = wet_interval(i,  j,  k, ib)
+    staggered = ((l⁻ < l) & (u⁻ < u)) | ((l < l⁻) & (u < u⁻))
+    overlap = min(u⁻, u) - max(l⁻, l)
+    open = (overlap > 0) & (overlap ≥ ib.minimum_fractional_cell_height)
+    return staggered, open, overlap
+end
+
+@inline function closed_face(i⁻, j⁻, i, j, k, ib::PartialCellWithTop)
+    staggered, open, _ = staggered_overlap(i⁻, j⁻, i, j, k, ib)
+    return staggered & !open
+end
+
+# Closed faces keep the smaller spacing, so that their (masked) velocities never divide by zero
+@inline function face_spacing(i⁻, j⁻, i, j, k, ibg, ib::PartialCellWithTop)
+    staggered, open, overlap = staggered_overlap(i⁻, j⁻, i, j, k, ib)
+    Δr = min(Δrᶜᶜᶜ(i⁻, j⁻, k, ibg), Δrᶜᶜᶜ(i, j, k, ibg))
+    return ifelse(staggered & open, overlap * Δrᶜᶜᶜ(i, j, k, ibg.underlying_grid), Δr)
+end
+
+@inline face_reciprocal_spacing(i⁻, j⁻, i, j, k, ibg, ib) = max(Δr⁻¹ᶜᶜᶜ(i⁻, j⁻, k, ibg), Δr⁻¹ᶜᶜᶜ(i, j, k, ibg))
+
+@inline function face_reciprocal_spacing(i⁻, j⁻, i, j, k, ibg, ib::PartialCellWithTop)
+    staggered, open, overlap = staggered_overlap(i⁻, j⁻, i, j, k, ib)
+    Δr⁻¹ = max(Δr⁻¹ᶜᶜᶜ(i⁻, j⁻, k, ibg), Δr⁻¹ᶜᶜᶜ(i, j, k, ibg))
+    return ifelse(staggered & open, Δr⁻¹ᶜᶜᶜ(i, j, k, ibg.underlying_grid) / overlap, Δr⁻¹)
+end
+
+@inline Δrᶠᶜᶜ(i, j, k, ibg::PCBIBG) = face_spacing(i-1, j, i, j, k, ibg, ibg.immersed_boundary)
+@inline Δrᶜᶠᶜ(i, j, k, ibg::PCBIBG) = face_spacing(i, j-1, i, j, k, ibg, ibg.immersed_boundary)
 @inline Δrᶠᶠᶜ(i, j, k, ibg::PCBIBG) = min(Δrᶠᶜᶜ(i, j-1, k, ibg), Δrᶠᶜᶜ(i, j, k, ibg))
 
 @inline Δrᶠᶜᶠ(i, j, k, ibg::PCBIBG) = min(Δrᶜᶜᶠ(i-1, j, k, ibg), Δrᶜᶜᶠ(i, j, k, ibg))
@@ -373,6 +413,18 @@ const XYFlatPCBIBG = ImmersedBoundaryGrid{<:Any, <:Flat, <:Flat, <:Any, <:Any, <
 @inline Δrᶠᶠᶜ(i, j, k, ibg::XFlatPCBIBG) = Δrᶜᶠᶜ(i, j, k, ibg)
 @inline Δrᶠᶠᶜ(i, j, k, ibg::YFlatPCBIBG) = Δrᶠᶜᶜ(i, j, k, ibg)
 @inline Δrᶠᶠᶜ(i, j, k, ibg::XYFlatPCBIBG) = Δrᶜᶜᶜ(i, j, k, ibg)
+
+# Faces between active cells whose wet intervals do not overlap are closed like immersed faces
+@inline closed_xface(i, j, k, ibg) = closed_face(i-1, j, i, j, k, ibg.immersed_boundary)
+@inline closed_yface(i, j, k, ibg) = closed_face(i, j-1, i, j, k, ibg.immersed_boundary)
+@inline closed_xface(i, j, k, ibg::XFlatPCBIBG) = false
+@inline closed_yface(i, j, k, ibg::YFlatPCBIBG) = false
+
+@inline peripheral_node(i, j, k, ibg::PCBTIBG, ::Face, ::Center, ::Center) =
+    inactive_cell(i, j, k, ibg) | inactive_cell(i-1, j, k, ibg) | closed_xface(i, j, k, ibg)
+
+@inline peripheral_node(i, j, k, ibg::PCBTIBG, ::Center, ::Face, ::Center) =
+    inactive_cell(i, j, k, ibg) | inactive_cell(i, j-1, k, ibg) | closed_yface(i, j, k, ibg)
 
 # Vertically-static, partial cell bottom, immersed boundary grid
 VSPCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:AbstractStaticGrid, <:PartialCellVerticalBoundaries}
@@ -410,8 +462,8 @@ end
 end
 
 # The reciprocal of the smallest spacing is the largest reciprocal
-@inline Δr⁻¹ᶠᶜᶜ(i, j, k, ibg::PCBIBG) = max(Δr⁻¹ᶜᶜᶜ(i-1, j, k, ibg), Δr⁻¹ᶜᶜᶜ(i, j, k, ibg))
-@inline Δr⁻¹ᶜᶠᶜ(i, j, k, ibg::PCBIBG) = max(Δr⁻¹ᶜᶜᶜ(i, j-1, k, ibg), Δr⁻¹ᶜᶜᶜ(i, j, k, ibg))
+@inline Δr⁻¹ᶠᶜᶜ(i, j, k, ibg::PCBIBG) = face_reciprocal_spacing(i-1, j, i, j, k, ibg, ibg.immersed_boundary)
+@inline Δr⁻¹ᶜᶠᶜ(i, j, k, ibg::PCBIBG) = face_reciprocal_spacing(i, j-1, i, j, k, ibg, ibg.immersed_boundary)
 @inline Δr⁻¹ᶠᶠᶜ(i, j, k, ibg::PCBIBG) = max(Δr⁻¹ᶠᶜᶜ(i, j-1, k, ibg), Δr⁻¹ᶠᶜᶜ(i, j, k, ibg))
 
 @inline Δr⁻¹ᶠᶜᶠ(i, j, k, ibg::PCBIBG) = max(Δr⁻¹ᶜᶜᶠ(i-1, j, k, ibg), Δr⁻¹ᶜᶜᶠ(i, j, k, ibg))

@@ -373,6 +373,10 @@ end
 # Without a top, adjacent columns share their top, so the shallower column depth is the open depth of the face
 @inline face_column_depth(i, j, i⁻, j⁻, ibg, ::GridFittedBottom) = min(static_column_depthᶜᶜᵃ(i⁻, j⁻, ibg), static_column_depthᶜᶜᵃ(i, j, ibg))
 
+# The vertical spacing of the face between cells (i⁻, j⁻, k) and (i, j, k)
+@inline face_spacing(i⁻, j⁻, i, j, k, ibg, ib) = min(Δrᶜᶜᶜ(i⁻, j⁻, k, ibg), Δrᶜᶜᶜ(i, j, k, ibg))
+@inline closed_face(i⁻, j⁻, i, j, k, ib) = false
+
 # Beneath a top only the overlap of columns (i⁻, j⁻) and (i, j) is open.
 @inline function face_column_depth(i, j, i⁻, j⁻, ibg, ib)
     ug = ibg.underlying_grid
@@ -380,10 +384,13 @@ end
     k⁺ = min(   top_cell(i⁻, j⁻, ug, ib),    top_cell(i, j, ug, ib))
     H  = rnode(i, j, k⁺+1, ug, c, c, f) - rnode(i, j, k⁻, ug, c, c, f)
 
-    bottom_deficit = Δrᶜᶜᶜ(i, j, k⁻, ug) - min(Δrᶜᶜᶜ(i⁻, j⁻, k⁻, ibg), Δrᶜᶜᶜ(i, j, k⁻, ibg))
-    top_deficit    = Δrᶜᶜᶜ(i, j, k⁺, ug) - min(Δrᶜᶜᶜ(i⁻, j⁻, k⁺, ibg), Δrᶜᶜᶜ(i, j, k⁺, ibg))
+    bottom_deficit = Δrᶜᶜᶜ(i, j, k⁻, ug) - face_spacing(i⁻, j⁻, i, j, k⁻, ibg, ib)
+    top_deficit    = Δrᶜᶜᶜ(i, j, k⁺, ug) - face_spacing(i⁻, j⁻, i, j, k⁺, ibg, ib)
 
-    return max(H - bottom_deficit - ifelse(k⁺ > k⁻, top_deficit, zero(H)), zero(H))
+    # Only a face column of a single cell can be closed, where a top cell faces a bottom cell
+    closed = closed_face(i⁻, j⁻, i, j, k⁻, ib)
+
+    return ifelse(closed, zero(H), max(H - bottom_deficit - ifelse(k⁺ > k⁻, top_deficit, zero(H)), zero(H)))
 end
 
 # Make sure column_height works for horizontally-Flat topologies.
