@@ -3,7 +3,7 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 using Oceananigans.Advection: div_Uc, materialize_advection
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.ImmersedBoundaries: immersed_cell, mask_immersed_field!
-using Oceananigans.Grids: znode
+using Oceananigans.Grids: znode, column_depthᶠᶜᵃ, static_column_depthᶠᶜᵃ, static_column_depthᶜᶜᵃ
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: immersed_top_advective_form_correctionᶜᶜᶜ, compute_w_from_continuity!,
                                                         update_zstar_scaling!
 using Oceananigans.TurbulenceClosures: z_top, z_bottom, depthᶜᶜᶠ, height_above_bottomᶜᶜᶠ, wall_vertical_distanceᶜᶜᶠ
@@ -262,6 +262,36 @@ function test_immersed_top_zstar_znode(FT, arch)
     return nothing
 end
 
+moving_face_depth_values(grid) =
+    Array(interior(compute!(Field(KernelFunctionOperation{Face, Center, Center}((i, j, k, grid) -> column_depthᶠᶜᵃ(i, j, grid), grid)))))
+
+static_face_depth_values(grid) =
+    Array(interior(compute!(Field(KernelFunctionOperation{Face, Center, Center}((i, j, k, grid) -> static_column_depthᶠᶜᵃ(i, j, grid), grid)))))
+
+function test_immersed_top_zstar_thin_face_depth(FT, arch)
+    z = MutableVerticalDiscretization(collect(range(-1, 0, length=11)))
+    underlying_grid = RectilinearGrid(arch, FT; size=(4, 10), x=(0, 1), z, topology=(Bounded, Flat, Bounded))
+    top(x) = x < 1/2 ? -1/2 : 0
+    bottom(x) = x < 1/2 ? -1 : -0.58
+    η₀ = - FT(0.25)
+
+    for VerticalBoundaries in (GridFittedVerticalBoundaries, PartialCellVerticalBoundaries)
+        ibg = ImmersedBoundaryGrid(underlying_grid, VerticalBoundaries(bottom_height=bottom, top_height=top))
+        model = HydrostaticFreeSurfaceModel(ibg; vertical_coordinate=ZStarCoordinate())
+        set!(model.free_surface.displacement, (x, z) -> ifelse(x > 1/2, η₀, zero(η₀)))
+        update_zstar_scaling!(ibg, model.free_surface.displacement)
+
+        # The face between the covered column 2 and the open column 3 is thinner than the sunken surface of column 3
+        hᶠ = static_face_depth_values(ibg)[3, 1, 1]
+        hᵒ = Array(interior(compute!(Field(KernelFunctionOperation{Center, Center, Center}((i, j, k, grid) -> static_column_depthᶜᶜᵃ(i, j, grid), ibg)))))[3, 1, 1]
+        Hᶠ = moving_face_depth_values(ibg)[3, 1, 1]
+        @test hᶠ + η₀ / 2 < 0
+        @test Hᶠ > 0
+        @test Hᶠ ≈ hᶠ * (1 + (hᵒ + η₀) / hᵒ) / 2
+    end
+    return nothing
+end
+
 @testset "Immersed top dynamics" begin
     for arch in archs, FT in float_types
         @testset "Wall distances [$FT, $(typeof(arch))]"                       test_immersed_top_wall_distances(FT, arch)
@@ -271,5 +301,6 @@ end
         @testset "z★ freshwater flux beneath an immersed top [$FT, $(typeof(arch))]" test_immersed_top_zstar_freshwater_flux(FT, arch)
         @testset "z★ freshwater flux rest state beneath an immersed top [$FT, $(typeof(arch))]" test_immersed_top_zstar_freshwater_flux_rest_state(FT, arch)
         @testset "z★ znode beneath an immersed top [$FT, $(typeof(arch))]"     test_immersed_top_zstar_znode(FT, arch)
+        @testset "z★ thin face depth beneath an immersed top [$FT, $(typeof(arch))]" test_immersed_top_zstar_thin_face_depth(FT, arch)
     end
 end
