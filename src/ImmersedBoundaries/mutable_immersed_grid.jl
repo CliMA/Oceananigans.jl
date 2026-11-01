@@ -21,6 +21,25 @@ const MutableGridOfSomeKind{FT, TX, TY} = Union{MutableImmersedGrid{FT, TX, TY},
 @inline column_depthᶜᶠᵃ(i, j, k, grid::MutableGridOfSomeKind, η) = mutable_column_depth(static_column_depthᶜᶠᵃ(i, j, grid),  ℑyᵃᶠᵃ(i, j, k, grid, η))
 @inline column_depthᶠᶠᵃ(i, j, k, grid::MutableGridOfSomeKind, η) = mutable_column_depth(static_column_depthᶠᶠᵃ(i, j, grid), ℑxyᶠᶠᵃ(i, j, k, grid, η))
 
+# The moving depth of a face with static depth `h` between columns (i⁻, j⁻) and (i, j)
+@inline moving_face_depth(h, i⁻, j⁻, i, j, k, grid, η) = @inbounds mutable_column_depth(h, (η[i⁻, j⁻, k] + η[i, j, k]) / 2)
+
+const MutableImmersedTopGrid = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Bounded, <:UnderlyingMutableGrid,
+                                                    <:Union{GridFittedWithTop, PartialCellWithTop}}
+
+@inline function column_stretching(i, j, k, grid, η)
+    h = static_column_depthᶜᶜᵃ(i, j, grid)
+    return @inbounds ifelse(h == 0, one(grid), (h + η[i, j, k]) / ifelse(h == 0, one(grid), h))
+end
+
+# Beneath a top, adjacent columns can differ in depth by far more than their face, which then stretches with its columns
+@inline moving_face_depth(h, i⁻, j⁻, i, j, k, grid::MutableImmersedTopGrid, η) =
+    h * (column_stretching(i⁻, j⁻, k, grid, η) + column_stretching(i, j, k, grid, η)) / 2
+
+@inline column_depthᶠᶜᵃ(i, j, k, grid::MutableImmersedTopGrid, η) = static_column_depthᶠᶜᵃ(i, j, grid) * ℑxᶠᵃᵃ(i, j, k, grid, column_stretching, η)
+@inline column_depthᶜᶠᵃ(i, j, k, grid::MutableImmersedTopGrid, η) = static_column_depthᶜᶠᵃ(i, j, grid) * ℑyᵃᶠᵃ(i, j, k, grid, column_stretching, η)
+@inline column_depthᶠᶠᵃ(i, j, k, grid::MutableImmersedTopGrid, η) = static_column_depthᶠᶠᵃ(i, j, grid) * ℑxyᶠᶠᵃ(i, j, k, grid, column_stretching, η)
+
 # Convenience methods
 @inline column_depthᶜᶜᵃ(i, j, grid) = static_column_depthᶜᶜᵃ(i, j, grid)
 @inline column_depthᶜᶠᵃ(i, j, grid) = static_column_depthᶜᶠᵃ(i, j, grid)
@@ -56,17 +75,18 @@ const AMGYS = MutableGridOfSomeKind{<:Any, <:Any, TwoSided{L, R}} where {L, R}
 const AMGYF = MutableGridOfSomeKind{<:Any, <:Any, TwoSided{L, FaceFolded}} where L
 
 # Enforce Periodic conditions for column depth
-@inline column_depthTᶠᶜᵃ(i, j, k, grid::AMGXP, η) = mutable_column_depth(static_column_depthᶠᶜᵃ(i, j, grid), @inbounds (η[ifelse(i == 1, grid.Nx, i - 1), j, k] + η[i, j, k]) / 2)
-@inline column_depthTᶜᶠᵃ(i, j, k, grid::AMGYP, η) = mutable_column_depth(static_column_depthᶜᶠᵃ(i, j, grid), @inbounds (η[i, ifelse(j == 1, grid.Ny, j - 1), k] + η[i, j, k]) / 2)
+@inline column_depthTᶠᶜᵃ(i, j, k, grid::AMGXP, η) = moving_face_depth(static_column_depthᶠᶜᵃ(i, j, grid), ifelse(i == 1, grid.Nx, i - 1), j, i, j, k, grid, η)
+@inline column_depthTᶜᶠᵃ(i, j, k, grid::AMGYP, η) = moving_face_depth(static_column_depthᶜᶠᵃ(i, j, grid), i, ifelse(j == 1, grid.Ny, j - 1), i, j, k, grid, η)
 
 # Enforce boundary conditions on a left wall
-@inline column_depthTᶠᶜᵃ(i, j, k, grid::AMGXB, η) = mutable_column_depth(static_column_depthᶠᶜᵃ(i, j, grid), @inbounds (η[ifelse(i == 1, i, i - 1), j, k] + η[i, j, k]) / 2)
-@inline column_depthTᶜᶠᵃ(i, j, k, grid::AMGYS{L}, η) where L = mutable_column_depth(static_column_depthᶜᶠᵃ(i, j, grid), @inbounds (η[i, ifelse((L === Closed) & (j == 1), j, j - 1), k] + η[i, j, k]) / 2)
+@inline column_depthTᶠᶜᵃ(i, j, k, grid::AMGXB, η) = moving_face_depth(static_column_depthᶠᶜᵃ(i, j, grid), ifelse(i == 1, i, i - 1), j, i, j, k, grid, η)
+@inline column_depthTᶜᶠᵃ(i, j, k, grid::AMGYS{L}, η) where L = moving_face_depth(static_column_depthᶜᶠᵃ(i, j, grid), i, ifelse((L === Closed) & (j == 1), j, j - 1), i, j, k, grid, η)
 
 @inline function column_depthTᶜᶠᵃ(i, j, k, grid::AMGYF{L}, η) where L
     fold = j == grid.Ny + 1
-    η⁺ = @inbounds η[ifelse(fold, north_fold_index(i, grid), i), ifelse(fold, grid.Ny, j), k]
-    return mutable_column_depth(static_column_depthᶜᶠᵃ(i, j, grid), @inbounds (η[i, ifelse((L === Closed) & (j == 1), j, j - 1), k] + η⁺) / 2)
+    i⁺ = ifelse(fold, north_fold_index(i, grid), i)
+    j⁺ = ifelse(fold, grid.Ny, j)
+    return moving_face_depth(static_column_depthᶜᶠᵃ(i, j, grid), i, ifelse((L === Closed) & (j == 1), j, j - 1), i⁺, j⁺, k, grid, η)
 end
 
 # Fallbacks
