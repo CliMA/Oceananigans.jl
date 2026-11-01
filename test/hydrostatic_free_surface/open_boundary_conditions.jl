@@ -586,6 +586,27 @@ function test_oblique_tangential_uses_normal_phase_speed()
     return all(own .== φᵇ) && all(φᵇ .< coupled .< φ₁)
 end
 
+# The start-of-step phase-speed averages are the latest averages of the previous step, whatever the time stepper.
+function test_oblique_phase_speed_averages_advance(timestepper)
+    grid = RectilinearGrid(size = (24, 4, 1), x = (0, 1), y = (0, 1), z = (0, 1), topology = (Open, Periodic, Bounded))
+    bc = ValueBoundaryCondition(0; scheme = ObliqueRadiation())
+    model = HydrostaticFreeSurfaceModel(grid; timestepper,
+                                        velocities = PrescribedVelocityFields(u = 1),
+                                        tracer_advection = Centered(),
+                                        buoyancy = nothing, tracers = :c,
+                                        boundary_conditions = (; c = FieldBoundaryConditions(east = bc, west = bc)))
+    set!(model, c = (x, y, z) -> exp(-((x - 0.6)^2 + (y - 0.3)^2) / 0.02))
+
+    scheme = model.tracers.c.boundary_conditions.east.classification.scheme
+    c⁰, cˡ = scheme.phase_speeds[3], scheme.phase_speeds[6]
+
+    time_step!(model, 0.01)
+    latest = Array(cˡ)
+
+    time_step!(model, 0.01)
+    return all(latest .> 0) && Array(c⁰) == latest
+end
+
 # Mirroring the initial tracer and the tangential velocity mirrors the solution.
 function test_oblique_radiation_mirror_symmetry()
     grid = RectilinearGrid(size = (24, 16, 1), x = (0, 1), y = (0, 1), z = (0, 1),
@@ -917,6 +938,8 @@ end
 
     @testset "ObliqueRadiation is mirror-symmetric along the boundary" begin
         @test test_oblique_radiation_mirror_symmetry()
+        @test test_oblique_phase_speed_averages_advance(:QuasiAdamsBashforth2)
+        @test test_oblique_phase_speed_averages_advance(:SplitRungeKutta3)
         @test test_oblique_tangential_mirror_symmetry(:x)
         @test test_oblique_tangential_mirror_symmetry(:y)
         @test occursin("phase_speed_weight", sprint(show, ObliqueRadiation()))
