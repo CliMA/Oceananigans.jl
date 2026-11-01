@@ -7,11 +7,16 @@ Update the hydrostatic pressure perturbation pHY′. This is done by integrating
 the `buoyancy_perturbationᶜᶜᶜ` downwards:
 
     `pHY′ = ∫ buoyancy_perturbationᶜᶜᶜ dz` from `z=0` down to `z=-Lz`
+
+The integral starts at the top of the domain, half a cell above the uppermost cell center.
+With the trapezoidal rule at interior faces, this is the only top-cell value for which
+the work done by the pressure gradient balances the work done by buoyancy when `w ≠ 0`
+at the top of the domain, so that kinetic, potential and free surface energy are conserved.
 """
 @kernel function _update_hydrostatic_pressure!(pHY′, grid, buoyancy, C)
     i, j = @index(Global, NTuple)
 
-    pᵏ = - z_dot_g_bᶜᶜᶠ(i, j, grid.Nz+1, grid, buoyancy, C) * Δzᶜᶜᶠ(i, j, grid.Nz+1, grid)
+    pᵏ = - z_dot_g_bᶜᶜᶜ(i, j, grid.Nz, grid, buoyancy, C) * Δzᶜᶜᶜ(i, j, grid.Nz, grid) / 2
     @inbounds pHY′[i, j, grid.Nz] = pᵏ
 
     for k in grid.Nz-1 : -1 : 1

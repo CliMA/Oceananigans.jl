@@ -453,6 +453,10 @@ function step_closure_prognostics!(closure_fields, closure::LagrangianAveragedDy
     time_to_compute = isnothing(cˢ.schedule) || (cˢ.schedule(model) && clock.stage == 1)
 
     if time_to_compute
+        # This runs before `update_state!`, so that velocity halos may still hold
+        # the predictor velocity from before the pressure correction.
+        fill_halo_regions!(model.velocities, clock, Oceananigans.fields(model))
+
         Σ = closure_fields.Σ
         Σ̄ = closure_fields.Σ̄
         launch!(arch, grid, :xyz, _compute_Σ!, Σ, grid, u, v, w)
