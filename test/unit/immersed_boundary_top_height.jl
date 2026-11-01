@@ -4,7 +4,8 @@ using Oceananigans.Grids: static_column_depthᶜᶜᵃ, static_column_depthᶠ�
 using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedVerticalBoundaries, PartialCellVerticalBoundaries,
                                        immersed_cell, _immersed_cell,
                                        mask_immersed_field!, bottom_height_interior, bottom_height_field
-using Oceananigans.Operators: Δrᶜᶜᶜ, Δrᶜᶜᶠ, Δr⁻¹ᶜᶜᶜ, Δr⁻¹ᶜᶜᶠ
+using Oceananigans.Grids: peripheral_node
+using Oceananigans.Operators: Δrᶜᶜᶜ, Δrᶜᶜᶠ, Δr⁻¹ᶜᶜᶜ, Δr⁻¹ᶜᶜᶠ, Δrᶠᶜᶜ, Δrᶜᶠᶜ, Δr⁻¹ᶠᶜᶜ, Δr⁻¹ᶜᶠᶜ
 
 center_values(op, grid, args...) =
     Array(interior(compute!(Field(KernelFunctionOperation{Center, Center, Center}(op, grid, args...)))))
@@ -277,6 +278,65 @@ function test_face_column_depth_beneath_sloping_top(FT, arch, Boundary)
     return nothing
 end
 
+xface_values(op, grid, args...) =
+    Array(interior(compute!(Field(KernelFunctionOperation{Face, Center, Center}(op, grid, args...)))))
+
+yface_values(op, grid, args...) =
+    Array(interior(compute!(Field(KernelFunctionOperation{Center, Face, Center}(op, grid, args...)))))
+
+peripheralᶠᶜᶜ(i, j, k, grid) = peripheral_node(i, j, k, grid, Face(), Center(), Center())
+peripheralᶜᶠᶜ(i, j, k, grid) = peripheral_node(i, j, k, grid, Center(), Face(), Center())
+
+function test_partial_cell_top_staggered_faces(FT, arch)
+    underlying_grid = RectilinearGrid(arch, FT, size=(2, 2, 3), x=(0, 2), y=(0, 2), z=(-3, 0))
+
+    # A floating column wet in [-3, -2.9] beside a column wet from `film_bottom` to -1.5, so that both cells 1 are partial
+    for (film_bottom, overlap) in ((-2.8, 0), (-2.95, 0.05))
+        bottom(x, y) = ifelse(x < 1, -3, film_bottom)
+        top(x, y) = ifelse(x < 1, -2.9, -1.5)
+        ib = PartialCellVerticalBoundaries(bottom_height=bottom, top_height=top, minimum_fractional_cell_height=0.01)
+        ibg = ImmersedBoundaryGrid(underlying_grid, ib)
+
+        open = overlap > 0
+        Δrᶠ = xface_values(Δrᶠᶜᶜ, ibg)[2, :, 1]
+
+        @test all(xface_values(peripheralᶠᶜᶜ, ibg)[2, :, 1] .== !open)
+        @test all(Δrᶠ .≈ ifelse(open, FT(overlap), FT(0.1)))
+        @test all(xface_values(Δr⁻¹ᶠᶜᶜ, ibg)[2, :, 1] .≈ 1 ./ Δrᶠ)
+        @test all(center_values(column_depthᶠᶜᵃ, ibg)[2, :, 1] .≈ FT(overlap))
+
+        # Faces between columns of the same kind are unchanged
+        @test !any(yface_values(peripheralᶜᶠᶜ, ibg)[:, 2, 1] .== 1)
+        @test yface_values(Δrᶜᶠᶜ, ibg)[:, 2, 1] == center_values(Δrᶜᶜᶜ, ibg)[:, 2, 1]
+
+        # Velocities on closed faces stay masked
+        model = HydrostaticFreeSurfaceModel(ibg)
+        set!(model, u=1, v=1)
+        time_step!(model, 1e-3)
+        u = Array(interior(model.velocities.u))
+
+        @test all(isfinite, u)
+        open || @test all(u[2, :, 1] .== 0)
+    end
+
+    return nothing
+end
+
+function test_top_load_construction(FT, arch, Boundary)
+    @test isnothing(Boundary(bottom_height=-0.8, top_height=-0.2).top_load)
+    @test Boundary(bottom_height=-0.8, top_height=-0.2) != Boundary(bottom_height=-0.8, top_height=-0.2, top_load=1)
+    @test_throws ArgumentError Boundary(bottom_height=-0.8, top_load=1)
+
+    underlying_grid = RectilinearGrid(arch, FT, size=(4, 4, 4), extent=(1, 1, 1))
+    ibg = ImmersedBoundaryGrid(underlying_grid, Boundary(bottom_height=-0.8, top_height=-0.2, top_load=(x, y) -> x))
+    top_load = Array(bottom_height_interior(ibg.immersed_boundary.top_load))
+
+    @test top_load[:, 1] ≈ FT[0.125, 0.375, 0.625, 0.875]
+    @test occursin("top_load", sprint(show, ibg.immersed_boundary))
+
+    return nothing
+end
+
 @testset "Immersed boundary top height" begin
     for arch in archs, FT in float_types
         A = typeof(arch)
@@ -288,6 +348,7 @@ end
             @testset "$Boundary without bottom [$FT, $A]"        test_no_bottom_height(FT, arch, Boundary)
             @testset "$BottomOnly alias [$FT, $A]"               test_bottom_only_alias(FT, arch, Boundary, BottomOnly)
             @testset "$Boundary face column depth [$FT, $A]"     test_face_column_depth_beneath_sloping_top(FT, arch, Boundary)
+            @testset "$Boundary top load [$FT, $A]"              test_top_load_construction(FT, arch, Boundary)
         end
         @testset "GridFittedVerticalBoundaries top pattern [$FT, $A]"                     test_grid_fitted_top_immersed_cell_pattern(FT, arch)
         @testset "GridFittedVerticalBoundaries column closure [$FT, $A]"                  test_grid_fitted_top_column_closure(FT, arch)
@@ -295,5 +356,6 @@ end
         @testset "PartialCellVerticalBoundaries minimum fractional cell height [$FT, $A]" test_partial_cell_top_minimum_fractional_cell_height(FT, arch)
         @testset "PartialCellVerticalBoundaries column closure [$FT, $A]"                 test_partial_cell_top_column_closure(FT, arch)
         @testset "PartialCellVerticalBoundaries volume [$FT, $A]"                         test_top_height_volume(FT, arch)
+        @testset "PartialCellVerticalBoundaries staggered faces [$FT, $A]"                test_partial_cell_top_staggered_faces(FT, arch)
     end
 end
