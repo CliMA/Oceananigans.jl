@@ -1,4 +1,4 @@
-using Oceananigans.Operators: Operators, δxTᶜᵃᵃ, δyTᵃᶜᵃ, ℑxyᶠᶠᵃ, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ, ∂xTᶠᶜᶠ, ∂yTᶜᶠᶠ, ∂xᵣTᶠᶜᶠ, ∂yᵣTᶜᶠᶠ
+using Oceananigans.Operators: Operators, δxTᶜᵃᵃ, δyTᵃᶜᵃ, ℑxyᶠᶠᵃ, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ, ∂xTᶠᶜᶠ, ∂yTᶜᶠᶠ, ∂xᵣTᶠᶜᶠ, ∂yᵣTᶜᶠᶠ, δxᶜᶜᶜ, δyᶜᶜᶜ, δxᶜᵃᵃ, δyᵃᶜᵃ
 
 # Conditional differences that are "immersed boundary aware".
 # Here we return `zero(ibg)` rather than `δx` (for example) when _one_ of the
@@ -12,23 +12,23 @@ using Oceananigans.Operators: Operators, δxTᶜᵃᵃ, δyTᵃᶜᵃ, ℑxyᶠ�
 # to construct `δxᶠᶜᶜ`, `δxᶠᶜᶠ`, `δxᶠᶠᶜ`, `δxᶠᶠᶠ`, all of which difference values `Center`ed in `x`
 # at `Face`.
 
-@inline conditional_δx_f(ℓy, ℓz, i, j, k, ibg::IBG, δx, args...) = ifelse(immersed_inactive_node(i,   j, k, ibg, c, ℓy, ℓz) |
-                                                                          immersed_inactive_node(i-1, j, k, ibg, c, ℓy, ℓz),
+@inline conditional_δx_f(ℓy, ℓz, i, j, k, ibg::IBG, δx, args...) = ifelse(immersed_top_inactive_node(i,   j, k, ibg, c, ℓy, ℓz) |
+                                                                          immersed_top_inactive_node(i-1, j, k, ibg, c, ℓy, ℓz),
                                                                           zero(ibg),
                                                                           δx(i, j, k, ibg, args...))
 
-@inline conditional_δx_c(ℓy, ℓz, i, j, k, ibg::IBG, δx, args...) = ifelse(immersed_inactive_node(i,   j, k, ibg, f, ℓy, ℓz) |
-                                                                          immersed_inactive_node(i+1, j, k, ibg, f, ℓy, ℓz),
+@inline conditional_δx_c(ℓy, ℓz, i, j, k, ibg::IBG, δx, args...) = ifelse(immersed_top_inactive_node(i,   j, k, ibg, f, ℓy, ℓz) |
+                                                                          immersed_top_inactive_node(i+1, j, k, ibg, f, ℓy, ℓz),
                                                                           zero(ibg),
                                                                           δx(i, j, k, ibg, args...))
 
-@inline conditional_δy_f(ℓx, ℓz, i, j, k, ibg::IBG, δy, args...) = ifelse(immersed_inactive_node(i, j,   k, ibg, ℓx, c, ℓz) |
-                                                                          immersed_inactive_node(i, j-1, k, ibg, ℓx, c, ℓz),
+@inline conditional_δy_f(ℓx, ℓz, i, j, k, ibg::IBG, δy, args...) = ifelse(immersed_top_inactive_node(i, j,   k, ibg, ℓx, c, ℓz) |
+                                                                          immersed_top_inactive_node(i, j-1, k, ibg, ℓx, c, ℓz),
                                                                           zero(ibg),
                                                                           δy(i, j, k, ibg, args...))
 
-@inline conditional_δy_c(ℓx, ℓz, i, j, k, ibg::IBG, δy, args...) = ifelse(immersed_inactive_node(i, j,   k, ibg, ℓx, f, ℓz) |
-                                                                          immersed_inactive_node(i, j+1, k, ibg, ℓx, f, ℓz),
+@inline conditional_δy_c(ℓx, ℓz, i, j, k, ibg::IBG, δy, args...) = ifelse(immersed_top_inactive_node(i, j,   k, ibg, ℓx, f, ℓz) |
+                                                                          immersed_top_inactive_node(i, j+1, k, ibg, ℓx, f, ℓz),
                                                                           zero(ibg),
                                                                           δy(i, j, k, ibg, args...))
 
@@ -41,6 +41,17 @@ using Oceananigans.Operators: Operators, δxTᶜᵃᵃ, δyTᵃᶜᵃ, ℑxyᶠ�
                                                                           immersed_inactive_node(i, j, k+1, ibg, ℓx, ℓy, f),
                                                                           zero(ibg),
                                                                           δz(i, j, k, ibg, args...))
+
+# Column-wise differences, for the barotropic transports: one value per column, masked per column
+@inline conditional_δx_column(i, j, k, ibg::IBG, δx, args...) = ifelse(immersed_dry_column_node(i,   j, k, ibg, f, c) |
+                                                                       immersed_dry_column_node(i+1, j, k, ibg, f, c),
+                                                                       zero(ibg),
+                                                                       δx(i, j, k, ibg, args...))
+
+@inline conditional_δy_column(i, j, k, ibg::IBG, δy, args...) = ifelse(immersed_dry_column_node(i, j,   k, ibg, c, f) |
+                                                                       immersed_dry_column_node(i, j+1, k, ibg, c, f),
+                                                                       zero(ibg),
+                                                                       δy(i, j, k, ibg, args...))
 
 @inline translate_loc(a) = a == :ᶠ ? :f : :c
 
@@ -88,11 +99,22 @@ end
 @inline conditional_∂yTᶜᶠᶠ(i, j, k, ibg::IBG, args...) = ifelse(inactive_node(i, j, k, ibg, c, c, f) | inactive_node(i, j-1, k, ibg, c, c, f), zero(ibg), ∂yTᶜᶠᶠ(i, j, k, ibg.underlying_grid, args...))
 
 # Constant-r versions for free surface derivatives
-@inline conditional_∂xᵣTᶠᶜᶠ(i, j, k, ibg::IBG, args...) = ifelse(inactive_node(i, j, k, ibg, c, c, f) | inactive_node(i-1, j, k, ibg, c, c, f), zero(ibg), ∂xᵣTᶠᶜᶠ(i, j, k, ibg.underlying_grid, args...))
-@inline conditional_∂yᵣTᶜᶠᶠ(i, j, k, ibg::IBG, args...) = ifelse(inactive_node(i, j, k, ibg, c, c, f) | inactive_node(i, j-1, k, ibg, c, c, f), zero(ibg), ∂yᵣTᶜᶠᶠ(i, j, k, ibg.underlying_grid, args...))
+@inline conditional_∂xᵣTᶠᶜᶠ(i, j, k, ibg::IBG, args...) = ifelse(top_inactive_node(i, j, k, ibg, c, c, f) | top_inactive_node(i-1, j, k, ibg, c, c, f), zero(ibg), ∂xᵣTᶠᶜᶠ(i, j, k, ibg.underlying_grid, args...))
+@inline conditional_∂yᵣTᶜᶠᶠ(i, j, k, ibg::IBG, args...) = ifelse(top_inactive_node(i, j, k, ibg, c, c, f) | top_inactive_node(i, j-1, k, ibg, c, c, f), zero(ibg), ∂yᵣTᶜᶠᶠ(i, j, k, ibg.underlying_grid, args...))
 
 @inline Operators.δxTᶜᵃᵃ(i, j, k, ibg::IBG, f, args...) = δxTᶜᵃᵃ(i, j, k, ibg.underlying_grid, conditional_uᶠᶜᶜ, f, args...)
 @inline Operators.δyTᵃᶜᵃ(i, j, k, ibg::IBG, f, args...) = δyTᵃᶜᵃ(i, j, k, ibg.underlying_grid, conditional_vᶜᶠᶜ, f, args...)
+
+# Barotropic transport divergences: masked at k = Nz without an immersed top, per column beneath one
+@inline Operators.δxᶜᶜᵃ(i, j, k, ibg::IBG, args...)              = δxᶜᶜᶜ(i, j, k, ibg, args...)
+@inline Operators.δxᶜᶜᵃ(i, j, k, ibg::IBG, f::Function, args...) = δxᶜᶜᶜ(i, j, k, ibg, f, args...)
+@inline Operators.δyᶜᶜᵃ(i, j, k, ibg::IBG, args...)              = δyᶜᶜᶜ(i, j, k, ibg, args...)
+@inline Operators.δyᶜᶜᵃ(i, j, k, ibg::IBG, f::Function, args...) = δyᶜᶜᶜ(i, j, k, ibg, f, args...)
+
+@inline Operators.δxᶜᶜᵃ(i, j, k, ibg::ImmersedTopIBG, args...)              = conditional_δx_column(i, j, k, ibg, δxᶜᵃᵃ, args...)
+@inline Operators.δxᶜᶜᵃ(i, j, k, ibg::ImmersedTopIBG, f::Function, args...) = conditional_δx_column(i, j, k, ibg, δxᶜᵃᵃ, f, args...)
+@inline Operators.δyᶜᶜᵃ(i, j, k, ibg::ImmersedTopIBG, args...)              = conditional_δy_column(i, j, k, ibg, δyᵃᶜᵃ, args...)
+@inline Operators.δyᶜᶜᵃ(i, j, k, ibg::ImmersedTopIBG, f::Function, args...) = conditional_δy_column(i, j, k, ibg, δyᵃᶜᵃ, f, args...)
 
 @inline Operators.∂xTᶠᶜᶠ(i, j, k, ibg::IBG, f, args...) = conditional_∂xTᶠᶜᶠ(i, j, k, ibg, f, args...)
 @inline Operators.∂yTᶜᶠᶠ(i, j, k, ibg::IBG, f, args...) = conditional_∂yTᶜᶠᶠ(i, j, k, ibg, f, args...)
