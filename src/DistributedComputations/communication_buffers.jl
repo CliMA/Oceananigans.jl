@@ -2,8 +2,9 @@ using Adapt
 using KernelAbstractions: @index, @kernel, get_backend
 
 using Oceananigans.Architectures: on_architecture
-using Oceananigans.BoundaryConditions: BoundaryConditions, BoundaryCondition, DistributedCommunication,
-                                       FieldBoundaryConditions, MultiRegionCommunication
+using Oceananigans.BoundaryConditions: BoundaryConditions, Bottom, BottomAndTop, BoundaryCondition,
+                                       DistributedCommunication, East, FieldBoundaryConditions,
+                                       MultiRegionCommunication, North, South, SouthAndNorth, Top, West, WestAndEast
 using Oceananigans.Fields: communication_buffers
 using Oceananigans.Grids: CommunicatingSide, halo_size, size, topology
 using Oceananigans.Utils: launch!
@@ -44,7 +45,6 @@ Architectures.on_architecture(arch, buff::CommunicationBuffers) =
                          on_architecture(arch, buff.northwest),
                          on_architecture(arch, buff.northeast),
                          on_architecture(arch, buff.state))
-
 
 Fields.communication_buffers(grid::DistributedGrid, data, boundary_conditions) = CommunicationBuffers(grid, data, boundary_conditions)
 
