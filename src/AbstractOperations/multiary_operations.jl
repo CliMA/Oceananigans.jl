@@ -55,7 +55,7 @@ end
 ##### MultiaryOperation construction
 #####
 
-indices(Π::MultiaryOperation) = intersect_indices(location(Π), Π.args...)
+Fields.indices(Π::MultiaryOperation) = intersect_indices(location(Π), Π.args...)
 
 function _multiary_operation(L::Tuple{LX, LY, LZ}, op, args, Largs, grid) where {LX, LY, LZ}
     args = map(validate_operand, args)
@@ -188,7 +188,7 @@ end
 ##### Nested computations
 #####
 
-function compute_at!(Π::MultiaryOperation, time)
+function Fields.compute_at!(Π::MultiaryOperation, time)
     for a in Π.args
         compute_at!(a, time)
     end

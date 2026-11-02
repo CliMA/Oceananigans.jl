@@ -1,23 +1,20 @@
-using Oceananigans.BoundaryConditions: DistributedCommunicationBoundaryCondition, ZBC, DCBC, DefaultBoundaryCondition
-using Oceananigans.Fields: validate_indices, validate_field_data
+using Oceananigans.BoundaryConditions: DCBC, DefaultBoundaryCondition, DistributedCommunicationBoundaryCondition, ZBC
 using Oceananigans.DistributedComputations:
     DistributedComputations,
     Distributed,
-    local_size,
     all_reduce,
     child_architecture,
-    ranks,
-    inject_halo_communication_boundary_conditions,
+    communication_buffers,
     concatenate_local_sizes,
-    communication_buffers
+    inject_halo_communication_boundary_conditions,
+    insert_connected_topology,
+    local_size,
+    ranks
+using Oceananigans.Fields: Field, validate_boundary_conditions, validate_field_data, validate_indices
 
-using Oceananigans.Grids: topology, Bounded, Connected, FaceFolded, FaceFoldConnected, TwoSided,
-    SlabFoldedTopology, PencilFoldedTopology, DistributedFoldedTopology
-using Oceananigans.DistributedComputations: insert_connected_topology
+using Oceananigans.Grids: Bounded, Connected, DistributedFoldedTopology, FaceFoldConnected, FaceFolded,
+                          PencilFoldedTopology, SlabFoldedTopology, TwoSided, topology
 using Oceananigans.Utils: Utils
-
-import Oceananigans.Fields: Field, validate_indices, validate_boundary_conditions
-import Oceananigans.DistributedComputations: inject_halo_communication_boundary_conditions
 
 const DistributedTripolarGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} =
     OrthogonalSphericalShellGrid{FT, TX, TY, TZ, CZ, <:Tripolar, CC, FC, CF, FF, <:Distributed{<:Union{CPU, GPU}}}
@@ -336,10 +333,10 @@ with_north_bc(local_bcs, north_bc) = FieldBoundaryConditions(; west=local_bcs.we
                                                                top=local_bcs.top,
                                                                bottom=local_bcs.bottom)
 
-inject_halo_communication_boundary_conditions(::Nothing, loc, grid::MPITripolarGridOfSomeKind) = nothing
-inject_halo_communication_boundary_conditions(::Missing, loc, grid::MPITripolarGridOfSomeKind) = missing
+DistributedComputations.inject_halo_communication_boundary_conditions(::Nothing, loc, grid::MPITripolarGridOfSomeKind) = nothing
+DistributedComputations.inject_halo_communication_boundary_conditions(::Missing, loc, grid::MPITripolarGridOfSomeKind) = missing
 
-function inject_halo_communication_boundary_conditions(global_bcs, loc, grid::MPITripolarGridOfSomeKind)
+function DistributedComputations.inject_halo_communication_boundary_conditions(global_bcs, loc, grid::MPITripolarGridOfSomeKind)
     arch = architecture(grid)
     local_bcs = inject_halo_communication_boundary_conditions(global_bcs, loc, arch.local_rank, arch.connectivity, topology(grid))
     north_bc = north_zipper_bc(topology(grid, 2)(), global_bcs.north, loc, grid)
@@ -349,7 +346,7 @@ end
 # Extension of the constructor for a `Field` on a distributed tripolar grid.
 # The north boundary is a zipper with a sign that depends on the location of the field
 # (revert the value of the halos if on edges, keep it if on nodes or centers).
-function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::MPITripolarGridOfSomeKind, data, global_bcs, indices::Tuple, op, status) where {LX, LY, LZ}
+function Fields.Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::MPITripolarGridOfSomeKind, data, global_bcs, indices::Tuple, op, status) where {LX, LY, LZ}
     indices = validate_indices(indices, loc, grid)
     validate_field_data(loc, data, grid, indices)
     validate_boundary_conditions(loc, grid, global_bcs)

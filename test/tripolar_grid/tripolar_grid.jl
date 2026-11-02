@@ -1,7 +1,7 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Oceananigans.BoundaryConditions: Zipper, FPivot, UPivot, TPivot, pivot_shift
-using Oceananigans.Grids: get_cartesian_nodes_and_vertices
+using Oceananigans.Grids: get_cartesian_nodes_and_vertices, inactive_cell, peripheral_node
 using Oceananigans.ImmersedBoundaries: immersed_cell
 using Oceananigans.Utils: KernelParameters
 using Statistics
@@ -128,6 +128,28 @@ end
             @test maximum(c; condition=box) == maximum(φ[inside])
             @test minimum(c; condition=box) == minimum(φ[inside])
             @test maximum(c; condition=interior(box)) == maximum(φ[inside])
+        end
+    end
+end
+
+@testset "Inactive cells on tripolar grids" begin
+    for arch in archs
+        @testset "$fold_topology $pivot fold topology" for (fold_topology, pivot) in fold_topologies
+            grid = TripolarGrid(arch; size = (4, 10, 2), fold_topology, pivot)
+            Nx, Ny, Nz = size(grid)
+
+            # The southern side is closed: cells beyond it are inactive and the wall is peripheral
+            @test inactive_cell(1, 0, 1, grid)
+            @test !inactive_cell(1, 1, 1, grid)
+            @test peripheral_node(1, 1, 1, grid, Center(), Face(), Center())
+
+            # The northern side is folded: halo cells across the fold remain active
+            @test !inactive_cell(1, Ny + 1, 1, grid)
+            @test !peripheral_node(1, Ny + 1, 1, grid, Center(), Face(), Center())
+
+            # The vertical is still bounded
+            @test inactive_cell(1, 1, 0, grid)
+            @test inactive_cell(1, 1, Nz + 1, grid)
         end
     end
 end
