@@ -72,8 +72,8 @@ macro at(location, abstract_operation)
 end
 
 # Numbers and functions do not have index restrictions
-indices(::Function) = default_indices(3)
-indices(::Number)   = default_indices(3)
+Fields.indices(::Function) = default_indices(3)
+Fields.indices(::Number)   = default_indices(3)
 
 """
 $(TYPEDSIGNATURES)
