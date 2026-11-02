@@ -21,28 +21,15 @@ using Oceananigans.Grids: Center, Face, peripheral_node, inactive_node, inactive
 using Oceananigans.Operators: Δzᶜᶜᶜ, Δzᶜᶠᶠ, Δzᶠᶜᶠ, Δz⁻¹ᶜᶜᶜ, Δz⁻¹ᶜᶠᶜ, Δz⁻¹ᶠᶜᶜ,
                               ℑxᶜᵃᵃ, ℑxᶠᵃᵃ, ℑyᵃᶜᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶜ, ℑzᵃᵃᶠ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ
 using Oceananigans.TimeSteppers: TimeSteppers, time_discretization
-using Oceananigans.TurbulenceClosures: getclosure, AbstractScalarDiffusivity, VerticalFormulation,
+using Oceananigans.TurbulenceClosures: TurbulenceClosures, getclosure, AbstractScalarDiffusivity, VerticalFormulation,
                                        VerticallyImplicitTimeDiscretization
 using Oceananigans.Utils: Utils, launch!, prettysummary, named_tuple, f32_safe_cbrt
 
-import Oceananigans: prognostic_state, restore_prognostic_state!
-import Oceananigans.TimeSteppers: reset!
-import Oceananigans.TurbulenceClosures:
-    validate_closure,
-    shear_production,
-    dissipation,
-    buoyancy_force,
-    buoyancy_tracers,
-    add_closure_specific_boundary_conditions,
-    closure_required_tracers,
-    compute_closure_fields!,
-    step_closure_prognostics!,
-    build_closure_fields,
-    implicit_linear_coefficient,
-    viscosity,
-    diffusivity,
-    viscosity_location,
-    diffusivity_location
+using Oceananigans: prognostic_state, restore_prognostic_state!
+using Oceananigans.TurbulenceClosures: shear_production,
+                                       dissipation,
+                                       buoyancy_force,
+                                       buoyancy_tracers
 
 const c = Center()
 const f = Face()
@@ -125,7 +112,7 @@ end
     return (Δz_Pyⁿ + Δz_Py⁺) / 2 * Δz⁻¹ᶜᶠᶜ(i, j, k, grid)
 end
 
-@inline function shear_production(i, j, k, grid, νₑ, uⁿ, u⁺, vⁿ, v⁺)
+@inline function TurbulenceClosures.shear_production(i, j, k, grid, νₑ, uⁿ, u⁺, vⁿ, v⁺)
     # Reconstruct the shear production term in an "approximately conservative" manner
     # (ie respecting the spatial discretization and using a stencil commensurate with the
     # loss of mean kinetic energy due to shear production --- but _not_ respecting the

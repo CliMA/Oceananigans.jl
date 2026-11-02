@@ -11,15 +11,7 @@ using ..TurbulenceClosures:
     closure_coefficient,
     convert_diffusivity
 
-import ..TurbulenceClosures:
-    viscosity,
-    diffusivity,
-    κᶠᶜᶜ,
-    κᶜᶠᶜ,
-    κᶜᶜᶠ,
-    compute_closure_fields!,
-    build_closure_fields,
-    tracer_diffusivities
+using ..TurbulenceClosures: tracer_diffusivities
 
 #####
 ##### The turbulence closure proposed by Smagorinsky and Lilly.
@@ -38,8 +30,8 @@ struct Smagorinsky{TD, C, P} <: AbstractScalarDiffusivity{TD, ThreeDimensionalFo
     end
 end
 
-@inline viscosity(::Smagorinsky, K) = K.νₑ
-@inline diffusivity(closure::Smagorinsky, K, ::Val{id}) where id = K.νₑ / closure.Pr[id]
+@inline TurbulenceClosures.viscosity(::Smagorinsky, K) = K.νₑ
+@inline TurbulenceClosures.diffusivity(closure::Smagorinsky, K, ::Val{id}) where id = K.νₑ / closure.Pr[id]
 
 Adapt.adapt_structure(to, smag::Smagorinsky{TD}) where TD =
     Smagorinsky{TD}(adapt(to, smag.coefficient), adapt(to, smag.Pr))
@@ -108,7 +100,7 @@ end
 
 compute_coefficient_fields!(closure_fields, closure, model; parameters) = nothing
 
-function compute_closure_fields!(closure_fields, closure::Smagorinsky, model; parameters = :xyz)
+function TurbulenceClosures.compute_closure_fields!(closure_fields, closure::Smagorinsky, model; parameters = :xyz)
     arch = model.architecture
     grid = model.grid
     tracers = buoyancy_tracers(model)
@@ -125,7 +117,7 @@ end
 
 allocate_coefficient_fields(closure, grid, clock) = NamedTuple()
 
-function build_closure_fields(grid, clock, tracer_names, bcs, closure::Smagorinsky)
+function TurbulenceClosures.build_closure_fields(grid, clock, tracer_names, bcs, closure::Smagorinsky)
     coefficient_fields = allocate_coefficient_fields(closure, grid, clock)
 
     default_eddy_viscosity_bcs = (; νₑ = FieldBoundaryConditions(grid, (Center(), Center(), Center())))
@@ -136,9 +128,9 @@ function build_closure_fields(grid, clock, tracer_names, bcs, closure::Smagorins
     return merge(viscosity_nt, coefficient_fields)
 end
 
-@inline κᶠᶜᶜ(i, j, k, grid, c::Smagorinsky, K, ::Val{id}, args...) where id = ℑxᶠᵃᵃ(i, j, k, grid, K.νₑ) / c.Pr[id]
-@inline κᶜᶠᶜ(i, j, k, grid, c::Smagorinsky, K, ::Val{id}, args...) where id = ℑyᵃᶠᵃ(i, j, k, grid, K.νₑ) / c.Pr[id]
-@inline κᶜᶜᶠ(i, j, k, grid, c::Smagorinsky, K, ::Val{id}, args...) where id = ℑzᵃᵃᶠ(i, j, k, grid, K.νₑ) / c.Pr[id]
+@inline TurbulenceClosures.κᶠᶜᶜ(i, j, k, grid, c::Smagorinsky, K, ::Val{id}, args...) where id = ℑxᶠᵃᵃ(i, j, k, grid, K.νₑ) / c.Pr[id]
+@inline TurbulenceClosures.κᶜᶠᶜ(i, j, k, grid, c::Smagorinsky, K, ::Val{id}, args...) where id = ℑyᵃᶠᵃ(i, j, k, grid, K.νₑ) / c.Pr[id]
+@inline TurbulenceClosures.κᶜᶜᶠ(i, j, k, grid, c::Smagorinsky, K, ::Val{id}, args...) where id = ℑzᵃᵃᶠ(i, j, k, grid, K.νₑ) / c.Pr[id]
 
 Base.summary(closure::Smagorinsky) = string("Smagorinsky with coefficient = ", summary(closure.coefficient), ", Pr=$(closure.Pr)")
 function Base.show(io::IO, closure::Smagorinsky)

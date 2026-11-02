@@ -51,7 +51,7 @@ using Oceananigans.TimeSteppers: TimeSteppers,
                                  AbstractTimeDiscretization,
                                  ExplicitTimeDiscretization,
                                  VerticallyImplicitTimeDiscretization
-using Oceananigans.Grids: AbstractGrid, BoundaryTopology, Center, Face, znode
+using Oceananigans.Grids: Grids, AbstractGrid, BoundaryTopology, Center, Face, znode
 using Oceananigans.Operators: Operators,
     Ax_qᶜᶜᶜ, Ax_qᶠᶜᶜ, Ax_qᶠᶜᶠ, Ax_qᶠᶠᶜ, Ay_qᶜᶜᶜ, Ay_qᶜᶠᶜ, Ay_qᶜᶠᶠ, Ay_qᶠᶠᶜ, Az_qᶜᶜᶜ, Az_qᶜᶜᶠ, Az_qᶜᶠᶠ, Az_qᶠᶜᶠ, Az⁻¹ᶜᶜᶜ, Az⁻¹ᶜᶜᶠ, Az⁻¹ᶜᶠᶜ, Az⁻¹ᶠᶜᶜ, Az⁻¹ᶠᶠᶜ,
     V⁻¹ᶜᶜᶜ, V⁻¹ᶜᶜᶠ, V⁻¹ᶜᶠᶜ, V⁻¹ᶠᶜᶜ,
@@ -69,7 +69,7 @@ using Oceananigans.Utils: Utils, launch!, prettysummary, with_tracers, named_tup
 using Oceananigans.Fields: Field, CenterField, FunctionField, ZFaceField
 using Oceananigans.ImmersedBoundaries: AbstractGridFittedBottom, ImmersedBoundaryGrid, bottom_height
 
-import Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_halo_size_z
+using Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_halo_size_z
 
 const VerticallyBoundedGrid{FT} = AbstractGrid{FT, <:Any, <:Any, <:BoundaryTopology}
 
@@ -90,15 +90,16 @@ closure_summary(closure) = summary(closure)
 Utils.with_tracers(tracers, closure::AbstractTurbulenceClosure) = closure
 compute_closure_fields!(K, closure::AbstractTurbulenceClosure, args...; kwargs...) = nothing
 
-import Oceananigans.TimeSteppers: step_closure_prognostics!
-step_closure_prognostics!(K, closure::AbstractTurbulenceClosure, args...) = nothing
-step_closure_prognostics!(K, closure::AbstractArray{<:AbstractTurbulenceClosure}, args...) = nothing
+using Oceananigans.TimeSteppers: step_closure_prognostics!
+TimeSteppers.step_closure_prognostics!(K, closure::AbstractTurbulenceClosure, args...) = nothing
+TimeSteppers.step_closure_prognostics!(K, closure::AbstractArray{<:AbstractTurbulenceClosure}, args...) = nothing
 
 # Reset closure fields that carry state between time steps
-import Oceananigans.TimeSteppers: reset!
-reset!(K, closure::AbstractTurbulenceClosure) = nothing
-reset!(K, closure::AbstractArray{<:AbstractTurbulenceClosure}) = nothing
-reset!(K, ::Nothing) = nothing
+using Oceananigans.TimeSteppers: reset!
+using Oceananigans.Solvers: Solvers
+TimeSteppers.reset!(K, closure::AbstractTurbulenceClosure) = nothing
+TimeSteppers.reset!(K, closure::AbstractArray{<:AbstractTurbulenceClosure}) = nothing
+TimeSteppers.reset!(K, ::Nothing) = nothing
 
 # Initialize closure fields when simulation starts (after velocities are properly set)
 initialize_closure_fields!(K, closure::AbstractTurbulenceClosure, args...) = nothing
@@ -135,9 +136,9 @@ end
 # point at each side to calculate viscous fluxes at the edge of the domain.
 # If diffusivity itself requires one halo to be computed (e.g. κ = ℑxᶠᵃᵃ(i, j, k, grid, ℑxᶜᵃᵃ, T),
 # or `AnisotropicMinimumDissipation` and `Smagorinsky`) then B = 2
-@inline required_halo_size_x(::AbstractTurbulenceClosure{TD, B}) where {TD, B} = B
-@inline required_halo_size_y(::AbstractTurbulenceClosure{TD, B}) where {TD, B} = B
-@inline required_halo_size_z(::AbstractTurbulenceClosure{TD, B}) where {TD, B} = B
+@inline Grids.required_halo_size_x(::AbstractTurbulenceClosure{TD, B}) where {TD, B} = B
+@inline Grids.required_halo_size_y(::AbstractTurbulenceClosure{TD, B}) where {TD, B} = B
+@inline Grids.required_halo_size_z(::AbstractTurbulenceClosure{TD, B}) where {TD, B} = B
 
 const ClosureKinda = Union{Nothing, AbstractTurbulenceClosure, AbstractArray{<:AbstractTurbulenceClosure}}
 add_closure_specific_boundary_conditions(closure::ClosureKinda, bcs, args...) = bcs

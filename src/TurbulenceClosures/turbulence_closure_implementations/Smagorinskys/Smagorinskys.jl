@@ -13,8 +13,7 @@ using Oceananigans.Operators: Operators, Δxᶜᶜᶜ, Δyᶜᶜᶜ, Δzᶜᶜ�
 using Oceananigans.Utils: f32_safe_cbrt
 
 
-import Oceananigans.TurbulenceClosures: buoyancy_force, buoyancy_tracers, step_closure_prognostics!,
-                                        initialize_closure_fields!
+using Oceananigans.TurbulenceClosures: TurbulenceClosures, buoyancy_force, buoyancy_tracers
 
 include("smagorinsky.jl")
 include("dynamic_coefficient.jl")

@@ -8,9 +8,6 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, ImmersedBoundaryCon
 using Oceananigans.Operators: Δz⁻¹
 using Oceananigans.Solvers: BatchedTridiagonalSolver, solve!
 
-import Oceananigans.Solvers: get_coefficient
-import Oceananigans.TimeSteppers: implicit_step!
-
 const IBG = ImmersedBoundaryGrid
 
 #####
@@ -226,7 +223,7 @@ end
 # Note that we use the "periphery-aware" upper and lower diagonals. The trailing arguments are supplied
 # by `implicit_step!` below. `density` selects volume-conserving (Boussinesq) versus
 # density-weighted (mass-flux) advection coefficients.
-@inline function get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionUpperDiagonal, p, ::ZDirection,
+@inline function Solvers.get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionUpperDiagonal, p, ::ZDirection,
                                  clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields,
                                  advection, w, density, top_bc, bottom_bc, immersed_bc, ϕ)
     duκ = _ivd_upper_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields)
@@ -234,7 +231,7 @@ end
     return duκ + duw
 end
 
-@inline function get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionLowerDiagonal, p, ::ZDirection,
+@inline function Solvers.get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionLowerDiagonal, p, ::ZDirection,
                                  clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields,
                                  advection, w, density, top_bc, bottom_bc, immersed_bc, ϕ)
     dlκ = _ivd_lower_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields)
@@ -242,7 +239,7 @@ end
     return dlκ + dlw
 end
 
-@inline function get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionDiagonal, p, ::ZDirection,
+@inline function Solvers.get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionDiagonal, p, ::ZDirection,
                                  clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields,
                                  advection, w, density, top_bc, bottom_bc, immersed_bc, ϕ)
     dκ  = ivd_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields)
@@ -286,7 +283,7 @@ resulting tridiagonal system.
 scheme; `density` selects density-weighted coefficients for mass-flux (anelastic / compressible)
 models, while `nothing` keeps the volume-conserving Boussinesq behavior.
 """
-function implicit_step!(field::Field,
+function TimeSteppers.implicit_step!(field::Field,
                         implicit_solver::BatchedTridiagonalSolver,
                         closure, closure_fields, tracer_index,
                         clock, fields, Δt,

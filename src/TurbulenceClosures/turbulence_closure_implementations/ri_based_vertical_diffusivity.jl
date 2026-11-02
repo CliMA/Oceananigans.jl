@@ -5,7 +5,7 @@ using Oceananigans.Grids: inactive_node
 using Oceananigans.Operators: ℑzᵃᵃᶜ
 using Oceananigans.Utils: time_difference_seconds
 
-import Oceananigans: prognostic_state, restore_prognostic_state!
+using Oceananigans: prognostic_state, restore_prognostic_state!
 
 struct RiBasedVerticalDiffusivity{TD, FT, R, HR} <: AbstractScalarDiffusivity{TD, VerticalFormulation, 1}
     ν₀  :: FT
@@ -378,14 +378,14 @@ end
 
 const RiBasedVerticalDiffusivityFields = NamedTuple{(:κc, :κu, :Ri, :previous_compute_time)}
 
-function prognostic_state(closure_fields::RiBasedVerticalDiffusivityFields)
+function Oceananigans.prognostic_state(closure_fields::RiBasedVerticalDiffusivityFields)
     return (κc = prognostic_state(closure_fields.κc),
             κu = prognostic_state(closure_fields.κu),
             Ri = prognostic_state(closure_fields.Ri),
             previous_compute_time = closure_fields.previous_compute_time[])
 end
 
-function restore_prognostic_state!(restored::RiBasedVerticalDiffusivityFields, from)
+function Oceananigans.restore_prognostic_state!(restored::RiBasedVerticalDiffusivityFields, from)
     restore_prognostic_state!(restored.κc, from.κc)
     restore_prognostic_state!(restored.κu, from.κu)
     restore_prognostic_state!(restored.Ri, from.Ri)
@@ -393,4 +393,4 @@ function restore_prognostic_state!(restored::RiBasedVerticalDiffusivityFields, f
     return restored
 end
 
-restore_prognostic_state!(::RiBasedVerticalDiffusivityFields, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::RiBasedVerticalDiffusivityFields, ::Nothing) = nothing

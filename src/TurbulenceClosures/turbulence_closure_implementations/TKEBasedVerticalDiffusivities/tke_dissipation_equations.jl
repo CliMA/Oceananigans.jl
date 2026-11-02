@@ -191,7 +191,7 @@ end
     end
 end
 
-@inline function implicit_linear_coefficient(i, j, k, grid, closure::FlavorOfTD{<:VITD}, K, ::Val{id}, args...) where id
+@inline function TurbulenceClosures.implicit_linear_coefficient(i, j, k, grid, closure::FlavorOfTD{<:VITD}, K, ::Val{id}, args...) where id
     L = K._tupled_implicit_linear_coefficients[id]
     return @inbounds L[i, j, k]
 end
@@ -262,7 +262,7 @@ end
 #####
 
 """ Add TKE boundary conditions specific to `TKEDissipationVerticalDiffusivity`. """
-function add_closure_specific_boundary_conditions(closure::FlavorOfTD,
+function TurbulenceClosures.add_closure_specific_boundary_conditions(closure::FlavorOfTD,
                                                   user_bcs,
                                                   grid,
                                                   tracer_names,
