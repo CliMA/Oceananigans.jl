@@ -1,7 +1,3 @@
-using MPI
-using OffsetArrays
-
-using Oceananigans.Fields
 using Oceananigans.Grids: AbstractGrid, topology, size, halo_size, architecture, pop_flat_elements,
                           validate_rectilinear_grid_args, validate_lat_lon_grid_args,
                           generate_coordinate, with_precomputed_metrics,

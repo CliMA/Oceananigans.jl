@@ -14,10 +14,15 @@ export
     LinearFormulation, QuadraticFormulation,
     BoundaryAdjacentMean, boundary_total_area
 
+using Adapt: Adapt, adapt
 using DocStringExtensions: TYPEDSIGNATURES
+using GPUArraysCore: GPUArraysCore
+using JLD2: JLD2, jldopen
 
 using Oceananigans: Oceananigans, AbstractModel, fields, prognostic_fields
 using Oceananigans.AbstractOperations: AbstractOperation
+using Oceananigans.Architectures: on_architecture
+using Oceananigans.DistributedComputations: DistributedComputations
 using Oceananigans.Advection: AbstractAdvectionScheme, Centered
 using Oceananigans.Architectures: Architectures
 using Oceananigans.BoundaryConditions: BoundaryConditions
@@ -29,6 +34,7 @@ using Oceananigans.OutputWriters: OutputWriters, checkpointer_address
 using Oceananigans.Solvers: Solvers
 using Oceananigans.TimeSteppers: TimeSteppers, Clock, reset!
 using Oceananigans.Units: Time
+using Oceananigans.Utils: @apply_regionally
 
 # A prototype interface for AbstractModel.
 #

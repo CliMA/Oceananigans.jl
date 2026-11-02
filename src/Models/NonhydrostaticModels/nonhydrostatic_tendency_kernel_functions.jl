@@ -41,7 +41,6 @@ hydrostatic_pressure_gradient_y(i, j, k, grid, ::Nothing) = zero(grid)
     return (; u, v, w)
 end
 
-
 """
 $(TYPEDSIGNATURES)
 

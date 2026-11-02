@@ -1,4 +1,3 @@
-using Oceananigans.ImmersedBoundaries
 using Oceananigans.ImmersedBoundaries:
     AbstractGridFittedBottom,
     GridFittedVerticalBoundaries,
