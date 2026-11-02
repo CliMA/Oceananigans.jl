@@ -225,24 +225,24 @@ end
 # by `implicit_step!` below. `density` selects volume-conserving (Boussinesq) versus
 # density-weighted (mass-flux) advection coefficients.
 @inline function Solvers.get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionUpperDiagonal, p, ::ZDirection,
-                                 clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields,
-                                 advection, w, density, top_bc, bottom_bc, immersed_bc, ϕ)
+                                         clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields,
+                                         advection, w, density, top_bc, bottom_bc, immersed_bc, ϕ)
     duκ = _ivd_upper_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields)
     duw = implicit_advection_upper_diagonal(i, j, k, grid, advection, w, Δt, ℓx, ℓy, ℓz, density)
     return duκ + duw
 end
 
 @inline function Solvers.get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionLowerDiagonal, p, ::ZDirection,
-                                 clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields,
-                                 advection, w, density, top_bc, bottom_bc, immersed_bc, ϕ)
+                                         clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields,
+                                         advection, w, density, top_bc, bottom_bc, immersed_bc, ϕ)
     dlκ = _ivd_lower_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields)
     dlw = implicit_advection_lower_diagonal(i, j, k, grid, advection, w, Δt, ℓx, ℓy, ℓz, density)
     return dlκ + dlw
 end
 
 @inline function Solvers.get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionDiagonal, p, ::ZDirection,
-                                 clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields,
-                                 advection, w, density, top_bc, bottom_bc, immersed_bc, ϕ)
+                                         clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields,
+                                         advection, w, density, top_bc, bottom_bc, immersed_bc, ϕ)
     dκ  = ivd_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields)
     dw  = implicit_advection_diagonal(i, j, k, grid, advection, w, Δt, ℓx, ℓy, ℓz, density)
     dbc = boundary_flux_diagonal(i, j, k, grid, ℓx, ℓy, ℓz, Δt, clk, fields, top_bc, bottom_bc, immersed_bc, ϕ)
@@ -285,10 +285,10 @@ scheme; `density` selects density-weighted coefficients for mass-flux (anelastic
 models, while `nothing` keeps the volume-conserving Boussinesq behavior.
 """
 function TimeSteppers.implicit_step!(field::Field,
-                        implicit_solver::BatchedTridiagonalSolver,
-                        closure, closure_fields, tracer_index,
-                        clock, fields, Δt,
-                        advection=nothing, velocities=nothing, density=nothing)
+                                     implicit_solver::BatchedTridiagonalSolver,
+                                     closure, closure_fields, tracer_index,
+                                     clock, fields, Δt,
+                                     advection=nothing, velocities=nothing, density=nothing)
 
     vi_closure, vi_closure_fields = vertically_implicit_closures(closure, closure_fields)
 
