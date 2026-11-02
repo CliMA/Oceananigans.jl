@@ -7,13 +7,11 @@ using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Architectures: on_architecture, CPU
 using Oceananigans.Fields: Field, ReducedAbstractField, interior, interpolate!, copyable_fields
 
-import Oceananigans.Fields: set_to_field!, set_to_function!, set!
+import Oceananigans.Architectures: AnyConcreteReactantArray
 import Oceananigans.DistributedComputations: reconstruct_global_field, synchronize_communication!
-
-import ..OceananigansReactantExt: deconcretize
-import ..Grids: ReactantGrid
-import ..Architectures: AnyConcreteReactantArray
-import ..Grids: ShardedGrid
+import Oceananigans.Fields: set_to_field!, set_to_function!, set!
+import Oceananigans.Grids: ReactantGrid, ShardedGrid
+import Oceananigans.OceananigansReactantExt: deconcretize
 
 const ReactantField{LX, LY, LZ, O} = Field{LX, LY, LZ, O, <:ReactantGrid}
 const ShardedDistributedField{LX, LY, LZ, O} = Field{LX, LY, LZ, O, <:ShardedGrid}
@@ -29,7 +27,6 @@ deconcretize(field::Field{LX, LY, LZ}) where {LX, LY, LZ} =
                       field.operand,
                       field.status,
                       field.communication_buffers)
-
 
 function set_to_function!(u::ReactantField, f)
     # Supports serial and distributed
