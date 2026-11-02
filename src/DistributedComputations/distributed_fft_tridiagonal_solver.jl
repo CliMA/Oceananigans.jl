@@ -1,17 +1,17 @@
 using GPUArraysCore
-using Oceananigans.Grids: stretched_dimensions, XDirection, YDirection, ZDirection
-using Oceananigans.Operators: Δxᶠᵃᵃ, Δyᵃᶠᵃ, Δzᵃᵃᶠ, Δxᶜᶜᶜ, Δyᶜᶜᶜ, Δzᶜᶜᶜ
+using Oceananigans.Grids: XDirection, YDirection, ZDirection, stretched_dimensions
+using Oceananigans.Operators: V⁻¹ᶜᶜᶜ, Δxᶜᶜᶜ, Δxᶠᵃᵃ, Δyᵃᶠᵃ, Δyᶜᶜᶜ, Δzᵃᵃᶠ, Δzᶜᶜᶜ
 using Oceananigans.Solvers: BatchedTridiagonalSolver,
-                            stretched_direction,
-                            tridiagonal_direction,
-                            dimension,
                             HomogeneousNeumannFormulation,
-                            ZTridiagonalSolver,
-                            YTridiagonalSolver,
                             XTridiagonalSolver,
-                            compute_main_diagonal!,
+                            YTridiagonalSolver,
+                            ZTridiagonalSolver,
                             compute_lower_diagonal!,
-                            compute_preconditioner_rhs!
+                            compute_main_diagonal!,
+                            compute_preconditioner_rhs!,
+                            dimension,
+                            stretched_direction,
+                            tridiagonal_direction
 using Statistics: mean
 
 struct DistributedFourierTridiagonalPoissonSolver{G, L, B, P, R, S, β}
@@ -394,8 +394,6 @@ end
 #####
 ##### Preconditioning support for ConjugateGradientPoissonSolver
 #####
-
-using Oceananigans.Operators: V⁻¹ᶜᶜᶜ
 
 @kernel function distributed_fourier_tridiagonal_preconditioner_rhs!(preconditioner_rhs, ::XDirection, grid, rhs)
     i, j, k = @index(Global, NTuple)

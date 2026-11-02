@@ -1,6 +1,4 @@
-using Oceananigans.Architectures: on_architecture
-
-using Oceananigans.Architectures: ReshapedHostArray
+using Oceananigans.Architectures: ReshapedHostArray, on_architecture
 
 # We do not support switching from distributed and serial through `on_architecture`.
 # We only support moving a type from CPU to GPU and the other way around

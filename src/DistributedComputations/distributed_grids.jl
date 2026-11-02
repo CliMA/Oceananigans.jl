@@ -2,15 +2,12 @@ using MPI
 using OffsetArrays
 
 using Oceananigans.Fields
-using Oceananigans.Grids: AbstractGrid, topology, size, halo_size, architecture, pop_flat_elements,
-                          validate_rectilinear_grid_args, validate_lat_lon_grid_args,
-                          generate_coordinate, with_precomputed_metrics,
-                          cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z,
-                          metrics_precomputed, constructor_arguments,
-                          AbstractTopology, StaticVerticalDiscretization, regular_faces, regular_centers, total_length
-
-
-using Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid, with_halo, size_summary
+using Oceananigans.Grids: AbstractGrid, AbstractTopology, LatitudeLongitudeGrid, RectilinearGrid,
+                          StaticVerticalDiscretization, architecture, constructor_arguments, cpu_face_constructor_x,
+                          cpu_face_constructor_y, cpu_face_constructor_z, generate_coordinate, halo_size,
+                          metrics_precomputed, pop_flat_elements, regular_centers, regular_faces, size, size_summary,
+                          topology, total_length, validate_lat_lon_grid_args, validate_rectilinear_grid_args, with_halo,
+                          with_precomputed_metrics
 
 # This rank's part of a regular coordinate: the nodes of the whole coordinate at this rank's indices
 function Grids.generate_coordinate(FT, topo::AbstractTopology, n, H, p::PartitionedInterval, coordinate_name, arch)

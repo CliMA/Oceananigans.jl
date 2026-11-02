@@ -1,14 +1,14 @@
 using Oceananigans.ImmersedBoundaries
 using Oceananigans.ImmersedBoundaries:
     AbstractGridFittedBottom,
+    GridFittedBoundary,
     GridFittedVerticalBoundaries,
     PartialCellVerticalBoundaries,
-    GridFittedBoundary,
+    active_cells_maps,
     bottom_height_interior,
     compute_mask,
     has_active_cells_map,
-    has_active_z_columns,
-    active_cells_maps
+    has_active_z_columns
 
 using Oceananigans.Grids: CommunicatingSide, TwoSided
 

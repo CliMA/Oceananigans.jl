@@ -1,5 +1,5 @@
 using Oceananigans.Architectures
-using Oceananigans.Architectures: device, device!, on_architecture, array_type, child_architecture, convert_to_device
+using Oceananigans.Architectures: array_type, child_architecture, convert_to_device, device, device!, on_architecture
 using Oceananigans.Grids: topology, zeros
 using Oceananigans.Utils: sync_device!
 

@@ -11,7 +11,6 @@ export
 
 using MPI
 
-
 using Oceananigans
 using Oceananigans.Architectures: Architectures
 using Oceananigans.BoundaryConditions: BoundaryConditions
@@ -19,14 +18,14 @@ using Oceananigans.Fields: Fields
 using Oceananigans.Grids
 using Oceananigans.Grids: Grids, BoundaryTopology, XYZRegularRG
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaries
-using Oceananigans.Solvers: Solvers, GridWithFourierTridiagonalSolver, fft_poisson_solver
+using Oceananigans.Solvers: Solvers, GridWithFourierTridiagonalSolver, compute_preconditioner_rhs!, fft_poisson_solver
 using Oceananigans.Utils
 using Oceananigans.Utils: Utils
 
 using DocStringExtensions: TYPEDSIGNATURES
 using LinearAlgebra: LinearAlgebra
-using Statistics: Statistics
 using OffsetArrays
+using Statistics: Statistics
 
 include("distributed_macros.jl")
 include("sanitize_environ.jl")
@@ -59,8 +58,6 @@ Solvers.fft_poisson_solver(local_grid::DistributedRectilinearGrid, global_grid::
 
 Solvers.fft_poisson_solver(local_grid::DistributedRectilinearGrid, global_grid::GridWithFourierTridiagonalSolver) =
     DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid)
-
-using Oceananigans.Solvers: compute_preconditioner_rhs!
 
 # But we need to define the precondition! methods here
 function Solvers.precondition!(p, preconditioner::DistributedFFTBasedPoissonSolver, r, args...)

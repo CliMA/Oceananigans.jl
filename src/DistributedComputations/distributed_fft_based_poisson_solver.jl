@@ -2,8 +2,8 @@ import FFTW
 
 using Oceananigans.Architectures: architecture
 using Oceananigans.Fields: interior
-using Oceananigans.Grids: XYZRegularRG, XYRegularRG, XZRegularRG, YZRegularRG
-using Oceananigans.Solvers: poisson_eigenvalues, solve!, compute_preconditioner_rhs!, _spectral_poisson_solve!
+using Oceananigans.Grids: XYRegularRG, XYZRegularRG, XZRegularRG, YZRegularRG
+using Oceananigans.Solvers: _spectral_poisson_solve!, compute_preconditioner_rhs!, poisson_eigenvalues, solve!
 
 struct DistributedFFTBasedPoissonSolver{P, F, L, λ, B, S}
     plan :: P

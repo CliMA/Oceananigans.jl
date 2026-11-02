@@ -4,10 +4,10 @@ using LinearAlgebra: dot
 using Statistics: mean
 
 using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.Fields: Fields, set!, validate_field_data, indices, validate_boundary_conditions, instantiated_location,
-                           validate_indices, set_to_array!, set_to_field!, ReducedAbstractField, get_neutral_mask,
-                           condition_operand, initialize_reduced_field!, filltype, reduced_dimensions, reduced_location,
-                           condition_operand, conditional_length, local_dot!, reduction_operand
+using Oceananigans.Fields: Fields, ReducedAbstractField, condition_operand, conditional_length, filltype,
+                           get_neutral_mask, indices, initialize_reduced_field!, instantiated_location, local_dot!,
+                           reduced_dimensions, reduced_location, reduction_operand, set!, set_to_array!, set_to_field!,
+                           validate_boundary_conditions, validate_field_data, validate_indices
 using Oceananigans.Grids: topology
 using Oceananigans.ImmersedBoundaries: NotImmersed
 using Oceananigans.Solvers: reduce_partial_sums!
