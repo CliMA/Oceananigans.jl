@@ -4,6 +4,8 @@ using Oceananigans: TendencyCallsite
 using Oceananigans.BoundaryConditions: needs_implicit_solver
 
 using Oceananigans.Advection: AdaptiveImplicitVerticalAdvection,
+                              div_𝐯u,
+                              materialize_advection,
                               update_advection!,
                               adaptive_advection_timestep,
                               advective_tracer_flux_z,
@@ -566,6 +568,36 @@ Oceananigans.Biogeochemistry.biogeochemical_drift_velocity(bgc::SinkingParticles
         @testset "Sinking tracer [$(typeof(arch)), $timestepper]" begin
             @test sum(D) ≈ sum(D₀) rtol=1e-12
             @test descent ≈ speed * Δt * nsteps rtol=0.05
+        end
+    end
+end
+
+@testset "Explicit and implicit momentum advection preserve a uniform field" begin
+    Nz = 32
+    grid = RectilinearGrid(CPU(), size=(8, Nz), halo=(5, 5), x=(0, 1), z=(0, 1000), topology=(Periodic, Flat, Bounded))
+
+    Δt = 50.0
+    td = AdaptiveVerticallyImplicitDiscretization(cfl=0.3)
+    td.Δt[] = Δt
+
+    W = ZFaceField(grid)
+    set!(W, (x, z) -> 5 * (1 + sin(2π * x) / 3) * sin(π * z / 1000))
+    fill_halo_regions!(W)
+    velocities = (u=XFaceField(grid), v=YFaceField(grid), w=W)
+
+    uniform = XFaceField(grid)
+    parent(uniform) .= 1
+
+    @testset "$(summary(scheme))" for scheme in (Centered(order=4; time_discretization=td), WENO(order=9; time_discretization=td))
+        scheme = materialize_advection(scheme, grid)
+        G = Field(KernelFunctionOperation{Face, Center, Center}(div_𝐯u, grid, scheme, velocities, uniform))
+        ℓ = (Face(), Center(), Center())
+
+        for k in 2:Nz-1
+            implicit_row_sum = implicit_advection_lower_diagonal(1, 1, k-1, grid, scheme, W, Δt, ℓ...) +
+                               implicit_advection_diagonal(1, 1, k, grid, scheme, W, Δt, ℓ...) +
+                               implicit_advection_upper_diagonal(1, 1, k, grid, scheme, W, Δt, ℓ...)
+            @test Δt * G[1, 1, k] + implicit_row_sum ≈ 0 atol=1e-12
         end
     end
 end

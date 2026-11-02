@@ -1,4 +1,5 @@
 using Oceananigans.Operators: Δz⁻¹ᶜᶜᶜ, Δz⁻¹ᶜᶜᶠ, Δz⁻¹ᶠᶜᶠ, Δz⁻¹ᶜᶠᶠ, Az_qᶜᶜᶠ, Azᶜᶜᶠ, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
+using Oceananigans.Fields: OneField
 using Oceananigans.Grids: Center, Face
 using Oceananigans.BoundaryConditions: BoundaryConditions, _unwrap_for_gpu
 using Oceananigans.TimeSteppers: SplitRungeKuttaTimeStepper, RungeKutta3TimeStepper
@@ -85,6 +86,11 @@ end
     s  = explicit_velocity_scaleᶜᶜᶜ(i, j, k, grid, scheme, td, W)
     return s * advective_momentum_flux_Ww(i, j, k, grid, scheme, ExplicitTimeDiscretization(), W, w)
 end
+
+# A uniform field is advected by the full, unsplit transport
+@inline advective_momentum_flux_Wu(i, j, k, grid, scheme, ::AVID, W, u::OneField) = advective_momentum_flux_Wu(i, j, k, grid, scheme, ExplicitTimeDiscretization(), W, u)
+@inline advective_momentum_flux_Wv(i, j, k, grid, scheme, ::AVID, W, v::OneField) = advective_momentum_flux_Wv(i, j, k, grid, scheme, ExplicitTimeDiscretization(), W, v)
+@inline advective_momentum_flux_Ww(i, j, k, grid, scheme, ::AVID, W, w::OneField) = advective_momentum_flux_Ww(i, j, k, grid, scheme, ExplicitTimeDiscretization(), W, w)
 
 #####
 ##### Utility functions
