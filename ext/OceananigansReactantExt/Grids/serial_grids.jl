@@ -15,7 +15,8 @@ deconcretize(gfb::GridFittedVerticalBoundaries) = GridFittedVerticalBoundaries(d
                                                                                deconcretize(gfb.top_height),
                                                                                gfb.immersed_condition,
                                                                                deconcretize(gfb.bottom_cell_index),
-                                                                               deconcretize(gfb.top_cell_index))
+                                                                               deconcretize(gfb.top_cell_index),
+                                                                               deconcretize(gfb.top_load))
 
 const CPUUnderlyingGrid{FT, TX, TY, TZ, CZ} = AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, <:CPU}
 const CPUImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, S} =

@@ -21,6 +21,25 @@ const MutableGridOfSomeKind{FT, TX, TY} = Union{MutableImmersedGrid{FT, TX, TY},
 @inline column_depthᶜᶠᵃ(i, j, k, grid::MutableGridOfSomeKind, η) = mutable_column_depth(static_column_depthᶜᶠᵃ(i, j, grid),  ℑyᵃᶠᵃ(i, j, k, grid, η))
 @inline column_depthᶠᶠᵃ(i, j, k, grid::MutableGridOfSomeKind, η) = mutable_column_depth(static_column_depthᶠᶠᵃ(i, j, grid), ℑxyᶠᶠᵃ(i, j, k, grid, η))
 
+# The moving depth of a face with static depth `h` between columns (i⁻, j⁻) and (i, j)
+@inline moving_face_depth(h, i⁻, j⁻, i, j, k, grid, η) = @inbounds mutable_column_depth(h, (η[i⁻, j⁻, k] + η[i, j, k]) / 2)
+
+const MutableImmersedTopGrid = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Bounded, <:UnderlyingMutableGrid,
+                                                    <:Union{GridFittedWithTop, PartialCellWithTop}}
+
+@inline function column_stretching(i, j, k, grid, η)
+    h = static_column_depthᶜᶜᵃ(i, j, grid)
+    return @inbounds ifelse(h == 0, one(grid), (h + η[i, j, k]) / ifelse(h == 0, one(grid), h))
+end
+
+# Beneath a top, adjacent columns can differ in depth by far more than their face, which then stretches with its columns
+@inline moving_face_depth(h, i⁻, j⁻, i, j, k, grid::MutableImmersedTopGrid, η) =
+    h * (column_stretching(i⁻, j⁻, k, grid, η) + column_stretching(i, j, k, grid, η)) / 2
+
+@inline column_depthᶠᶜᵃ(i, j, k, grid::MutableImmersedTopGrid, η) = static_column_depthᶠᶜᵃ(i, j, grid) * ℑxᶠᵃᵃ(i, j, k, grid, column_stretching, η)
+@inline column_depthᶜᶠᵃ(i, j, k, grid::MutableImmersedTopGrid, η) = static_column_depthᶜᶠᵃ(i, j, grid) * ℑyᵃᶠᵃ(i, j, k, grid, column_stretching, η)
+@inline column_depthᶠᶠᵃ(i, j, k, grid::MutableImmersedTopGrid, η) = static_column_depthᶠᶠᵃ(i, j, grid) * ℑxyᶠᶠᵃ(i, j, k, grid, column_stretching, η)
+
 # Convenience methods
 @inline column_depthᶜᶜᵃ(i, j, grid) = static_column_depthᶜᶜᵃ(i, j, grid)
 @inline column_depthᶜᶠᵃ(i, j, grid) = static_column_depthᶜᶠᵃ(i, j, grid)
@@ -56,17 +75,18 @@ const AMGYS = MutableGridOfSomeKind{<:Any, <:Any, TwoSided{L, R}} where {L, R}
 const AMGYF = MutableGridOfSomeKind{<:Any, <:Any, TwoSided{L, FaceFolded}} where L
 
 # Enforce Periodic conditions for column depth
-@inline column_depthTᶠᶜᵃ(i, j, k, grid::AMGXP, η) = mutable_column_depth(static_column_depthᶠᶜᵃ(i, j, grid), @inbounds (η[ifelse(i == 1, grid.Nx, i - 1), j, k] + η[i, j, k]) / 2)
-@inline column_depthTᶜᶠᵃ(i, j, k, grid::AMGYP, η) = mutable_column_depth(static_column_depthᶜᶠᵃ(i, j, grid), @inbounds (η[i, ifelse(j == 1, grid.Ny, j - 1), k] + η[i, j, k]) / 2)
+@inline column_depthTᶠᶜᵃ(i, j, k, grid::AMGXP, η) = moving_face_depth(static_column_depthᶠᶜᵃ(i, j, grid), ifelse(i == 1, grid.Nx, i - 1), j, i, j, k, grid, η)
+@inline column_depthTᶜᶠᵃ(i, j, k, grid::AMGYP, η) = moving_face_depth(static_column_depthᶜᶠᵃ(i, j, grid), i, ifelse(j == 1, grid.Ny, j - 1), i, j, k, grid, η)
 
 # Enforce boundary conditions on a left wall
-@inline column_depthTᶠᶜᵃ(i, j, k, grid::AMGXB, η) = mutable_column_depth(static_column_depthᶠᶜᵃ(i, j, grid), @inbounds (η[ifelse(i == 1, i, i - 1), j, k] + η[i, j, k]) / 2)
-@inline column_depthTᶜᶠᵃ(i, j, k, grid::AMGYS{L}, η) where L = mutable_column_depth(static_column_depthᶜᶠᵃ(i, j, grid), @inbounds (η[i, ifelse((L === Closed) & (j == 1), j, j - 1), k] + η[i, j, k]) / 2)
+@inline column_depthTᶠᶜᵃ(i, j, k, grid::AMGXB, η) = moving_face_depth(static_column_depthᶠᶜᵃ(i, j, grid), ifelse(i == 1, i, i - 1), j, i, j, k, grid, η)
+@inline column_depthTᶜᶠᵃ(i, j, k, grid::AMGYS{L}, η) where L = moving_face_depth(static_column_depthᶜᶠᵃ(i, j, grid), i, ifelse((L === Closed) & (j == 1), j, j - 1), i, j, k, grid, η)
 
 @inline function column_depthTᶜᶠᵃ(i, j, k, grid::AMGYF{L}, η) where L
     fold = j == grid.Ny + 1
-    η⁺ = @inbounds η[ifelse(fold, north_fold_index(i, grid), i), ifelse(fold, grid.Ny, j), k]
-    return mutable_column_depth(static_column_depthᶜᶠᵃ(i, j, grid), @inbounds (η[i, ifelse((L === Closed) & (j == 1), j, j - 1), k] + η⁺) / 2)
+    i⁺ = ifelse(fold, north_fold_index(i, grid), i)
+    j⁺ = ifelse(fold, grid.Ny, j)
+    return moving_face_depth(static_column_depthᶜᶠᵃ(i, j, grid), i, ifelse((L === Closed) & (j == 1), j, j - 1), i⁺, j⁺, k, grid, η)
 end
 
 # Fallbacks
@@ -120,7 +140,7 @@ import Oceananigans.Operators: ∂y_zᶜᶠᶜ, ∂y_zᶜᶜᶜ, ∂y_zᶜᶠᶠ
 using Oceananigans.Operators: Δx⁻¹ᶜᶜᶜ, Δx⁻¹ᶜᶜᶠ, Δx⁻¹ᶜᶠᶜ, Δx⁻¹ᶜᶠᶠ, Δx⁻¹ᶠᶜᶜ, Δx⁻¹ᶠᶜᶠ, Δx⁻¹ᶠᶠᶜ
 using Oceananigans.Operators: Δy⁻¹ᶜᶜᶜ, Δy⁻¹ᶜᶜᶠ, Δy⁻¹ᶜᶠᶜ, Δy⁻¹ᶜᶠᶠ, Δy⁻¹ᶠᶜᶜ, Δy⁻¹ᶠᶜᶠ, Δy⁻¹ᶠᶠᶜ
 using Oceananigans.Operators: δxᶜᶜᶜ, δxᶜᶜᶠ, δxᶜᶠᶜ, δxᶜᶠᶠ, δxᶠᶜᶜ, δxᶠᶜᶠ, δxᶠᶠᶜ, δyᶜᶜᶜ, δyᶜᶜᶠ, δyᶜᶠᶜ, δyᶜᶠᶠ, δyᶠᶜᶜ, δyᶠᶜᶠ, δyᶠᶠᶜ
-using Oceananigans.Operators: ℑxzᶜᵃᶜ, ℑxzᶠᵃᶜ, ℑxzᶠᵃᶠ, ℑyzᵃᶜᶜ, ℑyzᵃᶠᶜ, ℑyzᵃᶠᶠ
+using Oceananigans.Operators: ℑxzᶜᵃᶜ, ℑxzᶠᵃᶜ, ℑxzᶠᵃᶠ, ℑyzᵃᶜᶜ, ℑyzᵃᶠᶜ, ℑyzᵃᶠᶠ, active_weighted_ℑxzᶠᶜᶜ, active_weighted_ℑyzᶜᶠᶜ
 using Oceananigans.Operators: ∂zᶜᶜᶜ, ∂zᶜᶜᶠ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ, ∂zᶠᶠᶠ
 
 #####
@@ -147,6 +167,30 @@ using Oceananigans.Grids: znode, Center, Face
 const AMG = MutableGridOfSomeKind
 const C = Center
 const F = Face
+
+const MutableImmersedTopGrid = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Bounded, <:UnderlyingMutableGrid,
+                                                    <:Union{GridFittedWithTop, PartialCellWithTop}}
+
+# Stretch about the immersed top `zᵗ` so the bottom stays put and the top moves with `η`
+@inline top_stretched_znode(r, σ, η, zᵗ) = zᵗ + η + σ * (r - zᵗ)
+
+@inline top_heightᶜᶜᵃ(i, j, k, grid) = top_height(i, j, grid)
+
+@inline Grids.znode(i, j, k, grid::MutableImmersedTopGrid, ::C, ::C, ℓz) =
+    top_stretched_znode(rnode(i, j, k, grid, C(), C(), ℓz), σⁿ(i, j, k, grid, C(), C(), ℓz),
+                        @inbounds(grid.z.ηⁿ[i, j, 1]), top_height(i, j, grid))
+
+@inline Grids.znode(i, j, k, grid::MutableImmersedTopGrid, ::F, ::C, ℓz) =
+    top_stretched_znode(rnode(i, j, k, grid, F(), C(), ℓz), σⁿ(i, j, k, grid, F(), C(), ℓz),
+                        ℑxᶠᵃᵃ(i, j, 1, grid, grid.z.ηⁿ), ℑxᶠᵃᵃ(i, j, 1, grid, top_heightᶜᶜᵃ))
+
+@inline Grids.znode(i, j, k, grid::MutableImmersedTopGrid, ::C, ::F, ℓz) =
+    top_stretched_znode(rnode(i, j, k, grid, C(), F(), ℓz), σⁿ(i, j, k, grid, C(), F(), ℓz),
+                        ℑyᵃᶠᵃ(i, j, 1, grid, grid.z.ηⁿ), ℑyᵃᶠᵃ(i, j, 1, grid, top_heightᶜᶜᵃ))
+
+@inline Grids.znode(i, j, k, grid::MutableImmersedTopGrid, ::F, ::F, ℓz) =
+    top_stretched_znode(rnode(i, j, k, grid, F(), F(), ℓz), σⁿ(i, j, k, grid, F(), F(), ℓz),
+                        ℑxyᶠᶠᵃ(i, j, 1, grid, grid.z.ηⁿ), ℑxyᶠᶠᵃ(i, j, 1, grid, top_heightᶜᶜᵃ))
 
 #####
 ##### Grid slope functions: ∂z/∂x|_r and ∂z/∂y|_r at various staggerings
@@ -193,17 +237,26 @@ const F = Face
 ##### Chain-rule-correct x-derivatives: ∂ϕ/∂x|_z = ∂ϕ/∂x|_r - (∂z/∂x|_r)(∂ϕ/∂z)
 #####
 
+@inline vertical_derivativeᶠᶜᶜ(i, j, k, grid, args...) = ℑxzᶠᵃᶜ(i, j, k, grid, ∂zᶜᶜᶠ, args...)
+@inline vertical_derivativeᶜᶠᶜ(i, j, k, grid, args...) = ℑyzᵃᶠᶜ(i, j, k, grid, ∂zᶜᶜᶠ, args...)
+
+# Pressure lives at the underlying cell centres, so partial top cells must not shorten the spacing
+@inline active_∂zᶜᶜᶠ(i, j, k, grid, args...) = ifelse(peripheral_node(i, j, k, grid, Center(), Center(), Face()), zero(grid), ∂zᶜᶜᶠ(i, j, k, grid.underlying_grid, args...))
+
+@inline vertical_derivativeᶠᶜᶜ(i, j, k, grid::MutableImmersedTopGrid, args...) = active_weighted_ℑxzᶠᶜᶜ(i, j, k, grid, active_∂zᶜᶜᶠ, args...)
+@inline vertical_derivativeᶜᶠᶜ(i, j, k, grid::MutableImmersedTopGrid, args...) = active_weighted_ℑyzᶜᶠᶜ(i, j, k, grid, active_∂zᶜᶜᶠ, args...)
+
 # ∂xᶠᶜᶜ: tracer/buoyancy/pressure x-derivatives (most common)
 @inline function ∂xᶠᶜᶜ(i, j, k, grid::AMG, ϕ)
     ∂x_at_r = δxᶠᶜᶜ(i, j, k, grid, ϕ) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
-    ∂z_ϕ = ℑxzᶠᵃᶜ(i, j, k, grid, ∂zᶜᶜᶠ, ϕ)
+    ∂z_ϕ = vertical_derivativeᶠᶜᶜ(i, j, k, grid, ϕ)
     ∂x_z = ∂x_zᶠᶜᶜ(i, j, k, grid)
     return ∂x_at_r - ∂x_z * ∂z_ϕ
 end
 
 @inline function ∂xᶠᶜᶜ(i, j, k, grid::AMG, f::Function, args...)
     ∂x_at_r = δxᶠᶜᶜ(i, j, k, grid, f, args...) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
-    ∂z_ϕ = ℑxzᶠᵃᶜ(i, j, k, grid, ∂zᶜᶜᶠ, f, args...)
+    ∂z_ϕ = vertical_derivativeᶠᶜᶜ(i, j, k, grid, f, args...)
     ∂x_z = ∂x_zᶠᶜᶜ(i, j, k, grid)
     return ∂x_at_r - ∂x_z * ∂z_ϕ
 end
@@ -275,14 +328,14 @@ end
 # ∂yᶜᶠᶜ: tracer/buoyancy/pressure y-derivatives (most common)
 @inline function ∂yᶜᶠᶜ(i, j, k, grid::AMG, ϕ)
     ∂y_at_r = δyᶜᶠᶜ(i, j, k, grid, ϕ) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
-    ∂z_ϕ = ℑyzᵃᶠᶜ(i, j, k, grid, ∂zᶜᶜᶠ, ϕ)
+    ∂z_ϕ = vertical_derivativeᶜᶠᶜ(i, j, k, grid, ϕ)
     ∂y_z = ∂y_zᶜᶠᶜ(i, j, k, grid)
     return ∂y_at_r - ∂y_z * ∂z_ϕ
 end
 
 @inline function ∂yᶜᶠᶜ(i, j, k, grid::AMG, f::Function, args...)
     ∂y_at_r = δyᶜᶠᶜ(i, j, k, grid, f, args...) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
-    ∂z_ϕ = ℑyzᵃᶠᶜ(i, j, k, grid, ∂zᶜᶜᶠ, f, args...)
+    ∂z_ϕ = vertical_derivativeᶜᶠᶜ(i, j, k, grid, f, args...)
     ∂y_z = ∂y_zᶜᶠᶜ(i, j, k, grid)
     return ∂y_at_r - ∂y_z * ∂z_ϕ
 end

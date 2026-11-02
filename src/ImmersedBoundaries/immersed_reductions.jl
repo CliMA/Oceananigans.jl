@@ -72,7 +72,7 @@ end
                                     co::ConditionalOperation) #, args...)
 
     ℓx, ℓy, ℓz = instantiated_location(co)
-    immersed = immersed_peripheral_node(i, j, k, grid, ℓx, ℓy, ℓz) | inactive_node(i, j, k, grid, ℓx, ℓy, ℓz)
+    immersed = immersed_peripheral_node(i, j, k, grid, ℓx, ℓy, ℓz) | top_inactive_node(i, j, k, grid, ℓx, ℓy, ℓz)
     return !immersed
 end
 
