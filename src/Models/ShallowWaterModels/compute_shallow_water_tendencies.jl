@@ -1,7 +1,7 @@
 using KernelAbstractions: @index, @kernel
 
 using Oceananigans: TendencyCallsite, UpdateStateCallsite, fields
-using Oceananigans.BoundaryConditions
+using Oceananigans.BoundaryConditions: FieldBoundaryConditions, compute_x_bcs!, compute_y_bcs!
 using Oceananigans.TimeSteppers: compute_flux_bc_tendencies!, compute_tendencies!
 using Oceananigans.Utils: launch!
 

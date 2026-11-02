@@ -3,8 +3,8 @@ using Adapt: Adapt
 using Oceananigans: Oceananigans, prognostic_state, restore_prognostic_state!
 using Oceananigans.BoundaryConditions: BoundaryCondition, NormalFlow
 using Oceananigans.Fields: TracerFields, XFaceField, YFaceField
-using Oceananigans.Grids: Grids, Flat, connected_range, halo_size, with_halo,
-                          minimum_xspacing, minimum_yspacing, on_architecture
+using Oceananigans.Grids: Grids, Flat, connected_range, halo_size, minimum_xspacing, minimum_yspacing, on_architecture,
+                          with_halo
 using Oceananigans.Utils: KernelParameters, prettytime
 
 #####

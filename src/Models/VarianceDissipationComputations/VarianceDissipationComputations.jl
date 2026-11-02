@@ -6,15 +6,12 @@ using DocStringExtensions: TYPEDSIGNATURES
 using KernelAbstractions: @index, @kernel
 
 using Oceananigans: Oceananigans, UpdateStateCallsite
-using Oceananigans.Advection
 using Oceananigans.Advection: _advective_tracer_flux_x,
                               _advective_tracer_flux_y,
                               _advective_tracer_flux_z
-using Oceananigans.BoundaryConditions
-using Oceananigans.Fields
-using Oceananigans.Fields: VelocityFields
-using Oceananigans.Grids: AbstractGrid, architecture
-using Oceananigans.Operators
+using Oceananigans.Fields: CenterField, VelocityFields, XFaceField, YFaceField, ZFaceField
+using Oceananigans.Grids: AbstractGrid, Center, Face, architecture
+using Oceananigans.Operators: Axᶠᶜᶜ, Ayᶜᶠᶜ, Azᶜᶜᶠ, δxᶠᶜᶜ, δyᶜᶠᶜ, δzᶜᶜᶠ, σ⁻, σ⁻¹ⁿ, σⁿ
 using Oceananigans.Simulations: Simulations, Callback, validate_schedule
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper,
                                  RungeKutta3TimeStepper,
@@ -22,8 +19,7 @@ using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper,
 using Oceananigans.TurbulenceClosures: _diffusive_flux_x,
                                        _diffusive_flux_y,
                                        _diffusive_flux_z
-using Oceananigans.Utils
-using Oceananigans.Utils: ConsecutiveIterations, IterationInterval
+using Oceananigans.Utils: ConsecutiveIterations, IterationInterval, KernelParameters, launch!
 
 struct VarianceDissipation{P, K, A, D, S}
     advective_production :: P

@@ -1,9 +1,9 @@
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Advection: update_advection!
-using Oceananigans.Architectures
+using Oceananigans.Architectures: Architectures
 using Oceananigans.Biogeochemistry: update_biogeochemical_state!
-using Oceananigans.BoundaryConditions
-using Oceananigans.BoundaryConditions: update_boundary_conditions!
+using Oceananigans.BoundaryConditions: FieldBoundaryConditions, compute_x_bcs!, compute_y_bcs!, compute_z_bcs!,
+                                       update_boundary_conditions!
 using Oceananigans.BuoyancyFormulations: compute_buoyancy_gradients!
 using Oceananigans.Fields: compute!
 using Oceananigans.Forcings: compute_forcing!

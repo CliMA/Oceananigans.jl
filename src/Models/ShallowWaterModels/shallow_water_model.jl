@@ -3,7 +3,6 @@ using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Oceananigans.Advection: VectorInvariant, materialize_advection
 using Oceananigans.Architectures: AbstractArchitecture, architecture
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
-using Oceananigans.DistributedComputations
 using Oceananigans.Fields: CenterField, Field, TracerFields, XFaceField, YFaceField, compute!, tracernames
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: Center, Flat, RectilinearGrid, architecture, topology

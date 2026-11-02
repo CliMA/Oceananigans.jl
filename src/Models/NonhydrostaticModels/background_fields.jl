@@ -1,4 +1,4 @@
-using Adapt
+using Adapt: Adapt, adapt
 
 using Oceananigans.Fields: AbstractField, ConstantField, FunctionField, ZeroField, location
 using Oceananigans.Utils: prettysummary

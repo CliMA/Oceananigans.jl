@@ -1,8 +1,6 @@
 using Oceananigans: prognostic_fields
-using Oceananigans.DistributedComputations
 using Oceananigans.DistributedComputations: AsynchronousDistributed, DistributedGrid, synchronize_communication!
-using Oceananigans.Grids
-using Oceananigans.Grids: CommunicatingSide, TwoSided, halo_size, topology
+using Oceananigans.Grids: Grids, CommunicatingSide, TwoSided, halo_size, topology
 using Oceananigans.Utils: KernelParameters, get_active_cells_map, worksize
 
 function complete_communication_and_compute_buffer!(model, ::DistributedGrid, ::AsynchronousDistributed)

@@ -1,4 +1,3 @@
-using Oceananigans.Operators
 using Oceananigans.TurbulenceClosures: AbstractScalarDiffusivity, ExplicitTimeDiscretization,
                                        ThreeDimensionalFormulation, build_closure_fields, compute_closure_fields!,
                                        convert_diffusivity, viscosity_location, with_tracers, ν_σᶜᶜᶜ, νᶜᶜᶜ, ∂ⱼ_τ₁ⱼ,

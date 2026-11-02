@@ -1,4 +1,4 @@
-using Adapt, GPUArraysCore
+using Adapt: Adapt, adapt
 
 using Oceananigans: instantiated_location
 using Oceananigans.AbstractOperations: Ax, Ay, Az, grid_metric_operation

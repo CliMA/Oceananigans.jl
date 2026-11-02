@@ -258,6 +258,6 @@ include("set_model.jl")
 # Implementation of the diagnostic for computing the dissipation rate
 include("VarianceDissipationComputations/VarianceDissipationComputations.jl")
 
-using .VarianceDissipationComputations
+using .VarianceDissipationComputations: VarianceDissipationComputations
 
 end # module

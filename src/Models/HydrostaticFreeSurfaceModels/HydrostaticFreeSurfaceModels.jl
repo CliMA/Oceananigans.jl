@@ -112,7 +112,7 @@ include("explicit_free_surface.jl")
 
 # Split-Explicit free-surface solver functionality
 include("SplitExplicitFreeSurfaces/SplitExplicitFreeSurfaces.jl")
-using .SplitExplicitFreeSurfaces
+using .SplitExplicitFreeSurfaces: SplitExplicitFreeSurfaces, SplitExplicitFreeSurface
 
 # Implicit free-surface solver functionality
 include("fft_based_implicit_free_surface_solver.jl")

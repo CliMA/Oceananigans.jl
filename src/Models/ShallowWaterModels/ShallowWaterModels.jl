@@ -3,7 +3,7 @@ module ShallowWaterModels
 export ShallowWaterModel, ShallowWaterScalarDiffusivity,
        ConservativeFormulation, VectorInvariantFormulation
 
-using Adapt
+using Adapt: Adapt
 using DocStringExtensions: TYPEDSIGNATURES
 using KernelAbstractions: @index, @kernel
 
