@@ -1,23 +1,16 @@
-using Oceananigans.Grids: topology
-using Oceananigans.Fields: Fields, validate_field_data, indices, validate_boundary_conditions, instantiated_location
-using Oceananigans.Fields: validate_indices, set_to_array!, set_to_field!
 using GPUArraysCore: @allowscalar
 
-using Oceananigans.Fields: ReducedAbstractField,
-                           get_neutral_mask,
-                           condition_operand,
-                           initialize_reduced_field!,
-                           filltype,
-                           reduced_dimensions,
-                           reduced_location
-using Oceananigans.Fields: condition_operand, conditional_length, local_dot!, reduction_operand
-using Oceananigans.ImmersedBoundaries: NotImmersed
 using LinearAlgebra: dot
 using Statistics: mean
 
-using Oceananigans.Fields: Field, set!
-using Oceananigans.Solvers: reduce_partial_sums!
 using Oceananigans.BoundaryConditions: fill_halo_regions!
+using Oceananigans.Fields: Fields, set!, validate_field_data, indices, validate_boundary_conditions, instantiated_location,
+                           validate_indices, set_to_array!, set_to_field!, ReducedAbstractField, get_neutral_mask,
+                           condition_operand, initialize_reduced_field!, filltype, reduced_dimensions, reduced_location,
+                           condition_operand, conditional_length, local_dot!, reduction_operand
+using Oceananigans.Grids: topology
+using Oceananigans.ImmersedBoundaries: NotImmersed
+using Oceananigans.Solvers: reduce_partial_sums!
 
 const DistributedField         = Field{<:Any, <:Any, <:Any, <:Any, <:DistributedGrid}
 const DistributedFieldTuple    = NamedTuple{S, <:NTuple{N, DistributedField}} where {S, N}
