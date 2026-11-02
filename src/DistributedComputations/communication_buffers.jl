@@ -1,15 +1,12 @@
-using Oceananigans.BoundaryConditions
-using Oceananigans.BoundaryConditions: BoundaryCondition, DistributedCommunication, FieldBoundaryConditions,
-                                       MultiRegionCommunication
-using Oceananigans.Grids: CommunicatingSide, halo_size, size, topology
-using Oceananigans.Utils: launch!
-
 using Adapt
-
 using KernelAbstractions: @index, @kernel, get_backend
 
 using Oceananigans.Architectures: on_architecture
+using Oceananigans.BoundaryConditions: BoundaryConditions, BoundaryCondition, DistributedCommunication,
+                                       FieldBoundaryConditions, MultiRegionCommunication
 using Oceananigans.Fields: communication_buffers
+using Oceananigans.Grids: CommunicatingSide, halo_size, size, topology
+using Oceananigans.Utils: launch!
 
 const MCBC = BoundaryCondition{<:MultiRegionCommunication}
 const DCBC = BoundaryCondition{<:DistributedCommunication}
