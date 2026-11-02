@@ -607,6 +607,51 @@ function test_oblique_phase_speed_averages_advance(timestepper)
     return all(latest .> 0) && Array(c⁰) == latest
 end
 
+# The next step's interior reference is the value this step radiated from: changing the interior after the step,
+# as the barotropic correction of the velocities does, changes neither the normal nor the tangential boundary value
+# of the next step.
+function test_oblique_reference_is_unaffected_by_later_corrections()
+    grid = RectilinearGrid(size = (4, 3, 1), x = (0, 1), y = (0, 1), z = (0, 1), topology = (Open, Periodic, Bounded))
+    Nx = grid.Nx
+    clock = (; time = 0.0, stage = 1, last_stage_Δt = 10.0, iteration = 1)
+
+    function boundary_values_after_two_steps(correction)
+        across = NormalFlowBoundaryCondition(0; scheme = ObliqueRadiation(inflow_timescale = Inf))
+        along  = ValueBoundaryCondition(0; scheme = ObliqueRadiation(inflow_timescale = Inf))
+        u = XFaceField(grid; boundary_conditions = FieldBoundaryConditions(grid, (Face(), Center(), Center()); east = across, west = across))
+        v = YFaceField(grid; boundary_conditions = FieldBoundaryConditions(grid, (Center(), Face(), Center()); east = along, west = along))
+        fields = (; u, v)
+
+        set!(u, 0)
+        set!(v, 0)
+        u[Nx + 1, 1:3, 1] .= 0.3
+        v[Nx + 1, 1:3, 1] .= 0.2
+
+        for n in 1:2
+            cache_boundary_condition!(u.boundary_conditions.east, East(), u, clock, fields)
+            cache_boundary_condition!(v.boundary_conditions.east, East(), v, clock, fields)
+
+            # Both steps see the same interior, which radiates out through the boundary
+            interior(u)[Nx, :, 1] .= -1
+            interior(u)[Nx - 1, :, 1] .= -2
+            interior(v)[Nx, :, 1] .= 0.9
+            interior(v)[Nx - 1, :, 1] .= 0.5
+            step_boundary_condition!(u.boundary_conditions.east, East(), u, clock, fields, 10.0)
+            step_boundary_condition!(v.boundary_conditions.east, East(), v, clock, fields, 10.0)
+
+            interior(u)[Nx, :, 1] .+= correction
+            interior(v)[Nx, :, 1] .+= correction
+        end
+
+        return Array(u[Nx + 1, 1:3, 1]), Array(v[Nx + 1, 1:3, 1])
+    end
+
+    uᵇ, vᵇ = boundary_values_after_two_steps(0)
+    uᶜ, vᶜ = boundary_values_after_two_steps(0.5)
+
+    return all(uᵇ .!= 0.3) && all(vᵇ .!= 0.2) && uᵇ == uᶜ && vᵇ == vᶜ
+end
+
 # Mirroring the initial tracer and the tangential velocity mirrors the solution.
 function test_oblique_radiation_mirror_symmetry()
     grid = RectilinearGrid(size = (24, 16, 1), x = (0, 1), y = (0, 1), z = (0, 1),
@@ -934,6 +979,7 @@ end
 
     @testset "ObliqueRadiation radiates tangential velocity with the normal phase speed" begin
         @test test_oblique_tangential_uses_normal_phase_speed()
+        @test test_oblique_reference_is_unaffected_by_later_corrections()
     end
 
     @testset "ObliqueRadiation is mirror-symmetric along the boundary" begin
