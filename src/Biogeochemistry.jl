@@ -2,12 +2,11 @@ module Biogeochemistry
 
 using DocStringExtensions: TYPEDSIGNATURES
 using KernelAbstractions: @kernel, @index
+using Oceananigans: Oceananigans
 using Oceananigans.Architectures: architecture
+using Oceananigans.Fields: CenterField
 using Oceananigans.Grids: Center, xnode, ynode, znode
 using Oceananigans.Utils: launch!
-
-using Oceananigans.Fields: CenterField
-using Oceananigans: Oceananigans
 
 #####
 ##### Generic fallbacks for biogeochemistry
