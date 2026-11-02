@@ -169,8 +169,8 @@ function DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid, pla
 
     tridiagonal_dim = dimension(tridiagonal_dir)
 
-    topology(global_grid, tridiagonal_dim) != Bounded &&
-        error("`DistributedFourierTridiagonalPoissonSolver` requires that the stretched direction (dimension $tridiagonal_dim) is `Bounded`.")
+    topology(global_grid, tridiagonal_dim) <: BoundaryTopology ||
+        error("`DistributedFourierTridiagonalPoissonSolver` requires that the stretched direction (dimension $tridiagonal_dim) is bounded.")
 
     T = Complex{eltype(local_grid)}
     child_arch = child_architecture(local_grid)
@@ -230,8 +230,8 @@ function DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid, pla
                                         tridiagonal_direction = tridiagonal_dir)
 
     # We need to permute indices to apply bounded transforms on the GPU (r2r or r2c with twiddling)
-    x_buffer_needed = child_arch isa GPU && TX == Bounded
-    z_buffer_needed = child_arch isa GPU && TZ == Bounded
+    x_buffer_needed = child_arch isa GPU && TX <: BoundaryTopology
+    z_buffer_needed = child_arch isa GPU && TZ <: BoundaryTopology
 
     # Y-buffer is needed on GPU for permutedims before/after the y-FFT.
     # All GPU y-FFTs now use dim-1 layout with permutedims (both Periodic and Bounded).

@@ -1,7 +1,7 @@
 using Oceananigans.Operators
 using Oceananigans.Operators: MRG, MLLG, MOSG, superscript_location, north_fold_index
 
-using Oceananigans.Grids: AbstractUnderlyingGrid, Bounded, Closed, FaceFolded, Periodic, Sides, MutableVerticalDiscretization
+using Oceananigans.Grids: AbstractUnderlyingGrid, Bounded, Closed, FaceFolded, Periodic, TwoSided, MutableVerticalDiscretization
 
 import Oceananigans.Grids: column_depthᶜᶜᵃ,
                            column_depthᶜᶠᵃ,
@@ -49,11 +49,11 @@ const MutableGridOfSomeKind{FT, TX, TY} = Union{MutableImmersedGrid{FT, TX, TY},
 @inline column_depthTᶜᶠᵃ(i, j, k, grid::AbstractGrid, η) = column_depthᶜᶠᵃ(i, j, k, grid, η)
 
 const AMGXP = MutableGridOfSomeKind{<:Any, Periodic}
-const AMGXB = MutableGridOfSomeKind{<:Any, <:Sides{Closed}}
+const AMGXB = MutableGridOfSomeKind{<:Any, <:TwoSided{Closed}}
 
 const AMGYP = MutableGridOfSomeKind{<:Any, <:Any, Periodic}
-const AMGYS = MutableGridOfSomeKind{<:Any, <:Any, Sides{L, R}} where {L, R}
-const AMGYF = MutableGridOfSomeKind{<:Any, <:Any, Sides{L, FaceFolded}} where L
+const AMGYS = MutableGridOfSomeKind{<:Any, <:Any, TwoSided{L, R}} where {L, R}
+const AMGYF = MutableGridOfSomeKind{<:Any, <:Any, TwoSided{L, FaceFolded}} where L
 
 # Enforce Periodic conditions for column depth
 @inline column_depthTᶠᶜᵃ(i, j, k, grid::AMGXP, η) = mutable_column_depth(static_column_depthᶠᶜᵃ(i, j, grid), @inbounds (η[ifelse(i == 1, grid.Nx, i - 1), j, k] + η[i, j, k]) / 2)

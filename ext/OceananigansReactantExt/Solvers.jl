@@ -1,7 +1,7 @@
 module Solvers
 
 using Reactant
-using Oceananigans.Grids: Bounded, Periodic, Flat
+using Oceananigans.Grids: BoundaryTopology, Periodic, Flat
 
 import Oceananigans.Solvers: plan_forward_transform, plan_backward_transform
 import ..Architectures: AnyConcreteReactantArray
@@ -29,12 +29,12 @@ end
 ##### Bounded topology (DCT) - not yet supported
 #####
 
-function plan_forward_transform(A::AnyReactantArray, ::Bounded, dims, planner_flag=nothing)
+function plan_forward_transform(A::AnyReactantArray, ::BoundaryTopology, dims, planner_flag=nothing)
     length(dims) == 0 && return nothing
     error("Bounded topology (DCT) not yet supported for Reactant. Use Periodic topology or ExplicitFreeSurface.")
 end
 
-function plan_backward_transform(A::AnyReactantArray, ::Bounded, dims, planner_flag=nothing)
+function plan_backward_transform(A::AnyReactantArray, ::BoundaryTopology, dims, planner_flag=nothing)
     length(dims) == 0 && return nothing
     error("Bounded topology (DCT) not yet supported for Reactant. Use Periodic topology or ExplicitFreeSurface.")
 end

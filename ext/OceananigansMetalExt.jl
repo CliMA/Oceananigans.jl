@@ -6,7 +6,7 @@ using KernelAbstractions: KernelAbstractions, __dynamic_checkbounds, __iterspace
 using Metal: Metal, MtlArray, thread_position_in_threadgroup_1d, threadgroup_position_in_grid_1d, threadgroup_position_in_grid, thread_position_in_threadgroup
 using Oceananigans: Oceananigans, CPU, GPU
 using Oceananigans.Architectures: Architectures
-using Oceananigans.Grids: Bounded, Periodic
+using Oceananigans.Grids: BoundaryTopology, Periodic
 using Oceananigans.Solvers: Solvers
 using Oceananigans.Utils: linear_expand, __linear_ndrange, MappedCompilerMetadata
 import Oceananigans.Utils as UT
@@ -36,12 +36,12 @@ function Architectures.on_architecture(::MetalGPU, s::StepRangeLen{FT, Float64, 
     return StepRangeLen{FT}(ref, step, len, offset)
 end
 
-function Solvers.plan_forward_transform(A::MtlArray, ::Union{Bounded, Periodic}, dims, planner_flag)
+function Solvers.plan_forward_transform(A::MtlArray, ::Union{BoundaryTopology, Periodic}, dims, planner_flag)
     length(dims) == 0 && return nothing
     return plan_fft!(A, dims)
 end
 
-function Solvers.plan_backward_transform(A::MtlArray, ::Union{Bounded, Periodic}, dims, planner_flag)
+function Solvers.plan_backward_transform(A::MtlArray, ::Union{BoundaryTopology, Periodic}, dims, planner_flag)
     length(dims) == 0 && return nothing
     return plan_ifft!(A, dims)
 end

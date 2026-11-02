@@ -66,8 +66,8 @@ implicit_diffusion_solver(::ExplicitTimeDiscretization, args...; kwargs...) = no
     Δz⁻¹ᶜₖ   = Δz⁻¹(i, j, k,   grid, ℓx, ℓy, c)
     Δz⁻¹ᶠₖ₊₁ = Δz⁻¹(i, j, k+1, grid, ℓx, ℓy, f)
     du       = - Δt * κᵏ⁺¹ * (Δz⁻¹ᶜₖ * Δz⁻¹ᶠₖ₊₁)
-    # This conditional ensures the diagonal is correct
-    return du * !peripheral_node(i, j, k+1, grid, ℓx, ℓy, f)
+    # The column end is excluded even on an `Open` side, whose boundary flux is explicit
+    return du * !(peripheral_node(i, j, k+1, grid, ℓx, ℓy, f) | (k == grid.Nz))
 end
 
 @inline function ivd_lower_diagonal(i, j, k′, grid, closure, K, id, ℓx, ℓy, ::Center, Δt, clock, fields)
@@ -81,7 +81,7 @@ end
     # The flux through face k vanishes when that face lies on a boundary, which also makes the diagonal
     # correct. (Note we use LinearAlgebra.Tridiagonal indexing convention, so that lower_diagonal
     # should be defined for k′ = 1 ⋯ N-1.)
-    return dl * !peripheral_node(i, j, k, grid, ℓx, ℓy, f)
+    return dl * !(peripheral_node(i, j, k, grid, ℓx, ℓy, f) | (k == 1))
 end
 
 #####

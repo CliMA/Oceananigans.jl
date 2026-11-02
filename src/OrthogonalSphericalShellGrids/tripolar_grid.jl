@@ -1,5 +1,5 @@
 using Oceananigans.BoundaryConditions: BoundaryCondition, Zipper, UPivot, TPivot, FPivot, NoFluxBoundaryCondition
-using Oceananigans.Grids: Grids, Bounded, Closed, Flat, OrthogonalSphericalShellGrid, Periodic, RectilinearGrid, Sides,
+using Oceananigans.Grids: Grids, Bounded, Closed, Flat, OrthogonalSphericalShellGrid, Periodic, RectilinearGrid, TwoSided,
     architecture, cpu_face_constructor_z, validate_dimension_specification,
     CenterFolded, FaceFolded, new_data, topology
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
@@ -174,7 +174,7 @@ function TripolarGrid(arch = CPU(), FT::DataType = Oceananigans.defaults.FloatTy
 
     # Set the topology: passing `z = nothing` builds a purely horizontal (2D) tripolar grid with a
     # `Flat` vertical (e.g. for surface forcing); otherwise the vertical is `Bounded`.
-    TY = Sides{Closed, fold_topology}
+    TY = TwoSided{Closed, fold_topology}
     TZ = isnothing(z) ? Flat : Bounded
     topology = (Periodic, TY, TZ)
 
