@@ -15,11 +15,18 @@ using Oceananigans
 using Oceananigans.Utils
 using Oceananigans.Grids
 using OffsetArrays
-using Oceananigans.Grids: BoundaryTopology, XYZRegularRG
-using Oceananigans.Solvers: GridWithFourierTridiagonalSolver
+using Oceananigans.Grids: Grids, BoundaryTopology, XYZRegularRG
+using Oceananigans.Solvers: Solvers, GridWithFourierTridiagonalSolver
 
-import Oceananigans.Solvers: fft_poisson_solver
+using Oceananigans.Solvers: fft_poisson_solver
 using DocStringExtensions: TYPEDSIGNATURES
+using Oceananigans.Architectures: Architectures
+using Oceananigans.Utils: Utils
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaries
+using Oceananigans.Fields: Fields
+using Oceananigans.BoundaryConditions: BoundaryConditions
+using LinearAlgebra: LinearAlgebra
+using Statistics: Statistics
 
 include("distributed_macros.jl")
 include("sanitize_environ.jl")
@@ -45,24 +52,24 @@ include("load_balancing.jl")
 
 function NCCLDistributed end
 
-fft_poisson_solver(grid::DistributedRectilinearGrid) = fft_poisson_solver(grid, reconstruct_global_grid(grid))
+Solvers.fft_poisson_solver(grid::DistributedRectilinearGrid) = fft_poisson_solver(grid, reconstruct_global_grid(grid))
 
-fft_poisson_solver(local_grid::DistributedRectilinearGrid, global_grid::XYZRegularRG) =
+Solvers.fft_poisson_solver(local_grid::DistributedRectilinearGrid, global_grid::XYZRegularRG) =
     DistributedFFTBasedPoissonSolver(global_grid, local_grid)
 
-fft_poisson_solver(local_grid::DistributedRectilinearGrid, global_grid::GridWithFourierTridiagonalSolver) =
+Solvers.fft_poisson_solver(local_grid::DistributedRectilinearGrid, global_grid::GridWithFourierTridiagonalSolver) =
     DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid)
 
-import Oceananigans.Solvers: compute_preconditioner_rhs!, precondition!
+using Oceananigans.Solvers: compute_preconditioner_rhs!
 
 # But we need to define the precondition! methods here
-function precondition!(p, preconditioner::DistributedFFTBasedPoissonSolver, r, args...)
+function Solvers.precondition!(p, preconditioner::DistributedFFTBasedPoissonSolver, r, args...)
     compute_preconditioner_rhs!(preconditioner, r)
     solve!(p, preconditioner)
     return p
 end
 
-function precondition!(p, preconditioner::DistributedFourierTridiagonalPoissonSolver, r, args...)
+function Solvers.precondition!(p, preconditioner::DistributedFourierTridiagonalPoissonSolver, r, args...)
     compute_preconditioner_rhs!(preconditioner, r)
     solve!(p, preconditioner)
     return p

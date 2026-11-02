@@ -15,7 +15,7 @@ using Oceananigans.Solvers: BatchedTridiagonalSolver,
                             compute_main_diagonal!,
                             compute_lower_diagonal!
 
-import Oceananigans.Solvers: compute_preconditioner_rhs!
+using Oceananigans.Solvers: compute_preconditioner_rhs!
 
 struct DistributedFourierTridiagonalPoissonSolver{G, L, B, P, R, S, β}
     plan :: P
@@ -32,7 +32,7 @@ const XStretchedDistributedSolver = DistributedFourierTridiagonalPoissonSolver{<
 const YStretchedDistributedSolver = DistributedFourierTridiagonalPoissonSolver{<:Any, <:Any, <:YTridiagonalSolver}
 const ZStretchedDistributedSolver = DistributedFourierTridiagonalPoissonSolver{<:Any, <:Any, <:ZTridiagonalSolver}
 
-architecture(solver::DistributedFourierTridiagonalPoissonSolver) =
+Architectures.architecture(solver::DistributedFourierTridiagonalPoissonSolver) =
     architecture(solver.global_grid)
 
 @inline Δξᶠ(i, grid, ::Val{1}) = Δxᶠᵃᵃ(i, 1, 1, grid)
@@ -282,7 +282,7 @@ end
 # solve! requires that `b` in `A x = b` (the right hand side)
 # is copied in the solver storage
 # See: Models/NonhydrostaticModels/solve_for_pressure.jl
-function solve!(x, solver::ZStretchedDistributedSolver)
+function Solvers.solve!(x, solver::ZStretchedDistributedSolver)
     storage = solver.storage
 
     # Detect slab-x optimization: if tridiag solver grid matches xfield grid,
@@ -343,7 +343,7 @@ function _general_z_solve!(x, solver::ZStretchedDistributedSolver)
     return copy_and_zero_mean!(x, solver)
 end
 
-function solve!(x, solver::YStretchedDistributedSolver)
+function Solvers.solve!(x, solver::YStretchedDistributedSolver)
     storage = solver.storage
     buffer  = solver.buffer
 
@@ -369,7 +369,7 @@ function solve!(x, solver::YStretchedDistributedSolver)
     return copy_and_zero_mean!(x, solver)
 end
 
-function solve!(x, solver::XStretchedDistributedSolver)
+function Solvers.solve!(x, solver::XStretchedDistributedSolver)
     storage = solver.storage
     buffer  = solver.buffer
 
@@ -415,7 +415,7 @@ end
     @inbounds preconditioner_rhs[i, j, k] = rhs[i, j, k] * V⁻¹ᶜᶜᶜ(i, j, k, grid) * Δzᶜᶜᶜ(i, j, k, grid)
 end
 
-function compute_preconditioner_rhs!(solver::DistributedFourierTridiagonalPoissonSolver, rhs)
+function Solvers.compute_preconditioner_rhs!(solver::DistributedFourierTridiagonalPoissonSolver, rhs)
     grid = solver.local_grid
     arch = architecture(grid)
     tridiagonal_dir = solver.batched_tridiagonal_solver.tridiagonal_direction
