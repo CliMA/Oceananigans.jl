@@ -1,50 +1,37 @@
-using Oceananigans.Architectures: architecture
+using Oceananigans.Architectures: architecture, child_architecture
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.OrthogonalSphericalShellGrids
 using Oceananigans.Grids: validate_lat_lon_grid_args, generate_coordinate, with_precomputed_metrics, validate_rectilinear_grid_args
 using Oceananigans.Grids: default_indices, validate_indices, offset_data, instantiate, halo_size, topology
 
-import Oceananigans.Grids: zeros, StaticVerticalDiscretization, total_size
-import Oceananigans.Architectures: child_architecture
-
-import Oceananigans.DistributedComputations:
-    partition_coordinate,
-    assemble_coordinate,
-    inject_halo_communication_boundary_conditions,
-    concatenate_local_sizes,
-    barrier,
-    all_reduce,
-    all_reduce!,
-    reconstruct_global_topology
-
-child_architecture(grid::ShardedGrid) = child_architecture(architecture(grid))
+Oceananigans.Architectures.child_architecture(grid::ShardedGrid) = child_architecture(architecture(grid))
 
 # Coordinates do not need partitioning on a `Distributed{<:ReactantState}` (sharded) architecture
-partition_coordinate(c::Tuple,          n, ::ShardedDistributed, dim) = c
-partition_coordinate(c::AbstractVector, n, ::ShardedDistributed, dim) = c
+Oceananigans.DistributedComputations.partition_coordinate(c::Tuple,          n, ::ShardedDistributed, dim) = c
+Oceananigans.DistributedComputations.partition_coordinate(c::AbstractVector, n, ::ShardedDistributed, dim) = c
 
 # Same thing for assembling the coordinate, it is already represented as a global array
-assemble_coordinate(c::Tuple,          n, ::ShardedDistributed, dim) = c
-assemble_coordinate(c::AbstractVector, n, ::ShardedDistributed, dim) = c
+Oceananigans.DistributedComputations.assemble_coordinate(c::Tuple,          n, ::ShardedDistributed, dim) = c
+Oceananigans.DistributedComputations.assemble_coordinate(c::AbstractVector, n, ::ShardedDistributed, dim) = c
 
 # Boundary conditions should not need to change
-inject_halo_communication_boundary_conditions(field_bcs, loc, rank, ::Reactant.Sharding.Mesh, topology) = field_bcs
+Oceananigans.DistributedComputations.inject_halo_communication_boundary_conditions(field_bcs, loc, rank, ::Reactant.Sharding.Mesh, topology) = field_bcs
 
 # Local sizes are equal to global sizes for a sharded architecture
-concatenate_local_sizes(local_size, ::ShardedDistributed) = local_size
+Oceananigans.DistributedComputations.concatenate_local_sizes(local_size, ::ShardedDistributed) = local_size
 
 # We assume everything is already synchronized for a sharded architecture
-barrier(::ShardedDistributed) = nothing
+Oceananigans.DistributedComputations.barrier(::ShardedDistributed) = nothing
 
 # Reductions are handled by the Sharding framework
-all_reduce(op,  val, ::ShardedDistributed) = val
-all_reduce!(op, val, ::ShardedDistributed) = val
+Oceananigans.DistributedComputations.all_reduce(op,  val, ::ShardedDistributed) = val
+Oceananigans.DistributedComputations.all_reduce!(op, val, ::ShardedDistributed) = val
 
 # No need for partitioning and assembling of arrays supposedly
 partition(A::AbstractArray, ::ShardedDistributed, local_size) = A
 construct_global_array(A::AbstractArray, ::ShardedDistributed, local_size) = A
 
-reconstruct_global_topology(topo, R, r, r1, r2, ::ShardedDistributed) = topo
+Oceananigans.DistributedComputations.reconstruct_global_topology(topo, R, r, r1, r2, ::ShardedDistributed) = topo
 
 sharded_z_direction(::Nothing) = nothing
 
@@ -173,15 +160,15 @@ function Oceananigans.LatitudeLongitudeGrid(arch::ShardedDistributed,
                                              grid.radius)
 end
 
-function RectilinearGrid(arch::ShardedDistributed,
-                         FT::DataType = Oceananigans.defaults.FloatType;
-                         size,
-                         x = nothing,
-                         y = nothing,
-                         z = nothing,
-                         halo = nothing,
-                         extent = nothing,
-                         topology = (Periodic, Periodic, Bounded))
+function Oceananigans.Grids.RectilinearGrid(arch::ShardedDistributed,
+                                            FT::DataType = Oceananigans.defaults.FloatType;
+                                            size,
+                                            x = nothing,
+                                            y = nothing,
+                                            z = nothing,
+                                            halo = nothing,
+                                            extent = nothing,
+                                            topology = (Periodic, Periodic, Bounded))
 
     topology, size, halo, x, y, z = validate_rectilinear_grid_args(topology, size, halo, FT, extent, x, y, z)
 
@@ -228,9 +215,9 @@ end
 
 # This mostly exists for future where we will assemble data from multiple workers
 # to construct the grid
-function TripolarGrid(arch::ShardedDistributed,
-                      FT::DataType=Float64;
-                      halo=(4, 4, 4), kwargs...)
+function Oceananigans.OrthogonalSphericalShellGrids.TripolarGrid(arch::ShardedDistributed,
+                                                                 FT::DataType=Float64;
+                                                                 halo=(4, 4, 4), kwargs...)
 
     # We build the global grid on a CPU architecture, in order to split it easily
     global_grid = TripolarGrid(CPU(), FT; halo, kwargs...)
