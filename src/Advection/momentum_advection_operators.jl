@@ -61,7 +61,7 @@ $(TYPEDSIGNATURES)
 Calculate the advection of momentum in the ``y``-direction as the flux divergence of the anomaly from the local value `v₀ = v[i, j, k]`, ``𝛁⋅(𝐯 (v - v₀))``,
 
 ```
-1/Vʸ * [δx_cfa(ℑyᵃᶠᵃ(Ax * u) * ℑxᶠᵃᵃ(v - v₀)) + δyᵃᶠᵃ(ℑyᵃᶜᵃ(Ay * v) * ℑyᵃᶜᵃ(v - v₀)) + δz_afc(ℑxᶠᵃᵃ(Az * w) * ℑzᵃᵃᶠ(v - v₀))]
+1/Vʸ * [δx_cfa(ℑyᵃᶠᵃ(Ax * u) * ℑxᶠᵃᵃ(v - v₀)) + δyᵃᶠᵃ(ℑyᵃᶜᵃ(Ay * v) * ℑyᵃᶜᵃ(v - v₀)) + δz_afc(ℑyᵃᶠᵃ(Az * w) * ℑzᵃᵃᶠ(v - v₀))]
 ```
 
 which ends up at the location `cfc`.
