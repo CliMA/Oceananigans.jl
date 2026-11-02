@@ -20,16 +20,16 @@ const CenterOrFace = Union{Center, Face}
 end
 
 @inline function Fields._fractional_indices((λ, φ, z)::NTuple{3, Any},
-                                     grid::ConformalConicGrid,
-                                     ℓx::CenterOrFace, ℓy::CenterOrFace, ℓz::CenterOrFace)
+                                            grid::ConformalConicGrid,
+                                            ℓx::CenterOrFace, ℓy::CenterOrFace, ℓz::CenterOrFace)
     ii, jj = conformal_conic_fractional_indices(λ, φ, grid, ℓx, ℓy)
     kk     = fractional_z_index(z, (ℓx, ℓy, ℓz), grid)
     return FractionalIndices(ii, jj, kk)
 end
 
 @inline function Fields._fractional_indices((λ, φ)::NTuple{2, Any},
-                                     grid::ConformalConicGrid,
-                                     ℓx::CenterOrFace, ℓy::CenterOrFace, ::Nothing)
+                                            grid::ConformalConicGrid,
+                                            ℓx::CenterOrFace, ℓy::CenterOrFace, ::Nothing)
     ii, jj = conformal_conic_fractional_indices(λ, φ, grid, ℓx, ℓy)
     return FractionalIndices(ii, jj, nothing)
 end
