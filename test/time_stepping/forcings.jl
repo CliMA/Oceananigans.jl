@@ -148,6 +148,19 @@ function time_step_with_field_time_series_forcing(arch)
     return true
 end
 
+""" Take two time steps with a partly in-memory FieldTimeSeries forcing on a single column grid. """
+function time_step_with_field_time_series_forcing_in_column(arch)
+
+    grid = RectilinearGrid(arch, size=4, z=(0, 1), topology=(Flat, Flat, Bounded))
+    u_forcing = FieldTimeSeries{Nothing, Nothing, Center}(grid, 0:1:4; backend = InMemory(2))
+
+    model = HydrostaticFreeSurfaceModel(grid; forcing=(; u=u_forcing))
+    time_step!(model, 2)
+    time_step!(model, 2)
+
+    return u_forcing.backend.start == 4
+end
+
 function relaxed_time_stepping(arch, mask_type; mask_kwargs...)
     x_relax = Relaxation(rate = 1/60,   mask = mask_type{:x}(; mask_kwargs...),
                                       target = LinearTarget{:x}(intercept=π, gradient=ℯ))
@@ -946,6 +959,7 @@ end
 
             @testset "FieldTimeSeries forcing on [$(summary(arch))]" begin
                 @test time_step_with_field_time_series_forcing(arch)
+                @test time_step_with_field_time_series_forcing_in_column(arch)
             end
 
             @testset "Settling tracer comparison [$(summary(arch))]" begin

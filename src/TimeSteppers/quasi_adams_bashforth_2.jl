@@ -111,6 +111,7 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     χ₀ = ab2_timestepper.χ # Save initial value
     ab2_timestepper.χ = χ
 
+    cache_boundary_conditions!(model)
     ab2_step!(model, kernel_Δt, callbacks)
     step_lagrangian_particles!(model, kernel_Δt)
     cache_previous_tendencies!(model)

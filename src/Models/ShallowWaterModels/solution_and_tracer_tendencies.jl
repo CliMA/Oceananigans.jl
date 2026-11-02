@@ -1,7 +1,4 @@
-using Oceananigans.Advection
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Coriolis
-using Oceananigans.Operators
 using Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ
 
 @inline half_g_h²(i, j, k, grid, h, g)  = @inbounds 1/2 * g * h[i, j, k]^2

@@ -887,6 +887,27 @@ end
                 conditioned_r = Oceananigans.Fields.condition_operand(r, everywhere, zero(FT))
                 @test Base.size(Adapt.adapt(Array, conditioned_r)) == Base.size(r)
             end
+
+            @testset "Coordinates at extrema [$(typeof(arch)), $FT]" begin
+                c = CenterField(regular_grid)
+                set!(c, (x, y, z) -> - (x - 1/3)^2 - (y - 2)^2 - (z + 1/2)^2)
+                i, j, k = Tuple(argmax(c))
+                xᶜ = Array(xnodes(c))
+                yᶜ = Array(ynodes(c))
+                zᶜ = Array(znodes(c))
+                @test at_maximum(c, :x) == xᶜ[i]
+                @test at_maximum(c, (:y, :z)) == (yᶜ[j], zᶜ[k])
+                @test at_minimum(c, :z) == zᶜ[last(Tuple(argmin(c)))]
+                @test at_maximum(abs, c, :z) == zᶜ[last(Tuple(argmin(c)))]
+                @test findmax(abs, c) == (abs(minimum(c)), argmin(c))
+                @test_throws ArgumentError at_maximum(c, :q)
+
+                # Fields at other locations are interpolated to the location of the extremum
+                w = ZFaceField(regular_grid)
+                set!(w, (x, y, z) -> z)
+                @test at_maximum(c, w) ≈ zᶜ[k]
+                @test at_maximum(c, c) == maximum(c)
+            end
         end
 
         @testset "Boolean reductions [$(typeof(arch))]" for arch in archs
@@ -1091,8 +1112,8 @@ end
                 @test all(interior(interpolated_field) .≈ interior(reference_field))
             end
 
-            # 3D source → 1D column target: the column's specified (x, y) must drive
-            # horizontal sampling of the source.
+            # 3D source → 1D column target: interpolate! requires matching Flat-ness,
+            # so interpolating from a non-Flat source to a Flat destination must throw.
             source_3d_grid = RectilinearGrid(arch, FT; size=(4, 4, 4), x=(0,1), y=(0,1), z=(0,1))
             source_3d = CenterField(source_3d_grid)
             set!(source_3d, (x, y, z) -> x + 2y + 3z)
@@ -1102,9 +1123,7 @@ end
                                           topology=(Flat, Flat, Bounded),
                                           x=x_col, y=y_col, z=(0,1))
             column = CenterField(column_grid)
-            interpolate!(column, source_3d)
-            expected = [x_col + 2y_col + 3z for z in znodes(column)]
-            @test all(Array(interior(column))[1, 1, :] .≈ expected)
+            @test_throws ArgumentError interpolate!(column, source_3d)
 
             grid = RectilinearGrid(arch, FT; size=(), topology=(Flat, Flat, Flat))
             for ℓ in (nothing, Center(), Face())

@@ -33,11 +33,11 @@ using Oceananigans.Grids: AbstractGrid
 #####
 
 @inline div_mom_u(i, j, k, grid, advection, solution, formulation) =
-    1 / Azᶠᶜᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, momentum_flux_huu, advection, solution) +
+    Az⁻¹ᶠᶜᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, momentum_flux_huu, advection, solution) +
                                 δyᵃᶜᵃ(i, j, k, grid, momentum_flux_hvu, advection, solution))
 
 @inline div_mom_v(i, j, k, grid, advection, solution, formulation) =
-    1 / Azᶜᶠᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, momentum_flux_huv, advection, solution) +
+    Az⁻¹ᶜᶠᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, momentum_flux_huv, advection, solution) +
                                 δyᵃᶠᵃ(i, j, k, grid, momentum_flux_hvv, advection, solution))
 
 @inline div_mom_u(i, j, k, grid, advection, solution, ::VectorInvariantFormulation) = (
@@ -70,7 +70,7 @@ Calculate the divergence of the mass flux into a cell,
 which ends up at the location `ccc`.
 """
 @inline function div_Uh(i, j, k, grid, advection, solution, formulation)
-    return 1/Azᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, solution[1]) +
+    return Az⁻¹ᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, solution[1]) +
                                      δyᵃᶜᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, solution[2]))
 end
 
@@ -101,12 +101,12 @@ which ends up at the location `ccc`.
 """
 
 @inline function div_Uc(i, j, k, grid, advection, solution, c, formulation)
-    return 1/Azᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, transport_tracer_flux_x, advection, solution[1], solution.h, c) +
+    return Az⁻¹ᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, transport_tracer_flux_x, advection, solution[1], solution.h, c) +
                                      δyᵃᶜᵃ(i, j, k, grid, transport_tracer_flux_y, advection, solution[2], solution.h, c))
 end
 
 @inline function div_Uc(i, j, k, grid, advection, solution, c, ::VectorInvariantFormulation)
-    return 1/Azᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, _advective_tracer_flux_x, advection, solution[1], c) +
+    return Az⁻¹ᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, _advective_tracer_flux_x, advection, solution[1], c) +
                                      δyᵃᶜᵃ(i, j, k, grid, _advective_tracer_flux_y, advection, solution[2], c))
 end
 
@@ -134,10 +134,10 @@ c * 1/Az * [δxᶜᵃᵃ(Δy * uh / h) + δyᵃᶜᵃ(Δx * vh / h)]
 which ends up at the location `ccc`.
 """
 @inline c_div_U(i, j, k, grid, solution, c, formulation) =
-    @inbounds c[i, j, k] * 1/Azᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, u, solution) + δyᵃᶜᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, v, solution))
+    @inbounds c[i, j, k] * Az⁻¹ᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, u, solution) + δyᵃᶜᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, v, solution))
 
 @inline c_div_U(i, j, k, grid, solution, c, ::VectorInvariantFormulation) =
-    @inbounds c[i, j, k] * 1/Azᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, solution[1]) + δyᵃᶜᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, solution[2]))
+    @inbounds c[i, j, k] * Az⁻¹ᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, solution[1]) + δyᵃᶜᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, solution[2]))
 
 # Support for no advection
 @inline c_div_Uc(i, j, k, grid::AbstractGrid{FT}, ::Nothing, solution, c, formulation) where FT = zero(FT)

@@ -1,10 +1,36 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
-using Oceananigans.Fields: FunctionField
+using Oceananigans.Fields: FunctionField, ZeroField, OneField, ConstantField
 
 #####
 ##### JLD2Writer tests
 #####
+
+function test_jld2_constant_field_output(arch)
+    grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
+    model = NonhydrostaticModel(grid)
+    simulation = Simulation(model; Δt=1, stop_iteration=1, verbose=false)
+    outputs = (z = ZeroField(), o = OneField(), c = ConstantField(10))
+
+    dir = mktempdir()
+    filepath = joinpath(dir, "test_constants.jld2")
+    simulation.output_writers[:constants] = JLD2Writer(model, outputs;
+                                                       dir,
+                                                       schedule = TimeInterval(1),
+                                                       filename = "test_constants.jld2",
+                                                       overwrite_files = true)
+    run!(simulation)
+
+    jldopen(filepath) do file
+        @test file["timeseries/z/0"] == 0
+        @test file["timeseries/o/0"] == 1
+        @test file["timeseries/c/0"] == 10
+    end
+
+    rm(dir; recursive=true)
+
+    return nothing
+end
 
 function jld2_sliced_field_output(model, outputs=model.velocities)
 
@@ -168,17 +194,21 @@ function test_jld2_compression(arch)
     grid = RectilinearGrid(arch, size=(16, 16, 16), extent=(1, 1, 1))
     model = NonhydrostaticModel(grid; tracers=:c)
 
-    file_sizes = Dict{Bool, Int}()
+    compressors = ("none" => false,
+                   "deflate" => true,
+                   "zstd" => ZstdFilter(),
+                   "shuffle-zstd" => [Shuffle(), ZstdFilter(1)])
+    file_sizes = Dict{String, Int}()
 
     mktempdir() do dir
-        for compress in (false, true)
+        for (label, compress) in compressors
             model.clock.iteration = 0
             model.clock.time = 0.0
             set!(model, c=(x, y, z) -> exp(z))
 
             simulation = Simulation(model; Δt=1, stop_iteration=1, verbose=false)
 
-            filename = joinpath(dir, "compression_test_$compress.jld2")
+            filename = joinpath(dir, "compression_test_$label.jld2")
             simulation.output_writers[:tracers] = JLD2Writer(model, model.tracers;
                                                              filename,
                                                              schedule = IterationInterval(1),
@@ -187,14 +217,16 @@ function test_jld2_compression(arch)
 
             run!(simulation)
 
-            file_sizes[compress] = filesize(filename)
+            file_sizes[label] = filesize(filename)
         end
 
-        c_uncompressed = FieldTimeSeries(joinpath(dir, "compression_test_false.jld2"), "c")
-        c_compressed = FieldTimeSeries(joinpath(dir, "compression_test_true.jld2"), "c")
+        c_uncompressed = FieldTimeSeries(joinpath(dir, "compression_test_none.jld2"), "c")
 
-        @test parent(c_compressed) == parent(c_uncompressed)
-        @test file_sizes[true] < file_sizes[false]
+        for label in ("deflate", "zstd", "shuffle-zstd")
+            c_compressed = FieldTimeSeries(joinpath(dir, "compression_test_$label.jld2"), "c")
+            @test parent(c_compressed) == parent(c_uncompressed)
+            @test file_sizes[label] < file_sizes["none"]
+        end
     end
     return nothing
 end
@@ -208,8 +240,9 @@ function test_jld2_compress_keyword_precedence(arch)
                                      schedule = IterationInterval(1),
                                      kwargs...)
 
-    @test writer().jld2_kw[:compress] == true
+    @test writer().jld2_kw[:compress] == [Shuffle(), ZstdFilter(1)]
     @test writer(compress=false).jld2_kw[:compress] == false
+    @test writer(compress=true).jld2_kw[:compress] == true
     @test writer(jld2_kw=Dict{Symbol, Any}(:compress => true)).jld2_kw[:compress] == true
 
     # An explicit :compress entry in jld2_kw takes precedence over the compress keyword
@@ -581,5 +614,7 @@ for arch in archs
         run!(simulation)
         ηt = FieldTimeSeries(filename, "η")
         @test size(parent(ηt[1])) == (4, 4, 1)
+
+        test_jld2_constant_field_output(arch)
     end
 end

@@ -1,4 +1,6 @@
+using Oceananigans: Oceananigans
 using Oceananigans.Architectures: architecture
+using Oceananigans.BoundaryConditions: step_boundary_conditions!
 using Oceananigans.TimeSteppers: _ab2_step_field!
 
 import Oceananigans.TimeSteppers: ab2_step!
@@ -28,6 +30,8 @@ function ab2_step!(model::ShallowWaterModel, Δt, callbacks)
                 model.timestepper.Gⁿ[key],
                 model.timestepper.G⁻[key])
     end
+
+    step_boundary_conditions!(fields, model.clock, Oceananigans.fields(model), Δt)
 
     return nothing
 end

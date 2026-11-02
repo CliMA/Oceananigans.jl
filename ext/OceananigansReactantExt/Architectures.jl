@@ -1,14 +1,12 @@
 module Architectures
 
 using Reactant
-using Oceananigans
-using Oceananigans.DistributedComputations: Distributed
-
 using Reactant: AnyConcreteRArray
 
-import Oceananigans.Grids: LatitudeLongitudeGrid, topology
-import Oceananigans.Architectures: device, architecture, array_type, on_architecture, child_architecture
-import Oceananigans.Architectures: unified_array, ReactantState, device_copy_to!
+using Oceananigans
+using Oceananigans.Architectures: ReactantState, ReshapedHostArray, child_architecture, on_architecture
+using Oceananigans.DistributedComputations: Distributed
+using Oceananigans.Grids: LatitudeLongitudeGrid, topology
 
 const ReactantKernelAbstractionsExt = Base.get_extension(
     Reactant, :ReactantKernelAbstractionsExt
@@ -18,20 +16,20 @@ const ReactantBackend = ReactantKernelAbstractionsExt.ReactantBackend
 const AnyConcreteReactantArray = Union{Reactant.AnyConcretePJRTArray,
                                        Reactant.AnyConcreteIFRTArray}
 
-device(::ReactantState) = ReactantBackend()
+Oceananigans.Architectures.device(::ReactantState) = ReactantBackend()
 
-architecture(::AnyConcreteReactantArray) = ReactantState()
-architecture(::Reactant.AnyTracedRArray) = ReactantState()
+Oceananigans.Architectures.architecture(::AnyConcreteReactantArray) = ReactantState()
+Oceananigans.Architectures.architecture(::Reactant.AnyTracedRArray) = ReactantState()
 
 # ConcreteRArray can refer to either a PJRT or IFRT array based on Reactant preferences
-array_type(::ReactantState) = ConcreteRArray
+Oceananigans.Architectures.array_type(::ReactantState) = ConcreteRArray
 
-on_architecture(::ReactantState, a::Reactant.AnyTracedRArray) = a
-on_architecture(::CPU, a::AnyConcreteReactantArray) = Array(a)
+Oceananigans.Architectures.on_architecture(::ReactantState, a::Reactant.AnyTracedRArray) = a
+Oceananigans.Architectures.on_architecture(::CPU, a::AnyConcreteReactantArray) = Array(a)
 
 using OffsetArrays: OffsetArray
 const ConcreteReactantOffsetArray = OffsetArray{<:Any, <:Any, <:AnyConcreteReactantArray}
-on_architecture(::CPU, a::ConcreteReactantOffsetArray) = OffsetArray(Array(parent(a)), a.offsets)
+Oceananigans.Architectures.on_architecture(::CPU, a::ConcreteReactantOffsetArray) = OffsetArray(Array(parent(a)), a.offsets)
 
 const ArraysToRArray = Union{Array,
     Reactant.AnyConcretePJRTArray,
@@ -39,12 +37,21 @@ const ArraysToRArray = Union{Array,
     BitArray,
     SubArray{<:Any,<:Any,<:Array}}
 
-on_architecture(::ReactantState, a::ArraysToRArray) = Reactant.to_rarray(a)
+Oceananigans.Architectures.on_architecture(::ReactantState, a::ArraysToRArray) = Reactant.to_rarray(a)
+
+# Reactant cannot hold `Union{Missing, T}` (EnzymeAD/Reactant.jl#3569): such an array, e.g. read from a NetCDF
+# file, moves as a float array with `missing` as NaN. Not undone by a move back to the CPU.
+Oceananigans.Architectures.on_architecture(::ReactantState, a::Union{Array{Union{Missing, T}}, SubArray{Union{Missing, T}, <:Any, <:Array}}) where T <: AbstractFloat =
+    Reactant.to_rarray(coalesce.(a, convert(T, NaN)))
+
+# Reshaped host data is collected on the host, so it arrives as a device array of its own shape rather than as a
+# `Base.ReshapedArray` around one, which kernels cannot take (EnzymeAD/Reactant.jl#3204)
+Oceananigans.Architectures.on_architecture(arch::ReactantState, a::ReshapedHostArray{<:Union{Missing, Real}}) = on_architecture(arch, collect(a))
 Oceananigans.Architectures.cpu_architecture(arch::Distributed{<:ReactantState}) = CPU()
 
-unified_array(::ReactantState, a) = a
+Oceananigans.Architectures.unified_array(::ReactantState, a) = a
 
-@inline device_copy_to!(dst::AnyConcreteReactantArray, src::AnyConcreteReactantArray; kw...) = Base.copyto!(dst, src)
+@inline Oceananigans.Architectures.device_copy_to!(dst::AnyConcreteReactantArray, src::AnyConcreteReactantArray; kw...) = Base.copyto!(dst, src)
 
 # Distributed computations
 function Oceananigans.Distributed(arch::ReactantState; devices=nothing,
@@ -106,18 +113,19 @@ _to_reactant(a::OffsetArray) = OffsetArray(Reactant.to_rarray(collect(parent(a))
 
 function _to_reactant(s::Oceananigans.Grids.StaticVerticalDiscretization)
     return Oceananigans.Grids.StaticVerticalDiscretization(
-        _to_reactant(s.cᵃᵃᶠ), _to_reactant(s.cᵃᵃᶜ), _to_reactant(s.Δᵃᵃᶠ), _to_reactant(s.Δᵃᵃᶜ))
+        _to_reactant(s.cᵃᵃᶠ), _to_reactant(s.cᵃᵃᶜ), _to_reactant(s.Δᵃᵃᶠ), _to_reactant(s.Δᵃᵃᶜ),
+        _to_reactant(s.Δ⁻¹ᵃᵃᶠ), _to_reactant(s.Δ⁻¹ᵃᵃᶜ))
 end
 
 # Build LLG on CPU (evaluating TwicePrecision + precomputing metrics in plain Julia),
 # then transfer the materialized arrays to Reactant. This avoids Float64 leakage from
 # StepRangeLen internals during Reactant tracing, while keeping RectilinearGrid unaffected
 # (RG retains StepRangeLen coordinates which sidestep the CuTracedArray VX type constraint).
-function LatitudeLongitudeGrid(arch::ReactantState, FT::DataType = Oceananigans.defaults.FloatType; kwargs...)
+function Oceananigans.Grids.LatitudeLongitudeGrid(arch::ReactantState, FT::DataType = Oceananigans.defaults.FloatType; kwargs...)
     return on_architecture(arch, LatitudeLongitudeGrid(CPU(), FT; kwargs...))
 end
 
-function on_architecture(arch::ReactantState, grid::LatitudeLongitudeGrid)
+function Oceananigans.Architectures.on_architecture(arch::ReactantState, grid::LatitudeLongitudeGrid)
     TX, TY, TZ = topology(grid)
     props = Tuple(_to_reactant(getfield(grid, n)) for n in fieldnames(typeof(grid))
                   if n ∉ (:architecture, :Nx, :Ny, :Nz, :Hx, :Hy, :Hz, :Lx, :Ly, :Lz, :radius))
@@ -126,14 +134,17 @@ function on_architecture(arch::ReactantState, grid::LatitudeLongitudeGrid)
         grid.Lx, grid.Ly, grid.Lz, props..., grid.radius)
 end
 
-function on_architecture(new_arch::Distributed{<:ReactantState}, old_grid::LatitudeLongitudeGrid)
+function Oceananigans.Architectures.on_architecture(new_arch::Distributed{<:ReactantState}, old_grid::LatitudeLongitudeGrid)
     child_arch = child_architecture(new_arch)
     old_properties = (old_grid.Δλᶠᵃᵃ, old_grid.Δλᶜᵃᵃ, old_grid.λᶠᵃᵃ,  old_grid.λᶜᵃᵃ,
                       old_grid.Δφᵃᶠᵃ, old_grid.Δφᵃᶜᵃ, old_grid.φᵃᶠᵃ,  old_grid.φᵃᶜᵃ,
                       old_grid.z,
                       old_grid.Δxᶜᶜᵃ, old_grid.Δxᶠᶜᵃ, old_grid.Δxᶜᶠᵃ, old_grid.Δxᶠᶠᵃ,
                       old_grid.Δyᶠᶜᵃ, old_grid.Δyᶜᶠᵃ,
-                      old_grid.Azᶜᶜᵃ, old_grid.Azᶠᶜᵃ, old_grid.Azᶜᶠᵃ, old_grid.Azᶠᶠᵃ)
+                      old_grid.Azᶜᶜᵃ, old_grid.Azᶠᶜᵃ, old_grid.Azᶜᶠᵃ, old_grid.Azᶠᶠᵃ,
+                      old_grid.Δx⁻¹ᶜᶜᵃ, old_grid.Δx⁻¹ᶠᶜᵃ, old_grid.Δx⁻¹ᶜᶠᵃ, old_grid.Δx⁻¹ᶠᶠᵃ,
+                      old_grid.Δy⁻¹ᶠᶜᵃ, old_grid.Δy⁻¹ᶜᶠᵃ,
+                      old_grid.Az⁻¹ᶜᶜᵃ, old_grid.Az⁻¹ᶠᶜᵃ, old_grid.Az⁻¹ᶜᶠᵃ, old_grid.Az⁻¹ᶠᶠᵃ)
 
     sharding = Sharding.DimsSharding(new_arch.connectivity, (1, 2), (:x, :y))
     new_properties = Tuple(Reactant.to_rarray(p; sharding) for p in old_properties)

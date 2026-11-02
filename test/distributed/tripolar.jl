@@ -111,7 +111,7 @@ tripolar_immersed_on_architecture_script(fold_topology, pivot) = """
 
     include($(repr(distributed_tests_utils)))
 
-    using Oceananigans.Architectures: cpu_architecture
+    using Oceananigans.Architectures: cpu_architecture, on_architecture
     using Oceananigans.DistributedComputations: check_field_tags
     using Oceananigans.ImmersedBoundaries: bottom_height_interior
 

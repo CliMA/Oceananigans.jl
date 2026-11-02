@@ -1,16 +1,17 @@
-import Oceananigans: prognostic_state, restore_prognostic_state!
-using Oceananigans.BoundaryConditions:  construct_boundary_conditions_kernels, halo_fill_args, NFBC, MCBC,
-    BoundaryCondition, AbstractBoundaryConditionClassification, LeftBoundary, RightBoundary,
-    Zipper, validate_boundary_condition_architecture, validate_boundary_condition_topology
-using Oceananigans.Grids: parent_index_range, default_indices, validate_indices,
-    index_range_contains, halo_size, offset_data, interior_parent_indices
-using Oceananigans.Utils: @apply_regionally, getregion
+using Oceananigans: prognostic_state, restore_prognostic_state!
 using Oceananigans.Architectures: CPU, convert_to_device, on_architecture
+using Oceananigans.BoundaryConditions: AbstractBoundaryConditionClassification, BoundaryCondition, LeftBoundary, MCBC,
+                                       NFBC, RightBoundary, Zipper, construct_boundary_conditions_kernels,
+                                       halo_fill_args, validate_boundary_condition_architecture,
+                                       validate_boundary_condition_topology
+using Oceananigans.Grids: default_indices, halo_size, index_range_contains, interior_parent_indices, offset_data,
+                          parent_index_range, validate_indices
+using Oceananigans.Utils: @apply_regionally, getregion
 
-using LinearAlgebra: LinearAlgebra
-using KernelAbstractions: @kernel, @index
 using Base: @propagate_inbounds
 using GPUArraysCore: @allowscalar
+using KernelAbstractions: @index, @kernel
+using LinearAlgebra: LinearAlgebra
 using ReactantCore: ReactantCore
 using Statistics: Statistics
 
@@ -76,7 +77,7 @@ function validate_boundary_conditions(loc, grid, bcs)
         validate_boundary_condition_topology(bc, topo, side)
 
         # Check that boundary condition is valid given field location
-        topo isa Bounded && validate_boundary_condition_location(bc, ℓ, side)
+        topo isa BoundaryTopology && validate_boundary_condition_location(bc, ℓ, side)
 
         # Check that boundary condition arrays, if used, are on the right architecture
         validate_boundary_condition_architecture(bc, architecture(grid), side)
@@ -590,7 +591,17 @@ const ReducedField = Union{XReducedField,
 # Boundary conditions reduced in two directions --- the surviving index sits in the same slot on both admissible boundaries
 @inline BoundaryConditions.getbc(condition::XYReducedField, ::Integer, k::Integer, grid::AbstractGrid, args...) = @inbounds condition[1, 1, k]
 @inline BoundaryConditions.getbc(condition::YZReducedField, i::Integer, ::Integer, grid::AbstractGrid, args...) = @inbounds condition[i, 1, 1]
-# A field reduced in x and z is ambiguous: the surviving index is the first one on x boundaries and the second one on z boundaries
+
+# A field reduced in x and z has its y index first on x boundaries and second on z boundaries.
+# Regularized boundary conditions wrap it in an `XZReducedCondition` that knows its boundary;
+# otherwise we guess the boundary from the grid, as for a `FieldTimeSeries` reduced in x and z.
+@inline function BoundaryConditions.getbc(condition::XZReducedField, i₁::Integer, i₂::Integer, grid::AbstractGrid, args...)
+    Nz = size(grid, 3)
+    j = ifelse(Nz == 1, i₁, i₂)
+    return @inbounds condition[1, j, 1]
+end
+
+@inline BoundaryConditions.xz_reduced_getbc(condition::XZReducedField, j, grid, args...) = @inbounds condition[1, j, 1]
 
 # 0D boundary conditions --- easy case
 @inline BoundaryConditions.getbc(condition::XYZReducedField, ::Integer, ::Integer, ::AbstractGrid, args...) = @inbounds condition[1, 1, 1]
@@ -646,8 +657,13 @@ function BoundaryConditions.regularize_boundary_condition(condition::Field, grid
                             "or windowed along it to a single plane if at all, but has location $(location(condition)) " *
                             "and indices $indices."))
 
-    return window_to_boundary(condition, dim, side)
+    windowed = window_to_boundary(condition, dim, side)
+
+    return xz_reduced_boundary_condition(windowed, Val(dim))
 end
+
+xz_reduced_boundary_condition(condition, dim) = condition
+xz_reduced_boundary_condition(condition::XZReducedField, dim) = BoundaryConditions.xz_reduced_condition(condition, dim)
 
 boundary_plane(::Type{LeftBoundary},  condition, dim) = 1
 boundary_plane(::Type{RightBoundary}, condition, dim) = size(condition, dim)
@@ -916,9 +932,9 @@ Base.extrema(f, c::AbstractField; kwargs...) = (minimum(f, c; kwargs...), maximu
 # The search is fused: a lazy broadcast of (value, linear index) pairs is folded in place
 # on the CPU, or consumed by `mapreducedim!` on the GPU — which GPUArrays dispatches on
 # the one-element destination — so neither the operand nor the pairs are materialized.
-function locate_extremum(better, c::AbstractField, condition, mask)
-    mask = convert_mask(eltype(c), mask)
-    operand = condition_operand(c, condition, mask)
+function locate_extremum(better, f, c::AbstractField, condition, mask)
+    mask = convert_mask(mapped_eltype(f, c), mask)
+    operand = condition_operand(f, c, condition, mask)
 
     # Ties resolve to the smaller linear index, matching Base
     tiebreak((x, i), (y, j)) = better(x, y) ? (y, j) :
@@ -926,7 +942,7 @@ function locate_extremum(better, c::AbstractField, condition, mask)
 
     # Everything is 1-based from here: a windowed interior is a 1-based view and a
     # `ConditionalOperation` has 1-based axes, so no offset axes enter the search
-    values = operand === c ? interior(c) : operand
+    values = search_values(c, operand)
 
     value, i = fold_pairs(architecture(c), tiebreak, values, (mask, 1))
     positional = CartesianIndices(size(values))[i]
@@ -935,6 +951,10 @@ function locate_extremum(better, c::AbstractField, condition, mask)
     # windowed fields too; for default fields the shift vanishes
     return value, CartesianIndex(Tuple(positional) .+ first.(axes(c)) .- 1)
 end
+
+# Dispatch detects when `condition_operand` passed `c` through; `operand === c` can be false for windowed fields
+@inline search_values(c::C, operand::C) where C = interior(c)
+@inline search_values(c, operand) = operand
 
 function fold_pairs(::Architectures.CPU, tiebreak, values, init)
     result = init
@@ -953,8 +973,10 @@ function fold_pairs(arch, tiebreak, values, init)
     return first(Array(result))
 end
 
-Base.findmax(c::AbstractField; condition = nothing, mask = -Inf) = locate_extremum(Base.isless,    c, condition, mask)
-Base.findmin(c::AbstractField; condition = nothing, mask = Inf)  = locate_extremum(Base.isgreater, c, condition, mask)
+Base.findmax(f, c::AbstractField; condition = nothing, mask = -Inf) = locate_extremum(Base.isless,    f, c, condition, mask)
+Base.findmin(f, c::AbstractField; condition = nothing, mask = Inf)  = locate_extremum(Base.isgreater, f, c, condition, mask)
+Base.findmax(c::AbstractField; kwargs...) = findmax(identity, c; kwargs...)
+Base.findmin(c::AbstractField; kwargs...) = findmin(identity, c; kwargs...)
 Base.argmax(c::AbstractField; kwargs...) = last(findmax(c; kwargs...))
 Base.argmin(c::AbstractField; kwargs...) = last(findmin(c; kwargs...))
 
@@ -1037,16 +1059,16 @@ Grids.nodes(f::Field; kwargs...) = nodes(f.grid, instantiated_location(f)...; in
 # `copyto!` straight into the existing device array. Serializing the device array directly
 # makes JLD2 reconstruct a *new* device array on read, doubling GPU memory at pickup and
 # OOMing for large fields. `parent` keeps the same indexing as `restored`'s parent below.
-function prognostic_state(field::Field)
+function Oceananigans.prognostic_state(field::Field)
     return (; data = on_architecture(CPU(), parent(field)),
               boundary_conditions = prognostic_state(field.boundary_conditions))
 end
 
-function restore_prognostic_state!(restored::Field, from)
+function Oceananigans.restore_prognostic_state!(restored::Field, from)
     # `from.data` is a host-side copy of the parent data; restore region-by-region when needed.
     @apply_regionally copyto!(parent(restored), from.data)
     haskey(from, :boundary_conditions) && restore_prognostic_state!(restored.boundary_conditions, from.boundary_conditions)
     return restored
 end
 
-restore_prognostic_state!(::Field, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::Field, ::Nothing) = nothing

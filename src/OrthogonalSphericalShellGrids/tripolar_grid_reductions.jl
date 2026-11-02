@@ -1,8 +1,5 @@
-using Oceananigans.AbstractOperations: ConditionalOperation
+using Oceananigans.AbstractOperations: ConditionalOperation, evaluate_condition, validate_condition
 using Oceananigans.Fields: AbstractField, OneField
-
-import Oceananigans.AbstractOperations: evaluate_condition, validate_condition
-import Oceananigans.Fields: condition_operand, conditional_length
 
 #####
 ##### Reduction operations involving tripolar grids exclude the repeated row at the top
@@ -20,13 +17,13 @@ Base.summary(::PrognosticTripolarCells{Nothing}) = "PrognosticTripolarCells()"
 Base.summary(vd::PrognosticTripolarCells) = string("PrognosticTripolarCells(", summary(vd.condition), ")")
 Base.size(vd::PrognosticTripolarCells{<:AbstractArray}) = size(vd.condition)
 
-validate_condition(cond::PrognosticTripolarCells{<:AbstractArray}, ::OneField) = cond
-validate_condition(cond::PrognosticTripolarCells{<:AbstractArray}, operand::AbstractField) = validate_condition(cond.condition, operand)
+AbstractOperations.validate_condition(cond::PrognosticTripolarCells{<:AbstractArray}, ::OneField) = cond
+AbstractOperations.validate_condition(cond::PrognosticTripolarCells{<:AbstractArray}, operand::AbstractField) = validate_condition(cond.condition, operand)
 
 "Adapt `PrognosticTripolarCells` to work on the GPU via KernelAbstractions."
 Adapt.adapt_structure(to, vd::PrognosticTripolarCells) = PrognosticTripolarCells(Adapt.adapt(to, vd.condition))
 
-@inline function evaluate_condition(::PrognosticTripolarCells{Nothing},
+@inline function AbstractOperations.evaluate_condition(::PrognosticTripolarCells{Nothing},
                                     i, j, k,
                                     grid::TripolarGridOfSomeKind,
                                     co::ConditionalOperation, args...)
@@ -42,12 +39,12 @@ Adapt.adapt_structure(to, vd::PrognosticTripolarCells) = PrognosticTripolarCells
     center_folded_domain = ifelse(Ly == Face, true, !last_half_row_center)
 
     # At the moment it does not work for UPivot distributed tripolar grids since
-    # if TY != Sides{Closed, FaceFolded} it assumes an FPivot which is the default distributed tripolar grids.
+    # if TY != TwoSided{Closed, FaceFolded} it assumes an FPivot which is the default distributed tripolar grids.
     # TODO: add support for a `UPivot` distributed tripolar grid.
-    return ifelse(TY == Sides{Closed, FaceFolded}, face_folded_domain, center_folded_domain)
+    return ifelse(TY == TwoSided{Closed, FaceFolded}, face_folded_domain, center_folded_domain)
 end
 
-@inline function evaluate_condition(vd::PrognosticTripolarCells,
+@inline function AbstractOperations.evaluate_condition(vd::PrognosticTripolarCells,
                                     i, j, k,
                                     grid::TripolarGridOfSomeKind,
                                     co::ConditionalOperation, args...)
@@ -65,9 +62,9 @@ ITG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:TripolarGrid}
 const TF = Union{<:AbstractField{<:Any, <:Any, <:Any, <:TripolarGridOfSomeKind},
                  <:AbstractField{<:Any, <:Any, <:Any, <:ITG}}
 
-@inline conditional_length(c::TF) = sum(conditional_one(c, 0))
-@inline conditional_length(c::TF, dims::Int) = sum(conditional_one(c, 0); dims)
-@inline conditional_length(c::TF, dims::Tuple) = sum(conditional_one(c, 0); dims)
+@inline Fields.conditional_length(c::TF) = sum(conditional_one(c, 0))
+@inline Fields.conditional_length(c::TF, dims::Int) = sum(conditional_one(c, 0); dims)
+@inline Fields.conditional_length(c::TF, dims::Tuple) = sum(conditional_one(c, 0); dims)
 
 @inline function tripolar_condition_operand(func, op, condition, mask)
     arch = architecture(op)
@@ -81,11 +78,11 @@ const TF = Union{<:AbstractField{<:Any, <:Any, <:Any, <:TripolarGridOfSomeKind},
     return ConditionalOperation(op; func, condition=tripolar_condition, mask)
 end
 
-@inline condition_operand(::typeof(identity), op::TF, ::Nothing, mask) = tripolar_condition_operand(nothing, op, nothing, mask)
-@inline condition_operand(::Nothing, op::TF, ::Nothing, mask) = tripolar_condition_operand(nothing, op, nothing, mask)
-@inline condition_operand(func, op::TF, condition, mask) = tripolar_condition_operand(func, op, condition, mask)
+@inline Fields.condition_operand(::typeof(identity), op::TF, ::Nothing, mask) = tripolar_condition_operand(nothing, op, nothing, mask)
+@inline Fields.condition_operand(::Nothing, op::TF, ::Nothing, mask) = tripolar_condition_operand(nothing, op, nothing, mask)
+@inline Fields.condition_operand(func, op::TF, condition, mask) = tripolar_condition_operand(func, op, condition, mask)
 
-@inline function condition_operand(func, op::TF, condition::AbstractArray, mask)
+@inline function Fields.condition_operand(func, op::TF, condition::AbstractArray, mask)
     arch = architecture(op)
     condition = on_architecture(arch, condition)
     return tripolar_condition_operand(func, op, condition, mask)
@@ -93,8 +90,8 @@ end
 
 const TripolarConditionalOperation = ConditionalOperation{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:TripolarGridOfSomeKind}
 
-@inline condition_operand(::Nothing, op::TripolarConditionalOperation, ::Nothing, mask) = op
-@inline condition_operand(::typeof(identity), op::TripolarConditionalOperation, ::Nothing, mask) = op
+@inline Fields.condition_operand(::Nothing, op::TripolarConditionalOperation, ::Nothing, mask) = op
+@inline Fields.condition_operand(::typeof(identity), op::TripolarConditionalOperation, ::Nothing, mask) = op
 
 # Disambiguation for Immersed Tripolar Fields (ITF) and Immersed Tripolar Reduced Fields (ITRF)
 # These types match both IF/IRF (from ImmersedBoundaries) and TF (from tripolar reductions)
@@ -133,11 +130,11 @@ function immersed_reduced_tripolar_condition_operand(func, op, condition, mask)
     return ConditionalOperation(op; func, condition=tripolar_condition, mask)
 end
 
-@inline condition_operand(::typeof(identity), op::ITRF, ::Nothing, mask) = immersed_reduced_tripolar_condition_operand(nothing, op, nothing, mask)
-@inline condition_operand(::Nothing, op::ITRF, ::Nothing, mask) = immersed_reduced_tripolar_condition_operand(nothing, op, nothing, mask)
-@inline condition_operand(func, op::ITRF, condition, mask) = immersed_reduced_tripolar_condition_operand(func, op, condition, mask)
+@inline Fields.condition_operand(::typeof(identity), op::ITRF, ::Nothing, mask) = immersed_reduced_tripolar_condition_operand(nothing, op, nothing, mask)
+@inline Fields.condition_operand(::Nothing, op::ITRF, ::Nothing, mask) = immersed_reduced_tripolar_condition_operand(nothing, op, nothing, mask)
+@inline Fields.condition_operand(func, op::ITRF, condition, mask) = immersed_reduced_tripolar_condition_operand(func, op, condition, mask)
 
-@inline function condition_operand(func, op::ITRF, condition::AbstractArray, mask)
+@inline function Fields.condition_operand(func, op::ITRF, condition::AbstractArray, mask)
     arch = architecture(op)
     condition = on_architecture(architecture(op.grid), condition)
     return immersed_reduced_tripolar_condition_operand(func, op, condition, mask)

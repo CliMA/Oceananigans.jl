@@ -79,7 +79,7 @@ function cylinder_model(open_boundaries;
                         ϵ = 0, # break up-down symmetry
                         x = (-6, 12), # 18
                         y = (-6 + ϵ, 6 + ϵ),  # 12
-                        grid_kwargs = (; size=(Nx, Ny), x, y, halo=(6, 6), topology=(Bounded, Bounded, Flat)),
+                        grid_kwargs = (; size=(Nx, Ny), x, y, halo=(6, 6), topology=(Open, Bounded, Flat)),
                         prefix = "flow_around_cylinder_Re$(Re)_Ny$(Ny)_$(obc_name)",
                         drag_averaging_window = 29)
 

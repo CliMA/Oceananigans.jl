@@ -592,6 +592,33 @@ end
         @test minimum_zspacing(osg) == minimum_zspacing(gosg)
     end
 
+    @testset "on_architecture(::ImmersedBoundaryGrid) on distributed grids" begin
+        child_arch = get(ENV, "TEST_ARCHITECTURE", "CPU") == "GPU" ? GPU() : CPU()
+
+        # Middle ranks of `Partition(1, 4)`, and every rank of a y-periodic grid, are `FullyConnected` in y
+        arch = Distributed(child_arch; partition=Partition(1, 4))
+
+        underlying_grids = (RectilinearGrid(arch, size=(8, 16, 4), x=(0, 1), y=(0, 1), z=(-1, 0)),
+                            TripolarGrid(arch, size=(8, 16, 4), z=(-1, 0)))
+
+        bottoms = (GridFittedBottom((x, y) -> -1/2), PartialCellBottom((x, y) -> -1/2))
+
+        for underlying_grid in underlying_grids, bottom in bottoms
+            grid = ImmersedBoundaryGrid(underlying_grid, bottom; active_cells_map=true)
+
+            for new_arch in (CPU(), cpu_architecture(arch))
+                cpu_grid = on_architecture(new_arch, grid)
+                cpu_bottom_height = bottom_height_interior(cpu_grid.immersed_boundary.bottom_height)
+                bottom_height = bottom_height_interior(grid.immersed_boundary.bottom_height)
+
+                @test child_architecture(architecture(cpu_grid)) == CPU()
+                @test nameof(typeof(cpu_grid.immersed_boundary)) == nameof(typeof(bottom))
+                @test on_architecture(CPU(), cpu_bottom_height) == on_architecture(CPU(), bottom_height)
+                @test on_architecture(CPU(), cpu_grid.interior_active_cells) == on_architecture(CPU(), grid.interior_active_cells)
+            end
+        end
+    end
+
     @testset "reconstruct_global_grid(::ImmersedBoundaryGrid)" begin
         @info "Testing reconstruct_global_grid for ImmersedBoundaryGrid…"
         child_arch = get(ENV, "TEST_ARCHITECTURE", "CPU") == "GPU" ? GPU() : CPU()
