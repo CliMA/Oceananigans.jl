@@ -1,5 +1,5 @@
-using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Fields: AbstractField, instantiated_location
+using Oceananigans.Grids: AbstractGrid
 
 const unary_operators = Set()
 

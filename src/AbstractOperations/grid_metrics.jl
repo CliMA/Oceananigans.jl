@@ -1,11 +1,9 @@
 using Adapt
-using Oceananigans.Grids: AbstractGrid
-using Oceananigans.Grids: xnode, ynode, znode, λnode, φnode, rnode
 using Oceananigans.Fields: AbstractField, default_indices, location
-using Oceananigans.Operators: Δx, Δy, Δz, Δr, Ax, Δλ, Δφ, Ay, Az, volume
-using Oceananigans.Operators: Operators, XNode, YNode, ZNode, ΛNode, ΦNode, RNode
-
-using Oceananigans.Grids: xspacings, yspacings, zspacings, rspacings, λspacings, φspacings
+using Oceananigans.Grids: AbstractGrid, rnode, rspacings, xnode, xspacings, ynode, yspacings, znode, zspacings, λnode,
+                          λspacings, φnode, φspacings
+using Oceananigans.Operators: Operators, Ax, Ay, Az, RNode, XNode, YNode, ZNode, volume, Δr, Δx, Δy, Δz, Δλ, Δφ, ΛNode,
+                              ΦNode
 
 const GridMetric = Union{XNode, YNode, ZNode, ΛNode, ΦNode, RNode,
                          typeof(Δx),

@@ -1,4 +1,4 @@
-using Oceananigans.Utils: shortsummary, prettysummary
+using Oceananigans.Utils: prettysummary, shortsummary
 
 """
     KernelFunctionOperation{LX, LY, LZ}(kernel_function, grid, arguments...)

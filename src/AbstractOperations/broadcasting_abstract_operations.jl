@@ -1,7 +1,7 @@
 using Oceananigans.Fields: broadcasted_to_abstract_operation
 
-using Base.Broadcast: Broadcasted
 using Base: identity
+using Base.Broadcast: Broadcasted
 
 const BroadcastedIdentity = Broadcasted{<:Any, <:Any, typeof(identity), <:Any}
 

@@ -1,5 +1,5 @@
 using Oceananigans: Oceananigans
-using Oceananigans.Fields: default_indices, compute_index_intersection
+using Oceananigans.Fields: compute_index_intersection, default_indices
 
 """
     insert_location(ex::Expr, location)

@@ -1,8 +1,7 @@
-using Oceananigans.Fields: OneField
 using Base: @propagate_inbounds
+using Oceananigans.Fields: OneField, compute_at!, condition_operand, conditional_length, indices, set!
 
 using Oceananigans.Architectures: Architectures, architecture, on_architecture
-using Oceananigans.Fields: condition_operand, conditional_length, set!, compute_at!, indices
 
 # For conditional reductions such as mean(u * v, condition = u .> 0))
 struct ConditionalOperation{LX, LY, LZ, F, C, O, G, M, T} <: AbstractOperation{LX, LY, LZ, G, T}

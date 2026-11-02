@@ -2,12 +2,11 @@
 ##### Fields computed from abstract operations
 #####
 
-using KernelAbstractions: @kernel, @index
+using KernelAbstractions: @index, @kernel
+using Oceananigans.Fields: Field, FieldBoundaryConditions, FieldStatus, FunctionField, compute!, instantiated_location,
+                           offset_index, set_status!, validate_indices
 using Oceananigans.Grids: default_indices, new_data
-using Oceananigans.Fields: FunctionField, FieldBoundaryConditions, FieldStatus, validate_indices, offset_index, instantiated_location, set_status!
-using Oceananigans.Utils: KernelParameters, launch!, @apply_regionally
-
-using Oceananigans.Fields: Field, compute!
+using Oceananigans.Utils: @apply_regionally, KernelParameters, launch!
 
 const OperationOrFunctionField = Union{AbstractOperation, FunctionField}
 const ComputedField = Field{<:Any, <:Any, <:Any, <:OperationOrFunctionField}
