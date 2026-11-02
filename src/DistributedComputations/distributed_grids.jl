@@ -92,14 +92,14 @@ global_size(arch, local_size) = map(sum, concatenate_local_sizes(local_size, arc
 Return the rank-local portion of `RectilinearGrid` on `arch`itecture.
 """
 function Grids.RectilinearGrid(arch::Distributed,
-                         FT::DataType = Oceananigans.defaults.FloatType;
-                         size,
-                         x = nothing,
-                         y = nothing,
-                         z = nothing,
-                         halo = nothing,
-                         extent = nothing,
-                         topology = (Periodic, Periodic, Bounded))
+                               FT::DataType = Oceananigans.defaults.FloatType;
+                               size,
+                               x = nothing,
+                               y = nothing,
+                               z = nothing,
+                               halo = nothing,
+                               extent = nothing,
+                               topology = (Periodic, Periodic, Bounded))
 
     topology, global_sz, halo, x, y, z =
         validate_rectilinear_grid_args(topology, size, halo, FT, extent, x, y, z)
@@ -141,15 +141,15 @@ end
 Return the rank-local portion of `LatitudeLongitudeGrid` on `arch`itecture.
 """
 function Grids.LatitudeLongitudeGrid(arch::Distributed,
-                               FT::DataType = Oceananigans.defaults.FloatType;
-                               precompute_metrics = true,
-                               size,
-                               latitude = nothing,
-                               longitude = nothing,
-                               z = nothing,
-                               topology = nothing,
-                               radius = Oceananigans.defaults.planet_radius,
-                               halo = nothing)
+                                     FT::DataType = Oceananigans.defaults.FloatType;
+                                     precompute_metrics = true,
+                                     size,
+                                     latitude = nothing,
+                                     longitude = nothing,
+                                     z = nothing,
+                                     topology = nothing,
+                                     radius = Oceananigans.defaults.planet_radius,
+                                     halo = nothing)
 
     topology, global_sz, halo, latitude, longitude, z, precompute_metrics =
         validate_lat_lon_grid_args(topology, size, halo, FT, latitude, longitude, z, precompute_metrics)
