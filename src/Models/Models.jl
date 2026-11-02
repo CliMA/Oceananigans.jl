@@ -19,17 +19,16 @@ using DocStringExtensions: TYPEDSIGNATURES
 using Oceananigans: Oceananigans, AbstractModel, fields, prognostic_fields
 using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Advection: AbstractAdvectionScheme, Centered
-using Oceananigans.Fields: Fields, Field, TracerFields, ZeroField, set!
-using Oceananigans.Grids: Grids, AbstractGrid, grid, halo_size, inflate_halo_size
-using Oceananigans.OutputReaders: extract_field_time_series, update_field_time_series!
-using Oceananigans.TimeSteppers: TimeSteppers, Clock, reset!
-using Oceananigans.Units: Time
-
 using Oceananigans.Architectures: Architectures
 using Oceananigans.BoundaryConditions: BoundaryConditions
 using Oceananigans.Diagnostics: Diagnostics, NaNChecker
+using Oceananigans.Fields: Fields, Field, TracerFields, ZeroField, set!
+using Oceananigans.Grids: Grids, AbstractGrid, grid, halo_size, inflate_halo_size
+using Oceananigans.OutputReaders: extract_field_time_series, update_field_time_series!
 using Oceananigans.OutputWriters: OutputWriters, checkpointer_address
 using Oceananigans.Solvers: Solvers
+using Oceananigans.TimeSteppers: TimeSteppers, Clock, reset!
+using Oceananigans.Units: Time
 
 # A prototype interface for AbstractModel.
 #
