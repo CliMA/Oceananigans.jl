@@ -1,8 +1,6 @@
 using Oceananigans.Architectures
-using Oceananigans.Grids: topology
-
 using Oceananigans.Architectures: device, device!, on_architecture, array_type, child_architecture, convert_to_device
-using Oceananigans.Grids: zeros
+using Oceananigans.Grids: topology, zeros
 using Oceananigans.Utils: sync_device!
 
 #####
