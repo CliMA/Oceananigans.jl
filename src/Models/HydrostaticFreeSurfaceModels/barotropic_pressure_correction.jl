@@ -5,7 +5,7 @@ using .SplitExplicitFreeSurfaces: barotropic_split_explicit_corrector!
 #####
 
 """
-    correct_barotropic_mode!(model::HydrostaticFreeSurfaceModel, Δt; kwargs...)
+$(TYPEDSIGNATURES)
 
 Correct baroclinic velocities to be consistent with the updated barotropic mode.
 
@@ -26,7 +26,7 @@ correct_barotropic_mode!(model, ::ExplicitFreeSurface, Δt; kwargs...) = nothing
 #####
 
 """
-    correct_barotropic_mode!(model, ::ImplicitFreeSurface, Δt)
+$(TYPEDSIGNATURES)
 
 Apply barotropic pressure correction for implicit free surface.
 After solving the implicit free surface equation, velocities are corrected by
@@ -34,7 +34,7 @@ adding the barotropic pressure gradient: `u -= g * Δt * ∂η/∂x`, `v -= g * 
 """
 function correct_barotropic_mode!(model, ::ImplicitFreeSurface, Δt)
 
-    launch!(model.architecture, model.grid, :xyz,
+    launch!(model.architecture, model.grid, volume_kernel_parameters(model.grid),
             _barotropic_pressure_correction!,
             model.velocities,
             model.grid,
@@ -46,7 +46,7 @@ function correct_barotropic_mode!(model, ::ImplicitFreeSurface, Δt)
 end
 
 """
-    correct_barotropic_mode!(model, ::SplitExplicitFreeSurface, Δt)
+$(TYPEDSIGNATURES)
 
 Reconcile baroclinic and barotropic velocity modes for split-explicit free surface.
 The depth-averaged baroclinic velocity is corrected to match the barotropic velocity

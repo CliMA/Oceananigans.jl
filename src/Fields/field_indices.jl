@@ -77,7 +77,7 @@ validate_shifted_index(shifted_idx) = first(shifted_idx) > last(shifted_idx) &&
     throw(ArgumentError("Cannot compute index intersection!"))
 
 """
-    restrict_index_on_location(from_idx, from_loc, to_loc)
+$(TYPEDSIGNATURES)
 
 Return a "restricted" index range for the result of interpolating from
 `from_loc` to `to_loc`, over the index range `from_idx`:

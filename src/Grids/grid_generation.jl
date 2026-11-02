@@ -12,16 +12,16 @@ get_face_node(coord::AbstractVector, i) = @allowscalar coord[i]
 const AT = AbstractTopology
 
 lower_exterior_Δcoordᶠ(::AT,              Fi, Hcoord) = [Fi[end - Hcoord + i] - Fi[end - Hcoord + i - 1] for i = 1:Hcoord]
-lower_exterior_Δcoordᶠ(::BoundedTopology, Fi, Hcoord) = [Fi[2]  - Fi[1] for _ = 1:Hcoord]
+lower_exterior_Δcoordᶠ(::FaceExtendedTopology, Fi, Hcoord) = [Fi[2]  - Fi[1] for _ = 1:Hcoord]
 
 upper_exterior_Δcoordᶠ(::AT,              Fi, Hcoord) = [Fi[i + 1] - Fi[i] for i = 1:Hcoord]
-upper_exterior_Δcoordᶠ(::BoundedTopology, Fi, Hcoord) = [Fi[end]   - Fi[end - 1] for _ = 1:Hcoord]
+upper_exterior_Δcoordᶠ(::FaceExtendedTopology, Fi, Hcoord) = [Fi[end]   - Fi[end - 1] for _ = 1:Hcoord]
 
 upper_interior_F(::AT, coord, Δ)           = coord - Δ
-upper_interior_F(::BoundedTopology, coord) = coord
+upper_interior_F(::FaceExtendedTopology, coord) = coord
 
 total_interior_length(::AT, N)              = N
-total_interior_length(::BoundedTopology, N) = N + 1
+total_interior_length(::FaceExtendedTopology, N) = N + 1
 
 bad_coordinate_message(ξ::Function, name) = "The values of $name(index) must increase as the index increases!"
 bad_coordinate_message(ξ::AbstractArray, name) = "The elements of $name must be increasing!"
@@ -95,7 +95,7 @@ function generate_coordinate(FT, topo::AT, N, H, node_generator, coordinate_name
 end
 
 # Special case for tripolar grids.
-# For RightCenterFolded, we want to generate coordinates that start and end at center locations,
+# For a `CenterFolded` right side, we want to generate coordinates that start and end at center locations,
 # but the default `generate_coordinate` assumes that the interval is located on faces,
 # so we must extend the interval by half a cell on both sides:
 # Example with N = 4
@@ -106,26 +106,40 @@ end
 #                       │                               │
 # extended interval:    f₁                              f₂
 extend_node_interval(::AT, N, node_interval::Tuple{<:Number, <:Number}) = node_interval
-function extend_node_interval(::RightCenterFolded, N, node_interval::Tuple{<:Number, <:Number})
+function extend_node_interval(::TwoSided{Closed, CenterFolded}, N, node_interval::Tuple{<:Number, <:Number})
     c₁, c₂ = @. BigFloat(node_interval)
     L = c₂ - c₁
     Δ = L / (N - 1)
     return (c₁ - Δ/2, c₂ + Δ/2)
 end
-# For RightFaceFolded, we want to generate coordinates that start and end at face locations,
-# but we have an extra row at Ny, so we must extend the interval by one cell on the right:
-# Example with N = 4
-# interval wanted:      c₁                      c₂
-#                       │◀───────── L ─────────▶│
-#                       │◀─ Δ ─▶│               │
-# face and centers:     f   c   f   c   f   c   f   c   f
-#                       │                               │
-# extended interval:    f₁                              f₂
-function extend_node_interval(::RightFaceFolded, N, node_interval::Tuple{<:Number, <:Number})
-    c₁, c₂ = @. BigFloat(node_interval)
-    L = c₂ - c₁
-    Δ = L / (N - 1)
-    return (c₁, c₂ + Δ)
+
+"""
+$(TYPEDSIGNATURES)
+
+`total` nodes at location `ℓ` spaced by `(c₂ - c₁) / N`, of which faces `H + 1` to `H + N + 1` go from `c₁` to `c₂`
+and centers lie halfway between faces.
+"""
+function regular_nodes(FT, ℓ, c₁, c₂, N, H, total)
+    R = promote_type(FT, Float64)
+    Δ = (c₂ - c₁) / N
+    shift = ℓ isa Center ? 1/2 : 0
+    # Anchored at the node nearest zero, so that a node at zero is exact
+    k = clamp(round(Int, - c₁ / Δ - shift), 0, N)
+    anchor = clamp(H + 1 + k, 1, total)
+    reference = c₁ + (anchor - H - 1 + shift) * Δ
+    return StepRangeLen{FT, R, R}(R(reference), R(Δ), total, anchor)
+end
+
+# No public type is wider than Float64, so Float64 nodes take the extended-precision reference and step of `range`
+function regular_nodes(::Type{Float64}, ℓ, c₁, c₂, N, H, total)
+    interior = range(Float64(c₁), Float64(c₂), length = N + 1)
+    if !(interior isa StepRangeLen)
+        error("Regular Float64 coordinates need `range` to return a `StepRangeLen`, but it returned a $(typeof(interior))")
+    end
+    reference = ℓ isa Center ? interior.ref + interior.step / 2 : interior.ref
+    anchor = interior.offset + H
+    nodes = StepRangeLen{Float64}(reference, interior.step, max(total, anchor), anchor)
+    return nodes[1:total]
 end
 
 # Generate a regularly-spaced coordinate passing the domain extent (2-tuple) and number of points
@@ -145,17 +159,11 @@ function generate_coordinate(FT, topo::AT, N, H, node_interval::Tuple{<:Number, 
     # Convert to get the correct type also when using single precision
     Δᶠ = Δᶜ = Δ = L / N
 
-    F₋ = c₁ - H * Δ
-    F₊ = F₋ + total_extent(topo, H, Δ, L)
-
-    C₋ = F₋ + Δ / 2
-    C₊ = C₋ + L + Δ * (2H - 1)
-
     TF = total_length(Face(),   topo, N, H)
     TC = total_length(Center(), topo, N, H)
 
-    F = range(FT(F₋), FT(F₊), length = TF)
-    C = range(FT(C₋), FT(C₊), length = TC)
+    F = regular_nodes(FT, Face(),   c₁, c₂, N, H, TF)
+    C = regular_nodes(FT, Center(), c₁, c₂, N, H, TC)
 
     F = on_architecture(arch, F)
     C = on_architecture(arch, C)

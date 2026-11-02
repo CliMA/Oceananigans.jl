@@ -1,15 +1,15 @@
 # Turbulence closures
 
-The turbulence closure selected by the user determines the form of stress divergence
+The turbulence closure selected by the user determines the form of the momentum flux divergence
 ``\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau}`` and diffusive flux divergence
 ``\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{q}_c`` in the momentum and tracer
 conservation equations.
 
 ## Constant isotropic diffusivity
 
-In a constant isotropic diffusivity model, the kinematic stress tensor is defined
+In a constant isotropic diffusivity model, the momentum flux (i.e. the negative of the kinematic stress tensor) is defined
 ```math
-\tau_{ij} = - \nu \Sigma_{ij} \, ,
+\tau_{ij} = - 2 \nu \Sigma_{ij} \, ,
 ```
 where ``\nu`` is a constant viscosity and
 ``\Sigma_{ij} \equiv \tfrac{1}{2} \left ( v_{i, j} + v_{j, i} \right )`` is the strain-rate
@@ -27,9 +27,9 @@ Each tracer may have a unique diffusivity ``\kappa``.
 ## Constant anisotropic diffusivity
 
 A constant anisotropic diffusivity implies a constant tensor
-diffusivity ``\nu_{j k}`` and stress ``\boldsymbol{\tau}_{ij} = \nu_{j k} u_{i, k}`` with non-zero
-components ``\nu_{11} = \nu_{22} = \nu_h`` and ``\nu_{33} = \nu_z``.
-With this form the kinematic stress divergence becomes
+diffusivity ``\nu_{j k}`` and negative of the stress ``\boldsymbol{\tau}_{ij} = - \nu_{j k} u_{i, k}``
+with non-zero components ``\nu_{11} = \nu_{22} = \nu_h`` and ``\nu_{33} = \nu_z``.
+With this form the divergence of ``\boldsymbol{\tau}`` becomes
 ```math
 \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau} = - \left [ \nu_h \left ( \partial_x^2 + \partial_y^2 \right )
                                     + \nu_v \partial_z^2 \right ] \boldsymbol{v} \, ,
@@ -46,10 +46,10 @@ diffusivity components ``\kappa_h`` and ``\kappa_v``.
 ## Scalar biharmonic diffusivity
 
 A constant biharmonic diffusivity implies a constant tensor diffusivity ``\nu_{j k}`` and
-stress``\boldsymbol{\tau}_{ij} = \nu_{j k} \partial_k^3 u_i`` with non-zero components
-``\nu_{11} = \nu_{22} = \nu_h`` and ``\nu_{33} = \nu_z``.
+momentum flux ``\boldsymbol{\tau}_{ij} = - \nu_{j k} \partial_k^3 u_i`` with non-zero
+components ``\nu_{11} = \nu_{22} = \nu_h`` and ``\nu_{33} = \nu_z``.
 
-With this form the kinematic stress divergence becomes
+With this form the divergence of ``\boldsymbol{\tau}`` becomes
 ```math
 \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau} = - \left [ \nu_h \left ( \partial_x^2 + \partial_y^2 \right )^2
                                     + \nu_v \partial_z^4 \right ] \boldsymbol{v} \, ,
@@ -66,7 +66,8 @@ diffusivity components ``\kappa_h`` and ``\kappa_z``.
 ## Smagorinsky-Lilly turbulence closure
 
 In the turbulence closure proposed by [Lilly62](@citet) and [Smagorinsky63](@citet),
-the subgrid stress associated with unresolved turbulent motions is modeled diffusively via
+the negative of the subgrid stress tensor associated with unresolved turbulent motions is modeled
+diffusively via
 ```math
 \tau_{ij} = - 2 \nu_e \Sigma_{ij} \, ,
 ```

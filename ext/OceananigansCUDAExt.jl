@@ -2,16 +2,28 @@ module OceananigansCUDAExt
 
 using InteractiveUtils: versioninfo
 using CUDA: CUDA, CuArray, CuContext, CuDevice, CuDeviceArray, CuPtr, context,
-    context!, cu, CUDA.CUDAKernels.CUDABackend
-using CUDA.CUSPARSE: CuSparseMatrixCSC
+    context!, cu, CUDA.CUDABackend
+# TODO: when we'll support CUDA.jl v6 only, add `cuSPARSE`/`CUDACore`/`cuFFT` to
+# list of triggers of this extensions, and simplify the conditions below.
+if isdefined(CUDA, :cuSPARSE)
+    using CUDA.cuSPARSE: CuSparseMatrixCSC
+else
+    using CUDA.CUSPARSE: CuSparseMatrixCSC
+end
+if isdefined(CUDA, :cuFFT)
+    using CUDA.cuFFT: cuFFT
+else
+    const cuFFT = CUDA.CUFFT
+end
 using GPUArraysCore: allowscalar
-using GPUArrays: unsafe_free!
 using Oceananigans.Utils: linear_expand, __linear_ndrange, MappedCompilerMetadata
 
 import Oceananigans.Architectures as AC
 import Oceananigans.BoundaryConditions as BC
 import Oceananigans.DistributedComputations as DC
 import Oceananigans.Fields as FD
+import Oceananigans.MultiRegion as MR
+import Oceananigans.Utils: apply_regionally!
 import Oceananigans.Grids as GD
 import Oceananigans.Solvers as SO
 import Oceananigans.Utils as UT
@@ -67,12 +79,8 @@ AC.on_architecture(::AC.CPU, a::CuArray) = Array(a)
 AC.on_architecture(::CUDAGPU, a::Array) = CuArray(a)
 AC.on_architecture(::CUDAGPU, a::CuArray) = a
 AC.on_architecture(::CUDAGPU, a::BitArray) = CuArray(a)
-AC.on_architecture(::CUDAGPU, a::SubArray{<:Any, <:Any, <:CuArray}) = a
-AC.on_architecture(::CUDAGPU, a::SubArray{<:Any, <:Any, <:Array}) = CuArray(a)
-AC.on_architecture(::AC.CPU, a::SubArray{<:Any, <:Any, <:CuArray}) = Array(a)
 AC.on_architecture(::CUDAGPU, a::StepRangeLen) = a
 AC.on_architecture(arch::Distributed, a::CuArray) = AC.on_architecture(AC.child_architecture(arch), a)
-AC.on_architecture(arch::Distributed, a::SubArray{<:Any, <:Any, <:CuArray}) = AC.on_architecture(child_architecture(arch), a)
 
 @inline AC.sparse_matrix_constructors(::AC.GPU{CUDABackend}, A::SparseMatrixCSC) = (CuArray(A.colptr), CuArray(A.rowval), CuArray(A.nzval),  (A.m, A.n))
 @inline AC.sparse_matrix_constructors(::AC.CPU, A::CuSparseMatrixCSC) = (A.dims[1], A.dims[2], Int64.(Array(A.colPtr)), Int64.(Array(A.rowVal)), Array(A.nzVal))
@@ -98,8 +106,6 @@ AC.unified_array(::CUDAGPU, a::AbstractArray) = map(eltype(a), cu(a; unified = t
     return dst
 end
 
-@inline AC.unsafe_free!(a::CuArray) = unsafe_free!(a)
-
 @inline AC.convert_to_device(::CUDAGPU, args) = CUDA.cudaconvert(args)
 @inline AC.convert_to_device(::CUDAGPU, args::Tuple) = map(CUDA.cudaconvert, args)
 
@@ -108,17 +114,18 @@ BC.validate_boundary_condition_architecture(::CuArray, ::AC.GPU, bc, side) = not
 BC.validate_boundary_condition_architecture(::CuArray, ::AC.CPU, bc, side) =
     throw(ArgumentError("$side $bc must use `Array` rather than `CuArray` on CPU architectures!"))
 
-function SO.plan_forward_transform(A::CuArray, ::Union{GD.Bounded, GD.Periodic}, dims, planner_flag)
+function SO.plan_forward_transform(A::CuArray, ::Union{GD.BoundaryTopology, GD.Periodic}, dims, planner_flag)
     length(dims) == 0 && return nothing
-    return CUDA.CUFFT.plan_fft!(A, dims)
+    return cuFFT.plan_fft!(A, dims)
 end
 
 FD.set!(v::FD.Field, a::CuArray) = FD.set_to_array!(v, a)
 FD.set!(v::DC.DistributedField, a::CuArray) = FD.set_to_array!(v, a)
+FD.set!(v::MR.MultiRegionField, a::CuArray) = apply_regionally!(FD.set!, v, a)
 
-function SO.plan_backward_transform(A::CuArray, ::Union{GD.Bounded, GD.Periodic}, dims, planner_flag)
+function SO.plan_backward_transform(A::CuArray, ::Union{GD.BoundaryTopology, GD.Periodic}, dims, planner_flag)
     length(dims) == 0 && return nothing
-    return CUDA.CUFFT.plan_ifft!(A, dims)
+    return cuFFT.plan_ifft!(A, dims)
 end
 
 # CUDA version, the indices are passed implicitly
@@ -135,5 +142,56 @@ end
 @inline UT.sync_device!(::CuDevice)      = CUDA.synchronize()
 @inline UT.sync_device!(::CUDAGPU)       = CUDA.synchronize()
 @inline UT.sync_device!(::CUDABackend)   = CUDA.synchronize()
+
+# MPI needs the event's context bound to the thread that posts (for CUDA IPC)
+struct ContextEvent
+    event :: CUDA.CuEvent
+    context :: CUDA.CuContext
+end
+
+DC.new_event(::CUDAGPU) = ContextEvent(CUDA.CuEvent(CUDA.EVENT_DISABLE_TIMING), CUDA.context())
+DC.record_event!(event::ContextEvent, ::CUDAGPU) = CUDA.record(event.event, CUDA.stream())
+DC.bind_thread_to_device!(event::ContextEvent) = CUDA.activate(event.context)
+
+# Same as `CUDA.isdone`, without the allocation of its GC-safe ccall: the progress worker polls this in a loop,
+# and `cuEventQuery` never blocks. The driver bindings live in `CUDA` on CUDA.jl v5 and in `CUDACore` on v6.
+const CUDADriver = parentmodule(CUDA.isdone)
+
+function DC.event_done(event::ContextEvent)
+    result = ccall((:cuEventQuery, CUDADriver.libcuda), CUDADriver.CUresult, (CUDADriver.CUevent,), event.event)
+    result == CUDADriver.ERROR_NOT_READY && return false
+    result == CUDADriver.SUCCESS && return true
+    return CUDADriver.throw_api_error(result)
+end
+
+# Use faster versions of `newton_div` on Nvidia GPUs
+CUDA.@device_override UT.newton_div(::Type{UT.BackendOptimizedDivision}, a, b) = a * fast_inv_cuda(b)
+
+function fast_inv_cuda(a::Float64)
+    # Get the approximate reciprocal
+    # https://docs.nvidia.com/cuda/parallel-thread-execution/#floating-point-instructions-rcp-approx-ftz-f64
+    # This instruction chops off last 32bits of mantissa and computes inverse
+    # while treating all subnormal numbers as 0.0
+    # If reciprocal would be subnormal, underflows to 0.0
+    # 32 least significant bits of the result are filled with 0s
+    inv_a = ccall("llvm.nvvm.rcp.approx.ftz.d", llvmcall, Float64, (Float64,), a)
+
+    # Approximate the missing 32bits of mantissa with a single cubic iteration
+    e = fma(inv_a, -a, 1.0)
+    e = fma(e, e, e)
+    inv_a = fma(e, inv_a, inv_a)
+    return inv_a
+end
+
+function fast_inv_cuda(a::Float32)
+    # This instruction just computes reciprocal flushing subnormals to 0.0
+    # Hence for subnormal inputs it returns Inf
+    # For large number whose reciprocal is subnormal it underflows to 0.0
+    inv_a = ccall("llvm.nvvm.rcp.approx.ftz.f", llvmcall, Float32, (Float32,), a)
+    return inv_a
+end
+
+# Other number types (e.g. BFloat16) have no approximate reciprocal instruction
+fast_inv_cuda(a) = inv(a)
 
 end # module OceananigansCUDAExt

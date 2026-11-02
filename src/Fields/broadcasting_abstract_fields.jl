@@ -60,7 +60,7 @@ end
 # Broadcasting with interpolation breaks Base's default rules,
 # so we bypass the infrastructure for checking axes compatibility,
 # and head straight to copyto! from materialize!.
-@inline function Base.Broadcast.materialize!(::Base.Broadcast.BroadcastStyle,
+@inline function Base.Broadcast.materialize!(::FieldBroadcastStyle,
                                              dest::Field,
                                              bc::Broadcasted{<:FieldBroadcastStyle})
 

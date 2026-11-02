@@ -11,8 +11,8 @@ show_location(field::AbstractField) = show_location(location(field)...)
 Grids.grid_name(field::Field) = grid_name(field.grid)
 
 function Base.summary(field::Field)
-    LX, LY, LZ = location(field)
-    prefix = string(size_summary(size(field)), " Field{$LX, $LY, $LZ}")
+    nLX, nLY, nLZ = map(nameof, location(field))
+    prefix = string(size_summary(size(field)), " Field{$nLX, $nLY, $nLZ}")
 
     reduced_dims = reduced_dimensions(field)
 
@@ -69,9 +69,6 @@ Base.show(io::IO, z::Union{ZeroField, OneField}) = print(io, summary(z))
 Base.show(io::IO, f::CF) = print(io, summary(f))
 
 Base.show(io::IO, ::MIME"text/plain", f::AbstractField) = show(io, f)
-
-const FieldTuple = Tuple{Field, Vararg{Field}}
-const NamedFieldTuple = NamedTuple{S, <:FieldTuple} where S
 
 function Base.show(io::IO, ft::NamedFieldTuple)
     names = keys(ft)

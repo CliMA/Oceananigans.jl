@@ -4,30 +4,43 @@ export
     Distributed, Partition, Equal, Fractional,
     child_architecture, reconstruct_global_grid, partition,
     inject_halo_communication_boundary_conditions,
-    DistributedFFTBasedPoissonSolver, mpi_initialized, mpi_rank,
-    mpi_size, global_barrier, global_communicator,
-    @root, @onrank, @distribute, @handshake
+    DistributedFFTBasedPoissonSolver, TransposableField, mpi_initialized, mpi_rank,
+    mpi_size, global_barrier, global_communicator, sanitize_environ!,
+    @root, @onrank, @distribute, @handshake,
+    SimplifiedGeneralizedBlockDistribution, create_cost_map, create_balanced_partition
 
-using MPI
+using DocStringExtensions: TYPEDSIGNATURES
+using GPUArraysCore: GPUArraysCore
+using MPI: MPI
+using OffsetArrays: OffsetArrays, OffsetArray
 
-using Oceananigans
-using Oceananigans.Utils
-using Oceananigans.Grids
-using OffsetArrays
-using Oceananigans.Grids: XYZRegularRG
+using Oceananigans: Oceananigans
+using Oceananigans.Architectures: Architectures, AbstractArchitecture, AbstractSerialArchitecture, CPU, GPU, ndevices
+using Oceananigans.BoundaryConditions: BoundaryConditions, Bottom, BottomAndTop, East, North, South, SouthAndNorth,
+                                       Top, West, WestAndEast
+using Oceananigans.Fields: AbstractField, CenterField, data, field
+using Oceananigans.Grids: Grids, Bounded, Center, CenterFolded, CenterFoldConnected, Closed, Connected, Face, FaceFolded,
+                          FaceFoldConnected, Flat, Open, OrthogonalSphericalShellGrid, Periodic, TwoSided, grid,
+                          BoundaryTopology, XYZRegularRG
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaries, ImmersedBoundaryGrid, materialize_immersed_boundary
+using Oceananigans.Utils: Utils
 using Oceananigans.Solvers: GridWithFourierTridiagonalSolver
 
 import Oceananigans.Solvers: fft_poisson_solver
 
 include("distributed_macros.jl")
+include("sanitize_environ.jl")
 include("distributed_architectures.jl")
 include("partition_assemble.jl")
 include("distributed_grids.jl")
 include("distributed_immersed_boundaries.jl")
 include("distributed_on_architecture.jl")
 include("distributed_kernel_launching.jl")
+include("events.jl")
 include("halo_communication_bcs.jl")
+include("communication_state.jl")
 include("communication_buffers.jl")
+include("progress_worker.jl")
 include("distributed_fields.jl")
 include("halo_communication.jl")
 include("transposable_field.jl")
@@ -35,6 +48,9 @@ include("distributed_transpose.jl")
 include("plan_distributed_transforms.jl")
 include("distributed_fft_based_poisson_solver.jl")
 include("distributed_fft_tridiagonal_solver.jl")
+include("load_balancing.jl")
+
+function NCCLDistributed end
 
 fft_poisson_solver(grid::DistributedRectilinearGrid) = fft_poisson_solver(grid, reconstruct_global_grid(grid))
 
@@ -58,5 +74,10 @@ function precondition!(p, preconditioner::DistributedFourierTridiagonalPoissonSo
     solve!(p, preconditioner)
     return p
 end
+
+# Correctly pass architecture to determine the default weno_weight_computation
+Oceananigans.Advection.default_weno_weight_computation(arch::Distributed) =
+    Oceananigans.Advection.default_weno_weight_computation(child_architecture(arch))
+
 
 end # module

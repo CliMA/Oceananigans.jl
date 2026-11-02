@@ -1,4 +1,3 @@
-using Oceananigans.Operators
 using Oceananigans.TurbulenceClosures: ExplicitTimeDiscretization, ThreeDimensionalFormulation
 
 using Oceananigans.TurbulenceClosures:
@@ -24,8 +23,7 @@ struct ShallowWaterScalarDiffusivity{V, X, N} <: AbstractScalarDiffusivity{Expli
 end
 
 """
-    ShallowWaterScalarDiffusivity([FT::DataType=Float64;]
-                                  ν=0, ξ=0, discrete_form=false)
+$(TYPEDSIGNATURES)
 
 Return a scalar diffusivity for the shallow water model.
 
@@ -52,7 +50,6 @@ Adapt.adapt_structure(to, closure::ShallowWaterScalarDiffusivity{B}) where B =
 
 on_architecture(to, closure::ShallowWaterScalarDiffusivity{B}) where B =
     ShallowWaterScalarDiffusivity{B}(on_architecture(to, closure.ν), on_architecture(to, closure.ξ))
-
 
 # The diffusivity for the shallow water model is calculated as h*ν in order to have a viscous term in the form
 # h⁻¹ ∇ ⋅ (hν t) where t is the 2D stress tensor plus a trace => t = ∇u + (∇u)ᵀ - ξI⋅(∇⋅u)

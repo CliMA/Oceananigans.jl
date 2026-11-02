@@ -1,7 +1,9 @@
+using Oceananigans.Fields: dot!
 using Oceananigans.Utils: prettysummary, @apply_regionally
-using LinearAlgebra: norm, dot
+using GPUArraysCore: @allowscalar
+using LinearAlgebra: norm
 
-mutable struct ConjugateGradientSolver{A, G, L, T, F, M, P, E}
+mutable struct ConjugateGradientSolver{A, G, L, T, F, M, P, E, N, S}
                 architecture :: A
                         grid :: G
            linear_operation! :: L
@@ -9,13 +11,18 @@ mutable struct ConjugateGradientSolver{A, G, L, T, F, M, P, E}
                       abstol :: T
                      maxiter :: Int
                    iteration :: Int
-                        ρⁱ⁻¹ :: T
+                           ρ :: S
+                        ρⁱ⁻¹ :: S
+                        pᵀq  :: S
+                           α :: S
+                           β :: S
      linear_operator_product :: F
             search_direction :: F
                     residual :: F
               preconditioner :: M
       preconditioner_product :: P
     enforce_gauge_condition! :: E
+               residual_norm :: N
 end
 
 Architectures.architecture(solver::ConjugateGradientSolver) = solver.architecture
@@ -35,11 +42,12 @@ Base.summary(::ConjugateGradientSolver) = "ConjugateGradientSolver"
 """
     ConjugateGradientSolver(linear_operation;
                             template_field,
-                            maxiter = size(template_field.grid),
+                            maxiter = prod(size(template_field)),
                             reltol = sqrt(eps(template_field.grid)),
                             abstol = 0,
                             preconditioner = nothing,
-                            enforce_gauge_condition! = no_gauge_enforcement!)
+                            enforce_gauge_condition! = no_gauge_enforcement!,
+                            residual_norm = norm)
 
 Return a `ConjugateGradientSolver` that solves the linear equation ``A x = b``
 using a iterative conjugate gradient method with optional preconditioning.
@@ -80,6 +88,8 @@ Arguments
                               with the gauge condition.
                               The default is `no_gauge_enforcement!`, which does not enforce a gauge condition.
 
+* `residual_norm`: Function used to compute the norm of the residual for convergence checks. Default: `norm`.
+
 See [`solve!`](@ref) for more information about the preconditioned conjugate-gradient algorithm.
 """
 function ConjugateGradientSolver(linear_operation;
@@ -88,7 +98,8 @@ function ConjugateGradientSolver(linear_operation;
                                  reltol = sqrt(eps(eltype(template_field.grid))),
                                  abstol = 0,
                                  preconditioner = nothing,
-                                 enforce_gauge_condition! = no_gauge_enforcement!)
+                                 enforce_gauge_condition! = no_gauge_enforcement!,
+                                 residual_norm = norm)
 
     arch = architecture(template_field)
     grid = template_field.grid
@@ -101,6 +112,13 @@ function ConjugateGradientSolver(linear_operation;
     # Either nothing (no preconditioner) or P*xᵢ = zᵢ
     precondition_product = initialize_precondition_product(preconditioner, template_field)
 
+    # Scalars stay on the device: copying one to the host makes the host wait for the device
+    ρ    = zeros(grid, 1) # z ⋅ r
+    ρⁱ⁻¹ = zeros(grid, 1) # z ⋅ r at the previous iteration
+    pᵀq  = zeros(grid, 1) # p ⋅ q
+    α    = zeros(grid, 1) # ρ / pᵀq
+    β    = zeros(grid, 1) # ρ / ρⁱ⁻¹
+
     FT = eltype(grid)
 
     return ConjugateGradientSolver(arch,
@@ -110,17 +128,22 @@ function ConjugateGradientSolver(linear_operation;
                                    FT(abstol),
                                    maxiter,
                                    0,
-                                   zero(FT),
+                                   ρ,
+                                   ρⁱ⁻¹,
+                                   pᵀq,
+                                   α,
+                                   β,
                                    linear_operator_product,
                                    search_direction,
                                    residual,
                                    preconditioner,
                                    precondition_product,
-                                   enforce_gauge_condition!)
+                                   enforce_gauge_condition!,
+                                   residual_norm)
 end
 
 """
-    solve!(x, solver::ConjugateGradientSolver, b, args...)
+$(TYPEDSIGNATURES)
 
 Solve `A * x = b` using an iterative conjugate-gradient method, where `A * x` is
 determined by `solver.linear_operation`
@@ -140,33 +163,37 @@ Given:
 This function executes the psuedocode algorithm
 
 ```
-β  = 0
 r = b - A(x)
-iteration  = 0
+iteration = 0
 
 Loop:
-     if iteration > maxiter
+     if iteration ≥ maxiter or |r| ≤ tolerance
         break
      end
 
-     ρ = r ⋅ z
-
      z = M(r)
-     β = ρⁱ⁻¹ / ρ
-     p = z + β * p
+     ρ = z ⋅ r
+
+     if iteration == 0
+        p = z
+     else
+        β = ρ / ρⁱ⁻¹
+        p = z + β * p
+     end
+
      q = A(p)
 
      α = ρ / (p ⋅ q)
      x = x + α * p
      r = r - α * q
 
-     if |r| < tolerance
-        break
-     end
-
      iteration += 1
      ρⁱ⁻¹ = ρ
 ```
+
+The scalars `ρ`, `ρⁱ⁻¹`, `p ⋅ q`, `α`, and `β` are computed and stored on the architecture of
+the solver. Only the convergence test copies a number, `|r|`, to the host, so on a GPU the host
+waits for the device once per iteration.
 """
 function solve!(x, solver::ConjugateGradientSolver, b, args...)
     # Initialize
@@ -177,7 +204,7 @@ function solve!(x, solver::ConjugateGradientSolver, b, args...)
 
     @apply_regionally initialize_solution!(q, x, b, solver, args...)
 
-    residual_norm = norm(solver.residual)
+    residual_norm = solver.residual_norm(solver.residual)
     tolerance = max(solver.reltol * residual_norm, solver.abstol)
 
     @debug "ConjugateGradientSolver, |b|: $(norm(b))"
@@ -205,24 +232,32 @@ function iterate!(x, solver, b, args...)
     # Unpreconditioned: z = r
     @apply_regionally z = precondition!(solver.preconditioner_product, solver.preconditioner, r, args...)
 
-    ρ = dot(z, r)
+    ρ = dot!(solver.ρ, z, r)
 
-    @debug "ConjugateGradientSolver $(solver.iteration), ρ: $ρ"
+    @debug "ConjugateGradientSolver $(solver.iteration), ρ: $(@allowscalar ρ[1])"
     @debug "ConjugateGradientSolver $(solver.iteration), |z|: $(norm(z))"
 
-    @apply_regionally perform_iteration!(q, p, ρ, z, solver, args...)
+    if solver.iteration > 0
+        solver.β .= ρ ./ solver.ρⁱ⁻¹
+        @debug "ConjugateGradientSolver $(solver.iteration), β: $(@allowscalar solver.β[1])"
+    end
+
+    @apply_regionally update_search_direction!(p, z, solver.β, solver.iteration)
 
     perform_linear_operation!(solver.linear_operation!, q, p, args...)
 
-    α = ρ / dot(p, q)
+    pᵀq = dot!(solver.pᵀq, p, q)
+    solver.α .= ρ ./ pᵀq
 
     @debug "ConjugateGradientSolver $(solver.iteration), |q|: $(norm(q))"
-    @debug "ConjugateGradientSolver $(solver.iteration), α: $α"
+    @debug "ConjugateGradientSolver $(solver.iteration), α: $(@allowscalar solver.α[1])"
 
-    @apply_regionally update_solution_and_residuals!(x, r, q, p, α, solver.enforce_gauge_condition!)
+    @apply_regionally update_solution_and_residuals!(x, r, q, p, solver.α, solver.enforce_gauge_condition!)
 
     solver.iteration += 1
-    solver.ρⁱ⁻¹ = ρ
+
+    # ρⁱ⁻¹ = ρ by swapping the arrays
+    solver.ρⁱ⁻¹, solver.ρ = solver.ρ, solver.ρⁱ⁻¹
 
     return nothing
 end
@@ -236,22 +271,16 @@ function initialize_solution!(q, x, b, solver, args...)
     return nothing
 end
 
-""" one conjugate gradient iteration """
-function perform_iteration!(q, p, ρ, z, solver, args...)
+""" update the search direction `p = z + β * p` (`p = z` at the first iteration); the linear operator is applied afterwards by `perform_linear_operation!` """
+function update_search_direction!(p, z, β, iteration)
     pp = parent(p)
     zp = parent(z)
 
-    if solver.iteration == 0
+    if iteration == 0
         pp .= zp
     else
-        β = ρ / solver.ρⁱ⁻¹
         pp .= zp .+ β .* pp
-
-        @debug "ConjugateGradientSolver $(solver.iteration), β: $β"
     end
-
-    # q = A * p
-    solver.linear_operation!(q, p, args...)
 
     return nothing
 end
@@ -273,7 +302,7 @@ end
 function iterating(solver, tolerance)
     # End conditions
     solver.iteration >= solver.maxiter && return false
-    norm(solver.residual) <= tolerance && return false
+    solver.residual_norm(solver.residual) <= tolerance && return false
     return true
 end
 
@@ -285,5 +314,6 @@ function Base.show(io::IO, solver::ConjugateGradientSolver)
               "├── preconditioner: ", prettysummary(solver.preconditioner), "\n",
               "├── reltol: ", prettysummary(solver.reltol), "\n",
               "├── abstol: ", prettysummary(solver.abstol), "\n",
+              "├── residual_norm: ", prettysummary(solver.residual_norm), "\n",
               "└── maxiter: ", solver.maxiter)
 end

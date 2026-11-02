@@ -5,7 +5,8 @@
     "docs:preview": "vitepress preview build/.documenter"
   },
   "dependencies": {
-    "@nolebase/vitepress-plugin-enhanced-readabilities": "^2.14.0",
+    "@nolebase/vitepress-plugin-enhanced-readabilities": "~2.18.2",
+    "@nolebase/ui": "~2.18.2",
     "markdown-it": "^14.1.0",
     "markdown-it-footnote": "^4.0.0",
     "markdown-it-mathjax3": "^4.3.2",

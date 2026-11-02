@@ -35,6 +35,21 @@ using Oceananigans.Fields: ZeroField, ConstantField
 /(a::ZeroField, b::Number) = a
 /(a::Number, b::ZeroField) = ConstantField(a / convert(eltype(a), 0))
 
+# ZeroField as the constant zero next to a ConstantField
++(a::ZeroField, b::ConstantField) = b
++(a::ConstantField, b::ZeroField) = a
+-(a::ZeroField, b::ConstantField) = ConstantField(-b.constant)
+-(a::ConstantField, b::ZeroField) = a
+*(a::ZeroField, b::ConstantField) = a
+*(a::ConstantField, b::ZeroField) = b
+/(a::ZeroField, b::ConstantField) = a
+/(a::ConstantField, b::ZeroField) = ConstantField(a.constant / zero(eltype(b)))
+
+function /(z1::ZeroField{T1, N1}, z2::ZeroField{T2, N2}) where {T1, T2, N1, N2}
+    T = Base.promote_type(T1, T2)
+    return ConstantField{max(N1, N2)}(zero(T) / zero(T))
+end
+
 # for two ZeroField
 for op in (:-, :+, :*)
     @eval begin

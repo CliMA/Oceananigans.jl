@@ -38,6 +38,44 @@ The connectivity among various regions for a cubed sphere grid. Parameter `R`
 denotes the rotation of the `from_rank` region to the current region.
 
 $(TYPEDFIELDS)
+
+---
+
+    CubedSphereRegionalConnectivity(rank, from_rank, side, from_side, rotation=nothing)
+
+Return a `CubedSphereRegionalConnectivity`: `from_rank :: Int` → `rank :: Int` and
+`from_side` → `side`. The rotation of
+the adjacent region relative to the host region is prescribed via `rotation` argument
+(default `rotation=nothing`).
+
+Example
+=======
+
+A connectivity that implies that the boundary condition for the
+east side of region 1 comes from the west side of region 2 is:
+
+```jldoctest cubedsphereconnectivity
+julia> using Oceananigans
+
+julia> using Oceananigans.MultiRegion: CubedSphereRegionalConnectivity, East, West, North, South, ↺, ↻
+
+julia> CubedSphereRegionalConnectivity(1, 2, East(), West())
+CubedSphereRegionalConnectivity
+├── from: Oceananigans.BoundaryConditions.West side, region 2
+├── to:   Oceananigans.BoundaryConditions.East side, region 1
+└── no rotation
+```
+
+A connectivity that implies that the boundary condition for the
+north side of region 1 comes from the east side of region 3 is
+
+```jldoctest cubedsphereconnectivity
+julia> CubedSphereRegionalConnectivity(1, 3, North(), East(), ↺())
+CubedSphereRegionalConnectivity
+├── from: Oceananigans.BoundaryConditions.East side, region 3
+├── to:   Oceananigans.BoundaryConditions.North side, region 1
+└── counter-clockwise rotation ↺
+```
 """
 struct CubedSphereRegionalConnectivity{S, FS, R} <: AbstractConnectivity
     "the current region rank"
@@ -51,43 +89,6 @@ struct CubedSphereRegionalConnectivity{S, FS, R} <: AbstractConnectivity
     "rotation of the region from which boundary condition comes from compare to host region"
         rotation :: R
 
-    @doc """
-        CubedSphereRegionalConnectivity(rank, from_rank, side, from_side, rotation=nothing)
-
-    Return a `CubedSphereRegionalConnectivity`: `from_rank :: Int` → `rank :: Int` and
-    `from_side` → `side`. The rotation of
-    the adjacent region relative to the host region is prescribed via `rotation` argument
-    (default `rotation=nothing`).
-
-    Example
-    =======
-
-    A connectivity that implies that the boundary condition for the
-    east side of region 1 comes from the west side of region 2 is:
-
-    ```jldoctest cubedsphereconnectivity
-    julia> using Oceananigans
-
-    julia> using Oceananigans.MultiRegion: CubedSphereRegionalConnectivity, East, West, North, South, ↺, ↻
-
-    julia> CubedSphereRegionalConnectivity(1, 2, East(), West())
-    CubedSphereRegionalConnectivity
-    ├── from: Oceananigans.BoundaryConditions.West side, region 2
-    ├── to:   Oceananigans.BoundaryConditions.East side, region 1
-    └── no rotation
-    ```
-
-    A connectivity that implies that the boundary condition for the
-    north side of region 1 comes from the east side of region 3 is
-
-    ```jldoctest cubedsphereconnectivity
-    julia> CubedSphereRegionalConnectivity(1, 3, North(), East(), ↺())
-    CubedSphereRegionalConnectivity
-    ├── from: Oceananigans.BoundaryConditions.East side, region 3
-    ├── to:   Oceananigans.BoundaryConditions.North side, region 1
-    └── counter-clockwise rotation ↺
-    ```
-    """
     CubedSphereRegionalConnectivity(rank, from_rank, side, from_side, rotation=nothing) =
         new{typeof(side), typeof(from_side), typeof(rotation)}(rank, from_rank, side, from_side, rotation)
 end

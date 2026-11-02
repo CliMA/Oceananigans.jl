@@ -17,7 +17,7 @@
 #####
 
 """
-    interpolator(fractional_idx)
+$(TYPEDSIGNATURES)
 
 Return an "interpolator tuple" from the fractional index `fractional_idx`,
 defined as the 3-tuple `(i⁻, i⁺, ξ)` where:
@@ -48,7 +48,7 @@ end
 #####
 
 """
-    _interpolate(data, ix, iy, iz, in...)
+$(TYPEDSIGNATURES)
 
 Perform trilinear interpolation on 3D (or higher-dimensional) `data` using
 interpolator tuples `ix`, `iy`, `iz` of the form `(i⁻, i⁺, ξ)`.
@@ -71,7 +71,68 @@ Additional indices `in...` are passed through for higher-dimensional arrays.
 end
 
 """
-    _interpolate(data, ix, iy)
+$(TYPEDSIGNATURES)
+
+Perform quadrilinear interpolation on 4D `data` using
+interpolator tuples `ix`, `iy`, `iz`, `iw` of the form `(i⁻, i⁺, ξ)`.
+"""
+@inline function _interpolate(data, ix, iy, iz, iw::Tuple{Any, Any, Any})
+    i⁻, i⁺, ξ = ix
+    j⁻, j⁺, η = iy
+    k⁻, k⁺, ζ = iz
+    l⁻, l⁺, θ = iw
+
+    return @inbounds (
+        ϕ₁(ξ, η, ζ) * (1 - θ) * data[i⁻, j⁻, k⁻, l⁻] + ϕ₁(ξ, η, ζ) * θ * data[i⁻, j⁻, k⁻, l⁺] +
+        ϕ₂(ξ, η, ζ) * (1 - θ) * data[i⁻, j⁻, k⁺, l⁻] + ϕ₂(ξ, η, ζ) * θ * data[i⁻, j⁻, k⁺, l⁺] +
+        ϕ₃(ξ, η, ζ) * (1 - θ) * data[i⁻, j⁺, k⁻, l⁻] + ϕ₃(ξ, η, ζ) * θ * data[i⁻, j⁺, k⁻, l⁺] +
+        ϕ₄(ξ, η, ζ) * (1 - θ) * data[i⁻, j⁺, k⁺, l⁻] + ϕ₄(ξ, η, ζ) * θ * data[i⁻, j⁺, k⁺, l⁺] +
+        ϕ₅(ξ, η, ζ) * (1 - θ) * data[i⁺, j⁻, k⁻, l⁻] + ϕ₅(ξ, η, ζ) * θ * data[i⁺, j⁻, k⁻, l⁺] +
+        ϕ₆(ξ, η, ζ) * (1 - θ) * data[i⁺, j⁻, k⁺, l⁻] + ϕ₆(ξ, η, ζ) * θ * data[i⁺, j⁻, k⁺, l⁺] +
+        ϕ₇(ξ, η, ζ) * (1 - θ) * data[i⁺, j⁺, k⁻, l⁻] + ϕ₇(ξ, η, ζ) * θ * data[i⁺, j⁺, k⁻, l⁺] +
+        ϕ₈(ξ, η, ζ) * (1 - θ) * data[i⁺, j⁺, k⁺, l⁻] + ϕ₈(ξ, η, ζ) * θ * data[i⁺, j⁺, k⁺, l⁺])
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Perform quadrilinear interpolation on 5D `data` at fixed fifth index `m`,
+using interpolator tuples `ix`, `iy`, `iz`, `iw` of the form `(i⁻, i⁺, ξ)`.
+Not inlined to prevent the quintilinear call site from seeing a 32-term expression,
+which causes excessive GPU JIT compilation time.
+"""
+function _interpolate(data, ix, iy, iz, iw::Tuple{Any, Any, Any}, m::Integer)
+    i⁻, i⁺, ξ = ix
+    j⁻, j⁺, η = iy
+    k⁻, k⁺, ζ = iz
+    l⁻, l⁺, θ = iw
+
+    return @inbounds (
+        ϕ₁(ξ, η, ζ) * (1 - θ) * data[i⁻, j⁻, k⁻, l⁻, m] + ϕ₁(ξ, η, ζ) * θ * data[i⁻, j⁻, k⁻, l⁺, m] +
+        ϕ₂(ξ, η, ζ) * (1 - θ) * data[i⁻, j⁻, k⁺, l⁻, m] + ϕ₂(ξ, η, ζ) * θ * data[i⁻, j⁻, k⁺, l⁺, m] +
+        ϕ₃(ξ, η, ζ) * (1 - θ) * data[i⁻, j⁺, k⁻, l⁻, m] + ϕ₃(ξ, η, ζ) * θ * data[i⁻, j⁺, k⁻, l⁺, m] +
+        ϕ₄(ξ, η, ζ) * (1 - θ) * data[i⁻, j⁺, k⁺, l⁻, m] + ϕ₄(ξ, η, ζ) * θ * data[i⁻, j⁺, k⁺, l⁺, m] +
+        ϕ₅(ξ, η, ζ) * (1 - θ) * data[i⁺, j⁻, k⁻, l⁻, m] + ϕ₅(ξ, η, ζ) * θ * data[i⁺, j⁻, k⁻, l⁺, m] +
+        ϕ₆(ξ, η, ζ) * (1 - θ) * data[i⁺, j⁻, k⁺, l⁻, m] + ϕ₆(ξ, η, ζ) * θ * data[i⁺, j⁻, k⁺, l⁺, m] +
+        ϕ₇(ξ, η, ζ) * (1 - θ) * data[i⁺, j⁺, k⁻, l⁻, m] + ϕ₇(ξ, η, ζ) * θ * data[i⁺, j⁺, k⁻, l⁺, m] +
+        ϕ₈(ξ, η, ζ) * (1 - θ) * data[i⁺, j⁺, k⁺, l⁻, m] + ϕ₈(ξ, η, ζ) * θ * data[i⁺, j⁺, k⁺, l⁺, m])
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Perform quintilinear interpolation on 5D `data` using
+interpolator tuples `ix`, `iy`, `iz`, `iw`, `iv` of the form `(i⁻, i⁺, ξ)`.
+Factored as two quadrilinear interpolations at fixed fifth index to limit IR size.
+"""
+@inline function _interpolate(data, ix, iy, iz, iw::Tuple{Any, Any, Any}, iv::Tuple{Any, Any, Any})
+    m⁻, m⁺, ψ = iv
+    return (1 - ψ) * _interpolate(data, ix, iy, iz, iw, m⁻) +
+                ψ  * _interpolate(data, ix, iy, iz, iw, m⁺)
+end
+
+"""
+$(TYPEDSIGNATURES)
 
 Perform bilinear interpolation on 2D `data` using interpolator tuples `ix`, `iy`.
 """
@@ -86,7 +147,7 @@ Perform bilinear interpolation on 2D `data` using interpolator tuples `ix`, `iy`
 end
 
 """
-    _interpolate(data, ix)
+$(TYPEDSIGNATURES)
 
 Perform linear interpolation on 1D `data` using interpolator tuple `ix`.
 """

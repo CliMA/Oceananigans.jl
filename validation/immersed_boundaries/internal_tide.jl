@@ -70,7 +70,7 @@ for free_surface in (ExplicitFreeSurface, )
                                                     schedule = TimeInterval(0.1),
                                                     filename = "internal_tide_$(show_name(time_stepper))",
                                                     init = serialize_grid,
-                                                    overwrite_existing = true)
+                                                    overwrite_files = true)
 
     simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(10))
 

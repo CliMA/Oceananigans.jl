@@ -1,0 +1,8 @@
+*.html
+*.bson
+*.txt
+*.json
+*.md
+!Project.toml
+*.jld2
+Manifest.toml

@@ -3,7 +3,7 @@ using Oceananigans.Fields: AbstractField
 @inline zeroforcing(args...) = 0
 
 """
-    materialize_forcing(forcing, field, field_name, model_field_names)
+$(TYPEDSIGNATURES)
 
 "Regularizes" or "adds information" to user-defined forcing objects that are passed to
 model constructors. `materialize_forcing` is called inside `model_forcing`.
@@ -16,7 +16,7 @@ dependency to a special forcing object, as for `Relxation`.
 materialize_forcing(forcing, field, field_name, model_field_names) = forcing # fallback
 
 """
-    materialize_forcing(forcing::Function, field, field_name, model_field_names)
+$(TYPEDSIGNATURES)
 
 Wrap `forcing` in a `ContinuousForcing` at the location of `field`.
 """
@@ -53,15 +53,11 @@ function model_forcing(user_forcings, model_fields, prognostic_fields=model_fiel
 
     model_field_names = keys(model_fields)
 
-    materialized = Tuple(
+    return named_tuple(keys(prognostic_fields)) do name
+        Base.@constprop :aggressive
+        field = prognostic_fields[name]
         name in keys(user_forcings) ?
             materialize_forcing(user_forcings[name], field, name, model_field_names) :
             Returns(zero(eltype(field)))
-            for (name, field) in pairs(prognostic_fields)
-    )
-
-    prognostic_names = keys(prognostic_fields)
-    forcings = NamedTuple{prognostic_names}(materialized)
-
-    return forcings
+    end
 end
