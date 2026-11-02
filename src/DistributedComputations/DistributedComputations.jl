@@ -9,12 +9,19 @@ export
     @root, @onrank, @distribute, @handshake,
     SimplifiedGeneralizedBlockDistribution, create_cost_map, create_balanced_partition
 
-using MPI
+using GPUArraysCore: GPUArraysCore
+using MPI: MPI
+using OffsetArrays: OffsetArrays, OffsetArray
 
-using Oceananigans
-using Oceananigans.Utils
-using Oceananigans.Grids
-using OffsetArrays
+using Oceananigans: Oceananigans
+using Oceananigans.Architectures: Architectures, AbstractArchitecture, AbstractSerialArchitecture, CPU, GPU, ndevices
+using Oceananigans.BoundaryConditions: BoundaryConditions, Bottom, BottomAndTop, East, North, South, SouthAndNorth,
+                                       Top, West, WestAndEast
+using Oceananigans.Fields: AbstractField, CenterField, data, field
+using Oceananigans.Grids: Grids, Bounded, Center, CenterFolded, CenterFoldConnected, Closed, Connected, Face, FaceFolded,
+                          FaceFoldConnected, Flat, Open, OrthogonalSphericalShellGrid, Periodic, TwoSided, grid
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaries, ImmersedBoundaryGrid, materialize_immersed_boundary
+using Oceananigans.Utils: Utils
 using Oceananigans.Grids: BoundaryTopology, XYZRegularRG
 using Oceananigans.Solvers: GridWithFourierTridiagonalSolver
 

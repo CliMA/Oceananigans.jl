@@ -103,7 +103,8 @@ function define_multiary_operator(op)
             c::Union{Function, Number, Oceananigans.Fields.AbstractField},
             d::Union{Function, Number, Oceananigans.Fields.AbstractField}...) = $op((Lop[1](), Lop[2](), Lop[3]()), a, b, c, d...)
 
-        $op(a::Oceananigans.Fields.AbstractField,
+        # Excluding 2D fields avoids ambiguities with LinearAlgebra's matrix methods for `*`
+        $op(a::Union{Oceananigans.Fields.Abstract3DField, Oceananigans.Fields.Abstract4DField},
             b::Union{Function, Number, Oceananigans.Fields.AbstractField},
             c::Union{Function, Number, Oceananigans.Fields.AbstractField},
             d::Union{Function, Number, Oceananigans.Fields.AbstractField}...) = $op(Oceananigans.Fields.instantiated_location(a), a, b, c, d...)
