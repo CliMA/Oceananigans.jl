@@ -1,11 +1,9 @@
 using Adapt
 using DocStringExtensions: TYPEDFIELDS, TYPEDSIGNATURES
-using KernelAbstractions: @kernel, @index
 import KernelAbstractions
+using KernelAbstractions: @index, @kernel
 
-using Oceananigans.Architectures: CPU, device
-
-using Oceananigans.Architectures: on_architecture
+using Oceananigans.Architectures: CPU, device, on_architecture
 
 """
     $(TYPEDFIELDS)

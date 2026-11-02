@@ -8,16 +8,12 @@
 
 using Adapt: Adapt
 using Base: @pure
-using KernelAbstractions: Kernel,
-                          KernelAbstractions as KA,
-                          ndrange, workgroupsize,
-                          __iterspace, __groupindex, __dynamic_checkbounds,
-                          CompilerMetadata
-using KernelAbstractions.NDIteration: NDIteration, NDRange, blocks, workitems, _Size
+using KernelAbstractions: CompilerMetadata, Kernel, KernelAbstractions as KA, StaticSize, __dynamic_checkbounds,
+                          __groupindex, __iterspace, __ndrange, get, ndrange, workgroupsize
+using KernelAbstractions.NDIteration: NDIteration, NDRange, _Size, blocks, workitems
 using Oceananigans.Architectures: Architectures
 
 import Oceananigans
-using KernelAbstractions: get, StaticSize
 
 struct KernelParameters{S, O} end
 
@@ -387,7 +383,6 @@ end
 #####
 
 # TODO: when offsets are implemented in KA so that we can call `kernel(dev, group, size, offsets)`, remove all of this
-using KernelAbstractions: __ndrange
 
 struct OffsetStaticSize{S} <: _Size
     function OffsetStaticSize{S}() where S
