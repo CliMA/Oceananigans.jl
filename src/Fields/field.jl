@@ -1,4 +1,4 @@
-import Oceananigans: prognostic_state, restore_prognostic_state!
+using Oceananigans: prognostic_state, restore_prognostic_state!
 using Oceananigans.BoundaryConditions:  construct_boundary_conditions_kernels, halo_fill_args, NFBC, MCBC,
     BoundaryCondition, AbstractBoundaryConditionClassification, LeftBoundary, RightBoundary,
     Zipper, validate_boundary_condition_architecture, validate_boundary_condition_topology
@@ -1043,16 +1043,16 @@ Grids.nodes(f::Field; kwargs...) = nodes(f.grid, instantiated_location(f)...; in
 # `copyto!` straight into the existing device array. Serializing the device array directly
 # makes JLD2 reconstruct a *new* device array on read, doubling GPU memory at pickup and
 # OOMing for large fields. `parent` keeps the same indexing as `restored`'s parent below.
-function prognostic_state(field::Field)
+function Oceananigans.prognostic_state(field::Field)
     return (; data = on_architecture(CPU(), parent(field)),
               boundary_conditions = prognostic_state(field.boundary_conditions))
 end
 
-function restore_prognostic_state!(restored::Field, from)
+function Oceananigans.restore_prognostic_state!(restored::Field, from)
     # `from.data` is a host-side copy of the parent data; restore region-by-region when needed.
     @apply_regionally copyto!(parent(restored), from.data)
     haskey(from, :boundary_conditions) && restore_prognostic_state!(restored.boundary_conditions, from.boundary_conditions)
     return restored
 end
 
-restore_prognostic_state!(::Field, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::Field, ::Nothing) = nothing
