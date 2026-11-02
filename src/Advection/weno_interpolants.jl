@@ -385,8 +385,9 @@ end
 
 @inline zweno_regularization(scheme, τ) = oftype(τ, ϵ)
 
+# Float32 for BFloat16 schemes too, so that their weights use the fast approximate reciprocal of Float32
 for FT in (Float32, BFloat16)
-    @eval @inline zweno_regularization(::WENO{N, $FT}, τ) where N = max(oftype(τ, ϵ), τ * $(inv(FT(2)^62)))
+    @eval @inline zweno_regularization(::WENO{N, $FT}, τ) where N = max(ϵ, Float32(τ) * $(inv(Float32(2)^62)))
 end
 
 for buffer in advection_buffers[2:end]

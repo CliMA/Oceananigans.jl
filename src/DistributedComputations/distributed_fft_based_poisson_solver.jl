@@ -120,8 +120,8 @@ function DistributedFFTBasedPoissonSolver(global_grid, local_grid, planner_flag=
     plan = plan_distributed_transforms(global_grid, storage, planner_flag)
 
     # We need to permute indices to apply bounded transforms on the GPU (r2r of r2c with twiddling)
-    x_buffer_needed = child_arch isa GPU && TX == Bounded
-    z_buffer_needed = child_arch isa GPU && TZ == Bounded
+    x_buffer_needed = child_arch isa GPU && TX <: BoundaryTopology
+    z_buffer_needed = child_arch isa GPU && TZ <: BoundaryTopology
 
     # We cannot really batch anything, so on GPUs we always have to permute indices in the y direction
     y_buffer_needed = child_arch isa GPU
@@ -202,7 +202,7 @@ validate_poisson_solver_distributed_grid(global_grid) =
 function validate_poisson_solver_distributed_grid(global_grid::RectilinearGrid)
     TX, TY, TZ = topology(global_grid)
 
-    if (TY == Bounded && TZ == Periodic) || (TX == Bounded && TY == Periodic) || (TX == Bounded && TZ == Periodic)
+    if (TY <: BoundaryTopology && TZ == Periodic) || (TX <: BoundaryTopology && TY == Periodic) || (TX <: BoundaryTopology && TZ == Periodic)
         throw("Distributed Poisson solvers do not support grids with topology ($TX, $TY, $TZ) at the moment.
                A Periodic z-direction requires also the y- and and x-directions to be Periodic, while a Periodic y-direction requires also
                the x-direction to be Periodic.")

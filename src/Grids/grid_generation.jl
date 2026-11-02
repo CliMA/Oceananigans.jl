@@ -106,7 +106,7 @@ end
 #                       │                               │
 # extended interval:    f₁                              f₂
 extend_node_interval(::AT, N, node_interval::Tuple{<:Number, <:Number}) = node_interval
-function extend_node_interval(::Sides{Closed, CenterFolded}, N, node_interval::Tuple{<:Number, <:Number})
+function extend_node_interval(::TwoSided{Closed, CenterFolded}, N, node_interval::Tuple{<:Number, <:Number})
     c₁, c₂ = @. BigFloat(node_interval)
     L = c₂ - c₁
     Δ = L / (N - 1)

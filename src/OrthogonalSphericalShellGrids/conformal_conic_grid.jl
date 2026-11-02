@@ -856,6 +856,21 @@ end
                                                         grid.λᶜᶜᵃ[i,   j-1], grid.φᶜᶜᵃ[i,   j-1],
                                                         grid.λᶜᶜᵃ[i,   j  ], grid.φᶜᶜᵃ[i,   j  ],
                                                         grid.λᶜᶜᵃ[i-1, j  ], grid.φᶜᶜᵃ[i-1, j  ], R)
+
+        grid.Δx⁻¹ᶜᶜᵃ[i, j] = 1 / grid.Δxᶜᶜᵃ[i, j]
+        grid.Δx⁻¹ᶠᶜᵃ[i, j] = 1 / grid.Δxᶠᶜᵃ[i, j]
+        grid.Δx⁻¹ᶜᶠᵃ[i, j] = 1 / grid.Δxᶜᶠᵃ[i, j]
+        grid.Δx⁻¹ᶠᶠᵃ[i, j] = 1 / grid.Δxᶠᶠᵃ[i, j]
+
+        grid.Δy⁻¹ᶜᶜᵃ[i, j] = 1 / grid.Δyᶜᶜᵃ[i, j]
+        grid.Δy⁻¹ᶠᶜᵃ[i, j] = 1 / grid.Δyᶠᶜᵃ[i, j]
+        grid.Δy⁻¹ᶜᶠᵃ[i, j] = 1 / grid.Δyᶜᶠᵃ[i, j]
+        grid.Δy⁻¹ᶠᶠᵃ[i, j] = 1 / grid.Δyᶠᶠᵃ[i, j]
+
+        grid.Az⁻¹ᶜᶜᵃ[i, j] = 1 / grid.Azᶜᶜᵃ[i, j]
+        grid.Az⁻¹ᶠᶜᵃ[i, j] = 1 / grid.Azᶠᶜᵃ[i, j]
+        grid.Az⁻¹ᶜᶠᵃ[i, j] = 1 / grid.Azᶜᶠᵃ[i, j]
+        grid.Az⁻¹ᶠᶠᵃ[i, j] = 1 / grid.Azᶠᶠᵃ[i, j]
     end
 end
 

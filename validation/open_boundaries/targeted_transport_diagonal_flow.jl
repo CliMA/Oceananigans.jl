@@ -19,7 +19,7 @@ Q = U * Ly                    # transport per unit depth through each side [m² 
 timestepper = :RungeKutta3    # :QuasiAdamsBashforth2 makes both schemes uniform
 
 grid = RectilinearGrid(CPU(); size = (Nx, Ny), x = (0, Lx), y = (0, Ly), halo = (4, 4),
-                       topology = (Bounded, Bounded, Flat))
+                       topology = (Open, Open, Flat))
 
 function run_diagonal_flow(Scheme)
     normal() = NormalFlowBoundaryCondition(0; scheme = Scheme(; inflow_timescale = Inf, outflow_timescale = Inf,

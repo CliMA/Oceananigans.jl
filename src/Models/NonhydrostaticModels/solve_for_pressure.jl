@@ -143,7 +143,7 @@ end
     Δzᶠ = Δzᵃᵃᶠ(i, j, Nz+1, grid)
     Δzᶜ = Δzᵃᵃᶜ(i, j, Nz, grid)
     den = g * Δt^2 + Δzᶠ / 2
-    @inbounds diagonal[i, j, Nz] = - 1 / den - 1/Δzᵃᵃᶠ(i, j, Nz, grid) - Δzᶜ * (λx[i] + λy[j])
+    @inbounds diagonal[i, j, Nz] = - 1 / den - Δz⁻¹ᵃᵃᶠ(i, j, Nz, grid) - Δzᶜ * (λx[i] + λy[j])
 end
 
 function solve_for_pressure!(pressure, solver::ConjugateGradientPoissonSolver, free_surface, Ũ, Δt)

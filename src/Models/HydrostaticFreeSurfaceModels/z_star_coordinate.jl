@@ -98,6 +98,11 @@ end
         z_coordinate.σᶠᶜⁿ[i, j, 1] = σᶠᶜ
         z_coordinate.σᶜᶠⁿ[i, j, 1] = σᶜᶠ
         z_coordinate.σᶠᶠⁿ[i, j, 1] = σᶠᶠ
+
+        z_coordinate.σ⁻¹ᶜᶜⁿ[i, j, 1] = 1 / σᶜᶜ
+        z_coordinate.σ⁻¹ᶠᶜⁿ[i, j, 1] = 1 / σᶠᶜ
+        z_coordinate.σ⁻¹ᶜᶠⁿ[i, j, 1] = 1 / σᶜᶠ
+        z_coordinate.σ⁻¹ᶠᶠⁿ[i, j, 1] = 1 / σᶠᶠ
     end
 end
 
@@ -235,5 +240,9 @@ function restore_prognostic_state!(::ZStarCoordinate, grid, from)
     restore_prognostic_state!(z.σᶜᶠⁿ, from.σᶜᶠⁿ)
     restore_prognostic_state!(z.σᶠᶠⁿ, from.σᶠᶠⁿ)
     restore_prognostic_state!(z.σᶜᶜ⁻, from.σᶜᶜ⁻)
+    parent(z.σ⁻¹ᶜᶜⁿ) .= 1 ./ parent(z.σᶜᶜⁿ)
+    parent(z.σ⁻¹ᶠᶜⁿ) .= 1 ./ parent(z.σᶠᶜⁿ)
+    parent(z.σ⁻¹ᶜᶠⁿ) .= 1 ./ parent(z.σᶜᶠⁿ)
+    parent(z.σ⁻¹ᶠᶠⁿ) .= 1 ./ parent(z.σᶠᶠⁿ)
     return ZStarCoordinate()
 end

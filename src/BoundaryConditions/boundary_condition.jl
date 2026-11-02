@@ -219,15 +219,28 @@ validate_boundary_condition_topology(bc::Union{PBC, MCBC, Nothing}, topo::Grids.
 validate_boundary_condition_topology(bc, topo::Grids.Periodic, side) =
     throw(ArgumentError("Cannot set $side $bc in a `Periodic` direction!"))
 
-# Validate the north boundary condition on a tripolar (folded) grid.
+# Each side of a `TwoSided` direction is validated against its own side topology
+validate_boundary_condition_topology(bc, ::TwoSided{L, R}, side) where {L, R} = validate_boundary_condition_topology(bc, side ∈ (:west, :south, :bottom) ? L() : R(), side)
+
+validate_boundary_condition_topology(bc::Union{VBC, NFBC}, ::Closed, side) =
+    isnothing(bc.classification.scheme) ? nothing : throw(ArgumentError(
+        "Cannot set $side $bc on a `Closed` side; open boundary schemes need an `Open` side."))
+
+validate_boundary_condition_topology(bc::FBC, ::Open, side) =
+    isnothing(bc.condition) ? nothing : throw(ArgumentError(
+        "Cannot set $side $bc on an `Open` side; fluxes through an `Open` side come from its exterior state."))
+
+validate_boundary_condition_topology(bc::BoundaryCondition{NormalFlow{Nothing}, Nothing}, ::Open, side) =
+    throw(ArgumentError("The $side side is `Open`: the boundary-normal velocity needs an open boundary condition, " *
+                        "for example `NormalFlowBoundaryCondition(U; scheme = PerturbationAdvection())`."))
+
 # TODO: also check that the Zipper's pivot tag (UPivot / FPivot) matches the grid's
 # y-topology. The pivot is redundantly encoded in both the topology (e.g. CenterFolded
 # ↔ UPivot) and the BC (Zipper{UPivot}), mirroring how `Periodic` is both a topology and a
 # BC classification. Right now a user who supplies the wrong pivot passes validation.
-validate_boundary_condition_topology(::Union{ZBC, DCBC, Nothing}, topo::Grids.FoldedTopology, side) = nothing
-validate_boundary_condition_topology(bc, topo::Grids.FoldedTopology, side) =
-    side == :north ? throw(ArgumentError(
-        "Cannot set north $bc in a `FoldedTopology` direction; only a `Zipper`, distributed communication BC, or `nothing` is allowed.")) : nothing
+validate_boundary_condition_topology(::Union{ZBC, DCBC, Nothing}, ::Union{CenterFolded, FaceFolded, CenterFoldConnected, FaceFoldConnected}, side) = nothing
+validate_boundary_condition_topology(bc, ::Union{CenterFolded, FaceFolded, CenterFoldConnected, FaceFoldConnected}, side) =
+    throw(ArgumentError("Cannot set $side $bc on a folded side; only a `Zipper`, distributed communication BC, or `nothing` is allowed."))
 
 validate_boundary_condition_topology(::Nothing, topo::Flat, side) = nothing
 validate_boundary_condition_topology(bc, topo::Flat, side) =
@@ -251,3 +264,5 @@ validate_boundary_condition_architecture(::Array, ::GPU, bc, side) =
     throw(ArgumentError("$side $bc must use `CuArray` rather than `Array` on GPU architectures!"))
 
 Oceananigans.prognostic_state(::BoundaryCondition) = nothing
+Oceananigans.restore_prognostic_state!(::BoundaryCondition, from) = nothing
+Oceananigans.restore_prognostic_state!(::BoundaryCondition, ::Nothing) = nothing
