@@ -3,7 +3,6 @@ using Oceananigans.BoundaryConditions: getbc, bc_str
 using Oceananigans.Fields: Field, location
 using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Oceananigans.Utils: Utils
-using Adapt: Adapt
 
 struct BoundaryConditionKernelFunction{Side, BC}
     bc :: BC
