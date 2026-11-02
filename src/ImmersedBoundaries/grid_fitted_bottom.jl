@@ -1,6 +1,6 @@
-using Oceananigans.Grids: Grids, constructor_arguments, rnode
-using Oceananigans.Fields: Field, fill_halo_regions!, interior
 using Oceananigans.BoundaryConditions: FBC
+using Oceananigans.Fields: Field, fill_halo_regions!, interior
+using Oceananigans.Grids: Grids, constructor_arguments, rnode
 using Oceananigans.Utils: KernelParameters
 using OffsetArrays: OffsetArray
 

@@ -1,8 +1,6 @@
-using Oceananigans.Fields: AbstractField, OneField, instantiated_location
-using Oceananigans.AbstractOperations: conditional_one
-
-using Oceananigans.AbstractOperations: ConditionalOperation, evaluate_condition, validate_condition
-using Oceananigans.Fields: condition_operand, conditional_length
+using Oceananigans.AbstractOperations: ConditionalOperation, conditional_one, evaluate_condition, validate_condition
+using Oceananigans.Fields: AbstractField, OneField, condition_operand, conditional_length, instantiated_location,
+                           reduced_dimensions
 
 # ImmersedReducedFields
 const XIRF = AbstractField{Nothing, <:Any, <:Any, <:ImmersedBoundaryGrid}
@@ -120,9 +118,6 @@ function Adapt.adapt_structure(to, nic::NotImmersedColumn)
     return NotImmersedColumn(Adapt.adapt(to, nic.immersed_column),
                              Adapt.adapt(to, nic.condition))
 end
-
-using Oceananigans.Fields: reduced_dimensions, OneField
-using Oceananigans.AbstractOperations: ConditionalOperation
 
 @inline function immersed_column(field::IRF)
     grid         = field.grid

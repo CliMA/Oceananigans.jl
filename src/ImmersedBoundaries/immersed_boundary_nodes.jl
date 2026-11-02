@@ -1,6 +1,6 @@
 using Oceananigans.Grids: Grids, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid, RectilinearGrid,
-    cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z,
-    xspacings, yspacings, zspacings
+                          cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z, xspacings, yspacings,
+                          zspacings
 
 const c = Center()
 const f = Face()

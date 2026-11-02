@@ -1,14 +1,14 @@
 using Oceananigans.Operators
-using Oceananigans.Operators: MRG, MLLG, MOSG, superscript_location, north_fold_index
+using Oceananigans.Operators: MLLG, MOSG, MRG, north_fold_index, superscript_location, Δx⁻¹ᶜᶜᶜ, Δx⁻¹ᶜᶜᶠ, Δx⁻¹ᶜᶠᶜ,
+                              Δx⁻¹ᶜᶠᶠ, Δx⁻¹ᶠᶜᶜ, Δx⁻¹ᶠᶜᶠ, Δx⁻¹ᶠᶠᶜ, Δy⁻¹ᶜᶜᶜ, Δy⁻¹ᶜᶜᶠ, Δy⁻¹ᶜᶠᶜ, Δy⁻¹ᶜᶠᶠ, Δy⁻¹ᶠᶜᶜ, Δy⁻¹ᶠᶜᶠ,
+                              Δy⁻¹ᶠᶠᶜ, δxᶜᶜᶜ, δxᶜᶜᶠ, δxᶜᶠᶜ, δxᶜᶠᶠ, δxᶠᶜᶜ, δxᶠᶜᶠ, δxᶠᶠᶜ, δyᶜᶜᶜ, δyᶜᶜᶠ, δyᶜᶠᶜ, δyᶜᶠᶠ,
+                              δyᶠᶜᶜ, δyᶠᶜᶠ, δyᶠᶠᶜ, σ⁻, σ⁻¹ⁿ, σⁿ, ℑxzᶜᵃᶜ, ℑxzᶠᵃᶜ, ℑxzᶠᵃᶠ, ℑyzᵃᶜᶜ, ℑyzᵃᶠᶜ, ℑyzᵃᶠᶠ, ∂t_σ,
+                              ∂x_zᶜᶜᶜ, ∂x_zᶜᶠᶜ, ∂x_zᶠᶜᶜ, ∂x_zᶠᶜᶠ, ∂x_zᶠᶠᶜ, ∂y_zᶜᶜᶜ, ∂y_zᶜᶠᶜ, ∂y_zᶜᶠᶠ, ∂y_zᶠᶜᶜ, ∂y_zᶠᶠᶜ,
+                              ∂zᶜᶜᶜ, ∂zᶜᶜᶠ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ, ∂zᶠᶠᶠ
 
-using Oceananigans.Grids: AbstractUnderlyingGrid, Bounded, Closed, FaceFolded, Periodic, TwoSided, MutableVerticalDiscretization
-
-using Oceananigans.Grids: column_depthᶜᶜᵃ,
-                          column_depthᶜᶠᵃ,
-                          column_depthᶠᶜᵃ,
-                          column_depthᶠᶠᵃ
-
-using Oceananigans.Operators: σⁿ, σ⁻, σ⁻¹ⁿ, ∂t_σ
+using Oceananigans.Grids: AbstractUnderlyingGrid, Bounded, Center, Closed, Face, FaceFolded,
+                          MutableVerticalDiscretization, Periodic, TwoSided, column_depthᶜᶜᵃ, column_depthᶜᶠᵃ,
+                          column_depthᶠᶜᵃ, column_depthᶠᶠᵃ, znode
 
 const UnderlyingMutableGrid{FT, TX, TY} = AbstractUnderlyingGrid{FT, TX, TY, <:Bounded, <:MutableVerticalDiscretization}
 const MutableImmersedGrid{FT, TX, TY}   = ImmersedBoundaryGrid{FT, TX, TY, <:Bounded, <:UnderlyingMutableGrid}
@@ -112,15 +112,6 @@ end
 ##### Forward to underlying grid which has the actual chain-rule implementation.
 #####
 
-using Oceananigans.Operators: ∂x_zᶠᶜᶜ, ∂x_zᶜᶜᶜ, ∂x_zᶠᶜᶠ, ∂x_zᶜᶠᶜ, ∂x_zᶠᶠᶜ
-using Oceananigans.Operators: ∂y_zᶜᶠᶜ, ∂y_zᶜᶜᶜ, ∂y_zᶜᶠᶠ, ∂y_zᶠᶜᶜ, ∂y_zᶠᶠᶜ
-
-using Oceananigans.Operators: Δx⁻¹ᶜᶜᶜ, Δx⁻¹ᶜᶜᶠ, Δx⁻¹ᶜᶠᶜ, Δx⁻¹ᶜᶠᶠ, Δx⁻¹ᶠᶜᶜ, Δx⁻¹ᶠᶜᶠ, Δx⁻¹ᶠᶠᶜ
-using Oceananigans.Operators: Δy⁻¹ᶜᶜᶜ, Δy⁻¹ᶜᶜᶠ, Δy⁻¹ᶜᶠᶜ, Δy⁻¹ᶜᶠᶠ, Δy⁻¹ᶠᶜᶜ, Δy⁻¹ᶠᶜᶠ, Δy⁻¹ᶠᶠᶜ
-using Oceananigans.Operators: δxᶜᶜᶜ, δxᶜᶜᶠ, δxᶜᶠᶜ, δxᶜᶠᶠ, δxᶠᶜᶜ, δxᶠᶜᶠ, δxᶠᶠᶜ, δyᶜᶜᶜ, δyᶜᶜᶠ, δyᶜᶠᶜ, δyᶜᶠᶠ, δyᶠᶜᶜ, δyᶠᶜᶠ, δyᶠᶠᶜ
-using Oceananigans.Operators: ℑxzᶜᵃᶜ, ℑxzᶠᵃᶜ, ℑxzᶠᵃᶠ, ℑyzᵃᶜᶜ, ℑyzᵃᶠᶜ, ℑyzᵃᶠᶠ
-using Oceananigans.Operators: ∂zᶜᶜᶜ, ∂zᶜᶜᶠ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ, ∂zᶠᶠᶠ
-
 #####
 ##### Generalized coordinate derivatives for mutable vertical grids
 #####
@@ -139,8 +130,6 @@ using Oceananigans.Operators: ∂zᶜᶜᶜ, ∂zᶜᶜᶠ, ∂zᶜᶠᶠ, ∂z�
 ##### The grid slopes ∂z/∂x|_r and ∂z/∂y|_r are computed using difference operators
 ##### (not derivatives) to avoid recursion.
 #####
-
-using Oceananigans.Grids: znode, Center, Face
 
 const AMG = MutableGridOfSomeKind
 const C = Center
