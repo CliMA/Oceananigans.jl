@@ -7,26 +7,25 @@ export ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom, PartialCellBo
 using Printf: @sprintf
 
 using Oceananigans.Architectures: Architectures, on_architecture
-using Oceananigans.Grids: Center, Face, Flat, size_summary, inactive_node, peripheral_node, AbstractGrid
+using Oceananigans.Grids: Grids, Center, Face, Flat, size_summary, inactive_node, peripheral_node, AbstractGrid
 using Oceananigans.Utils: launch!, @apply_regionally
 
 using Adapt: Adapt, adapt
 
-import Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z,
-                           x_domain, y_domain, z_domain
+using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z,
+                          x_domain, y_domain, z_domain
 
-import Oceananigans.Grids: architecture, with_halo, inflate_halo_size_one_dimension,
-                           xnode, ynode, znode, λnode, φnode, node,
-                           ξnode, ηnode, rnode,
-                           ξname, ηname, rname, node_names,
-                           xnodes, ynodes, znodes, λnodes, φnodes, nodes,
-                           ξnodes, ηnodes, rnodes,
-                           static_column_depthᶜᶜᵃ, static_column_depthᶠᶜᵃ, static_column_depthᶜᶠᵃ, static_column_depthᶠᶠᵃ,
-                           inactive_cell, immersed_peripheral_node, immersed_inactive_node
+using Oceananigans.Grids: architecture, with_halo, xnode, ynode, znode, λnode, φnode, node, ξnode, ηnode, rnode, ξname,
+                          ηname, rname, node_names, xnodes, ynodes, znodes, λnodes, φnodes, nodes, ξnodes, ηnodes, rnodes,
+                          static_column_depthᶜᶜᵃ, static_column_depthᶠᶜᵃ, static_column_depthᶜᶠᵃ, static_column_depthᶠᶠᵃ,
+                          inactive_cell, immersed_peripheral_node, immersed_inactive_node
 
-import Oceananigans.Fields: fractional_x_index, fractional_y_index, fractional_z_index
+using Oceananigans.Fields: Fields, fractional_x_index, fractional_y_index, fractional_z_index
 using Oceananigans.Fields: AbstractField, ConstantField
 using DocStringExtensions: TYPEDSIGNATURES
+using Oceananigans.Operators: Operators
+using Oceananigans.BoundaryConditions: BoundaryConditions
+using Oceananigans.AbstractOperations: AbstractOperations
 
 include("immersed_boundary_grid.jl")
 include("immersed_boundary_interface.jl")
