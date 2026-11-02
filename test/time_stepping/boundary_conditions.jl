@@ -865,7 +865,7 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
             Nx, Ny = 3, 4
             grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(1, 1, 1), topology=(Bounded, Bounded, Bounded))
             condition = Field{Nothing, Center, Nothing}(grid)
-            set!(condition, (y) -> y)
+            set!(condition, identity)
 
             bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center());
                                           east = ValueBoundaryCondition(condition),
