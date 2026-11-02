@@ -1,7 +1,7 @@
 module Biogeochemistry
 
 using DocStringExtensions: TYPEDSIGNATURES
-using KernelAbstractions: @kernel, @index
+using KernelAbstractions: @index, @kernel
 using Oceananigans: Oceananigans
 using Oceananigans.Architectures: architecture
 using Oceananigans.Fields: CenterField
