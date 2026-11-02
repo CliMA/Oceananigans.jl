@@ -15,17 +15,19 @@ export
 
 using Adapt: Adapt
 using DocStringExtensions: TYPEDSIGNATURES
-using KernelAbstractions: @kernel, @index
+using KernelAbstractions: @index, @kernel
 
-using Oceananigans: Oceananigans, AbstractModel, initialize!, fields, prognostic_fields
-using Oceananigans.BoundaryConditions: BoundaryConditions, cache_boundary_conditions!, initialize_boundary_conditions!
+using Oceananigans: Oceananigans, AbstractModel, fields, initialize!, prognostic_fields
 using Oceananigans.Architectures: architecture
-using Oceananigans.Utils: AbstractTimeDiscretization, ExplicitTimeDiscretization,
-                          VerticallyImplicitTimeDiscretization,
-                          AdaptiveVerticallyImplicitDiscretization,
-                          kernel_time_step, @apply_regionally
-using Oceananigans.Units: Units
+using Oceananigans.BoundaryConditions: BoundaryConditions, cache_boundary_conditions!, initialize_boundary_conditions!
 using Oceananigans.Fields: Fields
+using Oceananigans.Units: Units
+using Oceananigans.Utils: @apply_regionally,
+                          AbstractTimeDiscretization,
+                          AdaptiveVerticallyImplicitDiscretization,
+                          ExplicitTimeDiscretization,
+                          VerticallyImplicitTimeDiscretization,
+                          kernel_time_step
 
 """
     abstract type AbstractTimeStepper
