@@ -1,16 +1,15 @@
 using Oceananigans.Advection
+using Oceananigans.Biogeochemistry: biogeochemical_drift_velocity,
+                                    biogeochemical_transition,
+                                    include_biogeochemistry_transitions
 using Oceananigans.BuoyancyFormulations
 using Oceananigans.Coriolis
+using Oceananigans.Fields: ZeroField
+using Oceananigans.Forcings: with_advective_forcing
 using Oceananigans.Operators
 using Oceananigans.StokesDrifts
-
-using Oceananigans.Biogeochemistry: biogeochemical_transition,
-                                    biogeochemical_drift_velocity,
-                                    include_biogeochemistry_transitions
-using Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∂ⱼ_τ₃ⱼ, ∇_dot_qᶜ
-using Oceananigans.TurbulenceClosures: immersed_∂ⱼ_τ₁ⱼ, immersed_∂ⱼ_τ₂ⱼ, immersed_∂ⱼ_τ₃ⱼ, immersed_∇_dot_qᶜ
-using Oceananigans.Forcings: with_advective_forcing
-using Oceananigans.Fields: ZeroField
+using Oceananigans.TurbulenceClosures: immersed_∂ⱼ_τ₁ⱼ, immersed_∂ⱼ_τ₂ⱼ, immersed_∂ⱼ_τ₃ⱼ, immersed_∇_dot_qᶜ, ∂ⱼ_τ₁ⱼ,
+                                       ∂ⱼ_τ₂ⱼ, ∂ⱼ_τ₃ⱼ, ∇_dot_qᶜ
 using Oceananigans.Utils: SumOfArrays
 
 "return the ``x``-gradient of hydrostatic pressure"

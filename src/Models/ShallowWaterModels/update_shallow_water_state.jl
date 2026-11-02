@@ -2,7 +2,6 @@ using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Forcings: compute_forcing!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 using Oceananigans.Models: update_model_field_time_series!
-
 using Oceananigans.TimeSteppers: update_state!
 
 """

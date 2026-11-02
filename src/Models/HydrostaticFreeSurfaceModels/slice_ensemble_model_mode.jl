@@ -1,10 +1,9 @@
+using Oceananigans.Coriolis: x_f_cross_U, y_f_cross_U, z_f_cross_U
 using Oceananigans.Grids: BoundaryTopology, Bounded, Flat, XYRegularRG, y_domain
 using Oceananigans.TimeSteppers: time_discretization
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure, compute_closure_fields!, with_tracers, ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ,
                                        ∇_dot_qᶜ
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: CATKEVDArray, _top_tke_flux
-
-using Oceananigans.Coriolis: x_f_cross_U, y_f_cross_U, z_f_cross_U
 
 #####
 ##### Implements a "slice ensemble model mode" for HydrostaticFreeSurfaceModel

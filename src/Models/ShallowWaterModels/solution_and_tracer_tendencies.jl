@@ -1,6 +1,6 @@
 using Oceananigans.Advection
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Coriolis
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Operators
 using Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ
 

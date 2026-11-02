@@ -1,9 +1,9 @@
+using SeawaterPolynomials: BoussinesqEquationOfState
+
 using Oceananigans.BuoyancyFormulations: BuoyancyForce, BuoyancyTracer, LinearEquationOfState, SeawaterBuoyancy
 using Oceananigans.Grids: LatitudeLongitudeGrid, RectilinearGrid
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.OrthogonalSphericalShellGrids: OrthogonalSphericalShellGrid
-
-using SeawaterPolynomials: BoussinesqEquationOfState
 
 const BoussinesqSeawaterBuoyancy = SeawaterBuoyancy{FT, <:BoussinesqEquationOfState, T, S} where {FT, T, S}
 const BuoyancyBoussinesqEOSModel = BuoyancyForce{<:BoussinesqSeawaterBuoyancy, g} where {g}

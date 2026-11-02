@@ -6,10 +6,9 @@ using Oceananigans: location, prognostic_state, restore_prognostic_state!
 using Oceananigans.BoundaryConditions: BoundaryConditions, fill_halo_regions!
 using Oceananigans.Fields: FunctionField, field
 using Oceananigans.Grids: Center, Face
+using Oceananigans.Models: extract_boundary_conditions
 using Oceananigans.OutputReaders: FieldTimeSeries, TimeSeriesInterpolation
 using Oceananigans.TimeSteppers: step_lagrangian_particles!, tick!
-
-using Oceananigans.Models: extract_boundary_conditions
 using Oceananigans.Utils: datatuple, sum_of_velocities
 
 struct PrescribedVelocityFields{U, V, W, P}

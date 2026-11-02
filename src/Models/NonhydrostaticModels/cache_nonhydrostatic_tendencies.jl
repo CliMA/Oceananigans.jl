@@ -1,8 +1,7 @@
 using Oceananigans: prognostic_fields
 using Oceananigans.Grids: AbstractGrid
-using Oceananigans.Utils: launch!
-
 using Oceananigans.TimeSteppers: cache_previous_tendencies!
+using Oceananigans.Utils: launch!
 
 """ Store source terms for `u`, `v`, and `w`. """
 @kernel function _cache_field_tendencies!(G⁻, G⁰)

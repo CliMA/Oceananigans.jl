@@ -1,3 +1,4 @@
+using Oceananigans: prognostic_state, restore_prognostic_state!
 using Oceananigans.Advection: AbstractAdvectionScheme, Centered, VectorInvariant, WENOVectorInvariant,
                               adapt_advection_order, materialize_advection, weno_order
 using Oceananigans.Architectures: AbstractArchitecture, ReactantState
@@ -19,9 +20,6 @@ using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization, add
                                        build_closure_fields, closure_required_tracers, implicit_diffusion_solver,
                                        initialize_closure_fields!, validate_closure, with_tracers
 using Oceananigans.Utils: tupleit
-
-import Oceananigans
-using Oceananigans: prognostic_state, restore_prognostic_state!
 
 PressureField(grid) = (; pHY′ = CenterField(grid))
 

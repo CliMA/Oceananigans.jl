@@ -1,4 +1,5 @@
 using Adapt, GPUArraysCore
+
 using Oceananigans: instantiated_location
 using Oceananigans.AbstractOperations: Ax, Ay, Az, grid_metric_operation
 using Oceananigans.BoundaryConditions: BoundaryCondition, NormalFlow

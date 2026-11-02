@@ -1,8 +1,7 @@
 using Oceananigans.BoundaryConditions: fill_halo_regions!
+using Oceananigans.Fields: set!
 using Oceananigans.TimeSteppers: update_state!
 using Oceananigans.TurbulenceClosures: initialize_closure_fields!
-
-using Oceananigans.Fields: set!
 
 """
     set!(model::NonhydrostaticModel; enforce_incompressibility=true, kwargs...)

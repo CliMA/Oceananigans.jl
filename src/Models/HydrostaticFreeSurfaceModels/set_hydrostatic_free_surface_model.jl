@@ -1,7 +1,6 @@
+using Oceananigans.Fields: set!
 using Oceananigans.Operators: intrinsic_vector, ℑxyᶜᶠᵃ, ℑxyᶠᶜᵃ
 using Oceananigans.Utils: @apply_regionally
-
-using Oceananigans.Fields: set!
 
 """
     set!(model::HydrostaticFreeSurfaceModel;

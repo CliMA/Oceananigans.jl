@@ -1,8 +1,9 @@
-using JLD2
-using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper
-using Oceananigans.Utils
+using JLD2: jldopen
 
+using Oceananigans.Architectures: on_architecture
 using Oceananigans.Fields: set!
+using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper
+using Oceananigans.Utils: @apply_regionally
 
 #####
 ##### set! for checkpointer filepaths and `OceananigansModels`

@@ -1,14 +1,13 @@
+using Adapt: Adapt
+
+using Oceananigans: prognostic_state, restore_prognostic_state!
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
+using Oceananigans.DistributedComputations: synchronize_communication!
 using Oceananigans.Grids: AbstractGrid, XYRegularRG, static_column_depthᶜᶜᵃ, surface_kernel_parameters
 using Oceananigans.ImmersedBoundaries: MutableGridOfSomeKind
 using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂yᶜᶠᶜ
 using Oceananigans.Solvers: solve!
 using Oceananigans.Utils: prettysummary, prettytime
-
-using Oceananigans: prognostic_state, restore_prognostic_state!
-using Oceananigans.DistributedComputations: synchronize_communication!
-
-using Adapt: Adapt
 
 struct ImplicitFreeSurface{E, G, I, M, S} <: AbstractFreeSurface{E, G}
     displacement :: E

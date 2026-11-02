@@ -1,5 +1,4 @@
 using Oceananigans: AbstractModel, prognostic_state, restore_prognostic_state!
-
 using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Oceananigans.Advection: VectorInvariant, materialize_advection
 using Oceananigans.Architectures: AbstractArchitecture, architecture

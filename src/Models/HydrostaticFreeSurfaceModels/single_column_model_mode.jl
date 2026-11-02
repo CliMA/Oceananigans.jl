@@ -2,15 +2,14 @@ using GPUArraysCore: @allowscalar
 
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Advection: AbstractAdvectionScheme, update_advection!
+using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Coriolis: AbstractRotation, x_f_cross_U, y_f_cross_U, z_f_cross_U
 using Oceananigans.Fields: XFaceField, YFaceField, ZeroField
 using Oceananigans.Grids: Bounded, Flat
+using Oceananigans.Models: validate_tracer_advection
 using Oceananigans.TimeSteppers: TimeSteppers
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure, compute_closure_fields!, ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∇_dot_qᶜ
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: CATKEVDArray
-
-using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.Models: validate_tracer_advection
 
 #####
 ##### Implements a "single column model mode" for HydrostaticFreeSurfaceModel

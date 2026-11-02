@@ -1,3 +1,4 @@
+using Oceananigans: prognostic_state, restore_prognostic_state!
 using Oceananigans.Advection: Centered, adapt_advection_order, materialize_advection
 using Oceananigans.Architectures: AbstractArchitecture, architecture
 using Oceananigans.Biogeochemistry: AbstractBiogeochemistry, biogeochemical_auxiliary_fields, validate_biogeochemistry
@@ -19,8 +20,6 @@ using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization, bui
                                        with_tracers
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE
 using Oceananigans.Utils: tupleit
-
-using Oceananigans: prognostic_state, restore_prognostic_state!
 
 const ParticlesOrNothing = Union{Nothing, AbstractLagrangianParticles}
 const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}

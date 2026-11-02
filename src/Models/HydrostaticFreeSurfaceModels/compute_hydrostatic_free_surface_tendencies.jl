@@ -1,10 +1,9 @@
-using Oceananigans.Models: interior_tendency_kernel_parameters
-
 using Oceananigans: MomentumTendency, TendencyCallsite, TracerTendencyCallsite, UpdateStateCallsite, fields,
                     prognostic_fields
 using Oceananigans.Biogeochemistry: add_biogeochemical_transitions!, biogeochemical_auxiliary_fields, update_tendencies!
 using Oceananigans.Fields: immersed_boundary_condition
 using Oceananigans.Grids: halo_size
+using Oceananigans.Models: interior_tendency_kernel_parameters
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE, FlavorOfTD
 
 

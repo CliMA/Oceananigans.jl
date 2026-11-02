@@ -1,4 +1,5 @@
 using KernelAbstractions.Extras.LoopInfo: @unroll
+
 using Oceananigans: fields
 using Oceananigans.DistributedComputations: maybe_distributed_fill_halo_regions!
 

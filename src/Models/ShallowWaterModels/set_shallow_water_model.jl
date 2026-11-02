@@ -1,5 +1,4 @@
 using Oceananigans.Fields: set!
-
 using Oceananigans.TimeSteppers: update_state!
 
 function Fields.set!(model::ShallowWaterModel; kwargs...)

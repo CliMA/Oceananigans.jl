@@ -1,10 +1,9 @@
+using Oceananigans.Architectures: architecture
 using Oceananigans.DistributedComputations: DistributedGrid
 using Oceananigans.Grids: halo_size, isrectilinear
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Operators: Azᶜᶜᶜ, Azᶜᶜᶠ, Δx_qᶜᶠᶜ, Δxᶜᶠᵃ, Δx⁻¹ᶠᶜᶠ, Δy_qᶠᶜᶜ, Δyᶠᶜᵃ, Δy⁻¹ᶜᶠᶠ, δxᶜᵃᵃ, δxᶜᶜᶜ, δxᶠᶜᶠ,
                               δyᵃᶜᵃ, δyᶜᶜᶜ, δyᶜᶠᶠ
-
-using Oceananigans.Architectures: architecture
 using Oceananigans.Solvers: Solvers, ConjugateGradientSolver, solve!
 
 """

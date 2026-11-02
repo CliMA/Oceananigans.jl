@@ -1,4 +1,5 @@
 using KernelAbstractions: @index, @kernel
+
 using Oceananigans: prognostic_fields
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Utils: launch!

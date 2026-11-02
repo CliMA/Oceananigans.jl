@@ -1,9 +1,8 @@
+using Oceananigans: prognostic_state, restore_prognostic_state!
 using Oceananigans.Grids: AbstractGrid, Flat, column_depthᶜᶜᵃ, column_depthᶜᶠᵃ, column_depthᶠᶜᵃ, column_depthᶠᶠᵃ,
                           halo_size, static_column_depthᶜᶜᵃ, static_column_depthᶜᶠᵃ, static_column_depthᶠᶜᵃ,
                           static_column_depthᶠᶠᵃ, topology
 using Oceananigans.ImmersedBoundaries: MutableGridOfSomeKind
-
-using Oceananigans: prognostic_state, restore_prognostic_state!
 
 #####
 ##### Mutable-specific vertical spacings update

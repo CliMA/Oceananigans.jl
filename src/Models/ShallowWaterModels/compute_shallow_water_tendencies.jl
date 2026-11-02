@@ -1,10 +1,9 @@
-using Oceananigans.TimeSteppers: compute_flux_bc_tendencies!, compute_tendencies!
-
 using KernelAbstractions: @index, @kernel
-using Oceananigans: TendencyCallsite, UpdateStateCallsite, fields
-using Oceananigans.Utils: launch!
 
+using Oceananigans: TendencyCallsite, UpdateStateCallsite, fields
 using Oceananigans.BoundaryConditions
+using Oceananigans.TimeSteppers: compute_flux_bc_tendencies!, compute_tendencies!
+using Oceananigans.Utils: launch!
 
 
 """
