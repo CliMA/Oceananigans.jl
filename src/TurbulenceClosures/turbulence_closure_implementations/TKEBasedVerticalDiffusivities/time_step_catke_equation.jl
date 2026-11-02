@@ -1,8 +1,7 @@
 using Oceananigans: fields
-using Oceananigans.Operators: σⁿ, σ⁻, σ⁻¹ⁿ
 using Oceananigans.Grids: bottommost_active_node
-using Oceananigans.TimeSteppers: implicit_step!
-using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, SplitRungeKuttaTimeStepper
+using Oceananigans.Operators: σ⁻, σ⁻¹ⁿ, σⁿ
+using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, SplitRungeKuttaTimeStepper, implicit_step!
 
 get_time_step(closure::CATKEVerticalDiffusivity) = closure.tke_time_step
 

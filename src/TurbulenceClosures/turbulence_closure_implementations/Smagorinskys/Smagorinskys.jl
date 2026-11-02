@@ -1,17 +1,13 @@
 module Smagorinskys
 
 using DocStringExtensions: TYPEDSIGNATURES
-using KernelAbstractions: @kernel, @index
+using KernelAbstractions: @index, @kernel
 
 using Oceananigans: Oceananigans
 using Oceananigans.Grids: AbstractGrid, Center
-using Oceananigans.Operators: Operators, Δxᶜᶜᶜ, Δyᶜᶜᶜ, Δzᶜᶜᶜ, ℑxyzᶜᶜᶠ,
-                              ℑxᶜᵃᵃ, ℑxᶠᵃᵃ, ℑyᵃᶜᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶜ, ℑzᵃᵃᶠ,
-                              ℑxyᶜᶜᵃ, ℑxyᶜᶠᵃ, ℑxyᶠᶜᵃ, ℑxyᶠᶠᵃ,
-                              ℑxzᶜᵃᶜ, ℑxzᶜᵃᶠ, ℑxzᶠᵃᶜ, ℑxzᶠᵃᶠ,
-                              ℑyzᵃᶜᶜ, ℑyzᵃᶜᶠ, ℑyzᵃᶠᶜ, ℑyzᵃᶠᶠ
+using Oceananigans.Operators: Operators, Δxᶜᶜᶜ, Δyᶜᶜᶜ, Δzᶜᶜᶜ, ℑxyzᶜᶜᶠ, ℑxyᶜᶜᵃ, ℑxyᶜᶠᵃ, ℑxyᶠᶜᵃ, ℑxyᶠᶠᵃ, ℑxzᶜᵃᶜ, ℑxzᶜᵃᶠ,
+                              ℑxzᶠᵃᶜ, ℑxzᶠᵃᶠ, ℑxᶜᵃᵃ, ℑxᶠᵃᵃ, ℑyzᵃᶜᶜ, ℑyzᵃᶜᶠ, ℑyzᵃᶠᶜ, ℑyzᵃᶠᶠ, ℑyᵃᶜᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶜ, ℑzᵃᵃᶠ
 using Oceananigans.Utils: f32_safe_cbrt
-
 
 using Oceananigans.TurbulenceClosures: TurbulenceClosures, buoyancy_force, buoyancy_tracers
 

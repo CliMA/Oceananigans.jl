@@ -1,10 +1,11 @@
-using Oceananigans.Advection: implicit_advection_upper_diagonal,
+using Oceananigans.Advection: implicit_advection_diagonal,
                               implicit_advection_lower_diagonal,
-                              implicit_advection_diagonal
-using Oceananigans.BoundaryConditions: implicit_flux_coefficient, needs_implicit_solver, Bottom, Top, ImmersedFacet
+                              implicit_advection_upper_diagonal
+using Oceananigans.BoundaryConditions: Bottom, ImmersedFacet, Top, implicit_flux_coefficient, needs_implicit_solver
 using Oceananigans.Fields: location
 using Oceananigans.Grids: Periodic, ZDirection, topology
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, ImmersedBoundaryCondition, immersed_inactive_node, immersed_peripheral_node
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryCondition, ImmersedBoundaryGrid, immersed_inactive_node,
+                                       immersed_peripheral_node
 using Oceananigans.Operators: Δz⁻¹
 using Oceananigans.Solvers: BatchedTridiagonalSolver, solve!
 

@@ -1,17 +1,16 @@
 using Oceananigans.AbstractOperations: Average
 using Oceananigans.Fields: FieldBoundaryConditions
-using Oceananigans.Utils: Utils, launch!, IterationInterval
+using Oceananigans.Utils: Utils, IterationInterval, launch!
 
 using Adapt: Adapt, adapt
 
 using ..TurbulenceClosures:
     AbstractScalarDiffusivity,
-    ThreeDimensionalFormulation,
     ExplicitTimeDiscretization,
+    ThreeDimensionalFormulation,
     closure_coefficient,
-    convert_diffusivity
-
-using ..TurbulenceClosures: tracer_diffusivities
+    convert_diffusivity,
+    tracer_diffusivities
 
 #####
 ##### The turbulence closure proposed by Smagorinsky and Lilly.
