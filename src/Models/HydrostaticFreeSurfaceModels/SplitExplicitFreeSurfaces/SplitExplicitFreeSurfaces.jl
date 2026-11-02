@@ -6,25 +6,25 @@ export FixedSubstepNumber, FixedTimeStepSize
 using DocStringExtensions: TYPEDSIGNATURES
 using KernelAbstractions: @index, @kernel, @localmem, @synchronize, StaticSize
 
-using Oceananigans.Architectures: convert_to_device, architecture, device
-using Oceananigans.Utils: Utils, KernelParameters, configure_kernel, launch!, @apply_regionally, add_time_interval
-using Oceananigans.Operators: Az⁻¹ᶜᶜᶠ, Δx_qᶜᶠᶠ, Δy_qᶠᶜᶠ, Δzᶜᶠᶜ, Δzᶠᶜᶜ, Δxᶜᶠᵃ, Δyᶠᶜᵃ
-using Oceananigans.ImmersedBoundaries: column_depthTᶠᶜᵃ, column_depthTᶜᶠᵃ, column_depthᶠᶜᵃ, column_depthᶜᶠᵃ
-using Oceananigans.Operators: ∂xᵣTᶠᶜᶠ, ∂xᵣᶠᶜᶠ, ∂yᵣTᶜᶠᶠ, ∂yᵣᶜᶠᶠ, δxTᶜᵃᵃ, δyTᵃᶜᵃ, δxᶜᶜᶜ, δyᶜᶜᶜ
-using Oceananigans.BoundaryConditions: fill_halo_regions!, FieldBoundaryConditions, SurfaceWaveRadiationBoundaryCondition, gravity_wave_boundary_condition,
-                                       cache_boundary_conditions!, step_boundary_conditions!, regularize_field_boundary_conditions
+using Oceananigans: Oceananigans
+using Oceananigans.Architectures: architecture, convert_to_device, device
+using Oceananigans.BoundaryConditions: FieldBoundaryConditions, SurfaceWaveRadiationBoundaryCondition,
+                                       cache_boundary_conditions!, fill_halo_regions!, gravity_wave_boundary_condition,
+                                       regularize_field_boundary_conditions, step_boundary_conditions!
+using Oceananigans.DistributedComputations: DistributedComputations, @root, DistributedGrid, all_reduce
 using Oceananigans.Fields: Field, instantiated_location
-using Oceananigans.Grids: Center, Face, topology, column_depthᶜᶠᵃ, column_depthᶠᶜᵃ, Connected, Open, TwoSided
-using Oceananigans.DistributedComputations: DistributedComputations, DistributedGrid, all_reduce, @root
-using Oceananigans.ImmersedBoundaries: mask_immersed_field!,
-                                       column_depthTᶠᶜᵃ, column_depthTᶜᶠᵃ,
-                                       column_depthᶠᶜᵃ, column_depthᶜᶠᵃ
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModels, AbstractFreeSurface,
+using Oceananigans.Grids: Center, Connected, Face, Open, TwoSided, column_depthᶜᶠᵃ, column_depthᶠᶜᵃ, topology
+using Oceananigans.ImmersedBoundaries: column_depthTᶜᶠᵃ, column_depthTᶠᶜᵃ, column_depthᶜᶠᵃ, column_depthᶠᶜᵃ,
+                                       mask_immersed_field!
+using Oceananigans.Models: update_model_field_time_series!
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModels,
+                                                        AbstractFreeSurface,
                                                         free_surface_displacement_field,
                                                         update_vertical_velocities!
-using Oceananigans.Models: update_model_field_time_series!
+using Oceananigans.Operators: Az⁻¹ᶜᶜᶠ, Δx_qᶜᶠᶠ, Δxᶜᶠᵃ, Δy_qᶠᶜᶠ, Δyᶠᶜᵃ, Δzᶜᶠᶜ, Δzᶠᶜᶜ, δxTᶜᵃᵃ, δxᶜᶜᶜ, δyTᵃᶜᵃ, δyᶜᶜᶜ,
+                              ∂xᵣTᶠᶜᶠ, ∂xᵣᶠᶜᶠ, ∂yᵣTᶜᶠᶠ, ∂yᵣᶜᶠᶠ
 using Oceananigans.Units: Time
-using Oceananigans: Oceananigans
+using Oceananigans.Utils: Utils, @apply_regionally, KernelParameters, add_time_interval, configure_kernel, launch!
 
 include("split_explicit_timesteppers.jl")
 include("split_explicit_free_surface.jl")

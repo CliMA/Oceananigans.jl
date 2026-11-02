@@ -1,6 +1,6 @@
-using Oceananigans.Utils
-using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper
 using JLD2
+using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper
+using Oceananigans.Utils
 
 using Oceananigans.Fields: set!
 

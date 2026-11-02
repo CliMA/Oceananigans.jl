@@ -10,12 +10,12 @@ using KernelAbstractions: @index, @kernel
 using Oceananigans.Utils: launch!
 
 using Oceananigans: Oceananigans, fields, prognostic_fields
-using Oceananigans.Simulations: Simulations
+using Oceananigans.Advection: Advection
 using Oceananigans.Architectures: Architectures
 using Oceananigans.Fields: Fields
+using Oceananigans.Simulations: Simulations
 using Oceananigans.TimeSteppers: TimeSteppers
 using Oceananigans.TurbulenceClosures: TurbulenceClosures
-using Oceananigans.Advection: Advection
 
 #####
 ##### ShallowWaterModel definition

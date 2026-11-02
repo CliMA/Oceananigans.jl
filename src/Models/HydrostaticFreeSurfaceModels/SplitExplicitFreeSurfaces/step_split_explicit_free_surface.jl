@@ -1,6 +1,6 @@
+using KernelAbstractions.Extras.LoopInfo: @unroll
 using Oceananigans: fields
 using Oceananigans.DistributedComputations: maybe_distributed_fill_halo_regions!
-using KernelAbstractions.Extras.LoopInfo: @unroll
 
 @inline build_halo_fill_args(arch, f, grid, args...) = convert_to_device(arch, (f.data, f.boundary_conditions, f.indices, instantiated_location(f), grid, args...))
 

@@ -1,7 +1,7 @@
-using Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid
-using Oceananigans.OrthogonalSphericalShellGrids: OrthogonalSphericalShellGrid
+using Oceananigans.BuoyancyFormulations: BuoyancyForce, BuoyancyTracer, LinearEquationOfState, SeawaterBuoyancy
+using Oceananigans.Grids: LatitudeLongitudeGrid, RectilinearGrid
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.BuoyancyFormulations: BuoyancyForce, BuoyancyTracer, SeawaterBuoyancy, LinearEquationOfState
+using Oceananigans.OrthogonalSphericalShellGrids: OrthogonalSphericalShellGrid
 
 using SeawaterPolynomials: BoussinesqEquationOfState
 

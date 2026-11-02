@@ -1,24 +1,26 @@
 using Oceananigans.Advection: Centered, adapt_advection_order, materialize_advection
-using Oceananigans.Architectures: AbstractArchitecture
-using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
+using Oceananigans.Architectures: AbstractArchitecture, architecture
+using Oceananigans.Biogeochemistry: AbstractBiogeochemistry, biogeochemical_auxiliary_fields, validate_biogeochemistry
 using Oceananigans.BoundaryConditions: MixedBoundaryCondition, needs_implicit_solver,
                                        regularize_field_boundary_conditions, validate_implicit_explicit_flux_locations
-using Oceananigans.BuoyancyFormulations: validate_buoyancy, materialize_buoyancy
+using Oceananigans.BuoyancyFormulations: materialize_buoyancy, validate_buoyancy
 using Oceananigans.DistributedComputations: Distributed
-using Oceananigans.Fields: Field, tracernames, VelocityFields, CenterField, ZFaceField
+using Oceananigans.Fields: CenterField, Field, VelocityFields, ZFaceField, tracernames
 using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: topology, architecture
+using Oceananigans.Grids: architecture, topology
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Models: AbstractModel, extract_boundary_conditions, materialize_free_surface, validate_model_halo, validate_tracer_advection, materialize_tracers, timestepper_name
+using Oceananigans.Models: AbstractModel, extract_boundary_conditions, materialize_free_surface, materialize_tracers,
+                           timestepper_name, total_velocities, validate_model_halo, validate_tracer_advection
 using Oceananigans.Solvers: FFTBasedPoissonSolver
-using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!, materialize_clock!, AbstractLagrangianParticles, time_discretization
-using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_closure_fields, implicit_diffusion_solver, VerticallyImplicitTimeDiscretization, initialize_closure_fields!
+using Oceananigans.TimeSteppers: AbstractLagrangianParticles, Clock, TimeStepper, materialize_clock!,
+                                 time_discretization, update_state!
+using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization, build_closure_fields,
+                                       implicit_diffusion_solver, initialize_closure_fields!, validate_closure,
+                                       with_tracers
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE
 using Oceananigans.Utils: tupleit
 
 using Oceananigans: prognostic_state, restore_prognostic_state!
-using Oceananigans.Architectures: architecture
-using Oceananigans.Models: total_velocities
 
 const ParticlesOrNothing = Union{Nothing, AbstractLagrangianParticles}
 const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}

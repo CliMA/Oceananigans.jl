@@ -1,7 +1,7 @@
 using Oceananigans.Architectures: architecture
-using Oceananigans.Utils: configure_kernel
 using Oceananigans.BoundaryConditions: step_boundary_conditions!
 using Oceananigans.TimeSteppers: _rk3_substep_field!, stage_Δt
+using Oceananigans.Utils: configure_kernel
 
 """
 $(TYPEDSIGNATURES)

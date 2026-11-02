@@ -1,11 +1,11 @@
-using Oceananigans.Operators: Azᶜᶜᶜ, Azᶜᶜᶠ, Δx_qᶜᶠᶜ, Δxᶜᶠᵃ, Δx⁻¹ᶠᶜᶠ, Δy_qᶠᶜᶜ, Δyᶠᶜᵃ, Δy⁻¹ᶜᶠᶠ,
-    δxᶜᵃᵃ, δxᶜᶜᶜ, δyᵃᶜᵃ, δyᶜᶜᶜ, δxᶠᶜᶠ, δyᶜᶠᶠ
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.DistributedComputations: DistributedGrid
-using Oceananigans.Grids: isrectilinear, halo_size
+using Oceananigans.Grids: halo_size, isrectilinear
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+using Oceananigans.Operators: Azᶜᶜᶜ, Azᶜᶜᶠ, Δx_qᶜᶠᶜ, Δxᶜᶠᵃ, Δx⁻¹ᶠᶜᶠ, Δy_qᶠᶜᶜ, Δyᶠᶜᵃ, Δy⁻¹ᶜᶠᶠ, δxᶜᵃᵃ, δxᶜᶜᶜ, δxᶠᶜᶠ,
+                              δyᵃᶜᵃ, δyᶜᶜᶜ, δyᶜᶠᶠ
 
-using Oceananigans.Solvers: Solvers, solve!, ConjugateGradientSolver
 using Oceananigans.Architectures: architecture
+using Oceananigans.Solvers: Solvers, ConjugateGradientSolver, solve!
 
 """
     struct PCGImplicitFreeSurfaceSolver{V, S, R}

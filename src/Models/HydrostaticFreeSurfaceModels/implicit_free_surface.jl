@@ -1,10 +1,9 @@
-using Oceananigans.Grids: AbstractGrid, XYRegularRG, static_column_depthᶜᶜᵃ
-using Oceananigans.Grids: surface_kernel_parameters
-using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂yᶜᶠᶜ
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
-using Oceananigans.Solvers: solve!
-using Oceananigans.Utils: prettytime, prettysummary
+using Oceananigans.Grids: AbstractGrid, XYRegularRG, static_column_depthᶜᶜᵃ, surface_kernel_parameters
 using Oceananigans.ImmersedBoundaries: MutableGridOfSomeKind
+using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂yᶜᶠᶜ
+using Oceananigans.Solvers: solve!
+using Oceananigans.Utils: prettysummary, prettytime
 
 using Oceananigans: prognostic_state, restore_prognostic_state!
 using Oceananigans.DistributedComputations: synchronize_communication!

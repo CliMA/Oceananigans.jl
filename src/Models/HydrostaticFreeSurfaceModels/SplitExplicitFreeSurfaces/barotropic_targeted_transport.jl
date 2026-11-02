@@ -1,4 +1,4 @@
-using Oceananigans.BoundaryConditions: GWNFBC, has_target_transport, get_target_transport
+using Oceananigans.BoundaryConditions: GWNFBC, get_target_transport, has_target_transport
 
 #####
 ##### Targeted barotropic transports through GravityWaveRadiation boundaries

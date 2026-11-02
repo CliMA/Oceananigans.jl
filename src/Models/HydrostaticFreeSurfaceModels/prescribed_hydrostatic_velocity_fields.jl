@@ -2,14 +2,13 @@
 ##### PrescribedVelocityFields
 #####
 
-using Oceananigans: location
-using Oceananigans.Grids: Center, Face
-using Oceananigans.Fields: FunctionField, field
-using Oceananigans.TimeSteppers: tick!, step_lagrangian_particles!
+using Oceananigans: location, prognostic_state, restore_prognostic_state!
 using Oceananigans.BoundaryConditions: BoundaryConditions, fill_halo_regions!
+using Oceananigans.Fields: FunctionField, field
+using Oceananigans.Grids: Center, Face
 using Oceananigans.OutputReaders: FieldTimeSeries, TimeSeriesInterpolation
+using Oceananigans.TimeSteppers: step_lagrangian_particles!, tick!
 
-using Oceananigans: prognostic_state, restore_prognostic_state!
 using Oceananigans.Models: extract_boundary_conditions
 using Oceananigans.Utils: datatuple, sum_of_velocities
 

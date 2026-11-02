@@ -2,8 +2,8 @@ module VarianceDissipationComputations
 
 export VarianceDissipation, flatten_dissipation_fields
 
-using KernelAbstractions: @kernel, @index
 using DocStringExtensions: TYPEDSIGNATURES
+using KernelAbstractions: @index, @kernel
 
 using Oceananigans: Oceananigans, UpdateStateCallsite
 using Oceananigans.Advection
@@ -13,8 +13,9 @@ using Oceananigans.Advection: _advective_tracer_flux_x,
 using Oceananigans.BoundaryConditions
 using Oceananigans.Fields
 using Oceananigans.Fields: VelocityFields
-using Oceananigans.Grids: architecture, AbstractGrid
+using Oceananigans.Grids: AbstractGrid, architecture
 using Oceananigans.Operators
+using Oceananigans.Simulations: Simulations, Callback, validate_schedule
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper,
                                  RungeKutta3TimeStepper,
                                  SplitRungeKuttaTimeStepper
@@ -22,8 +23,7 @@ using Oceananigans.TurbulenceClosures: _diffusive_flux_x,
                                        _diffusive_flux_y,
                                        _diffusive_flux_z
 using Oceananigans.Utils
-using Oceananigans.Utils: IterationInterval, ConsecutiveIterations
-using Oceananigans.Simulations: Simulations
+using Oceananigans.Utils: ConsecutiveIterations, IterationInterval
 
 struct VarianceDissipation{P, K, A, D, S}
     advective_production :: P
@@ -130,8 +130,6 @@ include("advective_dissipation.jl")
 include("diffusive_dissipation.jl")
 include("compute_dissipation.jl")
 include("flatten_dissipation_fields.jl")
-
-using Oceananigans.Simulations: Callback, validate_schedule
 
 # Specific `Callback` for `VarianceDissipation` computations.
 # A VarianceDissipation object requires a `ConsecutiveIteration` schedule to make sure

@@ -6,12 +6,12 @@ using Oceananigans.BuoyancyFormulations: compute_buoyancy_gradients!
 using Oceananigans.Coriolis: compute_coriolis_prognostic_tendencies!, step_coriolis_prognostics!
 using Oceananigans.Fields: compute!
 using Oceananigans.Forcings: compute_forcing!
-using Oceananigans.Grids: surface_kernel_parameters, volume_kernel_parameters, horizontally_extended_interior_kernel_parameters
+using Oceananigans.Grids: horizontally_extended_interior_kernel_parameters, surface_kernel_parameters,
+                          volume_kernel_parameters
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 using Oceananigans.Models: update_model_field_time_series!
 using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!
-using Oceananigans.TurbulenceClosures: compute_closure_fields!
-using Oceananigans.TurbulenceClosures: step_closure_prognostics!
+using Oceananigans.TurbulenceClosures: compute_closure_fields!, step_closure_prognostics!
 
 compute_auxiliary_fields!(auxiliary_fields) = Tuple(compute!(a) for a in auxiliary_fields)
 

@@ -5,31 +5,29 @@ export NonhydrostaticModel, BackgroundField, BackgroundFields
 using DocStringExtensions: TYPEDSIGNATURES
 using KernelAbstractions: @index, @kernel
 
-using Oceananigans: Oceananigans
+using Oceananigans: Oceananigans, fields, prognostic_fields
 using Oceananigans.DistributedComputations
-using Oceananigans.DistributedComputations: DistributedComputations,
-                                            reconstruct_global_grid, Distributed,
-                                            DistributedFFTBasedPoissonSolver,
-                                            DistributedFourierTridiagonalPoissonSolver
+using Oceananigans.DistributedComputations: DistributedComputations, Distributed, DistributedFFTBasedPoissonSolver,
+                                            DistributedFourierTridiagonalPoissonSolver, reconstruct_global_grid
 using Oceananigans.Grids
 using Oceananigans.Grids: XYZRegularRG
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Solvers
-using Oceananigans.Solvers: GridWithFFTSolver, GridWithFourierTridiagonalSolver, ConjugateGradientPoissonSolver,
+using Oceananigans.Solvers: ConjugateGradientPoissonSolver, GridWithFFTSolver, GridWithFourierTridiagonalSolver,
                             InhomogeneousFormulation, ZDirection
 using Oceananigans.Utils
 using Oceananigans.Utils: foreach_name, sum_of_velocities
 
 using ..Models: initialize_boundary_transport
 
-using Oceananigans: fields, prognostic_fields
 using Oceananigans.Advection: Advection, cell_advection_timescale
-using Oceananigans.Simulations: Simulations, timestepper
-using Oceananigans.TimeSteppers: TimeSteppers, step_lagrangian_particles!, update_state!, update_lagrangian_particle_state!
 using Oceananigans.Architectures: Architectures
-using Oceananigans.Models: Models
-using Oceananigans.TurbulenceClosures: TurbulenceClosures
 using Oceananigans.Fields: Fields
+using Oceananigans.Models: Models
+using Oceananigans.Simulations: Simulations, timestepper
+using Oceananigans.TimeSteppers: TimeSteppers, step_lagrangian_particles!, update_lagrangian_particle_state!,
+                                 update_state!
+using Oceananigans.TurbulenceClosures: TurbulenceClosures
 
 function nonhydrostatic_pressure_solver(::Distributed, local_grid::XYZRegularRG, ::Nothing)
     global_grid = reconstruct_global_grid(local_grid)

@@ -1,7 +1,7 @@
+using Oceananigans.ImmersedBoundaries: MutableGridOfSomeKind, peripheral_node
 using Oceananigans.TurbulenceClosures: implicit_step!
-using Oceananigans.ImmersedBoundaries: peripheral_node, MutableGridOfSomeKind
 
-using Oceananigans.TimeSteppers: rk_substep!, cache_current_fields!
+using Oceananigans.TimeSteppers: cache_current_fields!, rk_substep!
 
 """
 $(TYPEDSIGNATURES)

@@ -1,12 +1,10 @@
-using Oceananigans: Oceananigans
-using Oceananigans.Grids: Grids, Flat
-using Oceananigans.Grids: halo_size, on_architecture, minimum_xspacing, minimum_yspacing, with_halo, connected_range
+using Adapt: Adapt
+using Oceananigans: Oceananigans, prognostic_state, restore_prognostic_state!
 using Oceananigans.BoundaryConditions: BoundaryCondition, NormalFlow
 using Oceananigans.Fields: TracerFields, XFaceField, YFaceField
-using Oceananigans.Utils: prettytime, KernelParameters
-using Adapt: Adapt
-
-using Oceananigans: prognostic_state, restore_prognostic_state!
+using Oceananigans.Grids: Grids, Flat, connected_range, halo_size, minimum_xspacing, minimum_yspacing, on_architecture,
+                          with_halo
+using Oceananigans.Utils: KernelParameters, prettytime
 
 #####
 ##### Substepping halo strategies

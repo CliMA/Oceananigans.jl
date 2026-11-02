@@ -19,20 +19,17 @@ using DocStringExtensions: TYPEDSIGNATURES
 using Oceananigans: Oceananigans, AbstractModel, fields, prognostic_fields
 using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Advection: AbstractAdvectionScheme, Centered
-using Oceananigans.Fields: Fields, Field, TracerFields, ZeroField
-using Oceananigans.Grids: Grids, AbstractGrid, halo_size, inflate_halo_size
-using Oceananigans.OutputReaders: update_field_time_series!, extract_field_time_series
-using Oceananigans.TimeSteppers: TimeSteppers, Clock
+using Oceananigans.Fields: Fields, Field, TracerFields, ZeroField, set!
+using Oceananigans.Grids: Grids, AbstractGrid, grid, halo_size, inflate_halo_size
+using Oceananigans.OutputReaders: extract_field_time_series, update_field_time_series!
+using Oceananigans.TimeSteppers: TimeSteppers, Clock, reset!
 using Oceananigans.Units: Time
 
-using Oceananigans.Grids: grid
-using Oceananigans.Fields: set!
-using Oceananigans.OutputWriters: OutputWriters
-using Oceananigans.TimeSteppers: reset!
 using Oceananigans.Architectures: Architectures
-using Oceananigans.Solvers: Solvers
-using Oceananigans.Diagnostics: Diagnostics
 using Oceananigans.BoundaryConditions: BoundaryConditions
+using Oceananigans.Diagnostics: Diagnostics, NaNChecker
+using Oceananigans.OutputWriters: OutputWriters, checkpointer_address
+using Oceananigans.Solvers: Solvers
 
 # A prototype interface for AbstractModel.
 #
@@ -217,8 +214,6 @@ function TimeSteppers.reset!(model::OceananigansModels)
     return nothing
 end
 
-using Oceananigans.Diagnostics: NaNChecker
-
 # Check for NaNs in the first prognostic field (generalizes to prescribed velocities).
 function Diagnostics.default_nan_checker(model::OceananigansModels)
     model_fields = prognostic_fields(model)
@@ -240,7 +235,6 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: OnlyParticleTrackingMode
 Diagnostics.default_nan_checker(::OnlyParticleTrackingModel) = nothing
 
 # Extend output writer functionality to custom Oceananigans.Models
-using Oceananigans.OutputWriters: checkpointer_address
 
 OutputWriters.default_included_properties(::NonhydrostaticModel) = [:coriolis, :buoyancy, :closure]
 OutputWriters.default_included_properties(::HydrostaticFreeSurfaceModel) = [:coriolis, :buoyancy, :closure]

@@ -1,4 +1,4 @@
-using Oceananigans.Operators: intrinsic_vector, ℑxyᶠᶜᵃ, ℑxyᶜᶠᵃ
+using Oceananigans.Operators: intrinsic_vector, ℑxyᶜᶠᵃ, ℑxyᶠᶜᵃ
 using Oceananigans.Utils: @apply_regionally
 
 using Oceananigans.Fields: set!

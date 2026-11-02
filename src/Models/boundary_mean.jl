@@ -1,8 +1,8 @@
 using Adapt, GPUArraysCore
 using Oceananigans: instantiated_location
-using Oceananigans.Fields: Center, Face
-using Oceananigans.AbstractOperations: grid_metric_operation, Ax, Ay, Az
+using Oceananigans.AbstractOperations: Ax, Ay, Az, grid_metric_operation
 using Oceananigans.BoundaryConditions: BoundaryCondition, NormalFlow
+using Oceananigans.Fields: Center, Face
 
 
 """

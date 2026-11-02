@@ -1,4 +1,4 @@
-using Oceananigans.TimeSteppers: _rk3_substep_field!, stage_Δt, compute_flux_bc_tendencies!
+using Oceananigans.TimeSteppers: _rk3_substep_field!, compute_flux_bc_tendencies!, stage_Δt
 
 """
 $(TYPEDSIGNATURES)

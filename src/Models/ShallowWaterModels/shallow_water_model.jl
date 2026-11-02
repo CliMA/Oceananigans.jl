@@ -1,22 +1,18 @@
-using Oceananigans: AbstractModel
+using Oceananigans: AbstractModel, prognostic_state, restore_prognostic_state!
 
 using Oceananigans.AbstractOperations: KernelFunctionOperation
-using Oceananigans.Advection: VectorInvariant
-using Oceananigans.Architectures: AbstractArchitecture
+using Oceananigans.Advection: VectorInvariant, materialize_advection
+using Oceananigans.Architectures: AbstractArchitecture, architecture
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.DistributedComputations
-using Oceananigans.Fields: Field, tracernames, TracerFields, XFaceField, YFaceField, CenterField, compute!
+using Oceananigans.Fields: CenterField, Field, TracerFields, XFaceField, YFaceField, compute!, tracernames
 using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: topology, Flat, architecture, RectilinearGrid, Center
+using Oceananigans.Grids: Center, Flat, RectilinearGrid, architecture, topology
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models: validate_model_halo, validate_tracer_advection
-using Oceananigans.Advection: materialize_advection
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
-using Oceananigans.TurbulenceClosures: with_tracers, build_closure_fields
+using Oceananigans.TurbulenceClosures: build_closure_fields, with_tracers
 using Oceananigans.Utils: tupleit
-
-using Oceananigans: prognostic_state, restore_prognostic_state!
-using Oceananigans.Architectures: architecture
 
 const RectilinearGrids = Union{RectilinearGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:RectilinearGrid}}
 

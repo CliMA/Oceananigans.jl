@@ -9,24 +9,24 @@ using Adapt: Adapt
 using DocStringExtensions: TYPEDFIELDS, TYPEDSIGNATURES
 using KernelAbstractions: @index, @kernel
 
-using Oceananigans.Architectures: Architectures, architecture
+using Oceananigans.Architectures: Architectures, architecture, on_architecture
 using Oceananigans.Fields: Fields, ZFaceField
-using Oceananigans.Grids: Grids, AbstractGrid, StaticVerticalDiscretization, OrthogonalSphericalShellGrid, Periodic, RectilinearGrid
+using Oceananigans.Grids: Grids, AbstractGrid, OrthogonalSphericalShellGrid, Periodic, RectilinearGrid,
+                          StaticVerticalDiscretization
 using Oceananigans.Operators: Δzᶜᶠᶜ, Δzᶠᶜᶜ
-using Oceananigans.TimeSteppers: TimeSteppers, SplitRungeKuttaTimeStepper, SplitRungeKuttaName, QuasiAdamsBashforth2TimeStepper
-using Oceananigans.Utils: Utils, launch!, foreach_name, @apply_regionally
+using Oceananigans.TimeSteppers: TimeSteppers, QuasiAdamsBashforth2TimeStepper, SplitRungeKuttaName,
+                                 SplitRungeKuttaTimeStepper, step_lagrangian_particles!,
+                                 update_lagrangian_particle_state!
+using Oceananigans.Utils: Utils, @apply_regionally, foreach_name, launch!
 
 using Oceananigans: Oceananigans, fields, prognostic_fields
 using Oceananigans.Advection: Advection, cell_advection_timescale
-using Oceananigans.Architectures: on_architecture
-using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.BoundaryConditions: step_boundary_conditions!
-using Oceananigans.Models: Models, materialize_free_surface, default_free_surface_boundary_conditions
-using Oceananigans.Simulations: Simulations, timestepper
-using Oceananigans.TimeSteppers: step_lagrangian_particles!, update_lagrangian_particle_state!
-using Oceananigans.DistributedComputations: DistributedComputations
-using Oceananigans.TurbulenceClosures: TurbulenceClosures
+using Oceananigans.BoundaryConditions: fill_halo_regions!, step_boundary_conditions!
 using Oceananigans.Coriolis: Coriolis
+using Oceananigans.DistributedComputations: DistributedComputations
+using Oceananigans.Models: Models, default_free_surface_boundary_conditions, materialize_free_surface
+using Oceananigans.Simulations: Simulations, timestepper
+using Oceananigans.TurbulenceClosures: TurbulenceClosures
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: TKEBasedVerticalDiffusivities
 
 # The only grid type that can support an FFT implicit free-surface solver

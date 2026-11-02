@@ -1,11 +1,9 @@
-using Oceananigans.Grids: Flat, Bounded, BoundaryTopology, y_domain
+using Oceananigans.Grids: BoundaryTopology, Bounded, Flat, XYRegularRG, y_domain
 using Oceananigans.TimeSteppers: time_discretization
-using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure
-using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: _top_tke_flux, CATKEVDArray
+using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure, compute_closure_fields!, with_tracers, ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ,
+                                       ∇_dot_qᶜ
+using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: CATKEVDArray, _top_tke_flux
 
-using Oceananigans.Grids: XYRegularRG
-using Oceananigans.TurbulenceClosures: compute_closure_fields!, with_tracers
-using Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∇_dot_qᶜ
 using Oceananigans.Coriolis: x_f_cross_U, y_f_cross_U, z_f_cross_U
 
 #####

@@ -1,17 +1,8 @@
 using Oceananigans.Operators
-using Oceananigans.TurbulenceClosures: ExplicitTimeDiscretization, ThreeDimensionalFormulation
-
-using Oceananigans.TurbulenceClosures: AbstractScalarDiffusivity,
-                                       convert_diffusivity,
-                                       viscosity_location,
-                                       ν_σᶜᶜᶜ,
-                                       ∂ⱼ_τ₁ⱼ,
+using Oceananigans.TurbulenceClosures: AbstractScalarDiffusivity, ExplicitTimeDiscretization,
+                                       ThreeDimensionalFormulation, build_closure_fields, compute_closure_fields!,
+                                       convert_diffusivity, viscosity_location, with_tracers, ν_σᶜᶜᶜ, νᶜᶜᶜ, ∂ⱼ_τ₁ⱼ,
                                        ∂ⱼ_τ₂ⱼ
-
-using Oceananigans.TurbulenceClosures: build_closure_fields,
-                                       compute_closure_fields!,
-                                       with_tracers,
-                                       νᶜᶜᶜ
 
 struct ShallowWaterScalarDiffusivity{V, X, N} <: AbstractScalarDiffusivity{ExplicitTimeDiscretization, ThreeDimensionalFormulation, N}
     ν :: V
