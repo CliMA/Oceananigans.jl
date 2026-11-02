@@ -46,9 +46,9 @@ model.velocities.u
 ```
 """
 @inline function Fields.set!(model::HydrostaticFreeSurfaceModel;
-                      u=ZeroField(), v=ZeroField(), intrinsic_velocities=false,
-                      reconcile_state=true,
-                      kwargs...)
+                             u=ZeroField(), v=ZeroField(), intrinsic_velocities=false,
+                             reconcile_state=true,
+                             kwargs...)
 
     set_velocities!(model, u, v; intrinsic_velocities)
 

@@ -101,9 +101,9 @@ Return a flattened `NamedTuple` of the fields in `model.velocities`, `model.trac
 auxiliary fields for a `NonhydrostaticModel` model.
 """
 Oceananigans.fields(model::NonhydrostaticModel) = merge(model.velocities,
-                                           model.tracers,
-                                           model.auxiliary_fields,
-                                           biogeochemical_auxiliary_fields(model.biogeochemistry))
+                                                        model.tracers,
+                                                        model.auxiliary_fields,
+                                                        biogeochemical_auxiliary_fields(model.biogeochemistry))
 
 """
 $(TYPEDSIGNATURES)

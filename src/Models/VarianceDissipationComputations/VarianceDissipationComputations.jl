@@ -132,8 +132,8 @@ include("flatten_dissipation_fields.jl")
 # that the computed fluxes are correctly used in the next time step.
 # Also, the `VarianceDissipation` object needs to be called on `UpdateStateStepCallsite` to be correct.
 function Simulations.Callback(func::VarianceDissipation, schedule=IterationInterval(1);
-                  parameters = nothing,
-                  callsite = UpdateStateCallsite())
+                              parameters = nothing,
+                              callsite = UpdateStateCallsite())
 
     if !(callsite isa UpdateStateCallsite)
         @warn "VarianceDissipation callback must be called on UpdateStateCallsite. Changing `callsite` to `UpdateStateCallsite()`."
@@ -146,7 +146,7 @@ function Simulations.Callback(func::VarianceDissipation, schedule=IterationInter
 end
 
 Simulations.validate_schedule(::VarianceDissipation, schedule) = throw(ArgumentError("the provided schedule $schedule is not supported for VarianceDissipation computations. \n" *
-                                                                         "Use an `IterationInterval` schedule instead."))
+                                                                                     "Use an `IterationInterval` schedule instead."))
 
 function Simulations.validate_schedule(::VarianceDissipation, schedule::IterationInterval)
     if !(schedule == IterationInterval(1))
