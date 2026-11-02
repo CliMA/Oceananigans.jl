@@ -463,8 +463,9 @@ end
         kw = (; size=(8, 8, 4), longitude=(0, 360), latitude, z=(0, 1000))
         cpu_grid = LatitudeLongitudeGrid(CPU(); kw...)
         grid = LatitudeLongitudeGrid(ReactantState(); kw...)
-        @test Oceananigans.Grids.poles(grid) == Oceananigans.Grids.poles(cpu_grid) ==
-              (south = latitude[1] == -90, north = latitude[2] == 90)
+        pole(reaches) = reaches ? Oceananigans.Grids.Pole() : nothing
+        @test (grid.south_pole, grid.north_pole) === (cpu_grid.south_pole, cpu_grid.north_pole) ===
+              (pole(latitude[1] == -90), pole(latitude[2] == 90))
 
         cpu_c = CenterField(cpu_grid)
         c = CenterField(grid)

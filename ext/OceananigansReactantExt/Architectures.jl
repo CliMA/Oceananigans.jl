@@ -7,7 +7,6 @@ using Oceananigans.DistributedComputations: Distributed
 using Reactant: AnyConcreteRArray
 
 import Oceananigans.Grids: LatitudeLongitudeGrid, topology
-using Oceananigans.Grids: poles
 import Oceananigans.Architectures: device, architecture, array_type, on_architecture, child_architecture
 import Oceananigans.Architectures: unified_array, ReactantState, device_copy_to!
 using Oceananigans.Architectures: ReshapedHostArray
@@ -132,10 +131,10 @@ end
 function on_architecture(arch::ReactantState, grid::LatitudeLongitudeGrid)
     TX, TY, TZ = topology(grid)
     props = Tuple(_to_reactant(getfield(grid, n)) for n in fieldnames(typeof(grid))
-                  if n ∉ (:architecture, :Nx, :Ny, :Nz, :Hx, :Hy, :Hz, :Lx, :Ly, :Lz, :radius))
+                  if n ∉ (:architecture, :Nx, :Ny, :Nz, :Hx, :Hy, :Hz, :Lx, :Ly, :Lz, :radius, :south_pole, :north_pole))
     return LatitudeLongitudeGrid{TX, TY, TZ}(arch,
         grid.Nx, grid.Ny, grid.Nz, grid.Hx, grid.Hy, grid.Hz,
-        grid.Lx, grid.Ly, grid.Lz, props..., grid.radius, poles(grid))
+        grid.Lx, grid.Ly, grid.Lz, props..., grid.radius, grid.south_pole, grid.north_pole)
 end
 
 function on_architecture(new_arch::Distributed{<:ReactantState}, old_grid::LatitudeLongitudeGrid)
@@ -160,7 +159,7 @@ function on_architecture(new_arch::Distributed{<:ReactantState}, old_grid::Latit
                                              old_grid.Hx, old_grid.Hy, old_grid.Hz,
                                              old_grid.Lx, old_grid.Ly, old_grid.Lz,
                                              new_properties...,
-                                             old_grid.radius, poles(old_grid))
+                                             old_grid.radius, old_grid.south_pole, old_grid.north_pole)
 end
 
 end # module

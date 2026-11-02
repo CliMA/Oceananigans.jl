@@ -330,17 +330,19 @@ regularize_field_boundary_conditions(boundary_conditions::NamedTuple, grid::Abst
 @inline regularize_south_boundary_condition(bc::DefaultBoundaryCondition, grid::LatitudeLongitudeGrid, loc, args...) =
     regularize_boundary_condition(default_prognostic_bc(grid, Val(:south), loc, bc), grid, loc, args...)
 
-polar_or(default_bc, grid, side, ℓy, ℓz) =
-    getproperty(poles(grid), side) ? maybe_polar_boundary_condition(grid, side, ℓy, ℓz) : default_bc
+# `pole` is the grid's `south_pole` or `north_pole`: `Pole()` or `nothing`
+polar_or(default_bc, ::Nothing, grid, side, ℓy, ℓz) = default_bc
+polar_or(default_bc, ::Pole, grid, side, ℓy, ℓz) = maybe_polar_boundary_condition(grid, side, ℓy, ℓz)
 
 for side in (:south, :north)
     S = Val{side}
+    pole = Symbol(side, :_pole)
     @eval begin
         default_prognostic_bc(grid::LatitudeLongitudeGrid, ::$S, (ℓx, ℓy, ℓz), default) =
-            polar_or(default_prognostic_bc(topology(grid, 2)(), ℓy, default), grid, $(QuoteNode(side)), ℓy, ℓz)
+            polar_or(default_prognostic_bc(topology(grid, 2)(), ℓy, default), grid.$pole, grid, $(QuoteNode(side)), ℓy, ℓz)
 
         default_auxiliary_bc(grid::LatitudeLongitudeGrid, ::$S, (ℓx, ℓy, ℓz)) =
-            polar_or(_default_auxiliary_bc(topology(grid, 2)(), ℓy), grid, $(QuoteNode(side)), ℓy, ℓz)
+            polar_or(_default_auxiliary_bc(topology(grid, 2)(), ℓy), grid.$pole, grid, $(QuoteNode(side)), ℓy, ℓz)
 
         default_prognostic_bc(::LatitudeLongitudeGrid{<:Any, <:Any, Flat}, ::$S, loc, default) = default
         default_auxiliary_bc(::LatitudeLongitudeGrid{<:Any, <:Any, Flat}, ::$S, loc) = nothing

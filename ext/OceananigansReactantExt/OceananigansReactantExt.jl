@@ -191,13 +191,13 @@ end
 
 Base.@nospecializeinfer function Reactant.traced_type_inner(
     @nospecialize(OA::Type{LatitudeLongitudeGrid{FT, TX, TY, TZ, Z, DXF, DXC, XF, XC, DYF, DYC, YF, YC,
-                                                 DXCC, DXFC, DXCF, DXFF, DYFC, DYCF, Arch, I, SZ, P}}),
+                                                 DXCC, DXFC, DXCF, DXFF, DYFC, DYCF, Arch, I, SZ, SP, NP}}),
     seen,
     mode::Reactant.TraceMode,
     @nospecialize(track_numbers::Type),
     @nospecialize(sharding),
     @nospecialize(runtime)
-) where {FT, TX, TY, TZ, Z, DXF, DXC, XF, XC, DYF, DYC, YF, YC, DXCC, DXFC, DXCF, DXFF, DYFC, DYCF, Arch, I, SZ, P}
+) where {FT, TX, TY, TZ, Z, DXF, DXC, XF, XC, DYF, DYC, YF, YC, DXCC, DXFC, DXCF, DXFF, DYFC, DYCF, Arch, I, SZ, SP, NP}
     TX2 = Reactant.traced_type_inner(TX, seen, mode, track_numbers, sharding, runtime)
     TY2 = Reactant.traced_type_inner(TY, seen, mode, track_numbers, sharding, runtime)
     TZ2 = Reactant.traced_type_inner(TZ, seen, mode, track_numbers, sharding, runtime)
@@ -228,7 +228,7 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
     end
 
     res = Oceananigans.Grids.LatitudeLongitudeGrid{FT2, TX2, TY2, TZ2, Z2, DXF2, DXC2, XF2, XC2, DYF2, DYC2, YF2, YC2,
-                                                   DXCC2, DXFC2, DXCF2, DXFF2, DYFC2, DYCF2, Arch, I2, SZ, P}
+                                                   DXCC2, DXFC2, DXCF2, DXFF2, DYFC2, DYCF2, Arch, I2, SZ, SP, NP}
 
     return res
 end
