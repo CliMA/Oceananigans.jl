@@ -1,11 +1,10 @@
 using Adapt: Adapt, adapt
 using DocStringExtensions: SIGNATURES
-using KernelAbstractions: @kernel, @index
+using KernelAbstractions: @index, @kernel
 using Oceananigans.Architectures: AbstractArchitecture, CPU
-using Oceananigans.Grids: Grids, Bounded, Center, Face, OrthogonalSphericalShellGrid,
-                          architecture, cpu_face_constructor_z,
-                          validate_topology, validate_size, validate_halo,
-                          validate_dimension_specification, topology
+using Oceananigans.Grids: Grids, Bounded, Center, Face, OrthogonalSphericalShellGrid, architecture,
+                          cpu_face_constructor_z, topology, validate_dimension_specification, validate_halo,
+                          validate_size, validate_topology
 using Oceananigans.Utils: KernelParameters, launch!, prettysummary
 using OrderedCollections: OrderedDict
 

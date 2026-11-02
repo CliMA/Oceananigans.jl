@@ -1,10 +1,11 @@
-using Oceananigans.BoundaryConditions: select_bc, fill_halo_kernel
-using Oceananigans.Grids: Bounded, Connected, offset_data, validate_topology, xnodes, ynodes, static_column_depthᶜᶜᵃ
-using Oceananigans.ImmersedBoundaries: AbstractGridFittedBottom
-using Oceananigans.Operators: Δx_qᶠᶜᶜ, Δy_qᶜᶠᶜ, δxᶠᶠᶜ, δyᶠᶠᶜ
-using CubedSphere: GeometricSpacing, conformal_cubed_sphere_mapping, optimized_non_uniform_conformal_cubed_sphere_coordinates
+using CubedSphere: GeometricSpacing, conformal_cubed_sphere_mapping,
+                   optimized_non_uniform_conformal_cubed_sphere_coordinates
 using CubedSphere.SphericalGeometry: cartesian_to_lat_lon, lat_lon_to_cartesian, spherical_area_quadrilateral
 using JLD2: jldopen
+using Oceananigans.BoundaryConditions: fill_halo_kernel, select_bc
+using Oceananigans.Grids: Bounded, Connected, offset_data, static_column_depthᶜᶜᵃ, validate_topology, xnodes, ynodes
+using Oceananigans.ImmersedBoundaries: AbstractGridFittedBottom
+using Oceananigans.Operators: Δx_qᶠᶜᶜ, Δy_qᶜᶠᶜ, δxᶠᶠᶜ, δyᶠᶠᶜ
 using OffsetArrays: OffsetArray
 
 struct CubedSphereConformalMapping{Rotation, Fξ, Fη, Cξ, Cη}

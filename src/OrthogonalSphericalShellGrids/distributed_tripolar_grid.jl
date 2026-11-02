@@ -1,22 +1,20 @@
-using Oceananigans.BoundaryConditions: DistributedCommunicationBoundaryCondition, ZBC, DCBC, DefaultBoundaryCondition
-using Oceananigans.Fields: validate_indices, validate_field_data
+using Oceananigans.BoundaryConditions: DCBC, DefaultBoundaryCondition, DistributedCommunicationBoundaryCondition, ZBC
 using Oceananigans.DistributedComputations:
     DistributedComputations,
     Distributed,
-    local_size,
     all_reduce,
     child_architecture,
-    ranks,
-    inject_halo_communication_boundary_conditions,
+    communication_buffers,
     concatenate_local_sizes,
-    communication_buffers
+    inject_halo_communication_boundary_conditions,
+    insert_connected_topology,
+    local_size,
+    ranks
+using Oceananigans.Fields: Field, validate_boundary_conditions, validate_field_data, validate_indices
 
-using Oceananigans.Grids: topology, Bounded, Connected, FaceFolded, FaceFoldConnected, TwoSided,
-    SlabFoldedTopology, PencilFoldedTopology, DistributedFoldedTopology
-using Oceananigans.DistributedComputations: insert_connected_topology
+using Oceananigans.Grids: Bounded, Connected, DistributedFoldedTopology, FaceFoldConnected, FaceFolded,
+                          PencilFoldedTopology, SlabFoldedTopology, TwoSided, topology
 using Oceananigans.Utils: Utils
-
-using Oceananigans.Fields: Field, validate_boundary_conditions
 
 const DistributedTripolarGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} =
     OrthogonalSphericalShellGrid{FT, TX, TY, TZ, CZ, <:Tripolar, CC, FC, CF, FF, <:Distributed{<:Union{CPU, GPU}}}

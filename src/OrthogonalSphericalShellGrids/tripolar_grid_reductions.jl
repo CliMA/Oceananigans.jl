@@ -1,7 +1,5 @@
-using Oceananigans.AbstractOperations: ConditionalOperation
+using Oceananigans.AbstractOperations: ConditionalOperation, evaluate_condition, validate_condition
 using Oceananigans.Fields: AbstractField, OneField
-
-using Oceananigans.AbstractOperations: evaluate_condition, validate_condition
 
 #####
 ##### Reduction operations involving tripolar grids exclude the repeated row at the top
