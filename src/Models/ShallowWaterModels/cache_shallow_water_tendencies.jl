@@ -4,7 +4,6 @@ import Oceananigans.TimeSteppers: cache_previous_tendencies!
 @kernel function _cache_solution_tendencies!(G⁻, grid, G⁰)
     i, j, k = @index(Global, NTuple)
 
-    # Literal indices: on the CPU, indexing a tuple of fields with a loop variable allocates at every grid point
     @inbounds begin
         G⁻[1][i, j, k] = G⁰[1][i, j, k]
         G⁻[2][i, j, k] = G⁰[2][i, j, k]

@@ -284,14 +284,10 @@ if !mpi_test
     end
 end
 
-shallow_water_log = (:warn, "The ShallowWaterModel is currently unvalidated, subject to change, " *
-                            "and should not be used for scientific research without adequate validation.")
-
 function shallow_water_time_step_allocations(N, timestepper; kwargs...)
     grid = RectilinearGrid(CPU(); size=(N, N), extent=(1, 1), topology=(Periodic, Periodic, Flat))
     closure = ShallowWaterScalarDiffusivity(ν=1e-3)
-    model = @test_logs shallow_water_log ShallowWaterModel(grid; gravitational_acceleration=1, closure, tracers=:c,
-                                                           timestepper, kwargs...)
+    model = ShallowWaterModel(grid; gravitational_acceleration=1, closure, tracers=:c, timestepper, kwargs...)
     set!(model, h=1)
     return time_step_allocations(model, 1e-3)
 end
@@ -301,8 +297,6 @@ shallow_water_formulations = (
     vector_invariant = (; formulation=VectorInvariantFormulation(), momentum_advection=VectorInvariant()),
 )
 
-# On the CPU, a kernel that allocates (for example, by indexing a tuple of fields with a loop variable)
-# allocates at every grid point, so a time step on a larger grid would allocate more.
 if !mpi_test && child_arch isa CPU
     for (name, kwargs) in pairs(shallow_water_formulations), timestepper in (:RungeKutta3, :QuasiAdamsBashforth2)
         @testset "ShallowWaterModel allocations do not grow with the grid [$name, $timestepper]" begin
