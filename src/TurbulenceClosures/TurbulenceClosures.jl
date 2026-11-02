@@ -10,6 +10,7 @@ export
     HorizontalDivergenceScalarBiharmonicDiffusivity,
     ScalarBiharmonicDiffusivity,
     TwoDimensionalLeith,
+    EnergyBudgetBackscatter,
     SmagorinskyLilly,
     DynamicSmagorinsky,
     LillyCoefficient,
@@ -55,7 +56,7 @@ using Oceananigans.Grids: AbstractGrid, BoundaryTopology, Center, Face, znode
 using Oceananigans.Operators: Operators,
     Ax_qᶜᶜᶜ, Ax_qᶠᶜᶜ, Ax_qᶠᶜᶠ, Ax_qᶠᶠᶜ, Ay_qᶜᶜᶜ, Ay_qᶜᶠᶜ, Ay_qᶜᶠᶠ, Ay_qᶠᶠᶜ, Az_qᶜᶜᶜ, Az_qᶜᶜᶠ, Az_qᶜᶠᶠ, Az_qᶠᶜᶠ, Az⁻¹ᶜᶜᶜ, Az⁻¹ᶜᶜᶠ, Az⁻¹ᶜᶠᶜ, Az⁻¹ᶠᶜᶜ, Az⁻¹ᶠᶠᶜ,
     V⁻¹ᶜᶜᶜ, V⁻¹ᶜᶜᶠ, V⁻¹ᶜᶠᶜ, V⁻¹ᶠᶜᶜ,
-    Δx_qᶜᶜᶜ, Δx_qᶜᶠᶜ, Δx_qᶜᶠᶠ, Δx_qᶠᶜᶜ, Δxᶜᶜᶜ, Δy_qᶜᶜᶜ, Δy_qᶜᶠᶜ, Δy_qᶠᶜᶜ, Δy_qᶠᶜᶠ, Δyᶜᶜᶜ, Δzᶜᶜᶜ, Δz⁻¹ᶜᶠᶜ, Δz⁻¹ᶠᶜᶜ,
+    Δx_qᶜᶜᶜ, Δx_qᶜᶠᶜ, Δx_qᶜᶠᶠ, Δx_qᶠᶜᶜ, Δxᶜᶜᶜ, Δy_qᶜᶜᶜ, Δy_qᶜᶠᶜ, Δy_qᶠᶜᶜ, Δy_qᶠᶜᶠ, Δyᶜᶜᶜ, Δzᶜᶜᶜ, Δzᶜᶜᶠ, Δz⁻¹ᶜᶠᶜ, Δz⁻¹ᶠᶜᶜ,
     Δx⁻¹ᶜᶜᶜ, Δy⁻¹ᶜᶜᶜ, Δz⁻¹ᶜᶜᶜ,
     δxᶜᵃᵃ, δxᶜᶜᶜ, δxᶜᶠᶜ, δxᶠᵃᵃ, δxᶠᶜᶜ, δxᶠᶠᶜ, δyᵃᶜᵃ, δyᵃᶠᵃ, δyᶜᶜᶜ, δyᶜᶠᶜ, δyᶠᶜᶜ, δzᵃᵃᶜ, δzᵃᵃᶠ,
     ζ₃ᶠᶠᶜ,
@@ -253,6 +254,7 @@ include("turbulence_closure_implementations/isopycnal_skew_symmetric_diffusivity
 include("turbulence_closure_implementations/isopycnal_skew_symmetric_diffusivity_with_triads.jl")
 include("turbulence_closure_implementations/advective_skew_diffusion.jl")
 include("turbulence_closure_implementations/leith_enstrophy_diffusivity.jl")
+include("turbulence_closure_implementations/energy_budget_backscatter.jl")
 
 using .TKEBasedVerticalDiffusivities: CATKEVerticalDiffusivity, TKEDissipationVerticalDiffusivity
 using .Smagorinskys: Smagorinsky, DynamicSmagorinsky, SmagorinskyLilly

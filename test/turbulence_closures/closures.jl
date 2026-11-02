@@ -7,7 +7,8 @@ using Oceananigans.Grids: ZDirection
 using Oceananigans.ImmersedBoundaries: immersed_cell
 using Oceananigans.Operators: Δz
 using Oceananigans.Solvers: get_coefficient
-using Oceananigans.TimeSteppers: implicit_step!
+using Oceananigans: fields
+using Oceananigans.TimeSteppers: implicit_step!, update_state!
 using Oceananigans.TurbulenceClosures: VerticallyImplicitDiffusionLowerDiagonal,
                                        VerticallyImplicitDiffusionDiagonal,
                                        VerticallyImplicitDiffusionUpperDiagonal
@@ -16,7 +17,8 @@ using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity, RiBasedVertical
                                        required_halo_size_x, required_halo_size_y, required_halo_size_z,
                                        cell_diffusion_timescale, formulation, min_Δxyz,
                                        diffusive_flux_x, diffusive_flux_y, diffusive_flux_z,
-                                       viscous_flux_ux, viscous_flux_uy, viscous_flux_uz, ∂ⱼ_τ₃ⱼ,
+                                       viscous_flux_ux, viscous_flux_uy, viscous_flux_uz, ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∂ⱼ_τ₃ⱼ,
+                                       step_closure_prognostics!, buoyancy_force,
                                        ScalarDiffusivity, ScalarBiharmonicDiffusivity,
                                        TwoDimensionalLeith, ConvectiveAdjustmentVerticalDiffusivity,
                                        Smagorinsky, DynamicSmagorinsky, SmagorinskyLilly,
@@ -924,6 +926,58 @@ end
             additional_closures = (VerticalScalarDiffusivity(κ=1e-6), VerticalScalarDiffusivity(κ=2e-5), ScalarDiffusivity(ν=1e-5), HorizontalScalarDiffusivity(κ=1e-5))
             @test time_step_with_tupled_closure(FT, arch, additional_closures...)
         end
+    end
+
+    @testset "EnergyBudgetBackscatter conserves energy [$FT, $(typeof(arch))]" for arch in archs, FT in float_types
+        grid = RectilinearGrid(arch, FT, size=(8, 8, 2), extent=(1e5, 1e5, 1e3), topology=(Periodic, Periodic, Bounded))
+        horizontal_closures = (HorizontalScalarBiharmonicDiffusivity(ν=1e9), EnergyBudgetBackscatter())
+        closure = (horizontal_closures..., VerticalScalarDiffusivity(ν=1e-2))
+        model = HydrostaticFreeSurfaceModel(grid; closure, momentum_advection=nothing, tracers=())
+
+        Random.seed!(1)
+        set!(model, u=(x, y, z) -> randn(), v=(x, y, z) -> randn())
+        set!(model.closure_fields[2].e, (x, y) -> rand() / 100)
+        update_state!(model)
+
+        u, v, w = model.velocities
+        horizontal_closure_fields = model.closure_fields[1:2]
+        args = (horizontal_closures, horizontal_closure_fields, model.clock, fields(model), model.buoyancy)
+        ∂ⱼτ₁ⱼ = KernelFunctionOperation{Face, Center, Center}(∂ⱼ_τ₁ⱼ, grid, args...)
+        ∂ⱼτ₂ⱼ = KernelFunctionOperation{Center, Face, Center}(∂ⱼ_τ₂ⱼ, grid, args...)
+        resolved_energy_loss = sum(Field(Integral(u * ∂ⱼτ₁ⱼ + v * ∂ⱼτ₂ⱼ)))
+
+        e = model.closure_fields[2].e
+        initial_subgrid_energy = sum(Field(Integral(grid.Lz * e)))
+        Δt = 10
+        step_closure_prognostics!(model, Δt)
+        subgrid_energy_gain = (sum(Field(Integral(grid.Lz * e))) - initial_subgrid_energy) / Δt
+
+        @test subgrid_energy_gain ≈ resolved_energy_loss rtol=sqrt(eps(FT))
+    end
+
+    @testset "EnergyBudgetBackscatter gains the potential energy released by GM [$FT, $(typeof(arch))]" for arch in archs, FT in float_types
+        grid = RectilinearGrid(arch, FT, size=(8, 8, 4), extent=(1e5, 1e5, 1e3), topology=(Periodic, Periodic, Bounded))
+        closure = (IsopycnalSkewSymmetricDiffusivity(FT, κ_skew=1e3), EnergyBudgetBackscatter())
+        model = HydrostaticFreeSurfaceModel(grid; closure, momentum_advection=nothing, tracers=:b, buoyancy=BuoyancyTracer())
+
+        Random.seed!(1)
+        set!(model, b=(x, y, z) -> 1e-5 * z + 1e-8 * randn())
+        update_state!(model)
+
+        b = model.tracers.b
+        args = (model.closure[1], model.closure_fields[1], Val(1), b, model.clock, fields(model), buoyancy_force(model))
+        ∇q = KernelFunctionOperation{Center, Center, Center}(∇_dot_qᶜ, grid, args...)
+        z = KernelFunctionOperation{Center, Center, Center}(znode, grid, Center(), Center(), Center())
+        potential_energy_release = - sum(Field(Integral(z * ∇q)))
+
+        e = model.closure_fields[2].e
+        Δt = 10
+        step_closure_prognostics!(model, Δt)
+        subgrid_energy_gain = sum(Field(Integral(grid.Lz * e))) / Δt
+
+        @test potential_energy_release > 0
+        # The z-weighted sum loses digits to cancellation
+        @test subgrid_energy_gain ≈ potential_energy_release rtol=cbrt(eps(FT))
     end
 
     @testset "IsopycnalSkewSymmetricDiffusivity" begin
