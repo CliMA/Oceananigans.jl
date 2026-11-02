@@ -1,4 +1,4 @@
-using KernelAbstractions: @kernel, @index
+using KernelAbstractions: @index, @kernel
 using Oceananigans.Grids: grid
 
 #####

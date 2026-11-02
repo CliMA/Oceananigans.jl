@@ -1,16 +1,17 @@
 using Oceananigans: prognostic_state, restore_prognostic_state!
-using Oceananigans.BoundaryConditions:  construct_boundary_conditions_kernels, halo_fill_args, NFBC, MCBC,
-    BoundaryCondition, AbstractBoundaryConditionClassification, LeftBoundary, RightBoundary,
-    Zipper, validate_boundary_condition_architecture, validate_boundary_condition_topology
-using Oceananigans.Grids: parent_index_range, default_indices, validate_indices,
-    index_range_contains, halo_size, offset_data, interior_parent_indices
-using Oceananigans.Utils: @apply_regionally, getregion
 using Oceananigans.Architectures: CPU, convert_to_device, on_architecture
+using Oceananigans.BoundaryConditions: AbstractBoundaryConditionClassification, BoundaryCondition, LeftBoundary, MCBC,
+                                       NFBC, RightBoundary, Zipper, construct_boundary_conditions_kernels,
+                                       halo_fill_args, validate_boundary_condition_architecture,
+                                       validate_boundary_condition_topology
+using Oceananigans.Grids: default_indices, halo_size, index_range_contains, interior_parent_indices, offset_data,
+                          parent_index_range, validate_indices
+using Oceananigans.Utils: @apply_regionally, getregion
 
-using LinearAlgebra: LinearAlgebra
-using KernelAbstractions: @kernel, @index
 using Base: @propagate_inbounds
 using GPUArraysCore: @allowscalar
+using KernelAbstractions: @index, @kernel
+using LinearAlgebra: LinearAlgebra
 using ReactantCore: ReactantCore
 using Statistics: Statistics
 
