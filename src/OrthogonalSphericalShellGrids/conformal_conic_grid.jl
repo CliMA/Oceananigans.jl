@@ -206,7 +206,7 @@ function Adapt.adapt_structure(to, map::ConformalConic)
                           adapt(to, map.Δy))
 end
 
-on_architecture(::AbstractArchitecture, map::ConformalConic) = map
+Architectures.on_architecture(::AbstractArchitecture, map::ConformalConic) = map
 
 function Base.show(io::IO, map::ConformalConic{FT}) where FT
     λ₀ = prettysummary(radians_to_degrees(FT, map.central_longitude))
