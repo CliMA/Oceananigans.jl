@@ -1,6 +1,5 @@
 using Oceananigans.Operators: σ⁻, σ⁻¹ⁿ, σⁿ, ∂t_σ
-using Oceananigans.TimeSteppers: _ab2_step_field!
-using Oceananigans.TurbulenceClosures: implicit_step!
+using Oceananigans.TimeSteppers: _ab2_step_field!, implicit_step!
 
 #####
 ##### Step everything
