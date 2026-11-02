@@ -6,7 +6,7 @@ using DocStringExtensions: TYPEDSIGNATURES
 
 using Oceananigans: Oceananigans, fields, AbstractDiagnostic
 
-import Oceananigans: run_diagnostic!
+using Oceananigans: run_diagnostic!
 
 function cell_diffusion_timescale end
 
