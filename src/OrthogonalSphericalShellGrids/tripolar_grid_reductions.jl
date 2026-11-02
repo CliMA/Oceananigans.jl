@@ -24,9 +24,9 @@ AbstractOperations.validate_condition(cond::PrognosticTripolarCells{<:AbstractAr
 Adapt.adapt_structure(to, vd::PrognosticTripolarCells) = PrognosticTripolarCells(Adapt.adapt(to, vd.condition))
 
 @inline function AbstractOperations.evaluate_condition(::PrognosticTripolarCells{Nothing},
-                                    i, j, k,
-                                    grid::TripolarGridOfSomeKind,
-                                    co::ConditionalOperation, args...)
+                                                       i, j, k,
+                                                       grid::TripolarGridOfSomeKind,
+                                                       co::ConditionalOperation, args...)
     Nx, Ny, _ = size(grid)
 
     Ly = Oceananigans.Fields.location(co)[2]
@@ -45,9 +45,9 @@ Adapt.adapt_structure(to, vd::PrognosticTripolarCells) = PrognosticTripolarCells
 end
 
 @inline function AbstractOperations.evaluate_condition(vd::PrognosticTripolarCells,
-                                    i, j, k,
-                                    grid::TripolarGridOfSomeKind,
-                                    co::ConditionalOperation, args...)
+                                                       i, j, k,
+                                                       grid::TripolarGridOfSomeKind,
+                                                       co::ConditionalOperation, args...)
 
     prognostic_domain = evaluate_condition(PrognosticTripolarCells(), i, j, k, grid, co)
     return prognostic_domain & evaluate_condition(vd.condition, i, j, k, grid, co, args...)

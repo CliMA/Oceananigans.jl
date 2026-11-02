@@ -39,12 +39,12 @@ Keyword arguments
            Default: `true`.
 """
 function Fields.Field(operand::OperationOrFunctionField;
-               data = nothing,
-               indices = indices(operand),
-               boundary_conditions = FieldBoundaryConditions(operand.grid, instantiated_location(operand)),
-               status = nothing,
-               compute = true,
-               recompute_safely = true)
+                      data = nothing,
+                      indices = indices(operand),
+                      boundary_conditions = FieldBoundaryConditions(operand.grid, instantiated_location(operand)),
+                      status = nothing,
+                      compute = true,
+                      recompute_safely = true)
 
     grid = operand.grid
     loc = instantiated_location(operand)
