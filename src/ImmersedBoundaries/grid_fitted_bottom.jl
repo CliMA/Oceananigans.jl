@@ -1,6 +1,6 @@
-using Oceananigans.Grids: Grids, constructor_arguments, rnode
-using Oceananigans.Fields: Field, fill_halo_regions!, interior
 using Oceananigans.BoundaryConditions: FBC
+using Oceananigans.Fields: Field, fill_halo_regions!, interior
+using Oceananigans.Grids: Grids, constructor_arguments, rnode
 using Oceananigans.Utils: KernelParameters
 using OffsetArrays: OffsetArray
 
@@ -365,10 +365,10 @@ end
 ##### Static column depth
 #####
 
-@inline static_column_depthᶜᶜᵃ(i, j, ibg::AGFBIBG) = top_height(i, j, ibg) - bottom_height(i, j, ibg)
-@inline static_column_depthᶜᶠᵃ(i, j, ibg::AGFBIBG) = face_column_depth(i, j, i, j-1, ibg, ibg.immersed_boundary)
-@inline static_column_depthᶠᶜᵃ(i, j, ibg::AGFBIBG) = face_column_depth(i, j, i-1, j, ibg, ibg.immersed_boundary)
-@inline static_column_depthᶠᶠᵃ(i, j, ibg::AGFBIBG) = min(static_column_depthᶠᶜᵃ(i, j-1, ibg), static_column_depthᶠᶜᵃ(i, j, ibg))
+@inline Grids.static_column_depthᶜᶜᵃ(i, j, ibg::AGFBIBG) = top_height(i, j, ibg) - bottom_height(i, j, ibg)
+@inline Grids.static_column_depthᶜᶠᵃ(i, j, ibg::AGFBIBG) = face_column_depth(i, j, i, j-1, ibg, ibg.immersed_boundary)
+@inline Grids.static_column_depthᶠᶜᵃ(i, j, ibg::AGFBIBG) = face_column_depth(i, j, i-1, j, ibg, ibg.immersed_boundary)
+@inline Grids.static_column_depthᶠᶠᵃ(i, j, ibg::AGFBIBG) = min(static_column_depthᶠᶜᵃ(i, j-1, ibg), static_column_depthᶠᶜᵃ(i, j, ibg))
 
 # Without a top, adjacent columns share their top, so the shallower column depth is the open depth of the face
 @inline face_column_depth(i, j, i⁻, j⁻, ibg, ::GridFittedBottom) = min(static_column_depthᶜᶜᵃ(i⁻, j⁻, ibg), static_column_depthᶜᶜᵃ(i, j, ibg))
@@ -391,11 +391,11 @@ const XFlatAGFIBG = ImmersedBoundaryGrid{<:Any, <:Flat, <:Any, <:Any, <:Any, <:A
 const YFlatAGFIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Flat, <:Any, <:Any, <:AbstractGridFittedBottom}
 const XYFlatAGFIBG = ImmersedBoundaryGrid{<:Any, <:Flat, <:Flat, <:Any, <:Any, <:AbstractGridFittedBottom}
 
-@inline static_column_depthᶠᶜᵃ(i, j, ibg::XFlatAGFIBG) = static_column_depthᶜᶜᵃ(i, j, ibg)
-@inline static_column_depthᶜᶠᵃ(i, j, ibg::YFlatAGFIBG) = static_column_depthᶜᶜᵃ(i, j, ibg)
-@inline static_column_depthᶠᶠᵃ(i, j, ibg::XFlatAGFIBG) = static_column_depthᶜᶠᵃ(i, j, ibg)
-@inline static_column_depthᶠᶠᵃ(i, j, ibg::YFlatAGFIBG) = static_column_depthᶠᶜᵃ(i, j, ibg)
-@inline static_column_depthᶠᶠᵃ(i, j, ibg::XYFlatAGFIBG) = static_column_depthᶜᶜᵃ(i, j, ibg)
+@inline Grids.static_column_depthᶠᶜᵃ(i, j, ibg::XFlatAGFIBG) = static_column_depthᶜᶜᵃ(i, j, ibg)
+@inline Grids.static_column_depthᶜᶠᵃ(i, j, ibg::YFlatAGFIBG) = static_column_depthᶜᶜᵃ(i, j, ibg)
+@inline Grids.static_column_depthᶠᶠᵃ(i, j, ibg::XFlatAGFIBG) = static_column_depthᶜᶠᵃ(i, j, ibg)
+@inline Grids.static_column_depthᶠᶠᵃ(i, j, ibg::YFlatAGFIBG) = static_column_depthᶠᶜᵃ(i, j, ibg)
+@inline Grids.static_column_depthᶠᶠᵃ(i, j, ibg::XYFlatAGFIBG) = static_column_depthᶜᶜᵃ(i, j, ibg)
 
 function Grids.constructor_arguments(grid::AGFBIBG)
     underlying_grid_args, underlying_grid_kwargs = constructor_arguments(grid.underlying_grid)
