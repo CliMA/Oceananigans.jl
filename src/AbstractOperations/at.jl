@@ -1,5 +1,5 @@
 using Oceananigans: Oceananigans
-using Oceananigans.Fields: default_indices, compute_index_intersection
+using Oceananigans.Fields: compute_index_intersection, default_indices
 
 """
     insert_location(ex::Expr, location)
@@ -72,8 +72,8 @@ macro at(location, abstract_operation)
 end
 
 # Numbers and functions do not have index restrictions
-indices(::Function) = default_indices(3)
-indices(::Number)   = default_indices(3)
+Fields.indices(::Function) = default_indices(3)
+Fields.indices(::Number)   = default_indices(3)
 
 """
 $(TYPEDSIGNATURES)
