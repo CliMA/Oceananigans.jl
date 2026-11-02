@@ -10,16 +10,14 @@ using Oceananigans
 using Oceananigans: Distributed
 using Oceananigans.Architectures: ReactantState, CPU
 using Oceananigans.Grids: AbstractGrid, AbstractUnderlyingGrid, StaticVerticalDiscretization, MutableVerticalDiscretization
+using Oceananigans.Grids: LatitudeLongitudeGrid, RectilinearGrid, OrthogonalSphericalShellGrid
 using Oceananigans.Utils: unparameterized_type
 using Oceananigans.Grids: Center, Face, Periodic, TwoSided, Bounded, Closed, Connected, Flat, FaceExtendedTopology
 using Oceananigans.Fields: Field
-using Oceananigans.ImmersedBoundaries: GridFittedVerticalBoundaries, AbstractImmersedBoundary
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedVerticalBoundaries, AbstractImmersedBoundary
+using Oceananigans.OrthogonalSphericalShellGrids: TripolarGrid
 
-import ..OceananigansReactantExt: deconcretize
-import Oceananigans.Grids: LatitudeLongitudeGrid, RectilinearGrid, OrthogonalSphericalShellGrid
-import Oceananigans.Grids: total_length
-import Oceananigans.OrthogonalSphericalShellGrids: RotatedLatitudeLongitudeGrid, TripolarGrid
-import Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, materialize_immersed_boundary
+using ..OceananigansReactantExt: OceananigansReactantExt, deconcretize
 
 const ShardedDistributed = Oceananigans.Distributed{<:ReactantState}
 
@@ -57,7 +55,7 @@ function Base.:(==)(grid1::ReactantStateLatitudeLongitudeGrid, grid2::ReactantSt
     return topology(grid1) == topology(grid2) && size(grid1) == size(grid2) && halo_size(grid1) == halo_size(grid2)
 end
 
-function total_size(grid::ShardedGrid, loc, indices)
+function Oceananigans.Grids.total_size(grid::ShardedGrid, loc, indices)
     sz = size(grid)
     halo_sz = halo_size(grid)
     topo = topology(grid)
