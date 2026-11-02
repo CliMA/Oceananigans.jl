@@ -6,8 +6,8 @@ using Oceananigans.Architectures: architecture
 using Oceananigans.Grids: Center, xnode, ynode, znode
 using Oceananigans.Utils: launch!
 
-import Oceananigans: prognostic_state
-import Oceananigans.Fields: CenterField
+using Oceananigans.Fields: CenterField
+using Oceananigans: Oceananigans
 
 #####
 ##### Generic fallbacks for biogeochemistry
@@ -64,7 +64,7 @@ is a subtype of `AbstractBioeochemistry`:
 """
 abstract type AbstractBiogeochemistry end
 
-prognostic_state(::AbstractBiogeochemistry) = nothing
+Oceananigans.prognostic_state(::AbstractBiogeochemistry) = nothing
 
 # Returns the forcing for discrete form models
 @inline biogeochemical_transition(i, j, k, grid, bgc, val_tracer_name, clock, fields) =
