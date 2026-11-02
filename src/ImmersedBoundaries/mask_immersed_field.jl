@@ -1,9 +1,10 @@
 using KernelAbstractions: @kernel, @index
-using Oceananigans.Grids: interior_indices
+using Oceananigans.Grids: interior_indices, topology, Periodic
 using Oceananigans.Utils: KernelParameters
 using Oceananigans.AbstractOperations: BinaryOperation
 using Oceananigans.Fields: location, Field, ReducedField, instantiated_location
 using Oceananigans.Fields: ConstantField, OneField, ZeroField
+using Oceananigans.BoundaryConditions: getbc, BoundaryCondition, NormalFlow
 
 instantiate(T::Type) = T()
 instantiate(t) = t
@@ -77,6 +78,62 @@ end
     masked  = immersed_peripheral_node(i, j, k, grid, ℓx, ℓy, ℓz)
     @inbounds field[i, j, k] = ifelse(masked, value, field[i, j, k])
 end
+
+@inline immersed_normal_value(::Nothing, i, j, k, grid, clock, model_fields) = zero(grid)
+@inline immersed_normal_value(::BoundaryCondition{<:NormalFlow, Nothing}, i, j, k, grid, clock, model_fields) = zero(grid)
+@inline immersed_normal_value(bc, i, j, k, grid, clock, model_fields) = getbc(bc, i, j, k, grid, clock, model_fields)
+@inline adjacent_center_index(i, N, ::Type{Periodic}) = ifelse(i == 1, N, i-1)
+@inline adjacent_center_index(i, N, topology) = i-1
+
+function mask_immersed_normal_flow!(field::Field, clock, model_fields)
+    grid = field.grid
+    grid isa ImmersedBoundaryGrid || return nothing
+    bc = field.boundary_conditions.immersed
+    bc isa ImmersedBoundaryCondition || return mask_immersed_field!(field)
+    loc = instantiated_location(field)
+    kp = KernelParameters(interior_indices(field)...)
+    launch!(architecture(field), grid, kp, _mask_immersed_normal_flow!, field, loc, grid, bc, clock, model_fields)
+    return nothing
+end
+
+@kernel function _mask_immersed_normal_flow!(field, loc, grid, bc, clock, model_fields)
+    i, j, k = @index(Global, NTuple)
+    value = immersed_normal_flow(i, j, k, grid, loc, bc, clock, model_fields, @inbounds(field[i, j, k]))
+    @inbounds field[i, j, k] = value
+end
+
+@inline function immersed_normal_flow(i, j, k, grid, ::Tuple{Face, Center, Center}, bc, clock, model_fields, value)
+    peripheral = immersed_peripheral_node(i, j, k, grid, Face(), Center(), Center())
+    west = peripheral & !inactive_cell(i, j, k, grid)
+    east = peripheral & !inactive_cell(i-1, j, k, grid)
+    condition = ifelse(west, bc.west, ifelse(east, bc.east, nothing))
+    adjacent_i = ifelse(east, adjacent_center_index(i, grid.Nx, topology(grid, 1)), i)
+    prescribed = immersed_normal_value(condition, adjacent_i, j, k, grid, clock, model_fields)
+    return ifelse(peripheral, prescribed, value)
+end
+
+@inline function immersed_normal_flow(i, j, k, grid, ::Tuple{Center, Face, Center}, bc, clock, model_fields, value)
+    peripheral = immersed_peripheral_node(i, j, k, grid, Center(), Face(), Center())
+    south = peripheral & !inactive_cell(i, j, k, grid)
+    north = peripheral & !inactive_cell(i, j-1, k, grid)
+    condition = ifelse(south, bc.south, ifelse(north, bc.north, nothing))
+    adjacent_j = ifelse(north, adjacent_center_index(j, grid.Ny, topology(grid, 2)), j)
+    prescribed = immersed_normal_value(condition, i, adjacent_j, k, grid, clock, model_fields)
+    return ifelse(peripheral, prescribed, value)
+end
+
+@inline function immersed_normal_flow(i, j, k, grid, ::Tuple{Center, Center, Face}, bc, clock, model_fields, value)
+    peripheral = immersed_peripheral_node(i, j, k, grid, Center(), Center(), Face())
+    bottom = peripheral & !inactive_cell(i, j, k, grid)
+    top = peripheral & !inactive_cell(i, j, k-1, grid)
+    condition = ifelse(bottom, bc.bottom, ifelse(top, bc.top, nothing))
+    adjacent_k = ifelse(top, adjacent_center_index(k, grid.Nz, topology(grid, 3)), k)
+    prescribed = immersed_normal_value(condition, i, j, adjacent_k, grid, clock, model_fields)
+    return ifelse(peripheral, prescribed, value)
+end
+
+@inline immersed_normal_flow(i, j, k, grid, loc, bc, clock, model_fields, value) =
+    ifelse(immersed_peripheral_node(i, j, k, grid, loc...), zero(value), value)
 
 mask_immersed_field_xy!(field, value=zero(eltype(field.grid)); k) =
     mask_immersed_field_xy!(field, field.grid, instantiated_location(field), value, k)
