@@ -37,51 +37,8 @@ end
 @testset "Aqua" begin
     Aqua.test_all(Oceananigans; ambiguities=false, piracies=false)
 
-    # Until we resolve all ambiguities, we make sure we don't increase them.
-    # Do not increase this number. If ambiguities increase, resolve them before merging.
-    number_of_ambiguities = length(detect_ambiguities(Oceananigans; recursive=true))
-    # When ambiguities are resolved, update the cap accordingly.
-    @test number_of_ambiguities == 9
-    @info "Number of ambiguities: $number_of_ambiguities"
-
-    modules = (
-        # Oceananigans.AbstractOperations,
-        Oceananigans.Advection,
-        Oceananigans.Architectures,
-        Oceananigans.Biogeochemistry,
-        Oceananigans.BoundaryConditions,
-        Oceananigans.BuoyancyFormulations,
-        Oceananigans.Coriolis,
-        Oceananigans.Diagnostics,
-        Oceananigans.DistributedComputations,
-        # Oceananigans.Fields,
-        Oceananigans.Forcings,
-        Oceananigans.Grids,
-        Oceananigans.ImmersedBoundaries,
-        Oceananigans.Logger,
-        Oceananigans.Models,
-        Oceananigans.Models.BulkDragBoundaryConditions,
-        Oceananigans.Models.ShallowWaterModels,
-        Oceananigans.Models.VarianceDissipationComputations,
-        Oceananigans.MultiRegion,
-        Oceananigans.Operators,
-        Oceananigans.OrthogonalSphericalShellGrids,
-        Oceananigans.OutputReaders,
-        Oceananigans.OutputWriters,
-        Oceananigans.Simulations,
-        Oceananigans.Solvers,
-        Oceananigans.StokesDrifts,
-        Oceananigans.TimeSteppers,
-        Oceananigans.TurbulenceClosures,
-        Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities,
-        Oceananigans.Units,
-        Oceananigans.Utils,
-    )
-
-    # In addition to capping the total number of ambiguities above, we make sure
-    # modules which don't have any don't get new ones.
-    @testset "No ambiguities for module $(mod)" for mod in modules
-        @test isempty(detect_ambiguities(mod; recursive=true))
+    @testset "No ambiguities" begin
+        @test isempty(detect_ambiguities(Oceananigans; recursive=true))
     end
 
     # `test_piracies` doesn't recurse in inner modules, so we have to test that manually.
@@ -91,40 +48,8 @@ end
 end
 
 @testset "ExplicitImports" begin
-
-    modules = (
-        Oceananigans.AbstractOperations,
-        Oceananigans.Advection,
-        Oceananigans.Architectures,
-        Oceananigans.Biogeochemistry,
-        Oceananigans.BoundaryConditions,
-        Oceananigans.BuoyancyFormulations,
-        Oceananigans.Coriolis,
-        Oceananigans.Diagnostics,
-        # Oceananigans.DistributedComputations,
-        Oceananigans.Fields,
-        Oceananigans.Forcings,
-        Oceananigans.Grids,
-        Oceananigans.ImmersedBoundaries,
-        Oceananigans.Logger,
-        # Oceananigans.Models,
-        Oceananigans.Models.HydrostaticFreeSurfaceModels,
-        Oceananigans.MultiRegion,
-        Oceananigans.Operators,
-        Oceananigans.OrthogonalSphericalShellGrids,
-        Oceananigans.OutputReaders,
-        Oceananigans.OutputWriters,
-        Oceananigans.Simulations,
-        Oceananigans.Solvers,
-        Oceananigans.StokesDrifts,
-        Oceananigans.TimeSteppers,
-        Oceananigans.TurbulenceClosures,
-        Oceananigans.Units,
-        Oceananigans.Utils,
-    )
-
-    @testset "Explicit Imports [$(mod)]" for mod in modules
-        @test ExplicitImports.check_no_implicit_imports(mod) === nothing
+    @testset "Explicit Imports" begin
+        @test ExplicitImports.check_no_implicit_imports(Oceananigans) === nothing
     end
 
     @testset "Import via Owner" begin

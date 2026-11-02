@@ -1,4 +1,5 @@
-using GPUArraysCore
+using Statistics: mean
+
 using Oceananigans.Grids: XDirection, YDirection, ZDirection, stretched_dimensions
 using Oceananigans.Operators: V⁻¹ᶜᶜᶜ, Δxᶜᶜᶜ, Δxᶠᵃᵃ, Δyᵃᶠᵃ, Δyᶜᶜᶜ, Δzᵃᵃᶠ, Δzᶜᶜᶜ
 using Oceananigans.Solvers: BatchedTridiagonalSolver,
@@ -12,7 +13,6 @@ using Oceananigans.Solvers: BatchedTridiagonalSolver,
                             dimension,
                             stretched_direction,
                             tridiagonal_direction
-using Statistics: mean
 
 struct DistributedFourierTridiagonalPoissonSolver{G, L, B, P, R, S, β}
     plan :: P

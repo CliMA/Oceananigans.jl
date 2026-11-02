@@ -2,7 +2,6 @@ using KernelAbstractions: @index, @kernel
 
 using Oceananigans.Fields: instantiated_location
 
-using Oceananigans.BoundaryConditions
 using Oceananigans.BoundaryConditions:
     DistributedFillHalo,
     fill_halo_event!,

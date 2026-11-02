@@ -1,13 +1,10 @@
-using MPI
-using OffsetArrays
-
-using Oceananigans.Fields
-using Oceananigans.Grids: AbstractGrid, AbstractTopology, LatitudeLongitudeGrid, RectilinearGrid,
+using Oceananigans.Grids: Grids, AbstractGrid, AbstractTopology, LatitudeLongitudeGrid, RectilinearGrid,
                           StaticVerticalDiscretization, architecture, constructor_arguments, cpu_face_constructor_x,
                           cpu_face_constructor_y, cpu_face_constructor_z, generate_coordinate, halo_size,
-                          metrics_precomputed, pop_flat_elements, regular_centers, regular_faces, size, size_summary,
-                          topology, total_length, validate_lat_lon_grid_args, validate_rectilinear_grid_args, with_halo,
+                          metrics_precomputed, pop_flat_elements, regular_nodes, size, size_summary, topology,
+                          total_length, validate_lat_lon_grid_args, validate_rectilinear_grid_args, with_halo,
                           with_precomputed_metrics
+
 
 # This rank's part of a regular coordinate: the nodes of the whole coordinate at this rank's indices
 function Grids.generate_coordinate(FT, topo::AbstractTopology, n, H, p::PartitionedInterval, coordinate_name, arch)
@@ -17,8 +14,8 @@ function Grids.generate_coordinate(FT, topo::AbstractTopology, n, H, p::Partitio
     TF = total_length(Face(),   topo, n, H)
     TC = total_length(Center(), topo, n, H)
 
-    whole_F = regular_faces(FT, c₁, c₂, p.N, H, p.N + 2H + p.offset + TF)
-    whole_C = regular_centers(whole_F, length(whole_F))
+    whole_F = regular_nodes(FT, Face(),   c₁, c₂, p.N, H, p.N + 2H + p.offset + TF)
+    whole_C = regular_nodes(FT, Center(), c₁, c₂, p.N, H, p.N + 2H + p.offset + TF)
 
     F = OffsetArray(on_architecture(arch, [whole_F[p.offset + i] for i in 1:TF]), -H)
     C = OffsetArray(on_architecture(arch, [whole_C[p.offset + i] for i in 1:TC]), -H)

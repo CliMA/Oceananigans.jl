@@ -1,11 +1,10 @@
-using Adapt
 using KernelAbstractions: @index, @kernel, get_backend
 
-using Oceananigans.Architectures: on_architecture
+using Oceananigans.Architectures: Architectures, on_architecture
 using Oceananigans.BoundaryConditions: BoundaryConditions, Bottom, BottomAndTop, BoundaryCondition,
                                        DistributedCommunication, East, FieldBoundaryConditions,
                                        MultiRegionCommunication, North, South, SouthAndNorth, Top, West, WestAndEast
-using Oceananigans.Fields: communication_buffers
+using Oceananigans.Fields: Fields, communication_buffers
 using Oceananigans.Grids: CommunicatingSide, halo_size, size, topology
 using Oceananigans.Utils: launch!
 

@@ -2,20 +2,19 @@ module LagrangianParticleTracking
 
 export LagrangianParticles, DroguedParticleDynamics
 
-using Printf
-using Adapt
+using Adapt: Adapt, adapt
 using DocStringExtensions: TYPEDSIGNATURES
-using KernelAbstractions
-using StructArrays
+using KernelAbstractions: KernelAbstractions, @index, @kernel
+using Printf: Printf, @sprintf
+using StructArrays: StructArrays, StructArray
 
 using Oceananigans.Architectures: device, architecture
 using Oceananigans.Fields: interpolate, compute!, location
-using Oceananigans.Grids
-using Oceananigans.Grids: AbstractGrid, hack_cosd,
+using Oceananigans.Grids: Grids, AbstractGrid, Bounded, Center, Face, Flat, LatitudeLongitudeGrid, Periodic,
+                          RectilinearGrid, grid, hack_cosd, rnode, topology, ηnode, ξnode,
                           XFlatGrid, YFlatGrid, ZFlatGrid,
                           XYFlatGrid, YZFlatGrid, XZFlatGrid, XYZFlatGrid
-using Oceananigans.ImmersedBoundaries
-using Oceananigans.ImmersedBoundaries: immersed_cell
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaries, ImmersedBoundaryGrid, immersed_cell
 using Oceananigans.TimeSteppers: AbstractLagrangianParticles
 using Oceananigans.Utils: datatuple, launch!, prettysummary
 

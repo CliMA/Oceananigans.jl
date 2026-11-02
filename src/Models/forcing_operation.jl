@@ -1,5 +1,3 @@
-using Adapt
-
 using Oceananigans.Utils: Utils
 
 struct ForcingKernelFunction{F}

@@ -11,6 +11,7 @@ export interpolate, interpolate!
 using Adapt: Adapt, adapt
 using DocStringExtensions: TYPEDSIGNATURES
 using OffsetArrays: OffsetArray
+using SparseArrays: CHOLMOD
 using StaticArrays: StaticArray
 
 using Oceananigans: Oceananigans, instantiated_location, location

@@ -1,7 +1,8 @@
-using Oceananigans.Architectures
-using Oceananigans.Architectures: array_type, child_architecture, convert_to_device, device, device!, on_architecture
-using Oceananigans.Grids: topology, zeros
-using Oceananigans.Utils: sync_device!
+using Oceananigans.Architectures: Architectures, array_type, child_architecture, convert_to_device, device, device!,
+                                  on_architecture
+using Oceananigans.Grids: Grids, topology, zeros
+using Oceananigans.Utils: Utils, sync_device!
+
 
 #####
 ##### Partitioning
