@@ -79,14 +79,24 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
 
     update_biogeochemical_state!(model.biogeochemistry, model)
 
-    @apply_regionally begin
-        update_adaptive_timesteps!(model.advection, model)
-        compute_momentum_tendencies!(model, callbacks)
-        compute_coriolis_prognostic_tendencies!(model.coriolis, model)
+    # A split Runge-Kutta substep computes the momentum tendencies, and then refreshes the bounds-preserving limiters
+    # that read the tracer halos, when it starts. The choice is made outside `@apply_regionally`, which does not
+    # distribute the calls of a short-circuit expression over the regions.
+    if model.timestepper isa SplitRungeKuttaTimeStepper
+        @apply_regionally begin
+            update_adaptive_timesteps!(model.advection, model)
+            compute_coriolis_prognostic_tendencies!(model.coriolis, model)
+        end
+    else
+        @apply_regionally begin
+            update_adaptive_timesteps!(model.advection, model)
+            compute_momentum_tendencies!(model, callbacks)
+            compute_coriolis_prognostic_tendencies!(model.coriolis, model)
 
-        # The bounds-preserving limiters read the tracer halos, which are synchronized
-        # when the momentum tendencies are completed.
-        update_bounds_preserving_limiters!(model.advection, model)
+            # The bounds-preserving limiters read the tracer halos, which are synchronized
+            # when the momentum tendencies are completed.
+            update_bounds_preserving_limiters!(model.advection, model)
+        end
     end
 
     return nothing

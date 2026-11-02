@@ -221,8 +221,8 @@ for arch in archs
 end
 
 # A bounded tracer with a sharp front, advected across the rank edges by a uniform flow
-function bounded_tracer_advection_test(grid)
-    model = HydrostaticFreeSurfaceModel(grid; tracers = :c, buoyancy = nothing,
+function bounded_tracer_advection_test(grid; timestepper)
+    model = HydrostaticFreeSurfaceModel(grid; tracers = :c, buoyancy = nothing, timestepper,
                                         free_surface = SplitExplicitFreeSurface(grid; substeps = 4),
                                         tracer_advection = WENO(order = 5, bounds = (0, 1)))
 
@@ -235,15 +235,15 @@ function bounded_tracer_advection_test(grid)
     return model
 end
 
-@testset "Distributed bounds-preserving tracer advection" begin
+@testset "Distributed bounds-preserving tracer advection with $timestepper" for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
     for arch in archs
         (arch.partition.x isa Fractional || arch.partition.y isa Fractional) && continue
 
         bounded_grid(arch) = RectilinearGrid(arch, size = (32, 32, 4), x = (0, 1e5), y = (0, 1e5), z = (-100, 0),
                                              halo = (4, 4, 4), topology = (Periodic, Periodic, Bounded))
 
-        ms = bounded_tracer_advection_test(bounded_grid(child_architecture(arch)))
-        mp = bounded_tracer_advection_test(bounded_grid(arch))
+        ms = bounded_tracer_advection_test(bounded_grid(child_architecture(arch)); timestepper)
+        mp = bounded_tracer_advection_test(bounded_grid(arch); timestepper)
 
         cpu_arch = cpu_architecture(arch)
         p = interior(on_architecture(cpu_arch, mp.tracers.c))

@@ -407,6 +407,24 @@ function test_hydrostatic_continuous_discrete_forcing_consistency(arch)
     return all(Gc .≈ Gd) && all(Gc .≈ -3)
 end
 
+""" A split Runge-Kutta step of `HydrostaticFreeSurfaceModel` uses the momentum forcing as it is when the step starts. """
+function test_split_runge_kutta_momentum_forcing_at_step_start(arch)
+    grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+
+    function velocity_after_forcing_change(refresh)
+        Fu = XFaceField(grid)
+        model = HydrostaticFreeSurfaceModel(grid; forcing=(; u=Fu), timestepper=:SplitRungeKutta3, coriolis=FPlane(f=1),
+                                            tracers=(), buoyancy=nothing)
+        time_step!(model, 1)
+        set!(Fu, 1)
+        refresh && update_state!(model)
+        time_step!(model, 1)
+        return Array(interior(model.velocities.u))
+    end
+
+    return velocity_after_forcing_change(false) == velocity_after_forcing_change(true)
+end
+
 # Verify that `ContinuousForcing` with field dependencies is type-stable and compiles on GPUs
 # when `model_fields` holds fields of different types, here the barotropic velocities of
 # `SplitExplicitFreeSurface`. Regression test for https://github.com/CliMA/Oceananigans.jl/issues/4165.
@@ -526,6 +544,10 @@ end
 
             @testset "HydrostaticFreeSurfaceModel continuous/discrete forcing consistency [$(summary(arch))]" begin
                 @test test_hydrostatic_continuous_discrete_forcing_consistency(arch)
+            end
+
+            @testset "HydrostaticFreeSurfaceModel split Runge-Kutta momentum forcing at step start [$(summary(arch))]" begin
+                @test test_split_runge_kutta_momentum_forcing_at_step_start(arch)
             end
 
             @testset "Field dependencies with heterogeneous model fields [$(summary(arch))]" begin
