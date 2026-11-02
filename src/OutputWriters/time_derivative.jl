@@ -1,13 +1,11 @@
 using Adapt: Adapt
 using Base: @propagate_inbounds
 using Dates: AbstractDateTime
-using Oceananigans: AbstractModel, defaults, instantiated_location
+using Oceananigans: AbstractModel, defaults, initialize!, instantiated_location, prognostic_state,
+                    restore_prognostic_state!
 using Oceananigans.AbstractOperations: AbstractOperation
-using Oceananigans.Fields: Fields, AbstractField, Scan
+using Oceananigans.Fields: Fields, AbstractField, Scan, indices, interior
 using Oceananigans.Utils: time_difference_seconds
-
-using Oceananigans: initialize!, prognostic_state, restore_prognostic_state!
-using Oceananigans.Fields: indices, interior
 
 """
     mutable struct TimeDerivative <: AbstractField
