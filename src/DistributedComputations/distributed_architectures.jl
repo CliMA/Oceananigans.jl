@@ -1,8 +1,7 @@
-using Oceananigans.Architectures: Architectures, array_type, child_architecture, convert_to_device, device, device!,
-                                  on_architecture
+using Oceananigans.Architectures: Architectures, array_type, child_architecture, convert_to_device,
+                                  device, device!, on_architecture
 using Oceananigans.Grids: Grids, topology, zeros
 using Oceananigans.Utils: Utils, sync_device!
-
 
 #####
 ##### Partitioning
@@ -318,13 +317,12 @@ const AsynchronousDistributed = Distributed{<:Any, false}
 
 ranks(arch::Distributed) = ranks(arch.partition)
 
-Architectures.child_architecture(arch::Distributed) = arch.child_architecture
-Architectures.device(arch::Distributed)             = device(child_architecture(arch))
-
-Grids.zeros(arch::Distributed, FT, N...)         = zeros(child_architecture(arch), FT, N...)
-Architectures.array_type(arch::Distributed)              = array_type(child_architecture(arch))
-Utils.sync_device!(arch::Distributed)            = sync_device!(arch.child_architecture)
-Architectures.convert_to_device(arch::Distributed, arg)  = convert_to_device(child_architecture(arch), arg)
+Architectures.child_architecture(arch::Distributed)     = arch.child_architecture
+Architectures.device(arch::Distributed)                 = device(child_architecture(arch))
+Architectures.array_type(arch::Distributed)             = array_type(child_architecture(arch))
+Architectures.convert_to_device(arch::Distributed, arg) = convert_to_device(child_architecture(arch), arg)
+Grids.zeros(arch::Distributed, FT, N...) = zeros(child_architecture(arch), FT, N...)
+Utils.sync_device!(arch::Distributed)    = sync_device!(arch.child_architecture)
 
 # Switch to a synchronized architecture
 synchronized(arch) = arch
