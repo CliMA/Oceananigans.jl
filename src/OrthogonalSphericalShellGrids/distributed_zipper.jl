@@ -1,7 +1,7 @@
 using Oceananigans.BoundaryConditions: DistributedCommunication, pivot_shift
-using Oceananigans.DistributedComputations: CommunicationBuffers, halo_tag_slots, side_id
+using Oceananigans.DistributedComputations: CommunicationBuffers, halo_tag_slots, side_id, copy_from_buffer!
 using Oceananigans.Grids: AbstractGrid, topology,
-    CenterFolded, CenterFoldConnected, FaceFolded, FaceFoldConnected, Sides,
+    CenterFolded, CenterFoldConnected, FaceFolded, FaceFoldConnected, TwoSided,
     PencilFoldedTopology
 using Oceananigans.DistributedComputations: Distributed, on_architecture, ranks, x_communication_buffer, communication_state
 
@@ -20,8 +20,8 @@ const DistributedZipper = BoundaryCondition{<:DistributedCommunication, <:Zipper
 ##### Topology unions for dispatch
 #####
 
-const UPivotTopology = Sides{<:Any, <:Union{CenterFolded, CenterFoldConnected}}
-const FPivotTopology = Sides{<:Any, <:Union{FaceFolded, FaceFoldConnected}}
+const UPivotTopology = TwoSided{<:Any, <:Union{CenterFolded, CenterFoldConnected}}
+const FPivotTopology = TwoSided{<:Any, <:Union{FaceFolded, FaceFoldConnected}}
 
 # UPivot fold line is at Center-y; FPivot fold line is at Face-y
 has_fold_line(::Type{<:UPivotTopology}, ::Center) = true
@@ -109,22 +109,16 @@ _fill_east_send_buffer!(c, buff::TripolarXBuffer, Hx, Hy, Nx, Ny) =
     buff.send .= view(c, 1+Nx:Nx+Hx, 1+Hy:size(buff.send,2)+Hy, :)
 
 # TripolarXBuffer recv FL=false: no fold line, write all Ny_buf rows
-_recv_from_west_buffer!(c, buff::TripolarXBuffer{false}, Hx, Hy, Nx, Ny) =
-    view(c, 1:Hx, 1+Hy:size(buff.recv,2)+Hy, :) .= buff.recv
-_recv_from_east_buffer!(c, buff::TripolarXBuffer{false}, Hx, Hy, Nx, Ny) =
-    view(c, 1+Nx+Hx:Nx+2Hx, 1+Hy:size(buff.recv,2)+Hy, :) .= buff.recv
+_recv_from_west_buffer!(c, buff::TripolarXBuffer{false}, Hx, Hy, Nx, Ny) = copy_from_buffer!(view(c, 1:Hx, 1+Hy:size(buff.recv,2)+Hy, :), buff.recv)
+_recv_from_east_buffer!(c, buff::TripolarXBuffer{false}, Hx, Hy, Nx, Ny) = copy_from_buffer!(view(c, 1+Nx+Hx:Nx+2Hx, 1+Hy:size(buff.recv,2)+Hy, :), buff.recv)
 
 # TripolarXBuffer recv FL=true, WFL=true: write all Ny_buf rows (fold line included)
-_recv_from_west_buffer!(c, buff::TripolarXBuffer{true, true}, Hx, Hy, Nx, Ny) =
-    view(c, 1:Hx, 1+Hy:size(buff.recv,2)+Hy, :) .= buff.recv
-_recv_from_east_buffer!(c, buff::TripolarXBuffer{true, true}, Hx, Hy, Nx, Ny) =
-    view(c, 1+Nx+Hx:Nx+2Hx, 1+Hy:size(buff.recv,2)+Hy, :) .= buff.recv
+_recv_from_west_buffer!(c, buff::TripolarXBuffer{true, true}, Hx, Hy, Nx, Ny) = copy_from_buffer!(view(c, 1:Hx, 1+Hy:size(buff.recv,2)+Hy, :), buff.recv)
+_recv_from_east_buffer!(c, buff::TripolarXBuffer{true, true}, Hx, Hy, Nx, Ny) = copy_from_buffer!(view(c, 1+Nx+Hx:Nx+2Hx, 1+Hy:size(buff.recv,2)+Hy, :), buff.recv)
 
 # TripolarXBuffer recv FL=true, WFL=false: skip last row (the fold line)
-_recv_from_west_buffer!(c, buff::TripolarXBuffer{true, false}, Hx, Hy, Nx, Ny) =
-    view(c, 1:Hx, 1+Hy:size(buff.recv,2)-1+Hy, :) .= view(buff.recv, :, 1:size(buff.recv,2)-1, :)
-_recv_from_east_buffer!(c, buff::TripolarXBuffer{true, false}, Hx, Hy, Nx, Ny) =
-    view(c, 1+Nx+Hx:Nx+2Hx, 1+Hy:size(buff.recv,2)-1+Hy, :) .= view(buff.recv, :, 1:size(buff.recv,2)-1, :)
+_recv_from_west_buffer!(c, buff::TripolarXBuffer{true, false}, Hx, Hy, Nx, Ny) = copy_from_buffer!(view(c, 1:Hx, 1+Hy:size(buff.recv,2)-1+Hy, :), view(buff.recv, :, 1:size(buff.recv,2)-1, :))
+_recv_from_east_buffer!(c, buff::TripolarXBuffer{true, false}, Hx, Hy, Nx, Ny) = copy_from_buffer!(view(c, 1+Nx+Hx:Nx+2Hx, 1+Hy:size(buff.recv,2)-1+Hy, :), view(buff.recv, :, 1:size(buff.recv,2)-1, :))
 
 # Fold-aware x-buffer constructors.
 # Separate west/east constructors since they complement different corners.
@@ -310,20 +304,20 @@ function _recv_from_north_buffer!(c, buff::TwoDZipperBuffer{true, true}, Hx, Hy,
     j = north_foldline_recv_y_index(topo, ℓy, Hy, Ny)
     xr = north_recv_x_range(fold_offset(buff), Hx, Nx)
     yr = north_halo_recv_y_range(topo, ℓy, Hy, Ny)
-    view(c, xr, j:j   , :) .= view(buff.recv, :, 1:1   , :)
-    view(c, xr, yr, :) .= view(buff.recv, :, 2:Hy+1, :)
+    copy_from_buffer!(view(c, xr, j:j, :), view(buff.recv, :, 1:1,    :))
+    copy_from_buffer!(view(c, xr, yr,  :), view(buff.recv, :, 2:Hy+1, :))
 end
 
 function _recv_from_north_buffer!(c, buff::TwoDZipperBuffer{true, false}, Hx, Hy, Nx, Ny)
     xr = north_recv_x_range(fold_offset(buff), Hx, Nx)
     yr = north_halo_recv_y_range(fold_topo(buff), buff.loc[2], Hy, Ny)
-    view(c, xr, yr, :) .= view(buff.recv, :, 2:Hy+1, :)
+    copy_from_buffer!(view(c, xr, yr, :), view(buff.recv, :, 2:Hy+1, :))
 end
 
 function _recv_from_north_buffer!(c, buff::TwoDZipperBuffer{false}, Hx, Hy, Nx, Ny)
     xr = north_recv_x_range(fold_offset(buff), Hx, Nx)
     yr = north_halo_recv_y_range(fold_topo(buff), buff.loc[2], Hy, Ny)
-    view(c, xr, yr, :) .= buff.recv
+    copy_from_buffer!(view(c, xr, yr, :), buff.recv)
 end
 
 #####
@@ -369,20 +363,20 @@ function _recv_from_northwest_buffer!(c, buff::ZipperCornerBuffer{true, true}, H
     j = north_foldline_recv_y_index(topo, ℓy, Hy, Ny)
     xr = northwest_recv_x_range(fold_offset(buff), Hx, Nx)
     yr = north_halo_recv_y_range(topo, ℓy, Hy, Ny)
-    view(c, xr, j:j, :) .= view(buff.recv, :, 1:1, :)
-    view(c, xr,  yr, :) .= view(buff.recv, :, 2:size(buff.recv,2), :)
+    copy_from_buffer!(view(c, xr, j:j, :), view(buff.recv, :, 1:1, :))
+    copy_from_buffer!(view(c, xr,  yr, :), view(buff.recv, :, 2:size(buff.recv,2), :))
 end
 
 function _recv_from_northwest_buffer!(c, buff::ZipperCornerBuffer{true, false}, Hx, Hy, Nx, Ny)
     xr = northwest_recv_x_range(fold_offset(buff), Hx, Nx)
     yr = north_halo_recv_y_range(fold_topo(buff), buff.loc[2], Hy, Ny)
-    view(c, xr, yr, :) .= view(buff.recv, :, 2:size(buff.recv,2), :)
+    copy_from_buffer!(view(c, xr, yr, :), view(buff.recv, :, 2:size(buff.recv,2), :))
 end
 
 function _recv_from_northwest_buffer!(c, buff::ZipperCornerBuffer{false}, Hx, Hy, Nx, Ny)
     xr = northwest_recv_x_range(fold_offset(buff), Hx, Nx)
     yr = north_halo_recv_y_range(fold_topo(buff), buff.loc[2], Hy, Ny)
-    view(c, xr, yr, :) .= buff.recv
+    copy_from_buffer!(view(c, xr, yr, :), buff.recv)
 end
 
 function _recv_from_northeast_buffer!(c, buff::ZipperCornerBuffer{true, true}, Hx, Hy, Nx, Ny)
@@ -390,18 +384,18 @@ function _recv_from_northeast_buffer!(c, buff::ZipperCornerBuffer{true, true}, H
     xr = northeast_recv_x_range(fold_offset(buff), Hx, Nx)
     j = north_foldline_recv_y_index(topo, ℓy, Hy, Ny)
     yr = north_halo_recv_y_range(topo, ℓy, Hy, Ny)
-    view(c, xr, j:j, :) .= view(buff.recv, :, 1:1, :)
-    view(c, xr, yr , :) .= view(buff.recv, :, 2:size(buff.recv,2), :)
+    copy_from_buffer!(view(c, xr, j:j, :), view(buff.recv, :, 1:1, :))
+    copy_from_buffer!(view(c, xr, yr,  :), view(buff.recv, :, 2:size(buff.recv,2), :))
 end
 
 function _recv_from_northeast_buffer!(c, buff::ZipperCornerBuffer{true, false}, Hx, Hy, Nx, Ny)
     xr = northeast_recv_x_range(fold_offset(buff), Hx, Nx)
     yr = north_halo_recv_y_range(fold_topo(buff), buff.loc[2], Hy, Ny)
-    view(c, xr, yr, :) .= view(buff.recv, :, 2:size(buff.recv,2), :)
+    copy_from_buffer!(view(c, xr, yr, :), view(buff.recv, :, 2:size(buff.recv,2), :))
 end
 
 function _recv_from_northeast_buffer!(c, buff::ZipperCornerBuffer{false}, Hx, Hy, Nx, Ny)
     xr = northeast_recv_x_range(fold_offset(buff), Hx, Nx)
     yr = north_halo_recv_y_range(fold_topo(buff), buff.loc[2], Hy, Ny)
-    view(c, xr, yr, :) .= buff.recv
+    copy_from_buffer!(view(c, xr, yr, :), buff.recv)
 end

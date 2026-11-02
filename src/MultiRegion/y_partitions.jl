@@ -32,13 +32,7 @@ end
 function partition_topology(p::YPartition, grid)
     TX, TY, TZ = topology(grid)
 
-    return Tuple((TX, (TY == Periodic ?
-                       Sides{Connected, Connected} :
-                       i == 1 ?
-                       Sides{Closed, Connected} :
-                       i == length(p) ?
-                       Sides{Connected, Closed} :
-                       Sides{Connected, Connected}), TZ) for i in 1:length(p))
+    return Tuple((TX, (TY == Periodic ? TwoSided{Connected, Connected} : insert_connected_topology(TY, length(p), i)), TZ) for i in 1:length(p))
 end
 
 divide_direction(x::Tuple, p::EqualYPartition) =

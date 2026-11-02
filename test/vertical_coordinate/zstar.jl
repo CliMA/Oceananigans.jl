@@ -74,6 +74,10 @@ end
         fill!(grid_moving.z.σᶜᶠⁿ, 1.5)
         fill!(grid_moving.z.σᶠᶠⁿ, 1.5)
         fill!(grid_moving.z.σᶠᶜⁿ, 1.5)
+        fill!(grid_moving.z.σ⁻¹ᶜᶜⁿ, 1 / 1.5)
+        fill!(grid_moving.z.σ⁻¹ᶜᶠⁿ, 1 / 1.5)
+        fill!(grid_moving.z.σ⁻¹ᶠᶠⁿ, 1 / 1.5)
+        fill!(grid_moving.z.σ⁻¹ᶠᶜⁿ, 1 / 1.5)
 
         for TD in (ExplicitTimeDiscretization, VerticallyImplicitTimeDiscretization)
             for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3, :SplitRungeKutta5) #timesteppers

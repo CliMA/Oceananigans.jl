@@ -5,7 +5,7 @@ using Oceananigans.BoundaryConditions: implicit_flux_coefficient, needs_implicit
 using Oceananigans.Fields: location
 using Oceananigans.Grids: Periodic, ZDirection, topology
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, ImmersedBoundaryCondition, immersed_inactive_node, immersed_peripheral_node
-using Oceananigans.Operators: Δz
+using Oceananigans.Operators: Δz⁻¹
 using Oceananigans.Solvers: BatchedTridiagonalSolver, solve!
 
 import Oceananigans.Solvers: get_coefficient
@@ -59,9 +59,6 @@ implicit_diffusion_solver(::ExplicitTimeDiscretization, args...; kwargs...) = no
 ##### Note: "ivd" stands for implicit vertical diffusion.
 #####
 
-# local definition of the generic reciprocal function Δz⁻¹
-@inline Δz⁻¹(i, j, k, grid, ℓx, ℓy, ℓz) = 1 / Δz(i, j, k, grid, ℓx, ℓy, ℓz)
-
 # Tracers and horizontal velocities at cell centers in z
 @inline function ivd_upper_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ::Center, Δt, clock, fields)
     closure_ij = getclosure(i, j, closure)
@@ -69,8 +66,8 @@ implicit_diffusion_solver(::ExplicitTimeDiscretization, args...; kwargs...) = no
     Δz⁻¹ᶜₖ   = Δz⁻¹(i, j, k,   grid, ℓx, ℓy, c)
     Δz⁻¹ᶠₖ₊₁ = Δz⁻¹(i, j, k+1, grid, ℓx, ℓy, f)
     du       = - Δt * κᵏ⁺¹ * (Δz⁻¹ᶜₖ * Δz⁻¹ᶠₖ₊₁)
-    # This conditional ensures the diagonal is correct
-    return du * !peripheral_node(i, j, k+1, grid, ℓx, ℓy, f)
+    # The column end is excluded even on an `Open` side, whose boundary flux is explicit
+    return du * !(peripheral_node(i, j, k+1, grid, ℓx, ℓy, f) | (k == grid.Nz))
 end
 
 @inline function ivd_lower_diagonal(i, j, k′, grid, closure, K, id, ℓx, ℓy, ::Center, Δt, clock, fields)
@@ -84,7 +81,7 @@ end
     # The flux through face k vanishes when that face lies on a boundary, which also makes the diagonal
     # correct. (Note we use LinearAlgebra.Tridiagonal indexing convention, so that lower_diagonal
     # should be defined for k′ = 1 ⋯ N-1.)
-    return dl * !peripheral_node(i, j, k, grid, ℓx, ℓy, f)
+    return dl * !(peripheral_node(i, j, k, grid, ℓx, ℓy, f) | (k == 1))
 end
 
 #####
@@ -147,13 +144,13 @@ end
         return zero(grid)
     end
 
-    Nz  = size(grid, 3)
-    Δzᵏ = Δz(i, j, k, grid, ℓx, ℓy, ℓz)
-    λᵗ  = implicit_flux_coefficient(top_bc,    Top(),    i, j, Nz, grid, ϕ, clk, fields)
-    λᵇ  = implicit_flux_coefficient(bottom_bc, Bottom(), i, j, 1,  grid, ϕ, clk, fields)
-    dᵗ  = ifelse(k == Nz,  Δt * λᵗ / Δzᵏ, zero(grid))  # top flux:     tendency −J/Δz
-    dᵇ  = ifelse(k == 1,  -Δt * λᵇ / Δzᵏ, zero(grid))  # bottom flux:  tendency +J/Δz
-    dⁱ  = immersed_flux_diagonal(i, j, k, grid, ℓx, ℓy, ℓz, Δt, clk, fields, immersed_bc, ϕ)
+    Nz    = size(grid, 3)
+    Δz⁻¹ᵏ = Δz⁻¹(i, j, k, grid, ℓx, ℓy, ℓz)
+    λᵗ    = implicit_flux_coefficient(top_bc,    Top(),    i, j, Nz, grid, ϕ, clk, fields)
+    λᵇ    = implicit_flux_coefficient(bottom_bc, Bottom(), i, j, 1,  grid, ϕ, clk, fields)
+    dᵗ    = ifelse(k == Nz,  Δt * λᵗ * Δz⁻¹ᵏ, zero(grid))  # top flux:     tendency −J/Δz
+    dᵇ    = ifelse(k == 1,  -Δt * λᵇ * Δz⁻¹ᵏ, zero(grid))  # bottom flux:  tendency +J/Δz
+    dⁱ    = immersed_flux_diagonal(i, j, k, grid, ℓx, ℓy, ℓz, Δt, clk, fields, immersed_bc, ϕ)
     return dᵗ + dᵇ + dⁱ
 end
 
@@ -167,7 +164,7 @@ end
 # Immersed fluxes point along the inward-facing normal on every facet, so both immersed faces contribute
 # `+J/Δz` to the tendency, unlike the domain top which contributes `-J/Δz`.
 @inline function immersed_flux_diagonal(i, j, k, grid, ℓx, ℓy, ℓz, Δt, clk, fields, immersed_bc::ImmersedBoundaryCondition, ϕ)
-    Δzᵏ = Δz(i, j, k, grid, ℓx, ℓy, ℓz)
+    Δz⁻¹ᵏ = Δz⁻¹(i, j, k, grid, ℓx, ℓy, ℓz)
     active = !immersed_inactive_node(i, j, k, grid, ℓx, ℓy, ℓz)
 
     on_bottom = active & immersed_bottom_facet(i, j, k, grid, ℓx, ℓy, ℓz)
@@ -176,8 +173,8 @@ end
     λᵇ = implicit_flux_coefficient(immersed_bc.bottom, ImmersedFacet(), i, j, k, grid, ϕ, clk, fields)
     λᵗ = implicit_flux_coefficient(immersed_bc.top,    ImmersedFacet(), i, j, k, grid, ϕ, clk, fields)
 
-    return ifelse(on_bottom, -Δt * λᵇ / Δzᵏ, zero(grid)) +
-           ifelse(on_top,    -Δt * λᵗ / Δzᵏ, zero(grid))
+    return ifelse(on_bottom, -Δt * λᵇ * Δz⁻¹ᵏ, zero(grid)) +
+           ifelse(on_top,    -Δt * λᵗ * Δz⁻¹ᵏ, zero(grid))
 end
 
 #####

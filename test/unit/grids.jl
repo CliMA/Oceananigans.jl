@@ -1,7 +1,7 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 include(joinpath(@__DIR__, "..", "setup", "data_dependencies.jl"))
 
-using Oceananigans.Grids: total_extent, ColumnEnsembleSize,
+using Oceananigans.Grids: total_extent, with_halo, ColumnEnsembleSize, inactive_cell,
                           xspacings, yspacings, zspacings,
                           xnode, ynode, znode, λnode, φnode,
                           λspacings, φspacings
@@ -837,6 +837,18 @@ end
         @test total_extent(Bounded(), 1, 0.2, 1.0) == 1.4
     end
 
+    @testset "Inactive cells beyond Closed sides" begin
+        for (x, inactive_west, inactive_east) in ((Bounded, true, true), (Open, false, false),
+                                                  ((Closed, Open), true, false), ((Open, Closed), false, true))
+            grid = RectilinearGrid(size=4, x=(0, 1), topology=(x, Flat, Flat))
+            Nx = size(grid, 1)
+            @test inactive_cell(0, 1, 1, grid) == inactive_west
+            @test inactive_cell(Nx + 1, 1, 1, grid) == inactive_east
+            @test !inactive_cell(1, 1, 1, grid)
+            @test !inactive_cell(Nx, 1, 1, grid)
+        end
+    end
+
     @testset "Coordinate utils" begin
         @info "  Testing ExponentialDiscretization..."
 
@@ -1177,6 +1189,14 @@ end
                 @test znodes(rectilinear_grid, Face()) == znodes(lat_lon_grid, Face())
             end
         end
+
+        @info "  Testing that the nodes of a latitude-longitude grid do not depend on its halo..."
+        longitude = (-76 + 2/12, -64 - 2/12)
+        grid = LatitudeLongitudeGrid(size = (140, 92, 2); longitude, latitude = (34 + 2/12, 42 - 2/12), z = (-10, 0), halo = (7, 7, 7))
+        wide = with_halo((27, 27, 7), grid)
+        @test λnodes(wide, Face()) == λnodes(grid, Face())
+        @test φnodes(wide, Center()) == φnodes(grid, Center())
+        @test λnodes(grid, Face())[[1, 141]] == collect(longitude)
     end
 
     @testset "Single column grids" begin

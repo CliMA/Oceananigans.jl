@@ -1,14 +1,14 @@
 using Oceananigans.Operators
 using Oceananigans.Operators: MRG, MLLG, MOSG, superscript_location, north_fold_index
 
-using Oceananigans.Grids: AbstractUnderlyingGrid, Bounded, Closed, FaceFolded, Periodic, Sides, MutableVerticalDiscretization
+using Oceananigans.Grids: AbstractUnderlyingGrid, Bounded, Closed, FaceFolded, Periodic, TwoSided, MutableVerticalDiscretization
 
 import Oceananigans.Grids: column_depthᶜᶜᵃ,
                            column_depthᶜᶠᵃ,
                            column_depthᶠᶜᵃ,
                            column_depthᶠᶠᵃ
 
-import Oceananigans.Operators: σⁿ, σ⁻, ∂t_σ
+import Oceananigans.Operators: σⁿ, σ⁻, σ⁻¹ⁿ, ∂t_σ
 
 const UnderlyingMutableGrid{FT, TX, TY} = AbstractUnderlyingGrid{FT, TX, TY, <:Bounded, <:MutableVerticalDiscretization}
 const MutableImmersedGrid{FT, TX, TY}   = ImmersedBoundaryGrid{FT, TX, TY, <:Bounded, <:UnderlyingMutableGrid}
@@ -49,11 +49,11 @@ const MutableGridOfSomeKind{FT, TX, TY} = Union{MutableImmersedGrid{FT, TX, TY},
 @inline column_depthTᶜᶠᵃ(i, j, k, grid::AbstractGrid, η) = column_depthᶜᶠᵃ(i, j, k, grid, η)
 
 const AMGXP = MutableGridOfSomeKind{<:Any, Periodic}
-const AMGXB = MutableGridOfSomeKind{<:Any, <:Sides{Closed}}
+const AMGXB = MutableGridOfSomeKind{<:Any, <:TwoSided{Closed}}
 
 const AMGYP = MutableGridOfSomeKind{<:Any, <:Any, Periodic}
-const AMGYS = MutableGridOfSomeKind{<:Any, <:Any, Sides{L, R}} where {L, R}
-const AMGYF = MutableGridOfSomeKind{<:Any, <:Any, Sides{L, FaceFolded}} where L
+const AMGYS = MutableGridOfSomeKind{<:Any, <:Any, TwoSided{L, R}} where {L, R}
+const AMGYF = MutableGridOfSomeKind{<:Any, <:Any, TwoSided{L, FaceFolded}} where L
 
 # Enforce Periodic conditions for column depth
 @inline column_depthTᶠᶜᵃ(i, j, k, grid::AMGXP, η) = mutable_column_depth(static_column_depthᶠᶜᵃ(i, j, grid), @inbounds (η[ifelse(i == 1, grid.Nx, i - 1), j, k] + η[i, j, k]) / 2)
@@ -72,6 +72,7 @@ end
 # Fallbacks
 @inline σⁿ(i, j, k, ibg::IBG, ℓx, ℓy, ℓz) = σⁿ(i, j, k, ibg.underlying_grid, ℓx, ℓy, ℓz)
 @inline σ⁻(i, j, k, ibg::IBG, ℓx, ℓy, ℓz) = σ⁻(i, j, k, ibg.underlying_grid, ℓx, ℓy, ℓz)
+@inline σ⁻¹ⁿ(i, j, k, ibg::IBG, ℓx, ℓy, ℓz) = σ⁻¹ⁿ(i, j, k, ibg.underlying_grid, ℓx, ℓy, ℓz)
 
 @inline ∂t_σ(i, j, k, ibg::IBG) = ∂t_σ(i, j, k, ibg.underlying_grid)
 
@@ -84,17 +85,24 @@ for LX in (:ᶠ, :ᶜ), LY in (:ᶠ, :ᶜ), LZ in (:ᶠ, :ᶜ)
     zspacing = Symbol(:Δz, LX, LY, LZ)
     rspacing = Symbol(:Δr, LX, LY, LZ)
 
+    rcp_zspacing = Symbol(:Δz⁻¹, LX, LY, LZ)
+    rcp_rspacing = Symbol(:Δr⁻¹, LX, LY, LZ)
+
     ℓx = superscript_location(LX)
     ℓy = superscript_location(LY)
     ℓz = superscript_location(LZ)
 
     @eval begin
-        using Oceananigans.Operators: $rspacing
-        import Oceananigans.Operators: $zspacing
+        using Oceananigans.Operators: $rspacing, $rcp_rspacing
+        import Oceananigans.Operators: $zspacing, $rcp_zspacing
 
         @inline $zspacing(i, j, k, grid::IMRG)  = $rspacing(i, j, k, grid) * σⁿ(i, j, k, grid, $ℓx(), $ℓy(), $ℓz())
         @inline $zspacing(i, j, k, grid::IMLLG) = $rspacing(i, j, k, grid) * σⁿ(i, j, k, grid, $ℓx(), $ℓy(), $ℓz())
         @inline $zspacing(i, j, k, grid::IMOSG) = $rspacing(i, j, k, grid) * σⁿ(i, j, k, grid, $ℓx(), $ℓy(), $ℓz())
+
+        @inline $rcp_zspacing(i, j, k, grid::IMRG)  = $rcp_rspacing(i, j, k, grid) * σ⁻¹ⁿ(i, j, k, grid, $ℓx(), $ℓy(), $ℓz())
+        @inline $rcp_zspacing(i, j, k, grid::IMLLG) = $rcp_rspacing(i, j, k, grid) * σ⁻¹ⁿ(i, j, k, grid, $ℓx(), $ℓy(), $ℓz())
+        @inline $rcp_zspacing(i, j, k, grid::IMOSG) = $rcp_rspacing(i, j, k, grid) * σ⁻¹ⁿ(i, j, k, grid, $ℓx(), $ℓy(), $ℓz())
     end
 end
 

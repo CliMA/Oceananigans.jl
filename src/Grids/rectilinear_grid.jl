@@ -22,6 +22,10 @@ struct RectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY, Arch, SZ} <: Abstract
     yᵃᶠᵃ  :: VY
     yᵃᶜᵃ  :: VY
     z     :: CZ
+    Δx⁻¹ᶠᵃᵃ :: FX
+    Δx⁻¹ᶜᵃᵃ :: FX
+    Δy⁻¹ᵃᶠᵃ :: FY
+    Δy⁻¹ᵃᶜᵃ :: FY
 end
 
 RectilinearGrid{TX, TY, TZ}(arch, Nx, Ny, Nz, Hx, Hy, Hz, args...) where {TX, TY, TZ} =
@@ -33,13 +37,29 @@ function RectilinearGrid{TX, TY, TZ, SZ}(arch::Arch, Nx, Ny, Nz, Hx, Hy, Hz,
                                           xᶠᵃᵃ :: VX,  xᶜᵃᵃ :: VX,
                                          Δyᵃᶠᵃ :: FY, Δyᵃᶜᵃ :: FY,
                                           yᵃᶠᵃ :: VY,  yᵃᶜᵃ :: VY,
-                                          z    :: CZ) where {SZ, Arch, FT, TX, TY, TZ,
-                                                             FX, VX, FY, VY, CZ}
+                                          z    :: CZ,
+                                         Δx⁻¹ᶠᵃᵃ :: FX, Δx⁻¹ᶜᵃᵃ :: FX,
+                                         Δy⁻¹ᵃᶠᵃ :: FY, Δy⁻¹ᵃᶜᵃ :: FY) where {SZ, Arch, FT, TX, TY, TZ,
+                                                                             FX, VX, FY, VY, CZ}
 
     return RectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY, Arch, SZ}(arch, Nx, Ny, Nz,
                                                                          Hx, Hy, Hz, Lx, Ly, Lz,
                                                                          Δxᶠᵃᵃ, Δxᶜᵃᵃ, xᶠᵃᵃ, xᶜᵃᵃ,
-                                                                         Δyᵃᶠᵃ, Δyᵃᶜᵃ, yᵃᶠᵃ, yᵃᶜᵃ, z)
+                                                                         Δyᵃᶠᵃ, Δyᵃᶜᵃ, yᵃᶠᵃ, yᵃᶜᵃ, z,
+                                                                         Δx⁻¹ᶠᵃᵃ, Δx⁻¹ᶜᵃᵃ, Δy⁻¹ᵃᶠᵃ, Δy⁻¹ᵃᶜᵃ)
+end
+
+function RectilinearGrid{TX, TY, TZ, SZ}(arch, Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz,
+                                         Δxᶠᵃᵃ, Δxᶜᵃᵃ, xᶠᵃᵃ, xᶜᵃᵃ,
+                                         Δyᵃᶠᵃ, Δyᵃᶜᵃ, yᵃᶠᵃ, yᵃᶜᵃ, z) where {TX, TY, TZ, SZ}
+
+    spacings = (Δxᶠᵃᵃ, Δxᶜᵃᵃ, Δyᵃᶠᵃ, Δyᵃᶜᵃ)
+    reciprocal_spacings = map(Δ -> on_architecture(arch, 1 ./ on_architecture(CPU(), Δ)), spacings)
+
+    return RectilinearGrid{TX, TY, TZ, SZ}(arch, Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz,
+                                           Δxᶠᵃᵃ, Δxᶜᵃᵃ, xᶠᵃᵃ, xᶜᵃᵃ,
+                                           Δyᵃᶠᵃ, Δyᵃᶜᵃ, yᵃᶠᵃ, yᵃᶜᵃ, z,
+                                           reciprocal_spacings...)
 end
 
 const RG = RectilinearGrid
@@ -194,8 +214,8 @@ grid = RectilinearGrid(size=(32, 32), extent=(2π, 4π), topology=(Periodic, Per
 # output
 
 32×32×1 RectilinearGrid{Float64, Periodic, Periodic, Flat} on CPU with 3×3×0 halo
-├── Periodic x ∈ [3.60072e-17, 6.28319) regularly spaced with Δx=0.19635
-├── Periodic y ∈ [7.20145e-17, 12.5664) regularly spaced with Δy=0.392699
+├── Periodic x ∈ [0.0, 6.28319) regularly spaced with Δx=0.19635
+├── Periodic y ∈ [0.0, 12.5664) regularly spaced with Δy=0.392699
 └── Flat z
 ```
 
@@ -384,7 +404,11 @@ function Adapt.adapt_structure(to, grid::RectilinearGrid)
                                        Adapt.adapt(to, grid.Δyᵃᶜᵃ),
                                        Adapt.adapt(to, grid.yᵃᶠᵃ),
                                        Adapt.adapt(to, grid.yᵃᶜᵃ),
-                                       Adapt.adapt(to, grid.z))
+                                       Adapt.adapt(to, grid.z),
+                                       Adapt.adapt(to, grid.Δx⁻¹ᶠᵃᵃ),
+                                       Adapt.adapt(to, grid.Δx⁻¹ᶜᵃᵃ),
+                                       Adapt.adapt(to, grid.Δy⁻¹ᵃᶠᵃ),
+                                       Adapt.adapt(to, grid.Δy⁻¹ᵃᶜᵃ))
 end
 
 cpu_face_constructor_x(grid::XRegularRG) = x_domain(grid)

@@ -6,6 +6,7 @@ export Δx, Δy, Δz, Ax, Ay, Az, volume
 export Average, Integral, CumulativeIntegral, KernelFunctionOperation, InterpolatedOperation
 export UnaryOperation, Derivative, BinaryOperation, MultiaryOperation, ConditionalOperation
 export RegriddedOperation
+export at_minimum, at_maximum
 
 using Adapt: Adapt, adapt
 using Base: @propagate_inbounds
@@ -17,6 +18,7 @@ using Oceananigans.Fields: AbstractField, fieldify_function, instantiated_locati
 using Oceananigans.Grids: Center, Face, unwrapped_eltype
 using Oceananigans.Operators: interpolation_operator
 
+import Oceananigans: prognostic_state
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.Fields: compute_at!, indices
 
@@ -35,6 +37,9 @@ const Location = Union{Face, Center, Nothing}
 
 # We have no halos to fill
 @inline fill_halo_regions!(::AbstractOperation, args...; kwargs...) = nothing
+
+# Operations are computed from their operands, so they have no state of their own to checkpoint
+prognostic_state(::AbstractOperation) = nothing
 
 Architectures.architecture(a::AbstractOperation) = architecture(a.grid)
 
@@ -74,6 +79,7 @@ include("interpolated_operation.jl")
 include("conditional_operations.jl")
 include("computed_field.jl")
 include("at.jl")
+include("at_extremum.jl")
 include("broadcasting_abstract_operations.jl")
 include("show_abstract_operations.jl")
 
