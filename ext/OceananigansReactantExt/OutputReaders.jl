@@ -1,15 +1,15 @@
 module OutputReaders
 
 using GPUArraysCore: @allowscalar
+using Oceananigans: Oceananigans
 using Oceananigans.Architectures: ReactantState, on_architecture, CPU
 using Oceananigans.Fields: Field, FixedTime, instantiated_location
 using Oceananigans.Grids: offset_data
 using Oceananigans.OutputReaders: TimeInterpolator, TotallyInMemoryFTS, memory_index
 using Oceananigans.Units: Time
 using Reactant: Reactant, TracedStepRangeLen, TracedRNumber
-import Oceananigans.OutputReaders: find_time_index, cpu_interpolating_time_indices
 
-@inline function find_time_index(times::TracedStepRangeLen, t)
+@inline function Oceananigans.OutputReaders.find_time_index(times::TracedStepRangeLen, t)
     n₂ = searchsortedfirst(times, t)
 
     Nt = length(times)
@@ -27,7 +27,7 @@ import Oceananigans.OutputReaders: find_time_index, cpu_interpolating_time_indic
     return ñ, n₁, n₂
 end
 
-function cpu_interpolating_time_indices(::ReactantState, times, time_indexing, t)
+function Oceananigans.OutputReaders.cpu_interpolating_time_indices(::ReactantState, times, time_indexing, t)
     cpu_times = on_architecture(CPU(), times)
     return TimeInterpolator(time_indexing, cpu_times, t)
 end
