@@ -1,11 +1,11 @@
 using Adapt: Adapt
 using Dates: AbstractTime, Millisecond, Nanosecond
 using DocStringExtensions: TYPEDEF, TYPEDSIGNATURES
-using Oceananigans.Grids: AbstractGrid
-using Oceananigans.Utils: prettytime, seconds_to_nanosecond
 
 using Oceananigans: restore_prognostic_state!
+using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Units: Time
+using Oceananigans.Utils: prettytime, seconds_to_nanosecond
 
 """
 $(TYPEDEF)
