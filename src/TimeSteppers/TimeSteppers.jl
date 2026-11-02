@@ -24,6 +24,8 @@ using Oceananigans.Utils: AbstractTimeDiscretization, ExplicitTimeDiscretization
                           VerticallyImplicitTimeDiscretization,
                           AdaptiveVerticallyImplicitDiscretization,
                           kernel_time_step, @apply_regionally
+using Oceananigans.Units: Units
+using Oceananigans.Fields: Fields
 
 """
     abstract type AbstractTimeStepper
@@ -139,17 +141,17 @@ end
 ##### Checkpointing
 #####
 
-function prognostic_state(timestepper::AbstractTimeStepper)
+function Oceananigans.prognostic_state(timestepper::AbstractTimeStepper)
     return (Gⁿ = prognostic_state(timestepper.Gⁿ),
             G⁻ = prognostic_state(timestepper.G⁻))
 end
 
-function restore_prognostic_state!(restored::AbstractTimeStepper, from)
+function Oceananigans.restore_prognostic_state!(restored::AbstractTimeStepper, from)
     restore_prognostic_state!(restored.Gⁿ, from.Gⁿ)
     restore_prognostic_state!(restored.G⁻, from.G⁻)
     return restored
 end
 
-restore_prognostic_state!(::AbstractTimeStepper, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::AbstractTimeStepper, ::Nothing) = nothing
 
 end # module

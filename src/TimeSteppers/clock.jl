@@ -4,9 +4,8 @@ using DocStringExtensions: TYPEDEF, TYPEDSIGNATURES
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Utils: prettytime, seconds_to_nanosecond
 
-import Oceananigans: restore_prognostic_state!
-import Oceananigans.Units: Time
-import Oceananigans.Fields: set!
+using Oceananigans: restore_prognostic_state!
+using Oceananigans.Units: Time
 
 """
 $(TYPEDEF)
@@ -63,7 +62,7 @@ $(TYPEDSIGNATURES)
 
 Set `clock` to the `new_clock`.
 """
-function set!(clock::Clock, new_clock::Clock)
+function Fields.set!(clock::Clock, new_clock::Clock)
     clock.time = new_clock.time
     clock.iteration = new_clock.iteration
     clock.last_Δt = new_clock.last_Δt
@@ -138,7 +137,7 @@ next_time(clock::Clock{<:AbstractTime}, Δt) = clock.time + seconds_to_nanosecon
 tick_time!(clock, Δt) = clock.time += Δt
 tick_time!(clock::Clock{<:AbstractTime}, Δt) = clock.time += seconds_to_nanosecond(Δt)
 
-Time(clock::Clock) = Time(clock.time)
+Units.Time(clock::Clock) = Time(clock.time)
 
 # Convert the time to units of clock.time (assumed to be seconds if using DateTime or TimeDate).
 unit_time(t) = t
@@ -213,7 +212,7 @@ end
 
 
 """Restore the clock from a checkpointed state."""
-function restore_prognostic_state!(restored::Clock, from)
+function Oceananigans.restore_prognostic_state!(restored::Clock, from)
     restored.time = from.time
     restored.iteration = from.iteration
     restored.last_Δt = from.last_Δt
@@ -222,4 +221,4 @@ function restore_prognostic_state!(restored::Clock, from)
     return restored
 end
 
-restore_prognostic_state!(::Clock, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::Clock, ::Nothing) = nothing
