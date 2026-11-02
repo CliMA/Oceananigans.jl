@@ -590,7 +590,17 @@ const ReducedField = Union{XReducedField,
 # Boundary conditions reduced in two directions --- the surviving index sits in the same slot on both admissible boundaries
 @inline BoundaryConditions.getbc(condition::XYReducedField, ::Integer, k::Integer, grid::AbstractGrid, args...) = @inbounds condition[1, 1, k]
 @inline BoundaryConditions.getbc(condition::YZReducedField, i::Integer, ::Integer, grid::AbstractGrid, args...) = @inbounds condition[i, 1, 1]
-# A field reduced in x and z is ambiguous: the surviving index is the first one on x boundaries and the second one on z boundaries
+
+# A field reduced in x and z has its y index first on x boundaries and second on z boundaries.
+# Regularized boundary conditions wrap it in an `XZReducedCondition` that knows its boundary;
+# otherwise we guess the boundary from the grid, as for a `FieldTimeSeries` reduced in x and z.
+@inline function BoundaryConditions.getbc(condition::XZReducedField, i₁::Integer, i₂::Integer, grid::AbstractGrid, args...)
+    Nz = size(grid, 3)
+    j = ifelse(Nz == 1, i₁, i₂)
+    return @inbounds condition[1, j, 1]
+end
+
+@inline BoundaryConditions.xz_reduced_getbc(condition::XZReducedField, j, grid, args...) = @inbounds condition[1, j, 1]
 
 # 0D boundary conditions --- easy case
 @inline BoundaryConditions.getbc(condition::XYZReducedField, ::Integer, ::Integer, ::AbstractGrid, args...) = @inbounds condition[1, 1, 1]
@@ -646,8 +656,13 @@ function BoundaryConditions.regularize_boundary_condition(condition::Field, grid
                             "or windowed along it to a single plane if at all, but has location $(location(condition)) " *
                             "and indices $indices."))
 
-    return window_to_boundary(condition, dim, side)
+    windowed = window_to_boundary(condition, dim, side)
+
+    return xz_reduced_boundary_condition(windowed, Val(dim))
 end
+
+xz_reduced_boundary_condition(condition, dim) = condition
+xz_reduced_boundary_condition(condition::XZReducedField, dim) = BoundaryConditions.xz_reduced_condition(condition, dim)
 
 boundary_plane(::Type{LeftBoundary},  condition, dim) = 1
 boundary_plane(::Type{RightBoundary}, condition, dim) = size(condition, dim)

@@ -9,6 +9,7 @@ export
     @root, @onrank, @distribute, @handshake,
     SimplifiedGeneralizedBlockDistribution, create_cost_map, create_balanced_partition
 
+using DocStringExtensions: TYPEDSIGNATURES
 using GPUArraysCore: GPUArraysCore
 using MPI: MPI
 using OffsetArrays: OffsetArrays, OffsetArray
@@ -19,14 +20,13 @@ using Oceananigans.BoundaryConditions: BoundaryConditions, Bottom, BottomAndTop,
                                        Top, West, WestAndEast
 using Oceananigans.Fields: AbstractField, CenterField, data, field
 using Oceananigans.Grids: Grids, Bounded, Center, CenterFolded, CenterFoldConnected, Closed, Connected, Face, FaceFolded,
-                          FaceFoldConnected, Flat, Open, OrthogonalSphericalShellGrid, Periodic, TwoSided, grid
+                          FaceFoldConnected, Flat, Open, OrthogonalSphericalShellGrid, Periodic, TwoSided, grid,
+                          BoundaryTopology, XYZRegularRG
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaries, ImmersedBoundaryGrid, materialize_immersed_boundary
 using Oceananigans.Utils: Utils
-using Oceananigans.Grids: BoundaryTopology, XYZRegularRG
 using Oceananigans.Solvers: GridWithFourierTridiagonalSolver
 
 import Oceananigans.Solvers: fft_poisson_solver
-using DocStringExtensions: TYPEDSIGNATURES
 
 include("distributed_macros.jl")
 include("sanitize_environ.jl")
