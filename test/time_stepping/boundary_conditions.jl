@@ -4,11 +4,13 @@ using Oceananigans.BoundaryConditions: ContinuousBoundaryFunction, BoundaryAdjac
                                        fill_halo_regions!, getbc
 
 using Oceananigans: prognostic_fields
-using Oceananigans.BoundaryConditions: has_target_transport, get_target_transport, ObliqueRadiation, MixedBoundaryCondition
+using Oceananigans.BoundaryConditions: has_target_transport, get_target_transport, ObliqueRadiation, MixedBoundaryCondition,
+                                       cache_boundary_conditions!, step_boundary_conditions!
 using Oceananigans.Models: possible_field_time_series, boundary_total_area
 using Oceananigans.OutputReaders: extract_field_time_series
 using Oceananigans.Fields: flattened_unique_values
 using Oceananigans.Units: Time
+using Oceananigans.TimeSteppers: update_state!
 
 function test_boundary_condition(arch, FT, Model, topo, side, field_name, boundary_condition; model_kwargs...)
     grid = RectilinearGrid(arch, FT, size=(1, 1, 1), extent=(1, π, 42), topology=topo)
@@ -517,8 +519,8 @@ function test_perturbation_advection_tracer_left_boundary_fills_halo(arch, FT)
 
         set!(model; NamedTuple{(vel,)}((1,))..., c = 0)
         view(interior(model.tracers.c), 1, 1, 1) .= sentinel
-        model.clock.last_stage_Δt = convert(FT, 1e-2)
-        fill_halo_regions!(model.tracers, model.clock, fields(model))
+        cache_boundary_conditions!(model.tracers, model.clock, fields(model))
+        step_boundary_conditions!(model.tracers, model.clock, fields(model), convert(FT, 1e-2))
 
         c = model.tracers.c
         @test Array(view(parent(c), halo_index...))[] ≈ c̄       # boundary halo node filled with the inflow value
@@ -558,10 +560,9 @@ function test_perturbation_advection_tracer_radiation_formula(arch, FT)
     τ̃ = Δt / outflow_timescale
     expected = (ψᴮ + Ũ * ψᴬ + c̄ * τ̃) / (1 + τ̃ + Ũ)
 
-    # The scheme reads Δt from clock.last_stage_Δt; set it directly so we evaluate the
-    # formula once, with the ψᴮ we just wrote, instead of advancing the model state.
-    model.clock.last_stage_Δt = Δt
-    fill_halo_regions!(model.tracers, model.clock, fields(model))
+    # One step of the exterior state from the ψᴮ we just wrote, instead of advancing the model state
+    cache_boundary_conditions!(model.tracers, model.clock, fields(model))
+    step_boundary_conditions!(model.tracers, model.clock, fields(model), Δt)
 
     @test Array(parent(model.tracers.c))[Nx + 1 + Hx, 1, Hz + 1] ≈ expected
 end
@@ -591,6 +592,32 @@ function test_nonhydrostatic_tracer_value_boundary_is_applied(arch, FT)
     # A `Value` BC sets the east halo by linear extrapolation: c_halo = 2 c̄ - c_interior.
     @test east_halo ≈ 2c̄ - east_interior   # tracer Value BC applied during the merged fill
     @test east_halo != 999                  # sentinel was overwritten (the fill ran)
+end
+
+# The time stepper advances open-boundary states once per stage: updating the state or filling halos again changes nothing
+function test_open_boundary_states_are_stepped_once_per_stage(arch, FT)
+    grid = RectilinearGrid(arch, FT; size = (8, 4), x = (0, 1), z = (-1, 0), topology = (Open, Flat, Bounded))
+    perturbation_advection = PerturbationAdvection(inflow_timescale = 1, outflow_timescale = 1)
+    radiation = NormalRadiation(inflow_timescale = 1, outflow_timescale = 1)
+    u_bcs = FieldBoundaryConditions(west = NormalFlowBoundaryCondition(1; scheme = perturbation_advection),
+                                    east = NormalFlowBoundaryCondition(1; scheme = perturbation_advection))
+    c_bcs = FieldBoundaryConditions(west = ValueBoundaryCondition(0; scheme = radiation),
+                                    east = ValueBoundaryCondition(0; scheme = radiation))
+
+    model = NonhydrostaticModel(grid; tracers = :c, boundary_conditions = (u = u_bcs, c = c_bcs))
+    set!(model, u = 1, c = (x, z) -> exp(-(x - 0.7)^2 / 0.01))
+
+    for _ in 1:3
+        time_step!(model, 0.01)
+    end
+
+    model_data(model) = map(field -> Array(parent(field)), fields(model))
+    stepped = model_data(model)
+
+    update_state!(model)
+    fill_halo_regions!(merge(model.velocities, model.tracers), model.clock, fields(model))
+
+    return model_data(model) == stepped
 end
 
 function test_open_boundary_condition_mass_conservation(arch, FT, boundary_conditions; N = 8)
@@ -785,6 +812,7 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
         test_perturbation_advection_tracer_left_boundary_fills_halo(arch, FT)
         test_perturbation_advection_tracer_radiation_formula(arch, FT)
         test_nonhydrostatic_tracer_value_boundary_is_applied(arch, FT)
+        @test test_open_boundary_states_are_stepped_once_per_stage(arch, FT)
 
         # Only PerturbationAdvection NormalFlowBoundaryCondition
         U₀ = 1

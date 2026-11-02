@@ -6,6 +6,7 @@ using Oceananigans.Architectures: architecture
 using Oceananigans.Grids: Center, xnode, ynode, znode
 using Oceananigans.Utils: launch!
 
+import Oceananigans: prognostic_state
 import Oceananigans.Fields: CenterField
 
 #####
@@ -56,8 +57,14 @@ is a subtype of `AbstractBioeochemistry`:
 
   - `update_biogeochemical_state!(bgc::BiogeochemicalModel, model)` (optional) to update the
       model state.
+
+  - `Oceananigans.prognostic_state(bgc::BiogeochemicalModel)` and
+     `Oceananigans.restore_prognostic_state!(bgc::BiogeochemicalModel, state)` (optional) to
+     checkpoint state that `bgc` evolves outside of the model tracers, such as sediment fields.
 """
 abstract type AbstractBiogeochemistry end
+
+prognostic_state(::AbstractBiogeochemistry) = nothing
 
 # Returns the forcing for discrete form models
 @inline biogeochemical_transition(i, j, k, grid, bgc, val_tracer_name, clock, fields) =
@@ -92,6 +99,10 @@ defined where `BiogeochemicalModel` is a subtype of `AbstractContinuousFormBioge
 
   - `update_biogeochemical_state!(bgc::BiogeochemicalModel, model)` (optional) to update the
      model state
+
+  - `Oceananigans.prognostic_state(bgc::BiogeochemicalModel)` and
+     `Oceananigans.restore_prognostic_state!(bgc::BiogeochemicalModel, state)` (optional) to
+     checkpoint state that `bgc` evolves outside of the model tracers, such as sediment fields
 """
 abstract type AbstractContinuousFormBiogeochemistry <: AbstractBiogeochemistry end
 
