@@ -11,22 +11,22 @@ export
 
 using MPI
 
-using Oceananigans
-using Oceananigans.Utils
-using Oceananigans.Grids
-using OffsetArrays
-using Oceananigans.Grids: Grids, BoundaryTopology, XYZRegularRG
-using Oceananigans.Solvers: Solvers, GridWithFourierTridiagonalSolver
 
-using Oceananigans.Solvers: fft_poisson_solver
-using DocStringExtensions: TYPEDSIGNATURES
+using Oceananigans
 using Oceananigans.Architectures: Architectures
-using Oceananigans.Utils: Utils
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaries
-using Oceananigans.Fields: Fields
 using Oceananigans.BoundaryConditions: BoundaryConditions
+using Oceananigans.Fields: Fields
+using Oceananigans.Grids
+using Oceananigans.Grids: Grids, BoundaryTopology, XYZRegularRG
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaries
+using Oceananigans.Solvers: Solvers, GridWithFourierTridiagonalSolver, fft_poisson_solver
+using Oceananigans.Utils
+using Oceananigans.Utils: Utils
+
+using DocStringExtensions: TYPEDSIGNATURES
 using LinearAlgebra: LinearAlgebra
 using Statistics: Statistics
+using OffsetArrays
 
 include("distributed_macros.jl")
 include("sanitize_environ.jl")
