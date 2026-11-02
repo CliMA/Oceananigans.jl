@@ -15,14 +15,16 @@ end
 function owned_operand(::SumReduction, operand, weights, ℓx, ℓy)
     LX, LY, LZ = location(operand)
     T = promote_type(eltype(operand), eltype(weights))
-    return KernelFunctionOperation{LX, LY, LZ}(owned_weighted_value, operand.grid, (operand, weights, ℓx, ℓy), T)
+    return KernelFunctionOperation{LX, LY, LZ}(owned_weighted_value, operand.grid, (operand, weights, ℓx, ℓy), T;
+                                               indices=indices(operand))
 end
 
 # The points without an owned part take the neutral element of the reduction
 function owned_operand(reduction!, operand, weights, ℓx, ℓy)
     LX, LY, LZ = location(operand)
     excluded = convert_mask(eltype(operand), get_neutral_mask(reduction!))
-    return KernelFunctionOperation{LX, LY, LZ}(owned_value, operand.grid, (operand, weights, ℓx, ℓy, excluded), eltype(operand))
+    return KernelFunctionOperation{LX, LY, LZ}(owned_value, operand.grid, (operand, weights, ℓx, ℓy, excluded), eltype(operand);
+                                               indices=indices(operand))
 end
 
 # The owned fraction at (ℓx, ℓy), lumped from the area-weighted fractions of the adjacent (Center, Center) cells
