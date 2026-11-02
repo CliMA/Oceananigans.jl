@@ -1,9 +1,6 @@
 using GPUArraysCore
-using Oceananigans.Grids: stretched_dimensions
-using Oceananigans.Grids: XDirection, YDirection, ZDirection
-using Statistics: mean
+using Oceananigans.Grids: stretched_dimensions, XDirection, YDirection, ZDirection
 using Oceananigans.Operators: Δxᶠᵃᵃ, Δyᵃᶠᵃ, Δzᵃᵃᶠ, Δxᶜᶜᶜ, Δyᶜᶜᶜ, Δzᶜᶜᶜ
-
 using Oceananigans.Solvers: BatchedTridiagonalSolver,
                             stretched_direction,
                             tridiagonal_direction,
@@ -13,9 +10,9 @@ using Oceananigans.Solvers: BatchedTridiagonalSolver,
                             YTridiagonalSolver,
                             XTridiagonalSolver,
                             compute_main_diagonal!,
-                            compute_lower_diagonal!
-
-using Oceananigans.Solvers: compute_preconditioner_rhs!
+                            compute_lower_diagonal!,
+                            compute_preconditioner_rhs!
+using Statistics: mean
 
 struct DistributedFourierTridiagonalPoissonSolver{G, L, B, P, R, S, β}
     plan :: P
