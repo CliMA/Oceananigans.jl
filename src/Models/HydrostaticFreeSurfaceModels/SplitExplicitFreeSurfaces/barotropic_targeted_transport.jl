@@ -16,7 +16,7 @@ has_targeted_barotropic_sides(U_bcs, V_bcs) =
     targeted_side(side_condition(V_bcs, :south)) || targeted_side(side_condition(V_bcs, :north))
 
 # TODO: add support for distributed grids
-function validate_free_surface_boundary_conditions(::SplitExplicitFreeSurface, boundary_conditions, grid)
+function HydrostaticFreeSurfaceModels.validate_free_surface_boundary_conditions(::SplitExplicitFreeSurface, boundary_conditions, grid)
     targeted = has_targeted_barotropic_sides(get(boundary_conditions, :U, nothing), get(boundary_conditions, :V, nothing))
     if targeted && grid isa DistributedGrid
         throw(ArgumentError("`target_transport` on `GravityWaveRadiation` boundary conditions is not supported on distributed grids."))

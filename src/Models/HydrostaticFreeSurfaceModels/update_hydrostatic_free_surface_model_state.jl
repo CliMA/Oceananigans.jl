@@ -11,7 +11,7 @@ using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 using Oceananigans.Models: update_model_field_time_series!
 using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!
 using Oceananigans.TurbulenceClosures: compute_closure_fields!
-import Oceananigans.TurbulenceClosures: step_closure_prognostics!
+using Oceananigans.TurbulenceClosures: step_closure_prognostics!
 
 compute_auxiliary_fields!(auxiliary_fields) = Tuple(compute!(a) for a in auxiliary_fields)
 
@@ -39,9 +39,9 @@ This function performs the following steps:
 Note: Halo regions for free surface fields are filled separately after the barotropic step,
 while for velocities they are filled in the time-stepping function.
 """
-update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]) = update_state!(model, model.grid, callbacks)
+TimeSteppers.update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]) = update_state!(model, model.grid, callbacks)
 
-function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
+function TimeSteppers.update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
 
     arch = architecture(grid)
 
@@ -103,7 +103,7 @@ function mask_immersed_horizontal_velocities!(velocities)
     return nothing
 end
 
-function step_closure_prognostics!(model::HydrostaticFreeSurfaceModel, Δt::Number)
+function TurbulenceClosures.step_closure_prognostics!(model::HydrostaticFreeSurfaceModel, Δt::Number)
     step_closure_prognostics!(model.closure_fields, model.closure, model, Δt)
     step_coriolis_prognostics!(model.coriolis, model, Δt)
     return nothing

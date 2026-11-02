@@ -108,7 +108,7 @@ free surface evolution.
 After computing horizontal transport velocities, vertical transport velocity `w̃` is computed
 from continuity and halo regions are filled.
 """
-function compute_transport_velocities!(model, free_surface::SplitExplicitFreeSurface)
+function HydrostaticFreeSurfaceModels.compute_transport_velocities!(model, free_surface::SplitExplicitFreeSurface)
     grid = model.grid
     # `transport_velocities` holds the pre-step velocities and is also the destination; the kernel adds a
     # depth-uniform correction, so source and destination may alias.

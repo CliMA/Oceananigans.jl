@@ -20,7 +20,7 @@ Update peripheral aspects of the model (halo regions, closure_fields, hydrostati
 pressure) to the current model state. If `callbacks` are provided (in an array),
 they are called in the end.
 """
-function update_state!(model::NonhydrostaticModel, callbacks=[])
+function TimeSteppers.update_state!(model::NonhydrostaticModel, callbacks=[])
 
     # Mask immersed tracers
     mask_immersed_field!(model.tracers)

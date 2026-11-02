@@ -9,8 +9,13 @@ using KernelAbstractions: @index, @kernel
 
 using Oceananigans.Utils: launch!
 
-import Oceananigans: fields, prognostic_fields
-import Oceananigans.Simulations: timestepper
+using Oceananigans: Oceananigans, fields, prognostic_fields
+using Oceananigans.Simulations: Simulations
+using Oceananigans.Architectures: Architectures
+using Oceananigans.Fields: Fields
+using Oceananigans.TimeSteppers: TimeSteppers
+using Oceananigans.TurbulenceClosures: TurbulenceClosures
+using Oceananigans.Advection: Advection
 
 #####
 ##### ShallowWaterModel definition
@@ -30,14 +35,14 @@ $(TYPEDSIGNATURES)
 Return a flattened `NamedTuple` of the fields in `model.solution` and `model.tracers` for
 a `ShallowWaterModel` model.
 """
-fields(model::ShallowWaterModel) = merge(model.solution, model.tracers)
+Oceananigans.fields(model::ShallowWaterModel) = merge(model.solution, model.tracers)
 
 """
 $(TYPEDSIGNATURES)
 
 Return a flattened `NamedTuple` of the prognostic fields associated with `ShallowWaterModel`.
 """
-prognostic_fields(model::ShallowWaterModel) = fields(model)
+Oceananigans.prognostic_fields(model::ShallowWaterModel) = fields(model)
 
 include("solution_and_tracer_tendencies.jl")
 include("compute_shallow_water_tendencies.jl")

@@ -16,12 +16,11 @@ using Oceananigans.Grids: AbstractGrid, hack_cosd,
                           XYFlatGrid, YZFlatGrid, XZFlatGrid, XYZFlatGrid
 using Oceananigans.ImmersedBoundaries
 using Oceananigans.ImmersedBoundaries: immersed_cell
-using Oceananigans.TimeSteppers: AbstractLagrangianParticles
+using Oceananigans.TimeSteppers: TimeSteppers, AbstractLagrangianParticles
 using Oceananigans.Utils: datatuple, launch!, prettysummary
 
-import Oceananigans: prognostic_state, restore_prognostic_state!
-import Oceananigans.TimeSteppers: step_lagrangian_particles!, update_lagrangian_particle_state!
-import Oceananigans.OutputWriters: serializeproperty!, fetch_output
+using Oceananigans: Oceananigans, prognostic_state, restore_prognostic_state!
+using Oceananigans.OutputWriters: OutputWriters, serializeproperty!
 
 abstract type AbstractParticle end
 
@@ -135,9 +134,9 @@ include("update_lagrangian_particle_state.jl")
 include("lagrangian_particle_advection.jl")
 include("drogued_dynamics.jl")
 
-step_lagrangian_particles!(::Nothing, model, Δt) = nothing
+TimeSteppers.step_lagrangian_particles!(::Nothing, model, Δt) = nothing
 
-function step_lagrangian_particles!(particles::LagrangianParticles, model, Δt)
+function TimeSteppers.step_lagrangian_particles!(particles::LagrangianParticles, model, Δt)
     particles.dynamics(particles, model, Δt)
     advect_lagrangian_particles!(particles, model, Δt)
     return nothing
@@ -147,9 +146,9 @@ end
 #### Extend output writers to support LagrangianParticles
 ####
 
-serializeproperty!(file, address, p::LagrangianParticles) = serializeproperty!(file, address, p.properties)
+OutputWriters.serializeproperty!(file, address, p::LagrangianParticles) = serializeproperty!(file, address, p.properties)
 
-function fetch_output(lagrangian_particles::LagrangianParticles, model)
+function OutputWriters.fetch_output(lagrangian_particles::LagrangianParticles, model)
     particle_properties = lagrangian_particles.properties
     names = propertynames(particle_properties)
     return NamedTuple{names}([getproperty(particle_properties, name) for name in names])
@@ -157,15 +156,15 @@ end
 
 # Checkpointing
 
-function prognostic_state(lagrangian_particles::LagrangianParticles)
+function Oceananigans.prognostic_state(lagrangian_particles::LagrangianParticles)
     return (; properties = prognostic_state(lagrangian_particles.properties))
 end
 
-function restore_prognostic_state!(restored::LagrangianParticles, from)
+function Oceananigans.restore_prognostic_state!(restored::LagrangianParticles, from)
     restore_prognostic_state!(restored.properties, from.properties)
     return restored
 end
 
-restore_prognostic_state!(::LagrangianParticles, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::LagrangianParticles, ::Nothing) = nothing
 
 end # module

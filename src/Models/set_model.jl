@@ -2,7 +2,7 @@ using Oceananigans.Utils
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper
 using JLD2
 
-import Oceananigans.Fields: set!
+using Oceananigans.Fields: set!
 
 #####
 ##### set! for checkpointer filepaths and `OceananigansModels`
@@ -14,7 +14,7 @@ $(TYPEDSIGNATURES)
 Set data in `model.velocities`, `model.tracers` and the timestepper tendencies `model.timestepper.Gⁿ` and
 `model.timestepper.G⁻` (for non-self starting timesteppers) to the checkpointed data stored at `filepath`.
 """
-function set!(model::OceananigansModels, filepath::AbstractString)
+function Fields.set!(model::OceananigansModels, filepath::AbstractString)
     addr = checkpointer_address(model)
 
     jldopen(filepath, "r") do file

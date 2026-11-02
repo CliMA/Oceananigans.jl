@@ -5,8 +5,6 @@ using Oceananigans.BuoyancyFormulations: BuoyancyForce, BuoyancyTracer, Seawater
 
 using SeawaterPolynomials: BoussinesqEquationOfState
 
-import Oceananigans.OutputWriters: default_output_attributes
-
 const BoussinesqSeawaterBuoyancy = SeawaterBuoyancy{FT, <:BoussinesqEquationOfState, T, S} where {FT, T, S}
 const BuoyancyBoussinesqEOSModel = BuoyancyForce{<:BoussinesqSeawaterBuoyancy, g} where {g}
 
@@ -55,12 +53,12 @@ default_tracer_attributes(::BuoyancyBoussinesqEOSModel) = Dict(
 ##### Specialized default_output_attributes
 #####
 
-function default_output_attributes(model::Union{NonhydrostaticModel, HydrostaticFreeSurfaceModel})
+function OutputWriters.default_output_attributes(model::Union{NonhydrostaticModel, HydrostaticFreeSurfaceModel})
     velocity_attrs = default_velocity_attributes(model.grid)
     tracer_attrs = default_tracer_attributes(model.buoyancy)
     return merge(velocity_attrs, tracer_attrs)
 end
 
-function default_output_attributes(model::ShallowWaterModel)
+function OutputWriters.default_output_attributes(model::ShallowWaterModel)
     return default_velocity_attributes(model.grid)
 end

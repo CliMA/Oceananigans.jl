@@ -16,10 +16,8 @@ using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_clo
 using Oceananigans.Utils: tupleit
 
 import Oceananigans
-import Oceananigans: initialize!, prognostic_state, restore_prognostic_state!
-import Oceananigans.Models: total_velocities
-import Oceananigans.TimeSteppers: update_state!, reconcile_state!, materialize_clock!
-import Oceananigans.TurbulenceClosures: buoyancy_force, buoyancy_tracers
+using Oceananigans: prognostic_state, restore_prognostic_state!
+using Oceananigans.TimeSteppers: update_state!, reconcile_state!
 
 PressureField(grid) = (; pHY′ = CenterField(grid))
 
@@ -428,7 +426,7 @@ validate_momentum_advection(momentum_advection::Nothing,         grid::Orthogona
 validate_momentum_advection(momentum_advection::VectorInvariant, grid::OrthogonalSphericalShellGrid) = momentum_advection
 validate_momentum_advection(momentum_advection, grid::OrthogonalSphericalShellGrid) = error("$(typeof(momentum_advection)) is not supported with $(typeof(grid))")
 
-function reconcile_state!(model::HydrostaticFreeSurfaceModel)
+function TimeSteppers.reconcile_state!(model::HydrostaticFreeSurfaceModel)
     mask_immersed_horizontal_velocities!(model.velocities)
     fill_halo_regions!(prognostic_fields(model), model.clock, fields(model))
     reconcile_free_surface!(model.free_surface, model.grid, model.clock, model.velocities)
@@ -436,23 +434,23 @@ function reconcile_state!(model::HydrostaticFreeSurfaceModel)
     return nothing
 end
 
-function initialize!(model::HydrostaticFreeSurfaceModel)
+function Oceananigans.initialize!(model::HydrostaticFreeSurfaceModel)
     reconcile_state!(model)
     initialize_closure_fields!(model.closure_fields, model.closure, model)
     return nothing
 end
 
 # return the total advective velocities
-@inline total_velocities(model::HydrostaticFreeSurfaceModel) = model.velocities
-timestepper(model::HydrostaticFreeSurfaceModel) = model.timestepper
-buoyancy_force(model::HydrostaticFreeSurfaceModel) = model.buoyancy
-buoyancy_tracers(model::HydrostaticFreeSurfaceModel) = model.tracers
+@inline Models.total_velocities(model::HydrostaticFreeSurfaceModel) = model.velocities
+Simulations.timestepper(model::HydrostaticFreeSurfaceModel) = model.timestepper
+TurbulenceClosures.buoyancy_force(model::HydrostaticFreeSurfaceModel) = model.buoyancy
+TurbulenceClosures.buoyancy_tracers(model::HydrostaticFreeSurfaceModel) = model.tracers
 
 #####
 ##### Checkpointing
 #####
 
-function prognostic_state(model::HydrostaticFreeSurfaceModel)
+function Oceananigans.prognostic_state(model::HydrostaticFreeSurfaceModel)
     return (clock = prognostic_state(model.clock),
             particles = prognostic_state(model.particles),
             velocities = prognostic_state(model.velocities),
@@ -466,7 +464,7 @@ function prognostic_state(model::HydrostaticFreeSurfaceModel)
             biogeochemistry = prognostic_state(model.biogeochemistry))
 end
 
-function restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel, from)
+function Oceananigans.restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel, from)
     restore_prognostic_state!(restored.clock, from.clock)
     restore_prognostic_state!(restored.particles, from.particles)
     restore_prognostic_state!(restored.velocities, from.velocities)
@@ -481,4 +479,4 @@ function restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel, from)
     return restored
 end
 
-restore_prognostic_state!(::HydrostaticFreeSurfaceModel, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::HydrostaticFreeSurfaceModel, ::Nothing) = nothing

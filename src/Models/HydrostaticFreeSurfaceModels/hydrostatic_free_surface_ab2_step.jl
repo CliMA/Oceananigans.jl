@@ -2,8 +2,6 @@ using Oceananigans.TimeSteppers: _ab2_step_field!
 using Oceananigans.Operators: σ⁻, σⁿ, σ⁻¹ⁿ, ∂t_σ
 using Oceananigans.TurbulenceClosures: implicit_step!
 
-import Oceananigans.TimeSteppers: ab2_step!
-
 #####
 ##### Step everything
 #####
@@ -15,7 +13,7 @@ Advance `HydrostaticFreeSurfaceModel` by one Adams-Bashforth 2nd-order time step
 
 Dispatches to the appropriate method based on the free surface type (explicit or implicit).
 """
-ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, callbacks) =
+TimeSteppers.ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, callbacks) =
     hydrostatic_ab2_step!(model, model.free_surface, model.grid, Δt, callbacks)
 
 """

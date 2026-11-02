@@ -1,5 +1,4 @@
-import Oceananigans: tracer_tendency_kernel_function
-import Oceananigans.Models: interior_tendency_kernel_parameters
+using Oceananigans.Models: interior_tendency_kernel_parameters
 
 using Oceananigans: fields, prognostic_fields, TendencyCallsite, TracerTendencyCallsite, UpdateStateCallsite, MomentumTendency
 using Oceananigans.Grids: halo_size

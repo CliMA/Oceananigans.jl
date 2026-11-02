@@ -5,7 +5,7 @@ using Oceananigans.DistributedComputations: DistributedGrid
 using Oceananigans.Grids: isrectilinear, halo_size
 
 using Oceananigans.Solvers: Solvers, solve!, ConjugateGradientSolver
-import Oceananigans.Architectures: architecture
+using Oceananigans.Architectures: architecture
 
 """
     struct PCGImplicitFreeSurfaceSolver{V, S, R}
@@ -20,7 +20,7 @@ struct PCGImplicitFreeSurfaceSolver{V, S, R}
     right_hand_side :: R
 end
 
-architecture(solver::PCGImplicitFreeSurfaceSolver) =
+Architectures.architecture(solver::PCGImplicitFreeSurfaceSolver) =
     architecture(solver.preconditioned_conjugate_gradient_solver)
 
 # The assumption is that the horizontal spacings do not depend on the z-direction

@@ -3,7 +3,7 @@ using Oceananigans.Grids: halo_size, topology, AbstractGrid, Flat,
     static_column_depthᶜᶜᵃ, static_column_depthᶜᶠᵃ, static_column_depthᶠᶜᵃ, static_column_depthᶠᶠᵃ
 using Oceananigans.ImmersedBoundaries: MutableGridOfSomeKind
 
-import Oceananigans: prognostic_state, restore_prognostic_state!
+using Oceananigans: prognostic_state, restore_prognostic_state!
 
 #####
 ##### Mutable-specific vertical spacings update
@@ -219,10 +219,10 @@ end
 ##### Checkpointing
 #####
 
-prognostic_state(::ZCoordinate, grid) = nothing
-restore_prognostic_state!(::ZCoordinate, grid, ::Nothing) = ZCoordinate()
+Oceananigans.prognostic_state(::ZCoordinate, grid) = nothing
+Oceananigans.restore_prognostic_state!(::ZCoordinate, grid, ::Nothing) = ZCoordinate()
 
-function prognostic_state(::ZStarCoordinate, grid)
+function Oceananigans.prognostic_state(::ZStarCoordinate, grid)
     z = grid.z
     return (ηⁿ   = prognostic_state(z.ηⁿ),
             σᶜᶜⁿ = prognostic_state(z.σᶜᶜⁿ),
@@ -232,7 +232,7 @@ function prognostic_state(::ZStarCoordinate, grid)
             σᶜᶜ⁻ = prognostic_state(z.σᶜᶜ⁻))
 end
 
-function restore_prognostic_state!(::ZStarCoordinate, grid, from)
+function Oceananigans.restore_prognostic_state!(::ZStarCoordinate, grid, from)
     z = grid.z
     restore_prognostic_state!(z.ηⁿ,   from.ηⁿ)
     restore_prognostic_state!(z.σᶜᶜⁿ, from.σᶜᶜⁿ)

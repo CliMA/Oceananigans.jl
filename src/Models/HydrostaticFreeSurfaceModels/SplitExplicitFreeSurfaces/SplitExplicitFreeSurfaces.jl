@@ -15,25 +15,16 @@ using Oceananigans.BoundaryConditions: fill_halo_regions!, FieldBoundaryConditio
                                        cache_boundary_conditions!, step_boundary_conditions!, regularize_field_boundary_conditions
 using Oceananigans.Fields: Field, instantiated_location
 using Oceananigans.Grids: Center, Face, topology, column_depthᶜᶠᵃ, column_depthᶠᶜᵃ, Connected, Open, TwoSided
-using Oceananigans.DistributedComputations: DistributedGrid, all_reduce, @root
+using Oceananigans.DistributedComputations: DistributedComputations, DistributedGrid, all_reduce, @root
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!,
                                        column_depthTᶠᶜᵃ, column_depthTᶜᶠᵃ,
                                        column_depthᶠᶜᵃ, column_depthᶜᶠᵃ
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: AbstractFreeSurface,
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModels, AbstractFreeSurface,
                                                         free_surface_displacement_field,
                                                         update_vertical_velocities!
 using Oceananigans.Models: update_model_field_time_series!
 using Oceananigans.Units: Time
-
-import Oceananigans.Models.HydrostaticFreeSurfaceModels: reconcile_free_surface!,
-                                                         materialize_free_surface,
-                                                         default_free_surface_boundary_conditions,
-                                                         validate_free_surface_boundary_conditions,
-                                                         step_free_surface!,
-                                                         compute_free_surface_tendency!,
-                                                         compute_transport_velocities!,
-                                                         explicit_barotropic_pressure_x_gradient,
-                                                         explicit_barotropic_pressure_y_gradient
+using Oceananigans: Oceananigans
 
 include("split_explicit_timesteppers.jl")
 include("split_explicit_free_surface.jl")
@@ -45,7 +36,7 @@ include("step_split_explicit_free_surface.jl")
 include("barotropic_split_explicit_corrector.jl")
 
 # extend
-@inline explicit_barotropic_pressure_x_gradient(i, j, k, grid, ::SplitExplicitFreeSurface) = zero(grid)
-@inline explicit_barotropic_pressure_y_gradient(i, j, k, grid, ::SplitExplicitFreeSurface) = zero(grid)
+@inline HydrostaticFreeSurfaceModels.explicit_barotropic_pressure_x_gradient(i, j, k, grid, ::SplitExplicitFreeSurface) = zero(grid)
+@inline HydrostaticFreeSurfaceModels.explicit_barotropic_pressure_y_gradient(i, j, k, grid, ::SplitExplicitFreeSurface) = zero(grid)
 
 end

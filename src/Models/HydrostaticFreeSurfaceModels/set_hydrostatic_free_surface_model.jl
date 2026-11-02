@@ -1,7 +1,7 @@
 using Oceananigans.Operators: intrinsic_vector, ℑxyᶠᶜᵃ, ℑxyᶜᶠᵃ
 using Oceananigans.Utils: @apply_regionally
 
-import Oceananigans.Fields: set!
+using Oceananigans.Fields: set!
 
 """
     set!(model::HydrostaticFreeSurfaceModel;
@@ -46,7 +46,7 @@ model.velocities.u
     └── max=-0.0302734, min=-0.249023, mean=-0.166992
 ```
 """
-@inline function set!(model::HydrostaticFreeSurfaceModel;
+@inline function Fields.set!(model::HydrostaticFreeSurfaceModel;
                       u=ZeroField(), v=ZeroField(), intrinsic_velocities=false,
                       reconcile_state=true,
                       kwargs...)

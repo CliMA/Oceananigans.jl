@@ -16,10 +16,9 @@ using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_clo
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE
 using Oceananigans.Utils: tupleit
 
-import Oceananigans: prognostic_state, restore_prognostic_state!
-import Oceananigans.Architectures: architecture
-import Oceananigans.Models: total_velocities
-import Oceananigans.TurbulenceClosures: buoyancy_force, buoyancy_tracers
+using Oceananigans: prognostic_state, restore_prognostic_state!
+using Oceananigans.Architectures: architecture
+using Oceananigans.Models: total_velocities
 
 const ParticlesOrNothing = Union{Nothing, AbstractLagrangianParticles}
 const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}
@@ -366,8 +365,8 @@ function build_nonhydrostatic_model(grid, ::Val{tracer_names}, timestepper,
     return model
 end
 
-architecture(model::NonhydrostaticModel) = model.architecture
-timestepper(model::NonhydrostaticModel) = model.timestepper
+Architectures.architecture(model::NonhydrostaticModel) = model.architecture
+Simulations.timestepper(model::NonhydrostaticModel) = model.timestepper
 
 function materialize_model_advection(advection, grid)
     advection = map(scheme -> adapt_advection_order(scheme, grid), advection)
@@ -375,17 +374,15 @@ function materialize_model_advection(advection, grid)
 end
 
 # return the total advective velocities
-@inline total_velocities(m::NonhydrostaticModel) = sum_of_velocities(m.velocities, m.background_fields.velocities)
-buoyancy_force(model::NonhydrostaticModel) = model.buoyancy
-buoyancy_tracers(model::NonhydrostaticModel) = model.tracers
+@inline Models.total_velocities(m::NonhydrostaticModel) = sum_of_velocities(m.velocities, m.background_fields.velocities)
+TurbulenceClosures.buoyancy_force(model::NonhydrostaticModel) = model.buoyancy
+TurbulenceClosures.buoyancy_tracers(model::NonhydrostaticModel) = model.tracers
 
 #####
 ##### Initialization
 #####
 
-import Oceananigans: initialize!
-
-function initialize!(model::NonhydrostaticModel)
+function Oceananigans.initialize!(model::NonhydrostaticModel)
     initialize_closure_fields!(model.closure_fields, model.closure, model)
     return nothing
 end
@@ -394,7 +391,7 @@ end
 ##### Checkpointing
 #####
 
-function prognostic_state(model::NonhydrostaticModel)
+function Oceananigans.prognostic_state(model::NonhydrostaticModel)
     return (clock = prognostic_state(model.clock),
             particles = prognostic_state(model.particles),
             velocities = prognostic_state(model.velocities),
@@ -406,7 +403,7 @@ function prognostic_state(model::NonhydrostaticModel)
             biogeochemistry = prognostic_state(model.biogeochemistry))
 end
 
-function restore_prognostic_state!(restored::NonhydrostaticModel, from)
+function Oceananigans.restore_prognostic_state!(restored::NonhydrostaticModel, from)
     restore_prognostic_state!(restored.clock, from.clock)
     restore_prognostic_state!(restored.particles, from.particles)
     restore_prognostic_state!(restored.velocities, from.velocities)
@@ -419,4 +416,4 @@ function restore_prognostic_state!(restored::NonhydrostaticModel, from)
     return restored
 end
 
-restore_prognostic_state!(::NonhydrostaticModel, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::NonhydrostaticModel, ::Nothing) = nothing
