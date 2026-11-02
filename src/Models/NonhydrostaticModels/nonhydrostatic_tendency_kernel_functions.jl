@@ -1,9 +1,3 @@
-using Oceananigans.Advection
-using Oceananigans.BuoyancyFormulations
-using Oceananigans.Coriolis
-using Oceananigans.Operators
-using Oceananigans.StokesDrifts
-
 using Oceananigans.Biogeochemistry: biogeochemical_transition,
                                     biogeochemical_drift_velocity,
                                     include_biogeochemistry_transitions
@@ -41,7 +35,6 @@ hydrostatic_pressure_gradient_y(i, j, k, grid, ::Nothing) = zero(grid)
 
     return (; u, v, w)
 end
-
 
 """
 $(TYPEDSIGNATURES)

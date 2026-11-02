@@ -134,7 +134,7 @@ export
     # Plotting (methods provided by OceananigansMakieExt)
     quadmesh, quadmesh!
 
-using DocStringExtensions
+using DocStringExtensions: DocStringExtensions
 
 function __init__()
     Threads.nthreads() > 1 && @info "Oceananigans will use $(Threads.nthreads()) threads"

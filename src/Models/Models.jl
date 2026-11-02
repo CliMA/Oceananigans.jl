@@ -14,16 +14,22 @@ export
     LinearFormulation, QuadraticFormulation,
     BoundaryAdjacentMean, boundary_total_area
 
+using Adapt: Adapt, adapt
 using DocStringExtensions: TYPEDSIGNATURES
+using GPUArraysCore: GPUArraysCore
+using JLD2: JLD2, jldopen
 
 using Oceananigans: AbstractModel, fields, prognostic_fields
 using Oceananigans.AbstractOperations: AbstractOperation
+using Oceananigans.Architectures: on_architecture
+using Oceananigans.DistributedComputations: DistributedComputations
 using Oceananigans.Advection: AbstractAdvectionScheme, Centered
 using Oceananigans.Fields: Field, TracerFields, ZeroField
-using Oceananigans.Grids: AbstractGrid, halo_size, inflate_halo_size
+using Oceananigans.Grids: Grids, AbstractGrid, halo_size, inflate_halo_size
 using Oceananigans.OutputReaders: update_field_time_series!, extract_field_time_series
 using Oceananigans.TimeSteppers: Clock
 using Oceananigans.Units: Time
+using Oceananigans.Utils: @apply_regionally
 
 import Oceananigans: initialize!
 import Oceananigans.Architectures: architecture
@@ -265,7 +271,5 @@ include("set_model.jl")
 
 # Implementation of the diagnostic for computing the dissipation rate
 include("VarianceDissipationComputations/VarianceDissipationComputations.jl")
-
-using .VarianceDissipationComputations
 
 end # module
