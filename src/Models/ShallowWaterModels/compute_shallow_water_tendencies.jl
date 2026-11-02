@@ -5,9 +5,6 @@ using Oceananigans.Utils: launch!
 using Oceananigans: fields, TendencyCallsite, UpdateStateCallsite
 using KernelAbstractions: @index, @kernel
 
-using Oceananigans.BoundaryConditions
-
-
 """
 $(TYPEDSIGNATURES)
 

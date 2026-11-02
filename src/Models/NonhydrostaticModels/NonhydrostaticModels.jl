@@ -2,23 +2,30 @@ module NonhydrostaticModels
 
 export NonhydrostaticModel, BackgroundField, BackgroundFields
 
+using Adapt: Adapt, adapt
 using DocStringExtensions: TYPEDSIGNATURES
 using KernelAbstractions: @index, @kernel
 
 using Oceananigans: Oceananigans
-using Oceananigans.DistributedComputations
+using Oceananigans.Advection: Advection, U_dot_∇u_metric, U_dot_∇v_metric, U_dot_∇w_metric,
+                              div_Uc, div_𝐯u, div_𝐯v, div_𝐯w
+using Oceananigans.Architectures: Architectures
+using Oceananigans.BoundaryConditions: BoundaryConditions, FieldBoundaryConditions,
+                                       compute_x_bcs!, compute_y_bcs!, compute_z_bcs!
+using Oceananigans.BuoyancyFormulations: BuoyancyFormulations, x_dot_g_bᶠᶜᶜ, y_dot_g_bᶜᶠᶜ, z_dot_g_bᶜᶜᶠ
+using Oceananigans.Coriolis: Coriolis, x_f_cross_U, y_f_cross_U, z_f_cross_U
 using Oceananigans.DistributedComputations: DistributedComputations,
                                             reconstruct_global_grid, Distributed,
                                             DistributedFFTBasedPoissonSolver,
                                             DistributedFourierTridiagonalPoissonSolver
-using Oceananigans.Grids
-using Oceananigans.Grids: XYZRegularRG
+using Oceananigans.Grids: Grids, Center, Face, Flat, Periodic, XYZRegularRG, grid, halo_size
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Solvers
-using Oceananigans.Solvers: GridWithFFTSolver, GridWithFourierTridiagonalSolver, ConjugateGradientPoissonSolver,
+using Oceananigans.Operators: Operators, Vᶜᶜᶜ, divᶜᶜᶜ, Δxᶜᶜᶜ, Δyᶜᶜᶜ, Δzᵃᵃᶜ, Δzᵃᵃᶠ, Δz⁻¹ᵃᵃᶠ, ∂xᶠᶜᶜ, ∂yᶜᶠᶜ, ∂zᶜᶜᶠ
+using Oceananigans.Solvers: Solvers, GridWithFFTSolver, GridWithFourierTridiagonalSolver, ConjugateGradientPoissonSolver,
                             InhomogeneousFormulation, ZDirection
-using Oceananigans.Utils
-using Oceananigans.Utils: foreach_name, sum_of_velocities
+using Oceananigans.StokesDrifts: StokesDrifts, x_curl_Uˢ_cross_U, y_curl_Uˢ_cross_U, z_curl_Uˢ_cross_U,
+                                 ∂t_uˢ, ∂t_vˢ, ∂t_wˢ
+using Oceananigans.Utils: Utils, foreach_name, named_tuple, sum_of_velocities
 
 using ..Models: initialize_boundary_transport
 

@@ -1,8 +1,6 @@
 using Oceananigans: prognostic_fields
-using Oceananigans.Grids
 using Oceananigans.Utils: KernelParameters, worksize, get_active_cells_map
 using Oceananigans.Grids: halo_size, topology, architecture, CommunicatingSide, TwoSided
-using Oceananigans.DistributedComputations
 using Oceananigans.DistributedComputations: DistributedGrid
 using Oceananigans.DistributedComputations: synchronize_communication!, AsynchronousDistributed
 
