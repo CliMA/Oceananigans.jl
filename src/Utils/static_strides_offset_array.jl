@@ -17,7 +17,7 @@ function StaticStridesOffsetArray(parent::AbstractArray{T, N}, offsets::Vararg{I
     return StaticStridesOffsetArray{T, N, size(parent), Int.(offsets), typeof(parent)}(parent)
 end
 
-# `linear_index` requires a 1-based parent, so the offsets of a nested offset array are collated
+# collates nested offsets so that `offsets` holds the whole shift and `parent` the underlying array
 function StaticStridesOffsetArray(a::AbstractOffsetArray{T, N}, offsets::Vararg{Integer, N}) where {T, N}
     map(OffsetArrays.overflow_check, axes(a), offsets)
     return StaticStridesOffsetArray(parent(a), (OffsetArrays.offsets(a) .+ offsets)...)
