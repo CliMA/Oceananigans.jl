@@ -818,6 +818,11 @@ end
         @test copyto!(dst, src) === dst
         @test parent(dst) == parent(src)
 
+        # set! copies the same way
+        fill!(parent(dst), 0)
+        @test set!(dst, src) === dst
+        @test parent(dst) == parent(src)
+
         # Different halo sizes: only the interior is copied
         wide_grid = RectilinearGrid(arch; size=(4, 6, 8), halo=(3, 3, 3), extent=(1, 1, 1), topology=(Periodic, Bounded, Bounded))
         wide = CenterField(wide_grid)
