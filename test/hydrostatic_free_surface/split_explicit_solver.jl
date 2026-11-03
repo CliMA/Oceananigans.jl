@@ -64,7 +64,7 @@ clock = Clock{Float64}(time=0)
                 Nsubsteps = calculate_substeps(sefs.substepping, 1)
                 fractional_Δt, weights, transport_weights = calculate_adaptive_settings(sefs.substepping, Nsubsteps) # barotropic time step in fraction of baroclinic step and averaging weights
 
-                iterate_split_explicit!(sefs, grid, GU, GV, Δτ, Δτ, noforcing, clock, weights, transport_weights, nothing, Val(1))
+                iterate_split_explicit!(sefs, grid, GU, GV, Δτ, Δτ, noforcing, clock, weights, transport_weights, nothing, 1)
 
                 U_computed = Array(U.data.parent)[2:Nx+1, 2:Ny+1]
                 U_exact = (reshape(-cos.(grid.xᶠᵃᵃ), (length(grid.xᶜᵃᵃ), 1)).+reshape(0 * grid.yᵃᶜᵃ, (1, length(grid.yᵃᶜᵃ))))[2:Nx+1, 2:Ny+1]
@@ -101,9 +101,9 @@ clock = Clock{Float64}(time=0)
                 weights = sefs.substepping.averaging_weights
 
                 for _ in 1:Nt
-                    iterate_split_explicit!(sefs, grid, GU, GV, Δτ, Δτ, noforcing, clock, weights, weights, nothing, Val(1))
+                    iterate_split_explicit!(sefs, grid, GU, GV, Δτ, Δτ, noforcing, clock, weights, weights, nothing, 1)
                 end
-                iterate_split_explicit!(sefs, grid, GU, GV, Δτ, Δτ, noforcing, clock, weights, weights, nothing, Val(1))
+                iterate_split_explicit!(sefs, grid, GU, GV, Δτ, Δτ, noforcing, clock, weights, weights, nothing, 1)
 
                 U_computed = Array(deepcopy(interior(U)))
                 η_computed = Array(deepcopy(interior(η)))
@@ -148,7 +148,7 @@ clock = Clock{Float64}(time=0)
                 fractional_Δt, weights, transport_weights = calculate_adaptive_settings(sefs.substepping, Nsubsteps) # barotropic time step in fraction of baroclinic step and averaging weights
 
                 for step in 1:Nsubsteps
-                    iterate_split_explicit!(sefs, grid, GU, GV, Δτ, Δτ, noforcing, clock, weights, transport_weights, nothing, Val(1))
+                    iterate_split_explicit!(sefs, grid, GU, GV, Δτ, Δτ, noforcing, clock, weights, transport_weights, nothing, 1)
                 end
 
                 U_computed = Array(deepcopy(interior(U)))
@@ -209,9 +209,9 @@ clock = Clock{Float64}(time=0)
 
                 weights = sefs.substepping.averaging_weights
                 for i in 1:Nt
-                    iterate_split_explicit!(sefs, grid, GU, GV, Δτ, Δτ, noforcing, clock, weights, weights, nothing, Val(1))
+                    iterate_split_explicit!(sefs, grid, GU, GV, Δτ, Δτ, noforcing, clock, weights, weights, nothing, 1)
                 end
-                iterate_split_explicit!(sefs, grid, GU, GV, Δτ, Δτ, noforcing, clock, weights, weights, nothing, Val(1))
+                iterate_split_explicit!(sefs, grid, GU, GV, Δτ, Δτ, noforcing, clock, weights, weights, nothing, 1)
 
                 η_mean_after = mean(Array(interior(η)))
 
@@ -304,11 +304,11 @@ end # end of testset loop
         Δτ = 1.0
         fractional_Δt, weights, transport_weights = calculate_adaptive_settings(sefs_extend.substepping, Nsubsteps)
 
-        iterate_split_explicit!(sefs_extend, sefs_extend.displacement.grid, GU, GV, Δτ, Δτ, noforcing, clock, weights, transport_weights, nothing, Val(Nsubsteps))
+        iterate_split_explicit!(sefs_extend, sefs_extend.displacement.grid, GU, GV, Δτ, Δτ, noforcing, clock, weights, transport_weights, nothing, Nsubsteps)
 
         fractional_Δt, weights, transport_weights = calculate_adaptive_settings(sefs_fill.substepping, Nsubsteps)
 
-        iterate_split_explicit!(sefs_fill, grid, GU, GV, Δτ, Δτ, noforcing, clock, weights, transport_weights, nothing, Val(Nsubsteps))
+        iterate_split_explicit!(sefs_fill, grid, GU, GV, Δτ, Δτ, noforcing, clock, weights, transport_weights, nothing, Nsubsteps)
 
         # Compare: both should give the same interior result
         η_extend = Array(interior(sefs_extend.displacement))
@@ -362,7 +362,7 @@ end
             set!(free_surface.displacement, (λ, φ, z) -> cosd(φ) * sind(λ - 20) + cosd(φ)^3 * cosd(3λ))
 
             fractional_Δt, weights, transport_weights = calculate_adaptive_settings(free_surface.substepping, Nsubsteps)
-            iterate_split_explicit!(free_surface, grid, GU, GV, Δτ, Δτ, noforcing, clock, weights, transport_weights, nothing, Val(Nsubsteps))
+            iterate_split_explicit!(free_surface, grid, GU, GV, Δτ, Δτ, noforcing, clock, weights, transport_weights, nothing, Nsubsteps)
 
             return free_surface
         end
@@ -418,7 +418,7 @@ end
     using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces:
         dimensionless_reconstruction_weights, scale_reconstruction_weights, stage_reconstruction,
         reconstruction_degree, stage_sample_times, cached_stages,
-        FrozenSlowForcing, StageQuadraticSlowForcing, ProgressiveSlowForcing, RungeKutta3Scheme
+        FrozenSlowForcing, ProgressiveSlowForcing, RungeKutta3Scheme
     using Oceananigans.TimeSteppers: SplitRungeKuttaTimeStepper, SSPRungeKuttaTimeStepper,
                                      ModifiedRungeKutta4TimeStepper, SSPRK3_COEFFICIENTS
 
@@ -520,17 +520,12 @@ end
     end
 
     @testset "Degree rules" begin
-        prog = ProgressiveSlowForcing(ModifiedRungeKutta4TimeStepper())
-        quad = StageQuadraticSlowForcing(SplitRungeKuttaTimeStepper(stages=3))
+        @test cached_stages(ProgressiveSlowForcing(ModifiedRungeKutta4TimeStepper())) == 3
+        @test cached_stages(ProgressiveSlowForcing()) == 2
+        @test all(ProgressiveSlowForcing().nodes .≈ (0.0, 1/3, 1/2))
 
-        @test cached_stages(prog) == 3
-        @test cached_stages(quad) == 2
-
-        # progressive: constant, linear, quadratic, quadratic
-        @test [reconstruction_degree(prog, m, 4) for m in 1:4] == [1, 2, 3, 3]
-
-        # stage-quadratic: frozen until the final stage
-        @test [reconstruction_degree(quad, m, 3) for m in 1:3] == [1, 1, 3]
+        # constant, linear, quadratic, quadratic
+        @test [reconstruction_degree(m) for m in 1:4] == [1, 2, 3, 3]
 
         @test_throws ArgumentError ProgressiveSlowForcing(SplitRungeKuttaTimeStepper(coefficients=(1,)))
 
@@ -557,6 +552,19 @@ end
         end
     end
 
+    @testset "The model rejects what its time stepper cannot run" begin
+        grid = RectilinearGrid(size=(4, 4, 2), extent=(1000, 1000, 100), topology=(Periodic, Periodic, Bounded))
+        model_with(timestepper, free_surface) = HydrostaticFreeSurfaceModel(grid; timestepper, free_surface, tracers=(), buoyancy=nothing)
+
+        built_for_four_stages = SplitExplicitFreeSurface(grid; substeps=4, slow_forcing=ProgressiveSlowForcing(ModifiedRungeKutta4TimeStepper()))
+        @test_throws ArgumentError model_with(:SplitRungeKutta3, built_for_four_stages)
+        @test_throws ArgumentError model_with(:SSPRungeKutta3, ImplicitFreeSurface())
+
+        model = model_with(:SplitRungeKutta3, SplitExplicitFreeSurface(grid; substeps=4, slow_forcing=ProgressiveSlowForcing()))
+        time_step!(model, 10)
+        @test model.clock.iteration == 1
+    end
+
     @testset "Model integration and tracer constancy" begin
         underlying = RectilinearGrid(size=(16, 8, 8), x=(0, 2e5), y=(0, 1e5),
                                      topology=(Periodic, Periodic, Bounded),
@@ -578,13 +586,13 @@ end
         end
 
         frozen = run(FrozenSlowForcing())
-        quad   = run(StageQuadraticSlowForcing(SplitRungeKuttaTimeStepper(stages=3)))
+        progressive = run(ProgressiveSlowForcing())
         filled = run(FrozenSlowForcing(); extend_halos=false)
 
         # The reconstruction touches the momentum forcing only, never the transport that advects tracers,
         # so constancy on the z★ grid must survive untouched -- for either halo strategy, since `filled`
         # substeps with the plain operators over freshly filled halos rather than into the halo itself.
-        for model in (frozen, quad, filled)
+        for model in (frozen, progressive, filled)
             c = interior(model.tracers.c)
             wet = c .!= 0
             @test maximum(abs, c[wet] .- 1) < 1e-12
@@ -592,8 +600,8 @@ end
 
         # It must change the answer, but only at the level of a second-order scheme difference.
         ηf = interior(frozen.free_surface.displacement)
-        ηq = interior(quad.free_surface.displacement)
-        @test ηf != ηq
-        @test maximum(abs, ηq .- ηf) < 0.05 * maximum(abs, ηf)
+        ηp = interior(progressive.free_surface.displacement)
+        @test ηf != ηp
+        @test maximum(abs, ηp .- ηf) < 0.05 * maximum(abs, ηf)
     end
 end

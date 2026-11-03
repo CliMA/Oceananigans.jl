@@ -22,7 +22,7 @@ struct SSPRungeKuttaTimeStepper{C, TG, PF, TI, GS} <: AbstractTimeStepper
     Gⁿ :: TG
     Ψ⁻ :: PF
     implicit_solver :: TI
-    G★ :: GS  # an η scratch, plus the (U, V) corrector forcing when split-explicit, or `nothing`
+    G★ :: GS  # the previous-stage (η, U, V) and the (U, V) corrector forcing when split-explicit, or `nothing`
 end
 
 """
@@ -39,18 +39,22 @@ the three-stage scheme.
 end
 
 """
-Auxiliary storage the Shu-Osher blend needs beyond `Gⁿ` and `Ψ⁻`: scratch copies of the previous stage's
-barotropic state, since every solve restarts from `(ηⁿ, Uⁿ, Vⁿ)` whereas the blend applies its increment
-to `(ηᵐ⁻¹, Uᵐ⁻¹, Vᵐ⁻¹)`, plus, for the split-explicit arrangement, the `(U, V)` accumulator for the
-stage-weighted slow forcing that drives the corrector sub-cycle. Returns `nothing` for models with no
-free surface.
+    ssp_stage_fractions(coefficients)
+
+Return the fractions `τᵐ` of `Δt` reached by the state after each stage of the Shu-Osher recursion,
+`τᵐ = bᵐ (τᵐ⁻¹ + 1)` with `τ⁰ = 0`: `(1, 1/2, 1)` for the three-stage scheme.
+"""
+ssp_stage_fractions(coefficients) = accumulate((τ, (a, b)) -> b * (τ + 1), coefficients; init = 0)
+
+"""
+Auxiliary storage the split-explicit arrangement needs beyond `Gⁿ` and `Ψ⁻`: scratch copies of the previous
+stage's barotropic state, since every solve restarts from `(ηⁿ, Uⁿ, Vⁿ)` whereas the blend applies its increment
+to `(ηᵐ⁻¹, Uᵐ⁻¹, Vᵐ⁻¹)`, and the `(U, V)` accumulator for the stage-weighted slow forcing that drives the
+corrector sub-cycle. Returns `nothing` for any other free surface.
 """
 @inline function ssp_auxiliary_state(Gⁿ::NamedTuple, Ψ⁻)
-    :η in keys(Ψ⁻) || return nothing
-    η = similar(Ψ⁻.η)
-    has_barotropic = (:U in keys(Gⁿ)) && (:V in keys(Gⁿ))
-    return has_barotropic ? (U = similar(Gⁿ.U), V = similar(Gⁿ.V),
-                             Uᵐ = similar(Ψ⁻.U), Vᵐ = similar(Ψ⁻.V), η = η) : (; η)
+    (:U in keys(Gⁿ)) && (:V in keys(Gⁿ)) || return nothing
+    return (U = similar(Gⁿ.U), V = similar(Gⁿ.V), Uᵐ = similar(Ψ⁻.U), Vᵐ = similar(Ψ⁻.V), η = similar(Ψ⁻.η))
 end
 
 @inline ssp_auxiliary_state(Gⁿ, Ψ⁻) = nothing
@@ -145,6 +149,9 @@ function time_step!(model::AbstractModel{<:SSPRungeKuttaTimeStepper}, Δt; callb
     maybe_prepare_first_time_step!(model, Δt, callbacks)
 
     cache_current_fields!(model)
+    cache_boundary_conditions!(model)
+
+    stage_times = map(τ -> next_time(model.clock, τ * Δt), ssp_stage_fractions(model.timestepper.coefficients))
 
     for (stage, (a, b)) in enumerate(model.timestepper.coefficients)
 
@@ -154,8 +161,9 @@ function time_step!(model::AbstractModel{<:SSPRungeKuttaTimeStepper}, Δt; callb
         ssp_substep!(model, kernel_Δt, a, b, callbacks)
         step_closure_prognostics!(model, kernel_Δt)
 
+        model.clock.time = stage_times[stage]
+
         if stage == model.timestepper.Nstages
-            tick_time!(model.clock, Δt)
             model.clock.last_Δt = Δt
         end
 
@@ -165,6 +173,9 @@ function time_step!(model::AbstractModel{<:SSPRungeKuttaTimeStepper}, Δt; callb
     step_lagrangian_particles!(model, kernel_Δt)
 
     model.clock.iteration += 1
+
+    # Once per time step: the particle state is not reset to tⁿ between stages, so per-stage updates would compound
+    update_lagrangian_particle_state!(model)
 
     return nothing
 end
@@ -185,6 +196,7 @@ function maybe_prepare_first_time_step!(model::AbstractModel{<:SSPRungeKuttaTime
         model.clock.last_Δt = Δt
         model.clock.last_stage_Δt = Δt
         reconcile_state!(model)
+        initialize_boundary_conditions!(model)
         update_state!(model, callbacks)
     end
     return nothing
@@ -204,34 +216,11 @@ end
     @inbounds field[i, j, k] = a * Ψ⁻[i, j, k] + b * field[i, j, k]
 end
 
-#####
-##### The corrector's slow forcing: accumulate βₘ Gᵐ across the stages, then hand it to the barotropic
-##### solve in place of the final stage's value.
-#####
-@inline accumulate_ssp_slow_forcing!(ts::SSPRungeKuttaTimeStepper, stage) = accumulate_ssp_slow_forcing!(ts.G★, ts, stage)
-
-@inline accumulate_ssp_slow_forcing!(G★, ts, stage) = nothing
-
-@inline function accumulate_ssp_slow_forcing!(G★::SSPBarotropicForcing, ts, stage)
-    β = ssp_quadrature_weights(ts.coefficients)[stage]
-    if stage == 1
-        parent(G★.U) .= β .* parent(ts.Gⁿ.U)
-        parent(G★.V) .= β .* parent(ts.Gⁿ.V)
-    else
-        parent(G★.U) .+= β .* parent(ts.Gⁿ.U)
-        parent(G★.V) .+= β .* parent(ts.Gⁿ.V)
-    end
-    return nothing
-end
-
-@inline install_ssp_slow_forcing!(ts::SSPRungeKuttaTimeStepper) = install_ssp_slow_forcing!(ts.G★, ts)
-
-@inline install_ssp_slow_forcing!(G★, ts) = nothing
-
-@inline function install_ssp_slow_forcing!(G★::SSPBarotropicForcing, ts)
-    parent(ts.Gⁿ.U) .= parent(G★.U)
-    parent(ts.Gⁿ.V) .= parent(G★.V)
-    return nothing
+# (σc)ᵐ = a (σc)ⁿ + b (σĉ), with (σc)ⁿ cached in σc⁻
+@kernel function _ssp_blend_tracer_field!(c, grid, σc⁻, a, b)
+    i, j, k = @index(Global, NTuple)
+    σ⁻¹ᶜᶜⁿ = σ⁻¹ⁿ(i, j, k, grid, Center(), Center(), Center())
+    @inbounds c[i, j, k] = a * σc⁻[i, j, k] * σ⁻¹ᶜᶜⁿ + b * c[i, j, k]
 end
 
 """

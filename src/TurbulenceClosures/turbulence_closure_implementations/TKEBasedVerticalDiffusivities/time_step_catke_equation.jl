@@ -2,7 +2,7 @@ using Oceananigans: fields
 using Oceananigans.Grids: bottommost_active_node
 using Oceananigans.Operators: σ⁻, σ⁻¹ⁿ, σⁿ
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, SplitRungeKuttaTimeStepper, SSPRungeKuttaTimeStepper,
-                                 implicit_step!
+                                 _ssp_blend_tracer_field!, implicit_step!
 
 get_time_step(closure::CATKEVerticalDiffusivity) = closure.tke_time_step
 
@@ -225,8 +225,7 @@ function time_step_catke_equation!(model, timestepper::SSPRungeKuttaTimeStepper,
                        Δτ)
     end
 
-    launch!(arch, grid, :xyz,
-            _blend_turbulent_kinetic_energy!, e, σe⁻, grid, convert(FT, a), convert(FT, b))
+    launch!(arch, grid, :xyz, _ssp_blend_tracer_field!, e, grid, σe⁻, convert(FT, a), convert(FT, b))
 
     return nothing
 end
@@ -419,14 +418,6 @@ end
         total_Gⁿ = slow_Gⁿe[i, j, k] + fast_Gⁿe * σᶜᶜⁿ
         e[i, j, k] = (σᶜᶜ⁻ * e[i, j, k] + Δτ * total_Gⁿ * active) / σᶜᶜⁿ
     end
-end
-
-# `e` now holds the stage's Euler advance from eᵐ⁻¹, thickness-weighted by σᵐ. Fold in the cached
-# start-of-step state to complete `(σe)ᵐ = a (σe)ⁿ + b [(σe)ᵐ⁻¹ + Δt Gᵉ]`.
-@kernel function _blend_turbulent_kinetic_energy!(e, σe⁻, grid, a, b)
-    i, j, k = @index(Global, NTuple)
-    σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
-    @inbounds e[i, j, k] = a * σe⁻[i, j, k] / σᶜᶜⁿ + b * e[i, j, k]
 end
 
 @inline function TurbulenceClosures.implicit_linear_coefficient(i, j, k, grid, closure::FlavorOfCATKE{<:VITD}, K, ::Val{id}, args...) where id

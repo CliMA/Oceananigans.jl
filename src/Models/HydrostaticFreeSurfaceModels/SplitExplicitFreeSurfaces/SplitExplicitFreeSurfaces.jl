@@ -5,7 +5,7 @@ export FixedSubstepNumber, FixedTimeStepSize
 export ConstantAveragingKernel, CosineAveragingKernel, LowDissipationAveragingKernel
 export SymmetricTrigAveragingKernel, WideTrigAveragingKernel
 export OptimizedSymmetricAveragingKernel, OptimizedAsymmetricAveragingKernel
-export FrozenSlowForcing, StageQuadraticSlowForcing, ProgressiveSlowForcing
+export FrozenSlowForcing, ProgressiveSlowForcing
 
 using DocStringExtensions: TYPEDSIGNATURES
 using LinearAlgebra: LinearAlgebra

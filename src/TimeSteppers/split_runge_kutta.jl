@@ -129,7 +129,7 @@ quartic dissipation `|R(iθ)| ≈ 1 - (1/24 - c₄) θ⁴` that absorbs the pert
 injects into the first baroclinic mode. The band closes when `1/24 - c₄ ≥ σ₀`, i.e. `a ≤ 1/4 - 6 σ₀`, with
 `σ₀` the injection measured on the configuration at hand.
 
-Must be paired with [`ProgressiveSlowForcing`](@ref).
+Must be paired with `ProgressiveSlowForcing(ModifiedRungeKutta4TimeStepper())`.
 
 Examples
 ========

@@ -9,7 +9,7 @@ using Oceananigans: Oceananigans, UpdateStateCallsite
 using Oceananigans.Advection: _advective_tracer_flux_x,
                               _advective_tracer_flux_y,
                               _advective_tracer_flux_z
-using Oceananigans.Fields: CenterField, VelocityFields, XFaceField, YFaceField, ZFaceField
+using Oceananigans.Fields: CenterField, Field, VelocityFields, XFaceField, YFaceField, ZFaceField
 using Oceananigans.Grids: AbstractGrid, Center, Face, architecture
 using Oceananigans.Operators: Axᶠᶜᶜ, Ayᶜᶠᶜ, Azᶜᶜᶠ, δxᶠᶜᶜ, δyᶜᶠᶜ, δzᶜᶜᶠ, σ⁻, σ⁻¹ⁿ, σⁿ
 using Oceananigans.Simulations: Simulations, Callback, validate_schedule

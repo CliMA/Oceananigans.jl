@@ -331,6 +331,7 @@ function build_hydrostatic_free_surface_model(grid, ::Val{tracer_names}, timeste
     G⁻ = previous_hydrostatic_tendency_fields(timestepper, velocities, free_surface, grid, tracer_names, boundary_conditions)
     cached_state = previous_hydrostatic_state_fields(timestepper, velocities, free_surface, tracers)
     timestepper = TimeStepper(timestepper, grid, prognostic_fields; implicit_solver, Gⁿ, G⁻, cached_state...)
+    validate_timestepper_free_surface(timestepper, free_surface)
     materialize_clock!(clock, timestepper)
 
     # Materialize forcing for model tracer and velocity fields.

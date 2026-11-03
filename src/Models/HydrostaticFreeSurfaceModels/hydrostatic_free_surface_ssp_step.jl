@@ -1,6 +1,5 @@
-using Oceananigans.TimeSteppers: accumulate_ssp_slow_forcing!, install_ssp_slow_forcing!,
-                                 _ssp_euler_substep_field!, _ssp_blend_field!, SSPRungeKuttaTimeStepper,
-                                 SSPBarotropicForcing, implicit_step!, ssp_substep!
+using Oceananigans.TimeSteppers: _ssp_euler_substep_field!, _ssp_blend_field!, _ssp_blend_tracer_field!,
+                                 SSPBarotropicForcing, implicit_step!, ssp_stage_fractions, ssp_substep!
 
 # `ImplicitFreeSurface` solves on a predictor velocity, so the Shu-Osher blend would have to be deferred
 # until after a pressure correction that has already overwritten Ψᵐ⁻¹.
@@ -11,7 +10,7 @@ validate_timestepper_free_surface(::SSPRungeKuttaTimeStepper, ::ImplicitFreeSurf
 
 function validate_timestepper_free_surface(timestepper::MultiStageTimeStepper, free_surface::SplitExplicitFreeSurface)
     slow_forcing = free_surface.slow_forcing
-    slow_forcing isa SplitExplicitFreeSurfaces.ReconstructedSlowForcing || return nothing
+    slow_forcing isa SplitExplicitFreeSurfaces.ProgressiveSlowForcing || return nothing
 
     τ = SplitExplicitFreeSurfaces.stage_sample_times(timestepper)
     nodes = slow_forcing.nodes
@@ -43,7 +42,9 @@ TimeSteppers.ssp_substep!(model::HydrostaticFreeSurfaceModel, Δt, a, b, callbac
 
 @inline function TimeSteppers.ssp_substep!(model, free_surface, grid, Δt, a, b, callbacks)
     timestepper = model.timestepper
-    final_stage = model.clock.stage == timestepper.Nstages
+
+    # As in split Runge-Kutta, exterior states step from their value at tⁿ to the time the stage reaches
+    stage_Δt = convert(eltype(grid), ssp_stage_fractions(timestepper.coefficients)[model.clock.stage] * Δt)
 
     @apply_regionally begin
         update_transport_velocities!(model.transport_velocities, model.velocities, free_surface)
@@ -52,18 +53,12 @@ TimeSteppers.ssp_substep!(model::HydrostaticFreeSurfaceModel, Δt, a, b, callbac
     end
 
     compute_free_surface_tendency!(grid, model, free_surface, Δt)
-    accumulate_ssp_slow_forcing!(timestepper, model.clock.stage)
 
-    # Must run before `compute_transport_velocities!`: tracer constancy needs the transport that advects
-    # them to be the same flux that advanced the free surface.
-    final_stage && install_ssp_slow_forcing!(timestepper)
-    cache_previous_stage_barotropic_state!(free_surface, timestepper)
+    foreach((ψᵐ⁻¹, ψ) -> ψᵐ⁻¹ .= ψ, previous_stage_fields(timestepper.G★), free_surface_fields(free_surface))
     step_free_surface!(free_surface, model, timestepper, Δt)
 
-    blend_barotropic_state!(free_surface, timestepper, a, b)
-
     @apply_regionally begin
-        ssp_blend_velocities!(model.velocities, model, a, b)
+        ssp_blend_velocities!(model.velocities, model, a, b, stage_Δt)
         mask_immersed_horizontal_velocities!(model.velocities)
         compute_transport_velocities!(model, free_surface)
     end
@@ -71,13 +66,16 @@ TimeSteppers.ssp_substep!(model::HydrostaticFreeSurfaceModel, Δt, a, b, callbac
     u, v, _ = model.velocities
     fill_halo_regions!((u, v), model.clock, fields(model); async=true)
 
+    @apply_regionally compute_tracer_tendencies!(model)
+    execute_tracer_tendency_callbacks!(model, callbacks)
+
     @apply_regionally begin
-        compute_tracer_tendencies!(model)
         rk_substep_grid!(grid, model, model.vertical_coordinate, Δt)
 
         # Reconciled at every stage: deferring it to the final stage breaks tracer constancy.
         correct_barotropic_mode!(model, Δt)
         ssp_substep_tracers!(model.tracers, model, Δt, a, b)
+        step_boundary_conditions!(model.tracers, model.clock, fields(model), stage_Δt)
     end
 
     return nothing
@@ -115,7 +113,7 @@ end
     return nothing
 end
 
-function ssp_blend_velocities!(velocities, model, a, b)
+function ssp_blend_velocities!(velocities, model, a, b, stage_Δt)
     grid = model.grid
     FT = eltype(grid)
     Ψ⁻ = model.timestepper.Ψ⁻
@@ -123,6 +121,7 @@ function ssp_blend_velocities!(velocities, model, a, b)
 
     launch!(architecture(grid), grid, :xyz, _ssp_blend_field!, velocities.u, Ψ⁻.u, a, b; exclude_periphery=true)
     launch!(architecture(grid), grid, :xyz, _ssp_blend_field!, velocities.v, Ψ⁻.v, a, b; exclude_periphery=true)
+    step_boundary_conditions!(velocities, model.clock, fields(model), stage_Δt)
 
     return nothing
 end
@@ -184,16 +183,9 @@ end
 # term carries σᵐ⁻¹ rather than σᵐ.
 @kernel function _ssp_euler_substep_tracer_field!(c, grid, Δt, Gⁿ)
     i, j, k = @index(Global, NTuple)
-    σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
+    σ⁻¹ᶜᶜⁿ = σ⁻¹ⁿ(i, j, k, grid, Center(), Center(), Center())
     σᶜᶜ⁻ = σ⁻(i, j, k, grid, Center(), Center(), Center())
-    @inbounds c[i, j, k] = (σᶜᶜ⁻ * c[i, j, k] + Δt * Gⁿ[i, j, k]) / σᶜᶜⁿ
-end
-
-# The blend applies to the thickness-weighted tracer, (σc)ᵐ = a (σc)ⁿ + b (σĉ), on the stage thickness σᵐ.
-@kernel function _ssp_blend_tracer_field!(c, grid, σc⁻, a, b)
-    i, j, k = @index(Global, NTuple)
-    σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
-    @inbounds c[i, j, k] = a * σc⁻[i, j, k] / σᶜᶜⁿ + b * c[i, j, k]
+    @inbounds c[i, j, k] = (σᶜᶜ⁻ * c[i, j, k] + Δt * Gⁿ[i, j, k]) * σ⁻¹ᶜᶜⁿ
 end
 
 #####
@@ -204,23 +196,10 @@ end
 ##### barotropic propagator acts once per step, and only the responses to the stage forcings are combined.
 ##### Blending the barotropic *state* instead would compose three near-exact advances and over-integrate.
 
-@inline cache_previous_stage_barotropic_state!(free_surface, timestepper::SSPRungeKuttaTimeStepper) =
-    cache_previous_stage_barotropic_state!(free_surface, timestepper.G★)
+@inline previous_stage_fields(::Nothing) = NamedTuple()
+@inline previous_stage_fields(G★::SSPBarotropicForcing) = (η = G★.η, U = G★.Uᵐ, V = G★.Vᵐ)
 
-@inline cache_previous_stage_barotropic_state!(free_surface, ::Nothing) = nothing
-
-@inline function cache_previous_stage_barotropic_state!(free_surface, G★)
-    parent(G★.η) .= parent(free_surface.displacement)
-    return nothing
-end
-
-@inline function cache_previous_stage_barotropic_state!(free_surface, G★::SSPBarotropicForcing)
-    U, V = free_surface.barotropic_velocities
-    parent(G★.η)  .= parent(free_surface.displacement)
-    parent(G★.Uᵐ) .= parent(U)
-    parent(G★.Vᵐ) .= parent(V)
-    return nothing
-end
+blend_free_surface!(free_surface, timestepper, stage) = nothing
 
 """
 $(TYPEDSIGNATURES)
@@ -235,26 +214,22 @@ the same blend, `Uᵐ` is the Shu-Osher stage value the quadrature `β` expects,
 depends on the velocity -- Coriolis, drag, momentum advection of the barotropic flow -- is integrated at
 the order of the composition rather than at first order.
 """
-@inline blend_barotropic_state!(free_surface, timestepper::SSPRungeKuttaTimeStepper, a, b) =
-    blend_barotropic_state!(free_surface, timestepper.G★, timestepper.Ψ⁻, a, b)
-
-@inline blend_barotropic_state!(free_surface, ::Nothing, Ψ⁻, a, b) = nothing
-
-@inline function blend_barotropic_state!(free_surface, G★, Ψ⁻, a, b)
-    blend_increment!(free_surface.displacement, Ψ⁻.η, G★.η, a, b)
+function blend_free_surface!(free_surface, timestepper::SSPRungeKuttaTimeStepper, stage)
+    grid = free_surface.displacement.grid
+    FT = eltype(grid)
+    a, b = timestepper.coefficients[stage]
+    ψ = free_surface_fields(free_surface)
+    launch!(architecture(grid), grid, :xy, _blend_free_surface!, ψ, timestepper.Ψ⁻[keys(ψ)],
+            previous_stage_fields(timestepper.G★), convert(FT, a), convert(FT, b), grid.Nz + 1)
     return nothing
 end
 
-@inline function blend_barotropic_state!(free_surface, G★::SSPBarotropicForcing, Ψ⁻, a, b)
-    U, V = free_surface.barotropic_velocities
-    blend_increment!(free_surface.displacement, Ψ⁻.η, G★.η,  a, b)
-    blend_increment!(U,                         Ψ⁻.U, G★.Uᵐ, a, b)
-    blend_increment!(V,                         Ψ⁻.V, G★.Vᵐ, a, b)
-    return nothing
-end
-
-# ψ holds the sub-cycle output Ψ⋆; ψⁿ the state at n; ψᵐ⁻¹ the previous stage.
-@inline function blend_increment!(ψ, ψⁿ, ψᵐ⁻¹, a, b)
-    parent(ψ) .= a .* parent(ψⁿ) .+ b .* (parent(ψᵐ⁻¹) .+ parent(ψ) .- parent(ψⁿ))
-    return nothing
+# ψ holds the output of the solve that restarted from ψⁿ.
+@kernel function _blend_free_surface!(ψ, ψⁿ, ψᵐ⁻¹, a, b, k_top)
+    i, j = @index(Global, NTuple)
+    @inbounds begin
+        ψ.η[i, j, k_top] = a * ψⁿ.η[i, j, k_top] + b * (ψᵐ⁻¹.η[i, j, k_top] + ψ.η[i, j, k_top] - ψⁿ.η[i, j, k_top])
+        ψ.U[i, j, 1]     = a * ψⁿ.U[i, j, 1]     + b * (ψᵐ⁻¹.U[i, j, 1]     + ψ.U[i, j, 1]     - ψⁿ.U[i, j, 1])
+        ψ.V[i, j, 1]     = a * ψⁿ.V[i, j, 1]     + b * (ψᵐ⁻¹.V[i, j, 1]     + ψ.V[i, j, 1]     - ψⁿ.V[i, j, 1])
+    end
 end

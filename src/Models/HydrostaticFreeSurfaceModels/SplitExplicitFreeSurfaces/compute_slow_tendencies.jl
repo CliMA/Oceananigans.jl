@@ -23,6 +23,24 @@ end
 @inline baseline_velocities(model, ::QuasiAdamsBashforth2TimeStepper) = model.transport_velocities
 @inline baseline_velocities(model, ::SSPRungeKuttaTimeStepper) = model.transport_velocities
 
+weight_slow_forcing!(GUⁿ, GVⁿ, grid, timestepper, stage) = nothing
+
+# G★ accumulates βₘ Gᵐ over the stages, and the last stage drives its solve with the full sum.
+function weight_slow_forcing!(GUⁿ, GVⁿ, grid, ts::SSPRungeKuttaTimeStepper, stage)
+    FT = eltype(grid)
+    β = convert(FT, ssp_quadrature_weights(ts.coefficients)[stage])
+    keep = convert(FT, stage > 1)
+    Sᵁ, Sⱽ = stage == ts.Nstages ? (GUⁿ, GVⁿ) : (ts.G★.U, ts.G★.V)
+    launch!(architecture(grid), grid, :xy, _accumulate_slow_forcing!, Sᵁ, Sⱽ, ts.G★.U, ts.G★.V, GUⁿ, GVⁿ, β, keep)
+    return nothing
+end
+
+@kernel function _accumulate_slow_forcing!(Sᵁ, Sⱽ, Ĝᵁ, Ĝⱽ, Gᵁ, Gⱽ, β, keep)
+    i, j = @index(Global, NTuple)
+    @inbounds Sᵁ[i, j, 1] = keep * Ĝᵁ[i, j, 1] + β * Gᵁ[i, j, 1]
+    @inbounds Sⱽ[i, j, 1] = keep * Ĝⱽ[i, j, 1] + β * Gⱽ[i, j, 1]
+end
+
 function HydrostaticFreeSurfaceModels.compute_free_surface_tendency!(grid, model, free_surface::SplitExplicitFreeSurface, Δt)
     GUⁿ = model.timestepper.Gⁿ.U
     GVⁿ = model.timestepper.Gⁿ.V
@@ -31,7 +49,10 @@ function HydrostaticFreeSurfaceModels.compute_free_surface_tendency!(grid, model
     baseline  = baseline_velocities(model, model.timestepper)
     u⁻, v⁻    = baseline.u, baseline.v
 
-    @apply_regionally launch!(architecture(grid), grid, :xy, _compute_realized_barotropic_tendency!, GUⁿ, GVⁿ, grid, u, v, u⁻, v⁻, Δt)
+    @apply_regionally begin
+        launch!(architecture(grid), grid, :xy, _compute_realized_barotropic_tendency!, GUⁿ, GVⁿ, grid, u, v, u⁻, v⁻, Δt)
+        weight_slow_forcing!(GUⁿ, GVⁿ, grid, model.timestepper, model.clock.stage)
+    end
 
     fill_halo_regions!((GUⁿ, GVⁿ); async=true)
 

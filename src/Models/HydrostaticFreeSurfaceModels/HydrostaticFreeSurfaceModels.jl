@@ -22,7 +22,7 @@ using Oceananigans.Models: Models, default_free_surface_boundary_conditions, mat
 using Oceananigans.Operators: Δzᶜᶠᶜ, Δzᶠᶜᶜ
 using Oceananigans.Simulations: Simulations, timestepper
 using Oceananigans.TimeSteppers: TimeSteppers, MultiStageTimeStepper, QuasiAdamsBashforth2TimeStepper, SplitRungeKuttaName,
-                                 SplitRungeKuttaTimeStepper, step_lagrangian_particles!,
+                                 SSPRungeKuttaTimeStepper, SplitRungeKuttaTimeStepper, step_lagrangian_particles!,
                                  update_lagrangian_particle_state!
 using Oceananigans.TurbulenceClosures: TurbulenceClosures
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: TKEBasedVerticalDiffusivities

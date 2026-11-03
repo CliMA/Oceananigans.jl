@@ -2,7 +2,7 @@ using Adapt: Adapt
 using StaticArrays: SMatrix
 using Oceananigans.Grids: Face, Center
 using Oceananigans.TimeSteppers: SplitRungeKuttaTimeStepper, SSPRungeKuttaTimeStepper,
-                                 MultiStageTimeStepper, ModifiedRungeKutta4TimeStepper
+                                 MultiStageTimeStepper, ssp_quadrature_weights, ssp_stage_fractions
 
 #####
 ##### Time reconstruction of the slow forcing across the barotropic sub-cycle.
@@ -21,16 +21,21 @@ treatment and the default.
 struct FrozenSlowForcing end
 
 """
-    StageQuadraticSlowForcing(timestepper = SplitRungeKuttaTimeStepper(stages = 3))
+    ProgressiveSlowForcing(timestepper = SplitRungeKuttaTimeStepper(stages = 3))
 
-Reconstruct the slow forcing as the quadratic through the baroclinic Runge--Kutta stage values, evaluated at
-the midpoint of each barotropic substep and applied on the final stage only. Every earlier stage keeps the
-frozen forcing.
+Reconstruct the slow forcing *progressively*: each stage carries the best polynomial the already-computed
+stage forcings support -- the first stage frozen, the second linear, the third and any later stage
+quadratic -- evaluated at the midpoint of each barotropic substep.
 
-The `timestepper` fixes the nodes at which the stage forcings are sampled and how many of them are stored:
-the stage in progress reads its forcing live, so `Nstages - 1` fields per horizontal velocity component.
+The `timestepper` must match the one that steps the model. It fixes the nodes at which the stage forcings are
+sampled and how many of them are stored: the stage in progress reads its forcing live, so `Nstages - 1` fields
+per horizontal velocity component.
+
+The intermediate stages do not change the order but they do change the stability, because the perturbation
+the sub-cycle injects into the first baroclinic mode collects the forcing error of every stage.
+[`ModifiedRungeKutta4TimeStepper`](@ref) requires `ProgressiveSlowForcing(ModifiedRungeKutta4TimeStepper())`.
 """
-struct StageQuadraticSlowForcing{U, V, W, F, T}
+struct ProgressiveSlowForcing{U, V, W, F, T}
     Gᵁ :: U        # the stage forcings preceding the current stage, one field each
     Gⱽ :: V
     weights :: W   # dimensionless reconstruction weights, one entry per stage, all of one type
@@ -38,39 +43,14 @@ struct StageQuadraticSlowForcing{U, V, W, F, T}
     nodes :: T     # the composition's sample times
 end
 
-"""
-    ProgressiveSlowForcing(timestepper = ModifiedRungeKutta4TimeStepper())
-
-Reconstruct the slow forcing *progressively*: each stage carries the best polynomial the already-computed
-stage forcings support -- the first stage frozen, the second linear, the third and any later stage
-quadratic -- with the same stored fields as `StageQuadraticSlowForcing`.
-
-The intermediate stages do not change the order but they do change the stability, because the perturbation
-the sub-cycle injects into the first baroclinic mode collects the forcing error of every stage. This is the
-reconstruction [`ModifiedRungeKutta4TimeStepper`](@ref) requires.
-"""
-struct ProgressiveSlowForcing{U, V, W, F, T}
-    Gᵁ :: U
-    Gⱽ :: V
-    weights :: W
-    frozen :: F
-    nodes :: T
-end
-
-const ReconstructedSlowForcing = Union{StageQuadraticSlowForcing, ProgressiveSlowForcing}
-
-StageQuadraticSlowForcing(timestepper = SplitRungeKuttaTimeStepper(stages = 3)) = build_reconstruction(StageQuadraticSlowForcing, timestepper)
-
-ProgressiveSlowForcing(timestepper = ModifiedRungeKutta4TimeStepper()) = build_reconstruction(ProgressiveSlowForcing, timestepper)
-
-function build_reconstruction(SF, timestepper)
+function ProgressiveSlowForcing(timestepper = SplitRungeKuttaTimeStepper(stages = 3))
     M = timestepper.Nstages
     M > 1 || throw(ArgumentError("A slow-forcing reconstruction needs at least two stages, got $M."))
 
     τ = stage_sample_times(timestepper)
     N = M - 1
 
-    degrees = Tuple(reconstruction_degree(SF, m, M) for m in 1:M)
+    degrees = Tuple(reconstruction_degree(m) for m in 1:M)
 
     # All stages carry the same weight type so that indexing with the running stage stays type-stable; a
     # stage whose polynomial is a constant stores zeros and is flagged to take the frozen path instead.
@@ -80,31 +60,30 @@ function build_reconstruction(SF, timestepper)
 
     frozen = Tuple(D == 1 for D in degrees)
 
-    return SF(Tuple(nothing for n in 1:N), Tuple(nothing for n in 1:N), weights, frozen, τ)
+    return ProgressiveSlowForcing(Tuple(nothing for n in 1:N), Tuple(nothing for n in 1:N), weights, frozen, τ)
 end
 
-@inline cached_stages(sf::ReconstructedSlowForcing) = length(sf.Gᵁ)
-@inline maximum_reconstruction_degree(::Type{<:ReconstructedSlowForcing}) = 3
+@inline cached_stages(sf::ProgressiveSlowForcing) = length(sf.Gᵁ)
 
 materialize_slow_forcing(::FrozenSlowForcing, grid, args...) = FrozenSlowForcing()
 
-function materialize_slow_forcing(sf::ReconstructedSlowForcing, grid, u_bcs, v_bcs)
+function materialize_slow_forcing(sf::ProgressiveSlowForcing, grid, u_bcs, v_bcs)
     N  = cached_stages(sf)
     Gᵁ = ntuple(n -> Field{Face, Center, Nothing}(grid, boundary_conditions = u_bcs), N)
     Gⱽ = ntuple(n -> Field{Center, Face, Nothing}(grid, boundary_conditions = v_bcs), N)
-    return Base.typename(typeof(sf)).wrapper(Gᵁ, Gⱽ, sf.weights, sf.frozen, sf.nodes)
+    return ProgressiveSlowForcing(Gᵁ, Gⱽ, sf.weights, sf.frozen, sf.nodes)
 end
 
-Adapt.adapt_structure(to, sf::ReconstructedSlowForcing) =
-    Base.typename(typeof(sf)).wrapper(Adapt.adapt(to, sf.Gᵁ),
-                                      Adapt.adapt(to, sf.Gⱽ),
-                                      Adapt.adapt(to, sf.weights),
-                                      Adapt.adapt(to, sf.frozen),
-                                      Adapt.adapt(to, sf.nodes))
+Adapt.adapt_structure(to, sf::ProgressiveSlowForcing) =
+    ProgressiveSlowForcing(Adapt.adapt(to, sf.Gᵁ),
+                           Adapt.adapt(to, sf.Gⱽ),
+                           Adapt.adapt(to, sf.weights),
+                           Adapt.adapt(to, sf.frozen),
+                           Adapt.adapt(to, sf.nodes))
 
 # The stage values are rebuilt within every time step.
 Oceananigans.prognostic_state(::FrozenSlowForcing) = nothing
-Oceananigans.prognostic_state(::ReconstructedSlowForcing) = nothing
+Oceananigans.prognostic_state(::ProgressiveSlowForcing) = nothing
 
 #####
 ##### The nodes: where in the step each stage forcing was sampled
@@ -124,9 +103,7 @@ approximates `γₘ₋₁` and `β = (3, 2, 1)` gives `(0, 1/3, 1/2)`; the Shu-O
 ##### The rule: how many coefficients each stage's polynomial carries
 #####
 
-@inline reconstruction_degree(SF::Type{<:ProgressiveSlowForcing},    stage, Nstages) = min(stage, maximum_reconstruction_degree(SF))
-@inline reconstruction_degree(SF::Type{<:StageQuadraticSlowForcing}, stage, Nstages) = stage == Nstages ? min(Nstages, maximum_reconstruction_degree(SF)) : 1
-@inline reconstruction_degree(sf::ReconstructedSlowForcing,          stage, Nstages) = reconstruction_degree(Base.typename(typeof(sf)).wrapper, stage, Nstages)
+@inline reconstruction_degree(stage) = min(stage, 3)
 
 #####
 ##### The weights, built once per stage on the host
@@ -199,7 +176,7 @@ end
 
 @inline cache_stage_slow_forcing!(::FrozenSlowForcing, args...) = nothing
 
-@inline function cache_stage_slow_forcing!(sf::ReconstructedSlowForcing, GUⁿ, GVⁿ, stage)
+@inline function cache_stage_slow_forcing!(sf::ProgressiveSlowForcing, GUⁿ, GVⁿ, stage)
     if stage ≤ cached_stages(sf)
         parent(sf.Gᵁ[stage]) .= parent(GUⁿ)
         parent(sf.Gⱽ[stage]) .= parent(GVⁿ)
@@ -217,9 +194,9 @@ end
 @inline stage_reconstruction(::FrozenSlowForcing, timestepper, stage, Δτ::FT) where FT = (nothing, nothing, zero_reconstruction_weights(Val(1), FT))
 
 # Anything that is not a multi-stage scheme has no stage values to reconstruct from.
-@inline stage_reconstruction(sf::ReconstructedSlowForcing, timestepper, stage, Δτ::FT) where FT = (nothing, nothing, zero_reconstruction_weights(Val(length(sf.Gᵁ)), FT))
+@inline stage_reconstruction(sf::ProgressiveSlowForcing, timestepper, stage, Δτ::FT) where FT = (nothing, nothing, zero_reconstruction_weights(Val(length(sf.Gᵁ)), FT))
 
-@inline function stage_reconstruction(sf::ReconstructedSlowForcing, ts::MultiStageTimeStepper, stage, Δτ::FT) where FT
+@inline function stage_reconstruction(sf::ProgressiveSlowForcing, ts::MultiStageTimeStepper, stage, Δτ::FT) where FT
     @inbounds sf.frozen[stage] && return (nothing, nothing, zero_reconstruction_weights(Val(length(sf.Gᵁ)), FT))
     @inbounds w̃ = sf.weights[stage]
     return (sf.Gᵁ, sf.Gⱽ, scale_reconstruction_weights(w̃, reconstruction_timestep(ts, stage, Δτ)))
