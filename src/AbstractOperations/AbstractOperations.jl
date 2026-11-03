@@ -12,15 +12,12 @@ using Adapt: Adapt, adapt
 using Base: @propagate_inbounds
 using DocStringExtensions: TYPEDSIGNATURES
 
-using Oceananigans: location
+using Oceananigans: Oceananigans, location
 using Oceananigans.Architectures: Architectures, architecture, on_architecture
-using Oceananigans.Fields: AbstractField, fieldify_function, instantiated_location
-using Oceananigans.Grids: Center, Face, unwrapped_eltype
+using Oceananigans.BoundaryConditions: BoundaryConditions, fill_halo_regions!
+using Oceananigans.Fields: Fields, AbstractField, compute_at!, fieldify_function, indices, instantiated_location
+using Oceananigans.Grids: Grids, Center, Face, unwrapped_eltype
 using Oceananigans.Operators: interpolation_operator
-
-import Oceananigans: prognostic_state
-import Oceananigans.BoundaryConditions: fill_halo_regions!
-import Oceananigans.Fields: compute_at!, indices
 
 #####
 ##### Basic functionality
@@ -36,10 +33,10 @@ const AF = AbstractField # used in unary_operations.jl, binary_operations.jl, et
 const Location = Union{Face, Center, Nothing}
 
 # We have no halos to fill
-@inline fill_halo_regions!(::AbstractOperation, args...; kwargs...) = nothing
+@inline BoundaryConditions.fill_halo_regions!(::AbstractOperation, args...; kwargs...) = nothing
 
 # Operations are computed from their operands, so they have no state of their own to checkpoint
-prognostic_state(::AbstractOperation) = nothing
+Oceananigans.prognostic_state(::AbstractOperation) = nothing
 
 Architectures.architecture(a::AbstractOperation) = architecture(a.grid)
 

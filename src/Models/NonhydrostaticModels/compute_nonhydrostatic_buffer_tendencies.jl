@@ -1,6 +1,6 @@
+using Oceananigans.Grids: CommunicatingSide, TwoSided
 using Oceananigans.TurbulenceClosures: required_halo_size_x, required_halo_size_y
 using Oceananigans.Utils: worksize
-using Oceananigans.Grids: CommunicatingSide, TwoSided
 
 # TODO: the code in this file is difficult to understand.
 # Rewriting it may be helpful.

@@ -1,5 +1,5 @@
 using Oceananigans: fields
-using Oceananigans.Grids: topology, Flat
+using Oceananigans.Grids: Flat, topology
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel
 
 # Store advective and diffusive fluxes for dissipation computation
