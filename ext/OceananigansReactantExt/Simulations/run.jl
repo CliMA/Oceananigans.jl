@@ -52,7 +52,7 @@ four cannot run inside a program and are refused here with the reason, rather th
 and stores it. Neither check sees a callback assigned into `sim.callbacks` directly, as
 `conjure_time_step_wizard!` does.
 """
-function add_callback!(sim::ReactantSimulation, callback::Callback; name = GenericName())
+function Oceananigans.Simulations.add_callback!(sim::ReactantSimulation, callback::Callback; name = GenericName())
     check_traceable(callback.func)
     schedule = traced_schedule(callback.schedule, sim)
     callback = Callback(callback.func, schedule, callback.callsite, callback.parameters)
@@ -110,9 +110,10 @@ callback's function type specializes it. It runs here outside the traced loop, o
 state, so it may read or write device arrays freely; its counterpart at the end of the run is
 `finalize!`, see [`run!`](@ref).
 """
-function initialize!(sim::ReactantSimulation)
+function Oceananigans.initialize!(sim::ReactantSimulation)
     model = sim.model
     initialize!(model)
+    initialize_boundary_conditions!(model)
     update_state!(model, callbacks_at(sim, ModelCallsite))
     foreach(callback -> initialize!(callback, sim), values(sim.callbacks))
     foreach(callback -> callback(sim), callbacks_at(sim, TimeStepCallsite))
@@ -143,9 +144,9 @@ a traced `if` rather than the eager `schedule(model) && callback(sim)`. A callba
 here must do only device work (kernel launches, broadcasts, reductions into arrays reachable
 from `sim`). Printing, IO, and data-dependent errors belong between programs.
 """
-time_step!(sim::ReactantSimulation; euler = false) = time_step!(sim, sim.Δt; euler)
+Oceananigans.TimeSteppers.time_step!(sim::ReactantSimulation; euler = false) = time_step!(sim, sim.Δt; euler)
 
-function time_step!(sim::ReactantSimulation, Δt; euler = false)
+function Oceananigans.TimeSteppers.time_step!(sim::ReactantSimulation, Δt; euler = false)
     model = sim.model
     reactant_model_time_step!(model, Δt, callbacks_at(sim, ModelCallsite), euler)
 
@@ -217,7 +218,7 @@ the program, read at each call: set `sim.stop_iteration = n` to run `n` steps wi
 compiled `run!`. It counts steps from wherever the model is: each call steps `stop_iteration`
 more times.
 """
-function run!(sim::ReactantSimulation)
+function Oceananigans.Simulations.run!(sim::ReactantSimulation)
     check_stop_iteration(sim)
 
     initialize!(sim)
@@ -228,7 +229,7 @@ function run!(sim::ReactantSimulation)
     return nothing
 end
 
-function run!(sim::Simulation{<:ReactantModel{<:QuasiAdamsBashforth2TimeStepper}})
+function Oceananigans.Simulations.run!(sim::Simulation{<:ReactantModel{<:QuasiAdamsBashforth2TimeStepper}})
     check_stop_iteration(sim)
     N = sim.stop_iteration
 

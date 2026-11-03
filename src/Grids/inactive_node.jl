@@ -17,7 +17,7 @@ function build_condition(Topo, side, dim, array::Bool)
         else
             return :(($side > grid.$dim))
         end
-    else # TwoSided{Closed, <:Union{Connected, Open}}
+    else # LeftClosedTopology
         if array
             return :((ReactantCore.materialize_traced_array($side) .< 1))
         else
@@ -42,8 +42,11 @@ Cells that are staggered with respect to tracer cells and which lie _on_ the bou
 @inline inactive_cell(i, j, k, grid) = false
 @inline active_cell(i, j, k, grid) = !inactive_cell(i, j, k, grid)
 
+# Closed on the left, open, connected or folded on the right
+const LeftClosedTopology = TwoSided{Closed, <:Union{Open, CommunicatingSide, CenterFolded, FaceFolded}}
+
 # Metaprogramming over the permutations of directions bounded on both sides, on the right, and on the left
-Topos = (:Bounded, :(TwoSided{<:Union{Connected, Open}, Closed}), :(TwoSided{Closed, <:Union{Connected, Open}}))
+Topos = (:Bounded, :(TwoSided{<:Union{Connected, Open}, Closed}), :LeftClosedTopology)
 
 for PrimaryTopo in Topos
 
@@ -174,3 +177,10 @@ $(TYPEDSIGNATURES)
 Return `true` when the location `(LX, LY, LZ)` is the active cell just above the bottom.
 """
 @inline bottommost_active_node(i, j, k, grid, LX, LY, LZ) = active_node(i, j, k, grid, LX, LY, LZ) & inactive_node(i, j, k - 1, grid, LX, LY, LZ)
+
+"""
+$(TYPEDSIGNATURES)
+
+Return `true` when the location `(LX, LY, LZ)` is the active cell just below the top.
+"""
+@inline topmost_active_node(i, j, k, grid, LX, LY, LZ) = active_node(i, j, k, grid, LX, LY, LZ) & inactive_node(i, j, k + 1, grid, LX, LY, LZ)

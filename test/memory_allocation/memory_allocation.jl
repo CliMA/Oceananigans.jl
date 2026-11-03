@@ -5,6 +5,7 @@ using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 using Oceananigans.DistributedComputations: @handshake, ranks
 using Oceananigans.Grids: Closed, Connected
 using Oceananigans.Models.NonhydrostaticModels: buffer_parameters
+using Oceananigans.Models.ShallowWaterModels: ShallowWaterScalarDiffusivity
 using Oceananigans.Fields: flattened_unique_values
 using Oceananigans.OutputReaders: extract_field_time_series, FieldTimeSeries
 using Oceananigans.Utils: pretty_filesize, work_layout, interior_work_layout, KernelParameters
@@ -279,6 +280,28 @@ if !mpi_test
                 @info "  hydrostatic_split_rk3 | $(summary(arch)) | $immersed : $(pretty_filesize(allocations)) (≤ $(pretty_filesize(bound)))"
                 @test allocations ≤ bound
             end
+        end
+    end
+end
+
+function shallow_water_time_step_allocations(N, timestepper; kwargs...)
+    grid = RectilinearGrid(CPU(); size=(N, N), extent=(1, 1), topology=(Periodic, Periodic, Flat))
+    closure = ShallowWaterScalarDiffusivity(ν=1e-3)
+    model = ShallowWaterModel(grid; gravitational_acceleration=1, closure, tracers=:c, timestepper, kwargs...)
+    set!(model, h=1)
+    return time_step_allocations(model, 1e-3)
+end
+
+shallow_water_formulations = (
+    conservative     = (; formulation=ConservativeFormulation()),
+    vector_invariant = (; formulation=VectorInvariantFormulation(), momentum_advection=VectorInvariant()),
+)
+
+if !mpi_test && child_arch isa CPU
+    for (name, kwargs) in pairs(shallow_water_formulations), timestepper in (:RungeKutta3, :QuasiAdamsBashforth2)
+        @testset "ShallowWaterModel allocations do not grow with the grid [$name, $timestepper]" begin
+            @test shallow_water_time_step_allocations(16, timestepper; kwargs...) ==
+                  shallow_water_time_step_allocations(32, timestepper; kwargs...)
         end
     end
 end
