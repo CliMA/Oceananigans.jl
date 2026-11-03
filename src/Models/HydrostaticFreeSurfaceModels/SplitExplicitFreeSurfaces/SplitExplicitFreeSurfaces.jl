@@ -13,7 +13,7 @@ using Oceananigans.BoundaryConditions: FieldBoundaryConditions, SurfaceWaveRadia
                                        regularize_field_boundary_conditions, step_boundary_conditions!
 using Oceananigans.DistributedComputations: DistributedComputations, @root, DistributedGrid, all_reduce
 using Oceananigans.Fields: Field, instantiated_location
-using Oceananigans.Grids: Center, Connected, Face, Open, TwoSided, column_depthᶜᶠᵃ, column_depthᶠᶜᵃ, topology
+using Oceananigans.Grids: Center, Connected, Face, Open, Periodic, TwoSided, column_depthᶜᶠᵃ, column_depthᶠᶜᵃ, topology
 using Oceananigans.Coriolis: fᶠᶠᵃ
 using Oceananigans.Operators: ℑxyᶠᶜᵃ, ℑxyᶜᶠᵃ, ℑxᶜᵃᵃ, ℑyᵃᶜᵃ, Δxᶜᶠᶠ, Δyᶠᶜᶠ, Δx⁻¹ᶠᶜᶠ, Δy⁻¹ᶜᶠᶠ
 using Oceananigans.ImmersedBoundaries: column_depthTᶜᶠᵃ, column_depthTᶠᶜᵃ, column_depthᶜᶠᵃ, column_depthᶠᶜᵃ,
