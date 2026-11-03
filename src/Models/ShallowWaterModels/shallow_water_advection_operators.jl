@@ -5,11 +5,10 @@ using Oceananigans.Advection:
     _advective_momentum_flux_Vv,
     _advective_tracer_flux_x,
     _advective_tracer_flux_y,
-    horizontal_advection_U,
-    horizontal_advection_V,
     bernoulli_head_U,
-    bernoulli_head_V
-
+    bernoulli_head_V,
+    horizontal_advection_U,
+    horizontal_advection_V
 using Oceananigans.Grids: AbstractGrid
 
 #####
