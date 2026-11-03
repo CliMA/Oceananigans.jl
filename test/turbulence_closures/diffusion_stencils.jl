@@ -118,6 +118,10 @@ function redi_preserves_stratification_on_zstar(arch)
     fill!(grid.z.σᶜᶠⁿ, σ)
     fill!(grid.z.σᶠᶠⁿ, σ)
     fill!(grid.z.σᶠᶜⁿ, σ)
+    fill!(grid.z.σ⁻¹ᶜᶜⁿ, 1 / σ)
+    fill!(grid.z.σ⁻¹ᶜᶠⁿ, 1 / σ)
+    fill!(grid.z.σ⁻¹ᶠᶠⁿ, 1 / σ)
+    fill!(grid.z.σ⁻¹ᶠᶜⁿ, 1 / σ)
 
     model = HydrostaticFreeSurfaceModel(grid;
                                         buoyancy = BuoyancyTracer(),

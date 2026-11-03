@@ -18,7 +18,11 @@ export TabulatedFunction
 export interpolator, _interpolate
 export ϕ₁, ϕ₂, ϕ₃, ϕ₄, ϕ₅, ϕ₆, ϕ₇, ϕ₈
 
+using Adapt: Adapt
 using DocStringExtensions: TYPEDSIGNATURES
+using KernelAbstractions: KernelAbstractions
+using Oceananigans: Oceananigans
+using Oceananigans.Architectures: Architectures
 
 #####
 ##### Misc. small utils
@@ -27,7 +31,11 @@ using DocStringExtensions: TYPEDSIGNATURES
 instantiate(T::Type) = T()
 instantiate(t) = t
 
-getnamewrapper(type) = typeof(type).name.wrapper
+# Return the type `T` stripped of its type parameters, e.g. `RectilinearGrid`
+# for `RectilinearGrid{Float64, Periodic, Periodic, Bounded, ...}`. Relies on
+# `T` being bound to its name in the module that defines it, as every `struct`
+# definition does.
+unparameterized_type(T::Type) = getglobal(parentmodule(T), nameof(T))
 
 function get_active_cells_map end
 

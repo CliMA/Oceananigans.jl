@@ -310,6 +310,61 @@ total_integral(field) = @allowscalar compute!(Field(Integral(field)))[1, 1, 1]
         @test all(isapprox.(Array(interior(target_field)), expected, atol=1e-12))
     end
 
+    @testset "Matching sizes with different coordinates [$(typeof(arch))]" begin
+        source_grid = RectilinearGrid(arch; size=(4, 4, 4),
+                                     x=[0, 0.1, 0.3, 0.65, 1], y=[0, 0.2, 0.5, 0.9, 1],
+                                     z=[-1, -0.7, -0.45, -0.2, 0], topology=(Bounded, Bounded, Bounded))
+        c = reshape(collect(1:64), size(source_grid))
+        source_field = CenterField(source_grid)
+        set!(source_field, c)
+
+        @testset "Target size $target_size" for target_size in ((4, 4, 4), (4, 3, 2), (2, 4, 2), (2, 3, 4),
+                                                               (4, 4, 2), (4, 3, 4), (2, 4, 4))
+            target_grid = RectilinearGrid(arch; size=target_size, x=(0, 1), y=(0, 1), z=(-1, 0),
+                                         topology=(Bounded, Bounded, Bounded))
+            target_field = CenterField(target_grid)
+            regrid!(target_field, source_field)
+            expected = brute_force_regrid(target_grid, source_grid, c)
+            @test Array(interior(target_field)) ≈ expected
+            @test total_integral(target_field) ≈ total_integral(source_field)
+        end
+
+        source_grid = LatitudeLongitudeGrid(arch; size=(6, 6), longitude=(-30, 30), latitude=(-20, 40),
+                                            topology=(Bounded, Bounded, Flat))
+        c = reshape(collect(1:36), size(source_grid))
+        source_field = Field{Center, Center, Nothing}(source_grid)
+        set!(source_field, c)
+
+        @testset "Horizontal target size $target_size" for target_size in ((6, 2), (3, 6), (6, 6))
+            target_grid = LatitudeLongitudeGrid(arch; size=target_size, longitude=(-25, 25), latitude=(-15, 35),
+                                                topology=(Bounded, Bounded, Flat))
+            target_field = Field{Center, Center, Nothing}(target_grid)
+            regrid!(target_field, source_field)
+            expected = brute_force_regrid(target_grid, source_grid, c)
+            @test Array(interior(target_field)) ≈ expected
+        end
+
+        target_grid = LatitudeLongitudeGrid(arch; size=(6, 6), longitude=(-30, 30), latitude=(-20, 40),
+                                            halo=(1, 1), topology=(Bounded, Bounded, Flat))
+        target_field = Field{Center, Center, Nothing}(target_grid)
+        regrid!(target_field, source_field)
+        @test Array(interior(target_field)) == c
+
+        @testset "Subcell longitude shifts [$FT]" for FT in float_types
+            source_grid = LatitudeLongitudeGrid(arch, FT; size=(4, 2), longitude=(150, 150.004), latitude=(0, 0.002),
+                                                topology=(Bounded, Bounded, Flat))
+            target_grid = LatitudeLongitudeGrid(arch, FT; size=(4, 2), longitude=(150.0005, 150.0035), latitude=(0, 0.002),
+                                                topology=(Bounded, Bounded, Flat))
+            c = reshape(collect(1:8), size(source_grid))
+            source_field = Field{Center, Center, Nothing}(source_grid)
+            target_field = Field{Center, Center, Nothing}(target_grid)
+            set!(source_field, c)
+            regrid!(target_field, source_field)
+            expected = brute_force_regrid(target_grid, source_grid, c)
+            @test Array(interior(target_field)) ≈ expected rtol=10eps(FT)
+        end
+    end
+
     @testset "Unsupported multi-dimensional regridding [$(typeof(arch))]" begin
         rectilinear_grid = RectilinearGrid(arch, size=(4, 4, 4), x=(0, 1), y=(0, 1), z=(0, 1),
                                            topology=(Bounded, Bounded, Bounded))

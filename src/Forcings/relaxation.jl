@@ -1,9 +1,11 @@
 using Oceananigans: instantiated_location
-using Oceananigans.Grids: node, xnodes, ynodes
-using Oceananigans.Fields: AbstractField, Field, compute!, show_location
+using Oceananigans.Grids: _node, node, xnodes, ynodes, Face, Center
+using Oceananigans.Fields: AbstractField, Field, FunctionField, compute!, show_location
 using Oceananigans.AbstractOperations: Average
 using Oceananigans.OutputReaders: interpolate
+using Oceananigans.Operators: ℑxᶜᵃᵃ, ℑyᵃᶜᵃ, active_weighted_ℑxyᶠᶜᶜ, active_weighted_ℑxyᶜᶠᶜ
 using Oceananigans.Utils: prettysummary
+using DocStringExtensions: TYPEDEF, TYPEDFIELDS, TYPEDSIGNATURES
 
 @inline zerofunction(args...) = 0
 @inline onefunction(args...) = 1
@@ -44,13 +46,21 @@ at the specified `rate`, in the region `mask(X...)`.
 The functions `onefunction` and `zerofunction` always return 1 and 0, respectively.
 Thus the default `mask` leaves the whole domain uncovered, and the default `target` is zero.
 
+`mask` may be a function `mask(x, y, z)`, or an `AbstractField`/`AbstractArray` that shares
+the forced field's grid and location; a field or array is read at `i, j, k` rather than
+called. A field-valued mask is useful when the mask is expensive to evaluate but
+constant in time, so it can be computed once instead of at every kernel call.
+
+A `FunctionField` mask is called rather than read, so it is evaluated at the forced field's
+node and its own location is not used.
+
 `target` may be a `Number`, a function `target(x, y, z, t)`, an `AbstractField` sharing
 the forced field's grid and location, or a `FieldTimeSeries` (interpolated in space and
 time at each grid point).
 
 `transform`, if provided, is applied to the forced field at materialize time to build
 the `relaxed` quantity: the tendency becomes
-`rate * mask(X) * (target(X, t) - transform(field)[i, j, k])`. The user-supplied `target`
+`rate * mask * (target(X, t) - transform(field)[i, j, k])`, with `mask` evaluated as above. The user-supplied `target`
 is still used as the RHS of the relaxation. This is useful for nudging a reduction
 of the forced field — e.g. its horizontal average — toward a target profile.
 `transform` may be a callable returning a `Field`
@@ -112,10 +122,10 @@ apply_transform(::Val{S}, field) where S =
 # unwraps Field to its underlying OffsetArray on GPU, so an `<:AbstractField` constraint here
 # would prevent kernel dispatch on the device and the compiler would emit a MethodError.
 @inline function (r::Relaxation{R, F})(i, j, k, grid, clock, model_fields) where {R, F<:AbstractArray}
-    X  = node(i, j, k, grid, r.location...)
     ϕ  = @inbounds r.relaxed[i, j, k]
-    ϕᵣ = evaluate_target(r.target, i, j, k, X, clock.time)
-    return r.rate * r.mask(X...) * (ϕᵣ - ϕ)
+    ϕᵣ = evaluate_target(i, j, k, grid, r.target, r.location, clock.time)
+    μ  = evaluate_mask(i, j, k, grid, r.mask, r.location)
+    return r.rate * μ * (ϕᵣ - ϕ)
 end
 
 """
@@ -158,13 +168,13 @@ Base.summary(t::FieldTimeSeriesTarget) = summary(t.field_time_series)
 const FieldRelaxation           = Relaxation{<:Any, <:Any, <:Any, <:AbstractField}
 const FieldTimeSeriesRelaxation = Relaxation{<:Any, <:Any, <:Any, <:Union{FlavorOfFTS, FieldTimeSeriesTarget}}
 
-@inline evaluate_target(c::Number,                    i, j, k, X, t) = c
-@inline evaluate_target(f,                            i, j, k, X, t) = f(X..., t)
-@inline evaluate_target(f::AbstractArray,             i, j, k, X, t) = @inbounds f[i, j, k]
-@inline evaluate_target(t::InterpolatedFieldTarget,   i, j, k, X, time) =
-    interpolate(X, t.field, t.loc, t.grid)
-@inline evaluate_target(t::FieldTimeSeriesTarget,     i, j, k, X, time) =
-    interpolate(X, Time(time), t.field_time_series, instantiated_location(t.field_time_series), t.grid)
+@inline evaluate_target(i, j, k, grid, c::Number,                  ℓ, t) = c
+@inline evaluate_target(i, j, k, grid, f,                          ℓ, t) = f(node(i, j, k, grid, ℓ...)..., t)
+@inline evaluate_target(i, j, k, grid, f::AbstractArray,           ℓ, t) = @inbounds f[i, j, k]
+@inline evaluate_target(i, j, k, grid, t::InterpolatedFieldTarget, ℓ, time) =
+    interpolate(node(i, j, k, grid, ℓ...), t.field, t.loc, t.grid)
+@inline evaluate_target(i, j, k, grid, t::FieldTimeSeriesTarget,   ℓ, time) =
+    interpolate(node(i, j, k, grid, ℓ...), Time(time), t.field_time_series, instantiated_location(t.field_time_series), t.grid)
 
 # Default: take user-supplied target as-is (Numbers, callables, plain arrays, …).
 materialize_target(target, field) = target
@@ -184,10 +194,30 @@ function materialize_target(target::AbstractField, field)
     end
 end
 
+materialize_mask(mask, field) = mask
+
+# A `FunctionField` mask is called, not read, so its own grid and location do not constrain it.
+materialize_mask(mask::FunctionField, field) = mask
+
+# AbstractField mask: it is read at `i, j, k`, so it must share the forced field's grid and either
+# its location or a reduced one. A mask is not interpolated — the point of a field-valued mask is to
+# avoid per-cell work — so a mismatch is an error rather than a wrapped target.
+function materialize_mask(mask::AbstractField, field)
+    mask_loc = instantiated_location(mask)
+    # `===` first: `==` compares the bottom heights of immersed grids, which on a GPU makes the host wait
+    mask.grid === field.grid || mask.grid == field.grid ||
+        throw(ArgumentError("a `Field` mask must share the forced field's grid"))
+    (mask_loc == instantiated_location(field) || any(isnothing, mask_loc)) ||
+        throw(ArgumentError("a `Field` mask must share the forced field's location, or be reduced; " *
+                            "got $(show_location(mask)) for a $(show_location(field)) field"))
+    return mask
+end
+
 function materialize_forcing(forcing::Relaxation, field, field_name, model_field_names)
     target = materialize_target(forcing.target, field)
+    mask = materialize_mask(forcing.mask, field)
     relaxed = isnothing(forcing.transform) ? field : apply_transform(forcing.transform, field)
-    return Relaxation(forcing.rate, relaxed, forcing.mask, target,
+    return Relaxation(forcing.rate, relaxed, mask, target,
                       instantiated_location(field), forcing.transform)
 end
 
@@ -197,7 +227,8 @@ function materialize_forcing(forcing::Relaxation{<:Any, <:Any, <:Any, <:FlavorOf
         throw(ArgumentError("`transform` is not supported with a `FieldTimeSeries` target"))
     validate_fts_target_extent(forcing.target, field)
     target = FieldTimeSeriesTarget(forcing.target, forcing.target.grid)
-    return Relaxation(forcing.rate, field, forcing.mask, target, instantiated_location(field), nothing)
+    mask = materialize_mask(forcing.mask, field)
+    return Relaxation(forcing.rate, field, mask, target, instantiated_location(field), nothing)
 end
 
 function validate_fts_target_extent(fts, field)
@@ -262,6 +293,144 @@ function Base.summary(relaxation::Relaxation)
     isnothing(relaxation.transform) || push!(parts, "transform=$(relaxation.transform)")
     return "Relaxation(" * join(parts, ", ") * ")"
 end
+
+#####
+##### Flow-dependent rate
+#####
+
+"""
+$(TYPEDSIGNATURES)
+
+Rate for `Relaxation` that nudges toward `target` at `inflow_rate` where the local horizontal
+normal velocity indicates inflow through the domain boundary in direction `D` (one of
+`:west`, `:east`, `:south`, `:north`), and at `outflow_rate` where it indicates outflow,
+following the ROMS/Marchesiello-et-al.-2001 nudging-layer convention. See [`Relaxation`](@ref)
+for the role of `mask` in shaping the nudging spatially.
+
+Example
+=======
+
+```jldoctest inflowoutflowrate
+using Oceananigans
+using Oceananigans.Units
+
+rate = InflowOutflowRate{:west}(inflow_rate=1/15minutes, outflow_rate=1/12hours)
+
+# output
+InflowOutflowRate{:west, Float64}(0.0011111111111111111, 2.3148148148148147e-5)
+```
+"""
+struct InflowOutflowRate{D, FT}
+    inflow_rate  :: FT
+    outflow_rate :: FT
+
+    function InflowOutflowRate{D}(; inflow_rate, outflow_rate) where D
+        FT = promote_type(typeof(inflow_rate), typeof(outflow_rate))
+        return new{D, FT}(convert(FT, inflow_rate), convert(FT, outflow_rate))
+    end
+end
+
+Base.summary(r::InflowOutflowRate{D}) where D =
+    "InflowOutflowRate{:$D}(inflow_rate=$(r.inflow_rate), outflow_rate=$(r.outflow_rate))"
+
+# dispatch on `loc` so u-points, v-points, and centers each get the right interpolation stencil
+@inline function normal_velocities(i, j, k, grid, model_fields, ::Tuple{Face, Center, Center})
+    u = @inbounds model_fields.u[i, j, k]
+    v = active_weighted_ℑxyᶠᶜᶜ(i, j, k, grid, model_fields.v)
+    return u, v
+end
+
+@inline function normal_velocities(i, j, k, grid, model_fields, ::Tuple{Center, Face, Center})
+    u = active_weighted_ℑxyᶜᶠᶜ(i, j, k, grid, model_fields.u)
+    v = @inbounds model_fields.v[i, j, k]
+    return u, v
+end
+
+@inline function normal_velocities(i, j, k, grid, model_fields, ::Tuple{Center, Center, Center})
+    u = ℑxᶜᵃᵃ(i, j, k, grid, model_fields.u)
+    v = ℑyᵃᶜᵃ(i, j, k, grid, model_fields.v)
+    return u, v
+end
+
+@inline function evaluate_rate(i, j, k, grid, r::InflowOutflowRate{:west}, model_fields, loc)
+    uₙ, vₙ = normal_velocities(i, j, k, grid, model_fields, loc)
+    return ifelse(uₙ > 0, r.inflow_rate, r.outflow_rate)
+end
+
+@inline function evaluate_rate(i, j, k, grid, r::InflowOutflowRate{:east}, model_fields, loc)
+    uₙ, vₙ = normal_velocities(i, j, k, grid, model_fields, loc)
+    return ifelse(uₙ < 0, r.inflow_rate, r.outflow_rate)
+end
+
+@inline function evaluate_rate(i, j, k, grid, r::InflowOutflowRate{:south}, model_fields, loc)
+    uₙ, vₙ = normal_velocities(i, j, k, grid, model_fields, loc)
+    return ifelse(vₙ > 0, r.inflow_rate, r.outflow_rate)
+end
+
+@inline function evaluate_rate(i, j, k, grid, r::InflowOutflowRate{:north}, model_fields, loc)
+    uₙ, vₙ = normal_velocities(i, j, k, grid, model_fields, loc)
+    return ifelse(vₙ < 0, r.inflow_rate, r.outflow_rate)
+end
+
+@inline evaluate_target(target::Number, X, t) = target
+@inline evaluate_target(target,         X, t) = target(X..., t)
+
+"""
+$(TYPEDEF)
+
+Materialized target carrying the simulation-side location at which a `Relaxation` with an
+[`InflowOutflowRate`](@ref) is evaluated, together with the integer index of the forced
+field in `model_fields`. Mirrors [`FieldTimeSeriesTarget`](@ref).
+
+$(TYPEDFIELDS)
+"""
+struct MaterializedRelaxationTarget{I, L, T}
+    location :: L
+    target   :: T
+end
+
+MaterializedRelaxationTarget{I}(location, target) where I =
+    MaterializedRelaxationTarget{I, typeof(location), typeof(target)}(location, target)
+
+@inline field_index(::MaterializedRelaxationTarget{I}) where I = I
+
+Adapt.adapt_structure(to, t::MaterializedRelaxationTarget{I}) where I =
+    MaterializedRelaxationTarget{I}(Adapt.adapt(to, t.location), Adapt.adapt(to, t.target))
+
+Base.summary(t::MaterializedRelaxationTarget) =
+    "MaterializedRelaxationTarget(location=$(t.location), index=$(field_index(t)))"
+
+const InflowOutflowRelaxation{F, M, T<:MaterializedRelaxationTarget, L, Tr} = Relaxation{<:InflowOutflowRate, F, M, T, L, Tr}
+
+@inline function (f::InflowOutflowRelaxation)(i, j, k, grid, clock, model_fields)
+    mt = f.target
+    X = node(i, j, k, grid, mt.location...)
+    @inbounds ϕ = model_fields[field_index(mt)][i, j, k]
+    ϕᵣ = evaluate_target(mt.target, X, clock.time)
+    rate = evaluate_rate(i, j, k, grid, f.rate, model_fields, mt.location)
+    return rate * f.mask(X...) * (ϕᵣ - ϕ)
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Wrap a `Relaxation` with an [`InflowOutflowRate`](@ref) into a materialized form carrying
+simulation-side location and an integer field index, so the kernel can evaluate the
+inflow/outflow-dependent rate and read `ϕ` from `model_fields` directly (bypassing
+`ContinuousForcing`, which has no hook for a rate that needs `model_fields`).
+"""
+function materialize_flow_dependent_forcing(forcing, field, field_name, model_field_names)
+    index = findfirst(==(field_name), model_field_names)
+    target = MaterializedRelaxationTarget{index}(instantiated_location(field), forcing.target)
+    return Relaxation(forcing.rate, field, forcing.mask, target, instantiated_location(field), forcing.transform)
+end
+
+materialize_forcing(forcing::Relaxation{<:InflowOutflowRate}, field, field_name, model_field_names) =
+    materialize_flow_dependent_forcing(forcing, field, field_name, model_field_names)
+
+# disambiguates against the FlavorOfFTS-target method above when the target is also an FTS
+materialize_forcing(forcing::Relaxation{<:InflowOutflowRate, <:Any, <:Any, <:FlavorOfFTS}, field, field_name, model_field_names) =
+    materialize_flow_dependent_forcing(forcing, field, field_name, model_field_names)
 
 #####
 ##### Sponge layer functions
@@ -462,3 +631,19 @@ end
 Base.summary(l::LinearTarget{:x}) = "$(l.intercept) + $(l.gradient) * x"
 Base.summary(l::LinearTarget{:y}) = "$(l.intercept) + $(l.gradient) * y"
 Base.summary(l::LinearTarget{:z}) = "$(l.intercept) + $(l.gradient) * z"
+
+const DirectionalMask = Union{GaussianMask, PiecewiseLinearMask, CosineRampMask}
+
+# Directional masks and targets take (x, y, z) on every grid, including the coordinates of Flat dimensions.
+@inline evaluate_target(i, j, k, grid, f::LinearTarget, ℓ, t) = f(_node(i, j, k, grid, ℓ...)..., t)
+
+@inline evaluate_mask(i, j, k, grid, mask, ℓ)                  = mask(node(i, j, k, grid, ℓ...)...)
+@inline evaluate_mask(i, j, k, grid, mask::DirectionalMask, ℓ) = mask(_node(i, j, k, grid, ℓ...)...)
+
+# A field or array mask is read at `i, j, k` rather than called, so a mask that is expensive to
+# evaluate but constant in time can be computed once.
+@inline evaluate_mask(i, j, k, grid, mask::AbstractArray, ℓ) = @inbounds mask[i, j, k]
+
+# A `FunctionField` is both callable and `<:AbstractArray`; call it, so it is evaluated at the forced
+# field's node rather than at its own location.
+@inline evaluate_mask(i, j, k, grid, mask::FunctionField, ℓ) = mask(node(i, j, k, grid, ℓ...)...)

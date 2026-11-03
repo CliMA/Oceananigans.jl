@@ -1,7 +1,6 @@
-using Oceananigans.Operators: intrinsic_vector, ℑxyᶠᶜᵃ, ℑxyᶜᶠᵃ
+using Oceananigans.Fields: set!
+using Oceananigans.Operators: intrinsic_vector, ℑxyᶜᶠᵃ, ℑxyᶠᶜᵃ
 using Oceananigans.Utils: @apply_regionally
-
-import Oceananigans.Fields: set!
 
 """
     set!(model::HydrostaticFreeSurfaceModel;
@@ -46,10 +45,10 @@ model.velocities.u
     └── max=-0.0302734, min=-0.249023, mean=-0.166992
 ```
 """
-@inline function set!(model::HydrostaticFreeSurfaceModel;
-                      u=ZeroField(), v=ZeroField(), intrinsic_velocities=false,
-                      reconcile_state=true,
-                      kwargs...)
+@inline function Fields.set!(model::HydrostaticFreeSurfaceModel;
+                             u=ZeroField(), v=ZeroField(), intrinsic_velocities=false,
+                             reconcile_state=true,
+                             kwargs...)
 
     set_velocities!(model, u, v; intrinsic_velocities)
 
@@ -80,8 +79,12 @@ end
 
 const IntrinsicCoordinateGrid = Union{
     OrthogonalSphericalShellGrid,
-    ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, OrthogonalSphericalShellGrid},
+    ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:OrthogonalSphericalShellGrid},
 }
+
+# Whether extrinsic velocities are rotated into the grid's basis by `set_from_extrinsic_velocities!`
+intrinsic_coordinate_grid(grid) = false
+intrinsic_coordinate_grid(::IntrinsicCoordinateGrid) = true
 
 """
     set_velocities!(model, u, v; intrinsic_velocities=false)
@@ -96,9 +99,12 @@ This abstraction is necessary for `OrthogonalSphericalShellGrid` and derivatives
 where the extrinsic and intrinsic coordinate systems differ.
 """
 function set_velocities!(model, u, v; intrinsic_velocities=false)
-    if intrinsic_velocities || !(model.grid isa IntrinsicCoordinateGrid)
-        u isa ZeroField || set!(model.velocities.u, u, model.clock, fields(model))
-        v isa ZeroField || set!(model.velocities.v, v, model.clock, fields(model))
+    # Leave the velocities untouched when neither is given, as for `set!(model; T)`
+    u isa ZeroField && v isa ZeroField && return nothing
+
+    if intrinsic_velocities || !intrinsic_coordinate_grid(model.grid)
+        u isa ZeroField || @apply_regionally set!(model.velocities.u, u, model.clock, fields(model))
+        v isa ZeroField || @apply_regionally set!(model.velocities.v, v, model.clock, fields(model))
     else
         set_from_extrinsic_velocities!(model.velocities, model.grid, u, v)
     end

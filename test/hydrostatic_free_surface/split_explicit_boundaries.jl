@@ -7,6 +7,7 @@ using Oceananigans.BoundaryConditions: GravityWaveRadiationBoundaryCondition, Di
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom,
                                        immersed_peripheral_node, immersed_inactive_node, mask_immersed_field!
 using Oceananigans.Operators: Δzᶠᶜᶜ, Δzᶜᶠᶜ
+using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: LocalHaloFilling
 
 #####
 ##### Boundary / halo handling of the SplitExplicitFreeSurface barotropic corrector.
@@ -171,7 +172,7 @@ bump(x, y) = -0.5 - 0.4 * exp(-((x - 0.5)^2 + (y - 0.5)^2) / 0.05)
         grid = on_architecture(CPU(), underlying)
         f, c = Face(), Center()
 
-        @test typeof(model.free_surface).parameters[1].name.name == :LocalHaloFilling
+        @test model.free_surface isa SplitExplicitFreeSurface{<:LocalHaloFilling}
         @test !any(immersed_peripheral_node(1, j, 1, grid, f, c, c) |
                    immersed_inactive_node(1, j, 1, grid, f, c, c) for j in 1:grid.Ny)
     end
@@ -204,7 +205,7 @@ end
     # is documented to apply at every barotropic substep, so a time-dependent exterior value must
     # see each substep's own time, evenly spaced by the barotropic Δτ.
     grid = RectilinearGrid(arch; size=(8, 1, 1), x=(0, 1000), y=(0, 100), z=(-100, 0),
-                           topology=(Bounded, Periodic, Bounded))
+                           topology=((Closed, Open), Periodic, Bounded))
 
     # Boundary conditions are evaluated in kernels, so the times are recorded in an array, at
     # the position of each substep (substep clocks have `last_stage_Δt = Δτ`). In kernels both
@@ -224,8 +225,9 @@ end
                                                   DiscreteBoundaryFunction(recording_η_ext, nothing)))
     U_bcs = FieldBoundaryConditions(grid, (Face(), Center(), nothing); east=U_bc)
 
+    u_bcs = FieldBoundaryConditions(east=NormalFlowBoundaryCondition(0))
     model = HydrostaticFreeSurfaceModel(grid; free_surface=SplitExplicitFreeSurface(grid; substeps=10),
-                                        boundary_conditions=(; U=U_bcs), buoyancy=nothing, tracers=())
+                                        boundary_conditions=(; u=u_bcs, U=U_bcs), buoyancy=nothing, tracers=())
 
     time_step!(model, 100.0)
 

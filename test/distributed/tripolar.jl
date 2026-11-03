@@ -3,7 +3,7 @@ include(joinpath(@__DIR__, "..", "setup", "distributed_tests_utils.jl"))
 
 using MPI
 
-fold_topologies = ((RightCenterFolded, UPivot), (RightCenterFolded, TPivot), (RightFaceFolded, FPivot))
+fold_topologies = ((CenterFolded, UPivot), (CenterFolded, TPivot), (FaceFolded, FPivot))
 
 distributed_tests_utils = joinpath(@__DIR__, "..", "setup", "distributed_tests_utils.jl")
 
@@ -66,7 +66,7 @@ tripolar_reconstructed_field_script(fold_topology, pivot) = """
              Distributed(CPU(), partition=Partition(2, 2))]
 
     u = [i + 10 * j for i in 1:40, j in 1:40]
-    v = [i + 10 * j for i in 1:40, j in 1:$(fold_topology == RightCenterFolded ? 40 : 41)]
+    v = [i + 10 * j for i in 1:40, j in 1:$(fold_topology == CenterFolded ? 40 : 41)]
     c = [i + 10 * j for i in 1:40, j in 1:40]
 
     global_grid = TripolarGrid(size = (40, 40, 1), z = (-1000, 0), halo = (5, 5, 5), fold_topology = $fold_topology, pivot = $pivot)
@@ -102,6 +102,37 @@ tripolar_reconstructed_field_script(fold_topology, pivot) = """
     run_mpi_script(tripolar_reconstructed_field_script(fold_topology, pivot), 4)
 end
 
+# Every rank must rebuild the immersed boundary when moving the grid to the CPU (as `set!(field, func)` does
+# on GPUs), otherwise the halo exchange of the bottom height never completes on the ranks that do.
+tripolar_immersed_on_architecture_script(fold_topology, pivot) = """
+    using MPI
+    MPI.Init(threadlevel=:multiple)
+    using Test
+
+    include($(repr(distributed_tests_utils)))
+
+    using Oceananigans.Architectures: cpu_architecture, on_architecture
+    using Oceananigans.DistributedComputations: check_field_tags
+    using Oceananigans.ImmersedBoundaries: bottom_height_interior
+
+    arch = Distributed(CPU(), partition=Partition(1, 4))
+    underlying_grid = TripolarGrid(arch; size = (20, 40, 4), z = (-1000, 0), halo = (3, 3, 3), fold_topology = $fold_topology, pivot = $pivot)
+    bottom_height = [-1000 + 10 * i + 5 * j for i in 1:20, j in 1:40]
+
+    for ib in (GridFittedBottom(bottom_height), PartialCellBottom(bottom_height))
+        grid = ImmersedBoundaryGrid(underlying_grid, ib; active_cells_map = true)
+        cpu_grid = on_architecture(cpu_architecture(arch), grid)
+
+        check_field_tags(arch)
+        @test bottom_height_interior(cpu_grid.immersed_boundary.bottom_height) ==
+              bottom_height_interior(grid.immersed_boundary.bottom_height)
+    end
+"""
+
+@testset "Test distributed immersed TripolarGrid on_architecture $fold_topology..." for (fold_topology, pivot) in fold_topologies
+    run_mpi_script(tripolar_immersed_on_architecture_script(fold_topology, pivot), 4)
+end
+
 tripolar_boundary_conditions_script(fold_topology, pivot) = """
     using MPI
     MPI.Init(threadlevel=:multiple)
@@ -117,7 +148,7 @@ tripolar_boundary_conditions_script(fold_topology, pivot) = """
     vs =  YFaceField(serial_grid)
     cs = CenterField(serial_grid)
 
-    I_v = [i + j * 100 for i in 1:20, j in 1:$(fold_topology == RightCenterFolded ? 20 : 21)]
+    I_v = [i + j * 100 for i in 1:20, j in 1:$(fold_topology == CenterFolded ? 20 : 21)]
     I_c = [i + j * 100 for i in 1:20, j in 1:20]
 
     set!(vs, I_v)
@@ -150,7 +181,7 @@ tripolar_boundary_conditions_script(fold_topology, pivot) = """
     v = YFaceField(grid)
     c = CenterField(grid)
 
-    Nyv = fold_topology == RightCenterFolded ? 20 : 21
+    Nyv = fold_topology == CenterFolded ? 20 : 21
     I_v = [i + j * 100 for i in 1:20, j in 1:Nyv]
     I_c = [i + j * 100 for i in 1:20, j in 1:20]
 

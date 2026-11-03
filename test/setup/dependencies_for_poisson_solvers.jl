@@ -220,5 +220,6 @@ function stretched_poisson_solver_correct_answer(FT, arch, topo, N1, N2, faces; 
     @allowscalar interior(ϕ) .= real.(solver.storage)
     compute_∇²!(∇²ϕ, ϕ, arch, stretched_grid)
 
-    return Array(interior(∇²ϕ)) ≈ Array(R)
+    zero_mean = abs(mean(interior(ϕ))) ≤ 10 * eps(FT) * maximum(abs, interior(ϕ))
+    return zero_mean && Array(interior(∇²ϕ)) ≈ Array(R)
 end

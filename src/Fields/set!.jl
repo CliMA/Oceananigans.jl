@@ -277,3 +277,8 @@ Base.copyto!(f::Field, src::Base.Broadcast.Broadcasted{Base.Broadcast.DefaultArr
 Base.copyto!(f::Field, src::AbstractArray) = copyto!(interior(f), src)
 Base.copyto!(f::Field, src::OffsetArray) = copyto!(interior(f), parent(src))
 Base.copyto!(f::Field, src::Field) = copyto!(parent(f), parent(src))
+
+# Disambiguation with SparseArrays.CHOLMOD
+Base.copyto!(f::Field, src::CHOLMOD.Dense) = copyto!(interior(f), src)
+Base.copyto!(f::Field{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, T}, src::CHOLMOD.Dense{T}) where T<:CHOLMOD.VTypes =
+    copyto!(interior(f), src)

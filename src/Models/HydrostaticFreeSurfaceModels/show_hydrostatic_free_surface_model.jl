@@ -1,5 +1,5 @@
-using Oceananigans.Utils: prettytime, prettykeys
 using Oceananigans.TurbulenceClosures: closure_summary
+using Oceananigans.Utils: prettykeys, prettytime
 
 function Base.summary(model::HydrostaticFreeSurfaceModel)
     A = Base.summary(architecture(model.grid))
@@ -21,13 +21,13 @@ function Base.show(io::IO, model::HydrostaticFreeSurfaceModel)
         "├── buoyancy: ", summary(model.buoyancy), "\n")
 
     if model.free_surface !== nothing
-        print(io, "├── free surface: ", typeof(model.free_surface).name.wrapper, " with gravitational acceleration $(model.free_surface.gravitational_acceleration) m s⁻²", "\n")
+        print(io, "├── free surface: ", nameof(typeof(model.free_surface)), " with gravitational acceleration $(model.free_surface.gravitational_acceleration) m s⁻²", "\n")
 
-        if typeof(model.free_surface).name.wrapper == ImplicitFreeSurface
+        if model.free_surface isa ImplicitFreeSurface
             print(io, "│   └── solver: ", string(model.free_surface.solver_method), "\n")
         end
 
-        if typeof(model.free_surface).name.wrapper == SplitExplicitFreeSurface
+        if model.free_surface isa SplitExplicitFreeSurface
             print(io, "│   └── substepping: $(summary(model.free_surface.substepping))", "\n")
         end
     end

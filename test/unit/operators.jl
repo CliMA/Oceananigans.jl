@@ -45,6 +45,10 @@ function test_three_dimensional_differences(T=Float64)
         @test δz(2, 2, 2, grid, f, ϕ) == δz_ϕ_f
     end
 
+    # the x-face between the active cell 2 and the immersed cell 3 is active
+    mirrored_grid = ImmersedBoundaryGrid(grid.underlying_grid, GridFittedBoundary((x, y, z) -> x > 2))
+    @test δyᶠᶠᶜ(3, 2, 2, mirrored_grid, f, ϕ) == ϕ²[3, 2, 2] - ϕ²[3, 1, 2]
+
     return nothing
 end
 
@@ -306,10 +310,10 @@ end
     end
 
     @testset "Topology-aware operators on tripolar grids" begin
-        for (fold_topology, pivot) in ((RightCenterFolded, UPivot), (RightCenterFolded, TPivot), (RightFaceFolded, FPivot))
+        for (fold_topology, pivot) in ((CenterFolded, UPivot), (CenterFolded, TPivot), (FaceFolded, FPivot))
             grid = TripolarGrid(CPU(); size = (16, 10, 1), z = (-1, 0), fold_topology, pivot)
             Nx, Ny, _ = size(grid)
-            northernmost_row = fold_topology === RightFaceFolded ? Ny + 1 : Ny
+            northernmost_row = fold_topology === FaceFolded ? Ny + 1 : Ny
 
             U = Field{Face, Center, Nothing}(grid; boundary_conditions = regularize_field_boundary_conditions(FieldBoundaryConditions(), grid, :U))
             V = Field{Center, Face, Nothing}(grid; boundary_conditions = regularize_field_boundary_conditions(FieldBoundaryConditions(), grid, :V))

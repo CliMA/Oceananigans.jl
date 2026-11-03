@@ -1,9 +1,8 @@
 using KernelAbstractions: @index, @kernel
+
 using Oceananigans: prognostic_fields
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Utils: launch!
-
-import Oceananigans.TimeSteppers: cache_previous_tendencies!
 
 #####
 ##### Storing previous tendencies for the AB2 update
@@ -48,7 +47,7 @@ preserving the tendencies needed for the AB2 time-stepping scheme.
 If CATKE or TD closures are active, their prognostic tracers (`e`, `ϵ`) are skipped.
 For `ExplicitFreeSurface`, the free surface tendency is also cached.
 """
-function cache_previous_tendencies!(model::HydrostaticFreeSurfaceModel)
+function TimeSteppers.cache_previous_tendencies!(model::HydrostaticFreeSurfaceModel)
     cache_prognostic_field_tendencies!(model, Val(keys(prognostic_fields(model))))
     cache_free_surface_tendency!(model.free_surface, model)
     return nothing
@@ -97,14 +96,14 @@ For tracers, the cached quantity is `σ * c` (tracer times grid stretching facto
 properly handle mutable vertical coordinates (z-star). Velocities and free surface
 are cached directly without modification.
 """
-function cache_current_fields!(model::HydrostaticFreeSurfaceModel)
+function TimeSteppers.cache_current_fields!(model::HydrostaticFreeSurfaceModel)
     cache_current_fields!(model, Val(keys(prognostic_fields(model))))
     return nothing
 end
 
-@inline cache_current_fields!(model, ::Val{()}) = nothing
+@inline TimeSteppers.cache_current_fields!(model, ::Val{()}) = nothing
 
-@inline function cache_current_fields!(model, ::Val{names}) where names
+@inline function TimeSteppers.cache_current_fields!(model, ::Val{names}) where names
     cache_current_field!(model, Val(first(names)))
     cache_current_fields!(model, Val(Base.tail(names)))
     return nothing

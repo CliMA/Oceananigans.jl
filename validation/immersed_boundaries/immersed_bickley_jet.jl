@@ -76,7 +76,7 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
 
     outputs = merge(model.velocities, model.tracers, (ζ=ζ, η=model.free_surface.displacement))
 
-    name = typeof(model.advection.momentum).name.wrapper
+    name = nameof(typeof(model.advection.momentum))
     if model.advection.momentum isa WENOVectorInvariantVel
         name = "WENOVectorInvariantVel"
     end

@@ -68,10 +68,10 @@ for scheme in advection_schemes
 
     if scheme isa MultiDimensionalScheme
         t_scheme = typeof(scheme.scheme_1d)
-        name = string("MultiDimensional ") * string(t_scheme.name.wrapper) * "$(boundary_buffer(scheme.scheme_1d))" * " order $(2*boundary_buffer(scheme))"
+        name = string("MultiDimensional ") * string(nameof(t_scheme)) * "$(boundary_buffer(scheme.scheme_1d))" * " order $(2*boundary_buffer(scheme))"
     else
         t_scheme = typeof(scheme)
-        name = string(t_scheme.name.wrapper) * "$(boundary_buffer(scheme))"
+        name = string(nameof(t_scheme)) * "$(boundary_buffer(scheme))"
     end
 
     @testset "$name" begin

@@ -108,14 +108,28 @@ function benchmark_time_stepping(model;
         @info "  Running benchmark..."
     end
     window_seconds = zeros(samples)
+    gc_time_seconds = 0.0
+    allocated_bytes = 0
+    allocations = 0
     for s in 1:samples
-        start_time = time_ns()
-        many_time_steps!(model, Δt, time_steps)
-        sync_device!(arch)
-        window_seconds[s] = (time_ns() - start_time) / 1e9
+        # Start every window from the same heap state, so a collection triggered by
+        # earlier allocations does not land in some windows and not in others
+        GC.gc(true); GC.gc(false); GC.gc(true)
+        stats = @timed begin
+            many_time_steps!(model, Δt, time_steps)
+            sync_device!(arch)
+        end
+        window_seconds[s] = stats.time
+        gc_time_seconds += stats.gctime
+        allocated_bytes += stats.bytes
+        allocations += Base.gc_alloc_count(stats.gcstats)
     end
 
-    hasnan(model) && error("Benchmark $name: the model state contains NaN after $(warmup_steps + samples * time_steps) time steps")
+    host_time_per_step_seconds = host_time_per_step(model, Δt)
+    iterations = pressure_solver_iterations(model)
+
+    total_steps = warmup_steps + samples * time_steps + host_time_steps
+    hasnan(model) && error("Benchmark $name: the model state contains NaN after $total_steps time steps")
 
     total_time_seconds = sum(window_seconds)
     step_seconds = window_seconds ./ time_steps
@@ -143,6 +157,11 @@ function benchmark_time_stepping(model;
         steps_per_second,
         grid_points_per_second,
         gpu_memory_used,
+        gc_time_seconds,
+        allocated_bytes / (samples * time_steps),
+        allocations / (samples * time_steps),
+        host_time_per_step_seconds,
+        iterations,
         metadata,
     )
 
@@ -151,6 +170,10 @@ function benchmark_time_stepping(model;
         @info "    Total time: $(@sprintf("%.3f", total_time_seconds)) s"
         @info "    Time per step: $(@sprintf("%.6f", time_per_step_seconds)) s (min of $samples windows; median $(@sprintf("%.6f", time_per_step_median_seconds)) s, max $(@sprintf("%.6f", time_per_step_max_seconds)) s)"
         @info "    Grid points/s: $(@sprintf("%.2e", grid_points_per_second))"
+        @info "    Host time per step: $(@sprintf("%.6f", host_time_per_step_seconds)) s (time to enqueue one step, median of $host_time_steps)"
+        @info "    Host allocations per step: $(Base.format_bytes(result.allocated_bytes_per_step)) in $(round(Int, result.allocations_per_step)) allocations"
+        @info "    GC time: $(@sprintf("%.3f", gc_time_seconds)) s over $samples windows"
+        iterations > 0 && @info "    Pressure solver iterations (last solve): $iterations"
         if Oceananigans.Architectures.child_architecture(arch) isa GPU
             @info "    GPU memory usage: $(Base.format_bytes(gpu_memory_used))"
         end
@@ -162,6 +185,33 @@ function benchmark_time_stepping(model;
 
     return result
 end
+
+const host_time_steps = 10
+
+"""
+    host_time_per_step(model, Δt)
+
+Median over `host_time_steps` time steps of the time the host takes to return from `time_step!`,
+with the device synchronized before each step. On a GPU this is the time to enqueue one step:
+when it is close to the time per step, the benchmark measures the host rather than the device.
+"""
+function host_time_per_step(model, Δt)
+    arch = architecture(model.grid)
+    host_seconds = zeros(host_time_steps)
+    for n in 1:host_time_steps
+        sync_device!(arch)
+        start_time = time_ns()
+        time_step!(model, Δt)
+        host_seconds[n] = (time_ns() - start_time) / 1e9
+    end
+    sync_device!(arch)
+    return median(host_seconds)
+end
+
+# Iterations of the most recent pressure solve, or 0 for models and solvers that don't iterate
+pressure_solver_iterations(model) = hasproperty(model, :pressure_solver) ? solver_iterations(model.pressure_solver) : 0
+solver_iterations(solver) = 0
+solver_iterations(solver::ConjugateGradientPoissonSolver) = iteration(solver)
 
 #####
 ##### Full simulation with output (for validation and longer runs)

@@ -1,8 +1,8 @@
 using Oceananigans: fields
-using Oceananigans.Operators: σⁿ, σ⁻
 using Oceananigans.Grids: bottommost_active_node
-using Oceananigans.TimeSteppers: implicit_step!
-using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, SplitRungeKuttaTimeStepper, SSPRungeKutta3TimeStepper, MultiStageTimeStepper
+using Oceananigans.Operators: σ⁻, σ⁻¹ⁿ, σⁿ
+using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, SplitRungeKuttaTimeStepper, SSPRungeKutta3TimeStepper, MultiStageTimeStepper,
+                                 implicit_step!
 
 get_time_step(closure::CATKEVerticalDiffusivity) = closure.tke_time_step
 
@@ -221,11 +221,11 @@ end
 
     on_bottom = bottommost_active_node(i, j, k, grid, c, c, c)
     active = !inactive_cell(i, j, k, grid)
-    Δz = Δzᶜᶜᶜ(i, j, k, grid)
+    Δz⁻¹ = Δz⁻¹ᶜᶜᶜ(i, j, k, grid)
     Cᵂϵ = closure_ij.turbulent_kinetic_energy_equation.Cᵂϵ
     e⁺ = clip(eⁱʲᵏ)
     w★ = sqrt(e⁺)
-    div_Jᵉ_e = - on_bottom * Cᵂϵ * w★ / Δz
+    div_Jᵉ_e = - on_bottom * Cᵂϵ * w★ * Δz⁻¹
 
     # Implicit TKE dissipation
     ω = dissipation_rate(i, j, k, grid, closure_ij, next_velocities, tracers, buoyancy, closure_fields)
@@ -279,11 +279,12 @@ end
 
     σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
     σᶜᶜ⁻ = σ⁻(i, j, k, grid, Center(), Center(), Center())
+    σ⁻¹ᶜᶜⁿ = σ⁻¹ⁿ(i, j, k, grid, Center(), Center(), Center())
     active = !inactive_cell(i, j, k, grid)
 
     @inbounds begin
         total_Gⁿe = slow_Gⁿe[i, j, k] + fast_Gⁿe * σᶜᶜⁿ
-        e[i, j, k] += Δτ * (α * total_Gⁿe - β * G⁻e[i, j, k]) * active / σᶜᶜⁿ
+        e[i, j, k] += Δτ * (α * total_Gⁿe - β * G⁻e[i, j, k]) * active * σ⁻¹ᶜᶜⁿ
         G⁻e[i, j, k] = total_Gⁿe * active
     end
 end
@@ -302,11 +303,12 @@ end
                                  tracers, buoyancy, closure_fields)
 
     σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
+    σ⁻¹ᶜᶜⁿ = σ⁻¹ⁿ(i, j, k, grid, Center(), Center(), Center())
     active = !inactive_cell(i, j, k, grid)
 
     @inbounds begin
         total_Gⁿ = slow_Gⁿe[i, j, k] + fast_Gⁿe * σᶜᶜⁿ
-        e[i, j, k] = (stage_start_turbulent_kinetic_energy(i, j, k, grid, σe⁻, e) + Δt * total_Gⁿ * active) / σᶜᶜⁿ
+        e[i, j, k] = (stage_start_turbulent_kinetic_energy(i, j, k, grid, σe⁻, e) + Δt * total_Gⁿ * active) * σ⁻¹ᶜᶜⁿ
     end
 end
 
@@ -324,15 +326,16 @@ end
                                  tracers, buoyancy, closure_fields)
 
     σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
+    σ⁻¹ᶜᶜⁿ = σ⁻¹ⁿ(i, j, k, grid, Center(), Center(), Center())
     active = !inactive_cell(i, j, k, grid)
 
     @inbounds begin
         total_Gⁿ = slow_Gⁿe[i, j, k] + fast_Gⁿe * σᶜᶜⁿ
-        e[i, j, k] += Δτ * total_Gⁿ * active / σᶜᶜⁿ
+        e[i, j, k] += Δτ * total_Gⁿ * active * σ⁻¹ᶜᶜⁿ
     end
 end
 
-@inline function implicit_linear_coefficient(i, j, k, grid, closure::FlavorOfCATKE{<:VITD}, K, ::Val{id}, args...) where id
+@inline function TurbulenceClosures.implicit_linear_coefficient(i, j, k, grid, closure::FlavorOfCATKE{<:VITD}, K, ::Val{id}, args...) where id
     L = K._tupled_implicit_linear_coefficients[id]
     return @inbounds L[i, j, k]
 end

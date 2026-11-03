@@ -1,6 +1,6 @@
 env:
-  JULIA_VERSION: "1.13.0"
-  JULIA_VERSION_ENZYME: "1.13.0"
+  JULIA_VERSION: "1.13.2"
+  JULIA_VERSION_ENZYME: "1.13.1"
   BUILDKITE_HOME: "/var/lib/buildkite-agent"
   JULIA_DEPOT_PATH: "$BUILDKITE_HOME/.julia:"
   JULIA_PKG_SERVER_REGISTRY_PREFERENCE: eager
@@ -18,7 +18,7 @@ paths:
   code:          &code_paths           "{ext,src}/**"
   project:       &project_paths        "Project.toml"
   tests:         &test_paths           "test/**"
-  no_tests:      &no_test_paths        "test/{ProjectDistributed.toml,amdgpu/**,distributed/**,convergence/**,makie/**,manual/**,metal/**,mpi/**,oneapi/**,sharding/**}"
+  no_tests:      &no_test_paths        "{ext/OceananigansMetalExt.jl,test/{ProjectDistributed.toml,amdgpu/**,distributed/**,convergence/**,makie/**,manual/**,metal/**,mpi/**,oneapi/**,sharding/**}}"
   docs:          &docs_paths           "{docs,examples}/**"
   agents:        &agents_paths         "AGENTS.md"
 

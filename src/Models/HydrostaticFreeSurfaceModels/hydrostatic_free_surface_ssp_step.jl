@@ -1,7 +1,5 @@
-using Oceananigans.TurbulenceClosures: implicit_step!
-using Oceananigans.TimeSteppers: SSPRungeKutta3TimeStepper, ssp_quadrature_weights, _ssp_euler_substep_field!, _ssp_blend_field!
-
-import Oceananigans.TimeSteppers: ssp_substep!
+using Oceananigans.TimeSteppers: SSPRungeKutta3TimeStepper, ssp_quadrature_weights, _ssp_euler_substep_field!, _ssp_blend_field!,
+                                 implicit_step!
 
 step_free_surface!(::ImplicitFreeSurface, model, ::SSPRungeKutta3TimeStepper, Δt) =
     throw(ArgumentError("SSPRungeKutta3TimeStepper does not support ImplicitFreeSurface"))
@@ -16,7 +14,7 @@ stage and are blended with the state at `tⁿ` by the Shu-Osher pair `(a, b)`. T
 `(ηⁿ, Uⁿ)` and spans `Δt`; its increment is blended, `Ψᵐ = a Ψⁿ + b (Ψᵐ⁻¹ + Ψ⋆ - Ψⁿ)`. The last solve is driven by
 the stage-weighted slow forcing `Σₘ βₘ Ĝᵐ` [Lan et al. (2022)](@cite Lan2022).
 """
-function ssp_substep!(model::HydrostaticFreeSurfaceModel, Δt, a, b, callbacks)
+function TimeSteppers.ssp_substep!(model::HydrostaticFreeSurfaceModel, Δt, a, b, callbacks)
     grid = model.grid
     free_surface = model.free_surface
     timestepper = model.timestepper

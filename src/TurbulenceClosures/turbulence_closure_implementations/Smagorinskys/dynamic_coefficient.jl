@@ -3,7 +3,7 @@ using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields: CenterField, Field, compute!, interpolate, xnode, ynode, znode
 using Statistics: mean
 
-import Oceananigans: prognostic_state, restore_prognostic_state!
+using Oceananigans: prognostic_state, restore_prognostic_state!
 
 mutable struct DynamicCoefficient{A, FT, S}
     averaging :: A
@@ -373,8 +373,7 @@ const c = Center()
         # Compute time scale
         𝒥ᴸᴹ𝒥ᴹᴹ = 𝒥ᴸᴹ⁻ᵢⱼₖ * 𝒥ᴹᴹ⁻ᵢⱼₖ
 
-        T⁻ = convert(FT, 1.5) * Δᶠ(i, j, k, grid) / √(∜(𝒥ᴸᴹ𝒥ᴹᴹ))
-        τ = Δt / T⁻
+        τ = Δt * √(∜(𝒥ᴸᴹ𝒥ᴹᴹ)) * Δᶠ⁻¹(i, j, k, grid) / convert(FT, 1.5)
         ϵ = τ / (1 + τ)
 
         # Compute interpolation
@@ -412,7 +411,7 @@ const c = Center()
     end
 end
 
-function initialize_closure_fields!(closure_fields, closure::LagrangianAveragedDynamicSmagorinsky, model)
+function TurbulenceClosures.initialize_closure_fields!(closure_fields, closure::LagrangianAveragedDynamicSmagorinsky, model)
     grid = model.grid
     arch = architecture(grid)
     clock = model.clock
@@ -444,7 +443,7 @@ function initialize_closure_fields!(closure_fields, closure::LagrangianAveragedD
     return nothing
 end
 
-function step_closure_prognostics!(closure_fields, closure::LagrangianAveragedDynamicSmagorinsky, model, Δt)
+function TurbulenceClosures.step_closure_prognostics!(closure_fields, closure::LagrangianAveragedDynamicSmagorinsky, model, Δt)
     grid = model.grid
     arch = architecture(grid)
     clock = model.clock
@@ -510,18 +509,18 @@ end
 const DirectionallyAveragedSmagorinskyFields = NamedTuple{(:νₑ, :Σ, :Σ̄, :LM, :MM, :𝒥ᴸᴹ, :𝒥ᴹᴹ)}
 const LagrangianAveragedSmagorinskyFields = NamedTuple{(:νₑ, :Σ, :Σ̄, :𝒥ᴸᴹ, :𝒥ᴹᴹ, :𝒥ᴸᴹ⁻, :𝒥ᴹᴹ⁻, :previous_compute_time)}
 
-function prognostic_state(cf::DirectionallyAveragedSmagorinskyFields)
+function Oceananigans.prognostic_state(cf::DirectionallyAveragedSmagorinskyFields)
     return (𝒥ᴸᴹ = prognostic_state(cf.𝒥ᴸᴹ),
             𝒥ᴹᴹ = prognostic_state(cf.𝒥ᴹᴹ))
 end
 
-function restore_prognostic_state!(restored::DirectionallyAveragedSmagorinskyFields, from)
+function Oceananigans.restore_prognostic_state!(restored::DirectionallyAveragedSmagorinskyFields, from)
     restore_prognostic_state!(restored.𝒥ᴸᴹ, from.𝒥ᴸᴹ)
     restore_prognostic_state!(restored.𝒥ᴹᴹ, from.𝒥ᴹᴹ)
     return restored
 end
 
-function prognostic_state(cf::LagrangianAveragedSmagorinskyFields)
+function Oceananigans.prognostic_state(cf::LagrangianAveragedSmagorinskyFields)
     return (𝒥ᴸᴹ = prognostic_state(cf.𝒥ᴸᴹ),
             𝒥ᴹᴹ = prognostic_state(cf.𝒥ᴹᴹ),
             𝒥ᴸᴹ⁻ = prognostic_state(cf.𝒥ᴸᴹ⁻),
@@ -529,7 +528,7 @@ function prognostic_state(cf::LagrangianAveragedSmagorinskyFields)
             previous_compute_time = cf.previous_compute_time[])
 end
 
-function restore_prognostic_state!(restored::LagrangianAveragedSmagorinskyFields, from)
+function Oceananigans.restore_prognostic_state!(restored::LagrangianAveragedSmagorinskyFields, from)
     restore_prognostic_state!(restored.𝒥ᴸᴹ, from.𝒥ᴸᴹ)
     restore_prognostic_state!(restored.𝒥ᴹᴹ, from.𝒥ᴹᴹ)
     restore_prognostic_state!(restored.𝒥ᴸᴹ⁻, from.𝒥ᴸᴹ⁻)
@@ -538,5 +537,5 @@ function restore_prognostic_state!(restored::LagrangianAveragedSmagorinskyFields
     return restored
 end
 
-restore_prognostic_state!(::DirectionallyAveragedSmagorinskyFields, ::Nothing) = nothing
-restore_prognostic_state!(::LagrangianAveragedSmagorinskyFields, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::DirectionallyAveragedSmagorinskyFields, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::LagrangianAveragedSmagorinskyFields, ::Nothing) = nothing

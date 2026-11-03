@@ -1,5 +1,3 @@
-using Oceananigans.Operators: Axᶜᶜᶜ, Axᶠᶜᶠ, Axᶠᶠᶜ, Ayᶜᶜᶜ, Ayᶜᶠᶠ, Ayᶠᶠᶜ, Azᶜᶠᶠ, Azᶠᶜᶠ
-
 #####
 ##### Momentum and advective tracer flux operators for centered advection schemes
 #####
@@ -16,17 +14,17 @@ const CenteredScheme = AbstractCenteredAdvectionScheme
 
 const ETD = ExplicitTimeDiscretization
 
-@inline advective_momentum_flux_Uu(i, j, k, grid, scheme::CenteredScheme, ::ETD, U, u) = @inbounds Axᶜᶜᶜ(i, j, k, grid) * _symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, U) * _symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, u)
-@inline advective_momentum_flux_Vu(i, j, k, grid, scheme::CenteredScheme, ::ETD, V, u) = @inbounds Ayᶠᶠᶜ(i, j, k, grid) * _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, V) * _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, u)
-@inline advective_momentum_flux_Wu(i, j, k, grid, scheme::CenteredScheme, ::ETD, W, u) = @inbounds Azᶠᶜᶠ(i, j, k, grid) * _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, W) * _symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, u)
+@inline advective_momentum_flux_Uu(i, j, k, grid, scheme::CenteredScheme, ::ETD, U, u) = _symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, Ax_qᶠᶜᶜ, U) * _symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, u)
+@inline advective_momentum_flux_Vu(i, j, k, grid, scheme::CenteredScheme, ::ETD, V, u) = _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, Ay_qᶜᶠᶜ, V) * _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, u)
+@inline advective_momentum_flux_Wu(i, j, k, grid, scheme::CenteredScheme, ::ETD, W, u) = _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, Az_qᶜᶜᶠ, W) * _symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, u)
 
-@inline advective_momentum_flux_Uv(i, j, k, grid, scheme::CenteredScheme, ::ETD, U, v) = @inbounds Axᶠᶠᶜ(i, j, k, grid) * _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, U) * _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, v)
-@inline advective_momentum_flux_Vv(i, j, k, grid, scheme::CenteredScheme, ::ETD, V, v) = @inbounds Ayᶜᶜᶜ(i, j, k, grid) * _symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, V) * _symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, v)
-@inline advective_momentum_flux_Wv(i, j, k, grid, scheme::CenteredScheme, ::ETD, W, v) = @inbounds Azᶜᶠᶠ(i, j, k, grid) * _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, W) * _symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, v)
+@inline advective_momentum_flux_Uv(i, j, k, grid, scheme::CenteredScheme, ::ETD, U, v) = _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, Ax_qᶠᶜᶜ, U) * _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, v)
+@inline advective_momentum_flux_Vv(i, j, k, grid, scheme::CenteredScheme, ::ETD, V, v) = _symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, Ay_qᶜᶠᶜ, V) * _symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, v)
+@inline advective_momentum_flux_Wv(i, j, k, grid, scheme::CenteredScheme, ::ETD, W, v) = _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, Az_qᶜᶜᶠ, W) * _symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, v)
 
-@inline advective_momentum_flux_Uw(i, j, k, grid, scheme::CenteredScheme, ::ETD, U, w) = @inbounds Axᶠᶜᶠ(i, j, k, grid) * _symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, U) * _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, w)
-@inline advective_momentum_flux_Vw(i, j, k, grid, scheme::CenteredScheme, ::ETD, V, w) = @inbounds Ayᶜᶠᶠ(i, j, k, grid) * _symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, V) * _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, w)
-@inline advective_momentum_flux_Ww(i, j, k, grid, scheme::CenteredScheme, ::ETD, W, w) = @inbounds Azᶜᶜᶜ(i, j, k, grid) * _symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, W) * _symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, w)
+@inline advective_momentum_flux_Uw(i, j, k, grid, scheme::CenteredScheme, ::ETD, U, w) = _symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, Ax_qᶠᶜᶜ, U) * _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, w)
+@inline advective_momentum_flux_Vw(i, j, k, grid, scheme::CenteredScheme, ::ETD, V, w) = _symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, Ay_qᶜᶠᶜ, V) * _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, w)
+@inline advective_momentum_flux_Ww(i, j, k, grid, scheme::CenteredScheme, ::ETD, W, w) = _symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, Az_qᶜᶜᶠ, W) * _symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, w)
 
 #####
 ##### Advective tracer flux operators

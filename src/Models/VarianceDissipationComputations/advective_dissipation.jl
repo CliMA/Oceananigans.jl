@@ -14,17 +14,17 @@
     C₂  = convert(eltype(grid), 0.5 + χ)
 
     @inbounds begin
-        u₁ = C₁ * Uⁿ.u[i, j, k] / σⁿ(i, j, k, grid, f, c, c)
-        v₁ = C₁ * Uⁿ.v[i, j, k] / σⁿ(i, j, k, grid, c, f, c)
-        w₁ = C₁ * Uⁿ.w[i, j, k] / σⁿ(i, j, k, grid, c, c, f)
+        u₁ = C₁ * Uⁿ.u[i, j, k] * σ⁻¹ⁿ(i, j, k, grid, f, c, c)
+        v₁ = C₁ * Uⁿ.v[i, j, k] * σ⁻¹ⁿ(i, j, k, grid, c, f, c)
+        w₁ = C₁ * Uⁿ.w[i, j, k] * σ⁻¹ⁿ(i, j, k, grid, c, c, f)
 
         u₂ = C₂ * Uⁿ⁻¹.u[i, j, k] / σ⁻(i, j, k, grid, f, c, c)
         v₂ = C₂ * Uⁿ⁻¹.v[i, j, k] / σ⁻(i, j, k, grid, c, f, c)
         w₂ = C₂ * Uⁿ⁻¹.w[i, j, k] / σ⁻(i, j, k, grid, c, c, f)
 
-        fx₁ = C₁ * Fⁿ.x[i, j, k] / σⁿ(i, j, k, grid, f, c, c)
-        fy₁ = C₁ * Fⁿ.y[i, j, k] / σⁿ(i, j, k, grid, c, f, c)
-        fz₁ = C₁ * Fⁿ.z[i, j, k] / σⁿ(i, j, k, grid, c, c, f)
+        fx₁ = C₁ * Fⁿ.x[i, j, k] * σ⁻¹ⁿ(i, j, k, grid, f, c, c)
+        fy₁ = C₁ * Fⁿ.y[i, j, k] * σ⁻¹ⁿ(i, j, k, grid, c, f, c)
+        fz₁ = C₁ * Fⁿ.z[i, j, k] * σ⁻¹ⁿ(i, j, k, grid, c, c, f)
 
         fx₂ = C₂ * Fⁿ⁻¹.x[i, j, k] / σ⁻(i, j, k, grid, f, c, c)
         fy₂ = C₂ * Fⁿ⁻¹.y[i, j, k] / σ⁻(i, j, k, grid, c, f, c)
