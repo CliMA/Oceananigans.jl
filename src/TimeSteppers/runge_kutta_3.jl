@@ -1,4 +1,4 @@
-import Oceananigans: prognostic_state, restore_prognostic_state!
+using Oceananigans: prognostic_state, restore_prognostic_state!
 using Oceananigans.Utils: time_difference_seconds
 
 """
