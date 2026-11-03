@@ -2,7 +2,7 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using MPI
 using Oceananigans.DistributedComputations
-using Oceananigans.DistributedComputations: cpu_architecture, child_architecture, partition, reconstruct_global_grid
+using Oceananigans.DistributedComputations: cpu_architecture, child_architecture, partition, reconstruct_global_grid, check_field_tags
 using Oceananigans.Grids: λnode, φnode
 using Oceananigans.Operators: Azᶜᶜᶜ, Δxᶠᶜᶜ
 using CUDA
@@ -105,6 +105,30 @@ end
             global_grid = LatitudeLongitudeGrid(child_arch; kw...)
             @test reconstruct_global_grid(local_grid) == global_grid
         end
+    end
+end
+
+@testset "Indexing a FieldTimeSeries on some ranks keeps halo tags matched" begin
+    f(x, y, z) = sin(2π * x) * cos(π * y)
+
+    for arch in archs
+        grid = RectilinearGrid(arch; size = (100, 100, 2), extent = (1, 2, 3))
+        fts = FieldTimeSeries{Center, Center, Center}(grid, 0:3)
+
+        # eg only the ranks that own an open boundary read its data
+        arch.local_rank == 0 && fts[2]
+        @test isnothing(check_field_tags(arch))
+        @test fts[1].communication_buffers === fts[1].communication_buffers
+
+        for n in 1:4
+            set!(fts[n], f)
+        end
+        fill_halo_regions!(fts)
+
+        c = CenterField(grid)
+        set!(c, f)
+        fill_halo_regions!(c)
+        @test Array(parent(fts[2])) == Array(parent(c))
     end
 end
 

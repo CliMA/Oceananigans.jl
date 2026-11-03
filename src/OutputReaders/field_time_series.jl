@@ -273,11 +273,29 @@ function try_convert_to_range(times::AbstractArray)
     return times
 end
 
+# One field per in-memory time slot, so `fts[n]` reuses its slot's communication buffers rather than
+# allocating new ones (and, on distributed grids, taking a new MPI tag that only the calling rank advances)
+memory_fields(data, grid, loc, bcs, indices, backend, times) = nothing
+memory_fields(::Nothing, grid, loc, bcs, indices, backend::AbstractInMemoryBackend, times) = nothing
+
+function memory_fields(data, grid, loc, bcs, indices, backend::AbstractInMemoryBackend, times)
+    return [memory_field(data, grid, loc, bcs, indices, m) for m in 1:memory_length(backend, times)]
+end
+
+memory_length(backend::PartlyInMemory, times) = length(backend)
+memory_length(::TotallyInMemory, times) = length(times)
+
+function memory_field(data, grid, loc, bcs, indices, m)
+    @apply_regionally underlying_data = view(parent(data), :, :, :, m)
+    @apply_regionally slot_data = offset_data(underlying_data, grid, loc, indices)
+    return Field(loc, grid; data = slot_data, boundary_conditions = bcs, indices)
+end
+
 #####
 ##### FieldTimeSeries
 #####
 
-mutable struct FieldTimeSeries{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, P, N, KW} <: AbstractField{LX, LY, LZ, G, ET, 4}
+mutable struct FieldTimeSeries{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, P, N, KW, M} <: AbstractField{LX, LY, LZ, G, ET, 4}
     data :: D
     grid :: G
     backend :: K
@@ -288,6 +306,7 @@ mutable struct FieldTimeSeries{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, P, N, KW} 
     name :: N
     time_indexing :: TI
     reader_kw :: KW
+    memory_fields :: M
 
     function FieldTimeSeries{LX, LY, LZ}(data::D,
                                          grid::G,
@@ -325,9 +344,12 @@ mutable struct FieldTimeSeries{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, P, N, KW} 
         N = typeof(name)
         KW = typeof(reader_kw)
 
-        return new{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, P, N, KW}(data, grid, backend, bcs,
-                                                                   indices, times, path, name,
-                                                                   time_indexing, reader_kw)
+        fields = memory_fields(data, grid, (LX(), LY(), LZ()), bcs, indices, backend, times)
+        M = typeof(fields)
+
+        return new{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, P, N, KW, M}(data, grid, backend, bcs,
+                                                                      indices, times, path, name,
+                                                                      time_indexing, reader_kw, fields)
     end
 end
 
