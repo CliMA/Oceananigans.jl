@@ -1,6 +1,6 @@
-using Oceananigans.Grids: Face, Face, Center
-using Oceananigans.Operators: ζ₃ᶠᶠᶜ
 using Oceananigans.AbstractOperations: KernelFunctionOperation
+using Oceananigans.Grids: Center, Face
+using Oceananigans.Operators: ζ₃ᶠᶠᶜ
 
 """
 $(TYPEDSIGNATURES)
