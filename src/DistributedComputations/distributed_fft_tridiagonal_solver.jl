@@ -1,21 +1,18 @@
-using GPUArraysCore
-using Oceananigans.Grids: stretched_dimensions
-using Oceananigans.Grids: XDirection, YDirection, ZDirection
 using Statistics: mean
-using Oceananigans.Operators: Δxᶠᵃᵃ, Δyᵃᶠᵃ, Δzᵃᵃᶠ, Δxᶜᶜᶜ, Δyᶜᶜᶜ, Δzᶜᶜᶜ
 
+using Oceananigans.Grids: XDirection, YDirection, ZDirection, stretched_dimensions
+using Oceananigans.Operators: V⁻¹ᶜᶜᶜ, Δxᶜᶜᶜ, Δxᶠᵃᵃ, Δyᵃᶠᵃ, Δyᶜᶜᶜ, Δzᵃᵃᶠ, Δzᶜᶜᶜ
 using Oceananigans.Solvers: BatchedTridiagonalSolver,
-                            stretched_direction,
-                            tridiagonal_direction,
-                            dimension,
                             HomogeneousNeumannFormulation,
-                            ZTridiagonalSolver,
-                            YTridiagonalSolver,
                             XTridiagonalSolver,
+                            YTridiagonalSolver,
+                            ZTridiagonalSolver,
+                            compute_lower_diagonal!,
                             compute_main_diagonal!,
-                            compute_lower_diagonal!
-
-import Oceananigans.Solvers: compute_preconditioner_rhs!
+                            compute_preconditioner_rhs!,
+                            dimension,
+                            stretched_direction,
+                            tridiagonal_direction
 
 struct DistributedFourierTridiagonalPoissonSolver{G, L, B, P, R, S, β}
     plan :: P
@@ -32,7 +29,7 @@ const XStretchedDistributedSolver = DistributedFourierTridiagonalPoissonSolver{<
 const YStretchedDistributedSolver = DistributedFourierTridiagonalPoissonSolver{<:Any, <:Any, <:YTridiagonalSolver}
 const ZStretchedDistributedSolver = DistributedFourierTridiagonalPoissonSolver{<:Any, <:Any, <:ZTridiagonalSolver}
 
-architecture(solver::DistributedFourierTridiagonalPoissonSolver) =
+Architectures.architecture(solver::DistributedFourierTridiagonalPoissonSolver) =
     architecture(solver.global_grid)
 
 @inline Δξᶠ(i, grid, ::Val{1}) = Δxᶠᵃᵃ(i, 1, 1, grid)
@@ -282,7 +279,7 @@ end
 # solve! requires that `b` in `A x = b` (the right hand side)
 # is copied in the solver storage
 # See: Models/NonhydrostaticModels/solve_for_pressure.jl
-function solve!(x, solver::ZStretchedDistributedSolver)
+function Solvers.solve!(x, solver::ZStretchedDistributedSolver)
     storage = solver.storage
 
     # Detect slab-x optimization: if tridiag solver grid matches xfield grid,
@@ -343,7 +340,7 @@ function _general_z_solve!(x, solver::ZStretchedDistributedSolver)
     return copy_and_zero_mean!(x, solver)
 end
 
-function solve!(x, solver::YStretchedDistributedSolver)
+function Solvers.solve!(x, solver::YStretchedDistributedSolver)
     storage = solver.storage
     buffer  = solver.buffer
 
@@ -369,7 +366,7 @@ function solve!(x, solver::YStretchedDistributedSolver)
     return copy_and_zero_mean!(x, solver)
 end
 
-function solve!(x, solver::XStretchedDistributedSolver)
+function Solvers.solve!(x, solver::XStretchedDistributedSolver)
     storage = solver.storage
     buffer  = solver.buffer
 
@@ -398,8 +395,6 @@ end
 ##### Preconditioning support for ConjugateGradientPoissonSolver
 #####
 
-using Oceananigans.Operators: V⁻¹ᶜᶜᶜ
-
 @kernel function distributed_fourier_tridiagonal_preconditioner_rhs!(preconditioner_rhs, ::XDirection, grid, rhs)
     i, j, k = @index(Global, NTuple)
     @inbounds preconditioner_rhs[i, j, k] = rhs[i, j, k] * V⁻¹ᶜᶜᶜ(i, j, k, grid) * Δxᶜᶜᶜ(i, j, k, grid)
@@ -415,7 +410,7 @@ end
     @inbounds preconditioner_rhs[i, j, k] = rhs[i, j, k] * V⁻¹ᶜᶜᶜ(i, j, k, grid) * Δzᶜᶜᶜ(i, j, k, grid)
 end
 
-function compute_preconditioner_rhs!(solver::DistributedFourierTridiagonalPoissonSolver, rhs)
+function Solvers.compute_preconditioner_rhs!(solver::DistributedFourierTridiagonalPoissonSolver, rhs)
     grid = solver.local_grid
     arch = architecture(grid)
     tridiagonal_dir = solver.batched_tridiagonal_solver.tridiagonal_direction

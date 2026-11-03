@@ -2,27 +2,24 @@ module VarianceDissipationComputations
 
 export VarianceDissipation, flatten_dissipation_fields
 
-using KernelAbstractions: @kernel, @index
 using DocStringExtensions: TYPEDSIGNATURES
+using KernelAbstractions: @index, @kernel
 
 using Oceananigans: Oceananigans, UpdateStateCallsite
-using Oceananigans.Advection
 using Oceananigans.Advection: _advective_tracer_flux_x,
                               _advective_tracer_flux_y,
                               _advective_tracer_flux_z
-using Oceananigans.BoundaryConditions
-using Oceananigans.Fields
-using Oceananigans.Fields: VelocityFields
-using Oceananigans.Grids: architecture, AbstractGrid
-using Oceananigans.Operators
+using Oceananigans.Fields: CenterField, VelocityFields, XFaceField, YFaceField, ZFaceField
+using Oceananigans.Grids: AbstractGrid, Center, Face, architecture
+using Oceananigans.Operators: Axᶠᶜᶜ, Ayᶜᶠᶜ, Azᶜᶜᶠ, δxᶠᶜᶜ, δyᶜᶠᶜ, δzᶜᶜᶠ, σ⁻, σ⁻¹ⁿ, σⁿ
+using Oceananigans.Simulations: Simulations, Callback, validate_schedule
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper,
                                  RungeKutta3TimeStepper,
                                  SplitRungeKuttaTimeStepper
 using Oceananigans.TurbulenceClosures: _diffusive_flux_x,
                                        _diffusive_flux_y,
                                        _diffusive_flux_z
-using Oceananigans.Utils
-using Oceananigans.Utils: IterationInterval, ConsecutiveIterations
+using Oceananigans.Utils: ConsecutiveIterations, IterationInterval, KernelParameters, launch!
 
 struct VarianceDissipation{P, K, A, D, S}
     advective_production :: P
@@ -130,15 +127,13 @@ include("diffusive_dissipation.jl")
 include("compute_dissipation.jl")
 include("flatten_dissipation_fields.jl")
 
-import Oceananigans.Simulations: Callback, validate_schedule
-
 # Specific `Callback` for `VarianceDissipation` computations.
 # A VarianceDissipation object requires a `ConsecutiveIteration` schedule to make sure
 # that the computed fluxes are correctly used in the next time step.
 # Also, the `VarianceDissipation` object needs to be called on `UpdateStateStepCallsite` to be correct.
-function Callback(func::VarianceDissipation, schedule=IterationInterval(1);
-                  parameters = nothing,
-                  callsite = UpdateStateCallsite())
+function Simulations.Callback(func::VarianceDissipation, schedule=IterationInterval(1);
+                              parameters = nothing,
+                              callsite = UpdateStateCallsite())
 
     if !(callsite isa UpdateStateCallsite)
         @warn "VarianceDissipation callback must be called on UpdateStateCallsite. Changing `callsite` to `UpdateStateCallsite()`."
@@ -150,10 +145,10 @@ function Callback(func::VarianceDissipation, schedule=IterationInterval(1);
     return Callback(func, schedule, callsite, parameters)
 end
 
-validate_schedule(::VarianceDissipation, schedule) = throw(ArgumentError("the provided schedule $schedule is not supported for VarianceDissipation computations. \n" *
-                                                                         "Use an `IterationInterval` schedule instead."))
+Simulations.validate_schedule(::VarianceDissipation, schedule) = throw(ArgumentError("the provided schedule $schedule is not supported for VarianceDissipation computations. \n" *
+                                                                                     "Use an `IterationInterval` schedule instead."))
 
-function validate_schedule(::VarianceDissipation, schedule::IterationInterval)
+function Simulations.validate_schedule(::VarianceDissipation, schedule::IterationInterval)
     if !(schedule == IterationInterval(1))
         @warn "VarianceDissipation callback must be called every Iteration or on `ConsecutiveIterations`. \n" *
               "Changing `schedule` to `ConsecutiveIterations(schedule)`."
@@ -162,7 +157,7 @@ function validate_schedule(::VarianceDissipation, schedule::IterationInterval)
     return schedule
 end
 
-function validate_schedule(::VarianceDissipation, schedule::ConsecutiveIterations)
+function Simulations.validate_schedule(::VarianceDissipation, schedule::ConsecutiveIterations)
     if !(schedule.parent isa IterationInterval)
        throw(ArgumentError("the provided schedule $schedule is not supported for VarianceDissipation computations. \n" *
                                                                          "Use an `IterationInterval` schedule instead."))

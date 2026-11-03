@@ -1,11 +1,9 @@
 import FFTW
 
-using Oceananigans.Grids: XYZRegularRG, XYRegularRG, XZRegularRG, YZRegularRG
-
-import Oceananigans.Solvers: poisson_eigenvalues, solve!, compute_preconditioner_rhs!
-using Oceananigans.Solvers: _spectral_poisson_solve!
-import Oceananigans.Architectures: architecture
-import Oceananigans.Fields: interior
+using Oceananigans.Architectures: architecture
+using Oceananigans.Fields: interior
+using Oceananigans.Grids: XYRegularRG, XYZRegularRG, XZRegularRG, YZRegularRG
+using Oceananigans.Solvers: _spectral_poisson_solve!, compute_preconditioner_rhs!, poisson_eigenvalues, solve!
 
 struct DistributedFFTBasedPoissonSolver{P, F, L, λ, B, S}
     plan :: P
@@ -16,7 +14,7 @@ struct DistributedFFTBasedPoissonSolver{P, F, L, λ, B, S}
     storage :: S
 end
 
-architecture(solver::DistributedFFTBasedPoissonSolver) =
+Architectures.architecture(solver::DistributedFFTBasedPoissonSolver) =
     architecture(solver.global_grid)
 
 """
@@ -138,7 +136,7 @@ end
 # solve! requires that `b` in `A x = b` (the right hand side)
 # is copied in the solver storage
 # See: Models/NonhydrostaticModels/solve_for_pressure.jl
-function solve!(x, solver::DistributedFFTBasedPoissonSolver, m=0)
+function Solvers.solve!(x, solver::DistributedFFTBasedPoissonSolver, m=0)
     storage = solver.storage
     buffer  = solver.buffer
     arch    = architecture(storage.xfield.grid)
@@ -187,7 +185,7 @@ using Oceananigans.Operators: V⁻¹ᶜᶜᶜ
     @inbounds preconditioner_rhs[i, j, k] = rhs[i, j, k] * V⁻¹ᶜᶜᶜ(i, j, k, grid)
 end
 
-function compute_preconditioner_rhs!(solver::DistributedFFTBasedPoissonSolver, rhs)
+function Solvers.compute_preconditioner_rhs!(solver::DistributedFFTBasedPoissonSolver, rhs)
     grid = solver.local_grid
     arch = architecture(grid)
     launch!(arch, grid, :xyz, distributed_fft_preconditioner_rhs!,

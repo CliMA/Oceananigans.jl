@@ -1,13 +1,12 @@
-using KernelAbstractions: @kernel, @index
+using KernelAbstractions: @index, @kernel
 
 using Oceananigans.Fields: instantiated_location
 
-using Oceananigans.BoundaryConditions
 using Oceananigans.BoundaryConditions:
     DistributedFillHalo,
+    fill_halo_event!,
+    fill_halo_regions!,
     get_boundary_kernels
-
-import Oceananigans.BoundaryConditions: fill_halo_event!, fill_halo_regions!
 
 #####
 ##### MPI tags for halo communication BCs
@@ -45,7 +44,7 @@ end
 ##### Filling halos for halo communication boundary conditions
 #####
 
-fill_halo_regions!(field::DistributedField, args::Vararg{Any, N}; kwargs...) where N =
+BoundaryConditions.fill_halo_regions!(field::DistributedField, args::Vararg{Any, N}; kwargs...) where N =
     fill_halo_regions!(field.data,
                        field.boundary_conditions,
                        field.indices,
@@ -63,11 +62,11 @@ function maybe_distributed_fill_halo_regions!(arch::Distributed, c, boundary_con
 end
 
 # Otherwise we recover the architecture from the (still distributed) grid.
-function fill_halo_regions!(c::OffsetArray, boundary_conditions, indices, loc, grid::DistributedGrid, buffers, args::Vararg{Any, N}; kwargs...) where N
+function BoundaryConditions.fill_halo_regions!(c::OffsetArray, boundary_conditions, indices, loc, grid::DistributedGrid, buffers, args::Vararg{Any, N}; kwargs...) where N
     return distributed_fill_halo_regions!(architecture(grid), c, boundary_conditions, indices, loc, grid, buffers, args; kwargs...)
 end
 
-fill_halo_regions!(c::OffsetArray, ::Nothing, indices, loc, grid::DistributedGrid, args...; kwargs...) = nothing
+BoundaryConditions.fill_halo_regions!(c::OffsetArray, ::Nothing, indices, loc, grid::DistributedGrid, args...; kwargs...) = nothing
 
 function distributed_fill_halo_regions!(arch, c, boundary_conditions, indices, loc, grid, buffers, args; only_local_halos = false, kwargs...)
     # Complete an asynchronous fill of this field still in flight before its send buffers and requests are reused
