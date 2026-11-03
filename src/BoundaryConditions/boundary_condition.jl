@@ -211,6 +211,33 @@ const NumberRef = Base.RefValue{<:Number}
 # A NamedTuple just returns a tuple output
 @inline getbc(condition::NamedTuple, i::Integer, j::Integer, grid::AbstractGrid, args...) = getbc(values(condition), i, j, grid, args...)
 
+"""
+    XZReducedCondition{D}(condition)
+
+A `condition` reduced in `x` and `z` (for example a `Field` or a `FieldTimeSeries` located at
+`(Nothing, LY, Nothing)`), used as a boundary condition on dimension `D`. Its `y` index is the
+first boundary index on the west and east boundaries (`D = 1`), and the second on the bottom and
+top boundaries (`D = 3`). Types that are wrapped extend `xz_reduced_getbc(condition, j, grid, args...)`.
+"""
+struct XZReducedCondition{D, C}
+    condition :: C
+end
+
+XZReducedCondition{D}(condition::C) where {D, C} = XZReducedCondition{D, C}(condition)
+
+function xz_reduced_getbc end
+
+xz_reduced_condition(condition, dim) = condition
+xz_reduced_condition(condition, ::Val{1}) = XZReducedCondition{1}(condition)
+xz_reduced_condition(condition, ::Val{3}) = XZReducedCondition{3}(condition)
+
+@inline getbc(c::XZReducedCondition{1}, j::Integer, k::Integer, grid::AbstractGrid, args...) = xz_reduced_getbc(c.condition, j, grid, args...)
+@inline getbc(c::XZReducedCondition{3}, i::Integer, j::Integer, grid::AbstractGrid, args...) = xz_reduced_getbc(c.condition, j, grid, args...)
+
+Adapt.adapt_structure(to, c::XZReducedCondition{D}) where D = XZReducedCondition{D}(adapt(to, c.condition))
+Architectures.on_architecture(to, c::XZReducedCondition{D}) where D = XZReducedCondition{D}(on_architecture(to, c.condition))
+Base.summary(c::XZReducedCondition) = summary(c.condition)
+
 #####
 ##### Validation with topology
 #####
