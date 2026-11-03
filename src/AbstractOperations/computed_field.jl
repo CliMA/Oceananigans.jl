@@ -2,12 +2,11 @@
 ##### Fields computed from abstract operations
 #####
 
-using KernelAbstractions: @kernel, @index
+using KernelAbstractions: @index, @kernel
+using Oceananigans.Fields: Field, FieldBoundaryConditions, FieldStatus, FunctionField, compute!, instantiated_location,
+                           offset_index, set_status!, validate_indices
 using Oceananigans.Grids: default_indices, new_data
-using Oceananigans.Fields: FunctionField, FieldBoundaryConditions, FieldStatus, validate_indices, offset_index, instantiated_location, set_status!
-using Oceananigans.Utils: KernelParameters, launch!, @apply_regionally
-
-import Oceananigans.Fields: Field, compute!
+using Oceananigans.Utils: @apply_regionally, KernelParameters, launch!
 
 const OperationOrFunctionField = Union{AbstractOperation, FunctionField}
 const ComputedField = Field{<:Any, <:Any, <:Any, <:OperationOrFunctionField}
@@ -39,13 +38,13 @@ Keyword arguments
 `compute`: If `true`, `compute!` the `Field` during construction, otherwise if `false`, initialize with zeros.
            Default: `true`.
 """
-function Field(operand::OperationOrFunctionField;
-               data = nothing,
-               indices = indices(operand),
-               boundary_conditions = FieldBoundaryConditions(operand.grid, instantiated_location(operand)),
-               status = nothing,
-               compute = true,
-               recompute_safely = true)
+function Fields.Field(operand::OperationOrFunctionField;
+                      data = nothing,
+                      indices = indices(operand),
+                      boundary_conditions = FieldBoundaryConditions(operand.grid, instantiated_location(operand)),
+                      status = nothing,
+                      compute = true,
+                      recompute_safely = true)
 
     grid = operand.grid
     loc = instantiated_location(operand)
@@ -77,7 +76,7 @@ end
 Compute `comp.operand` and store the result in `comp.data`.
 If `time` then only compute dependency fields with `time != field.status.time`.
 """
-function compute!(comp::ComputedField, time=nothing)
+function Fields.compute!(comp::ComputedField, time=nothing)
     # First compute `dependencies`:
     compute_at!(comp.operand, time)
 

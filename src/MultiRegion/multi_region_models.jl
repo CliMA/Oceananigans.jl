@@ -13,7 +13,7 @@ using Oceananigans.TurbulenceClosures: TurbulenceClosures, VerticallyImplicitTim
     add_closure_specific_boundary_conditions, closure_required_tracers, step_closure_prognostics!
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE, FlavorOfTD, CATKEClosureFields, TKEDissipationClosureFields
 using Oceananigans.Advection: OnlySelfUpwinding, CrossAndSelfUpwinding
-using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary
+using Oceananigans.ImmersedBoundaries: GridFittedVerticalBoundaries, PartialCellVerticalBoundaries, GridFittedBoundary
 using Oceananigans.Solvers: ConjugateGradientSolver
 
 const MultiRegionModel = HydrostaticFreeSurfaceModel{<:Any, <:Any, <:AbstractArchitecture, <:Any, <:MultiRegionGrids}
@@ -52,8 +52,8 @@ Types = (HydrostaticFreeSurfaceModel,
          CrossAndSelfUpwinding,
          OnlySelfUpwinding,
          GridFittedBoundary,
-         GridFittedBottom,
-         PartialCellBottom,
+         GridFittedVerticalBoundaries,
+         PartialCellVerticalBoundaries,
          BoundsPreservation,
          CATKEClosureFields,
          TKEDissipationClosureFields)

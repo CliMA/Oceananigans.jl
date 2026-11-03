@@ -2,8 +2,7 @@ using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Forcings: compute_forcing!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 using Oceananigans.Models: update_model_field_time_series!
-
-import Oceananigans.TimeSteppers: update_state!
+using Oceananigans.TimeSteppers: update_state!
 
 """
     update_state!(model::ShallowWaterModel, callbacks=[])
@@ -17,7 +16,7 @@ if using `ConservativeFormulation`.
 
 Next, `callbacks` are executed.
 """
-function update_state!(model::ShallowWaterModel, callbacks=[])
+function TimeSteppers.update_state!(model::ShallowWaterModel, callbacks=[])
 
     # Mask immersed fields
     foreach(mask_immersed_field!, merge(model.solution, model.tracers))

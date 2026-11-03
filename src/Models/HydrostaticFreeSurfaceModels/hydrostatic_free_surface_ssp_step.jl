@@ -1,10 +1,6 @@
-using Oceananigans.TurbulenceClosures: implicit_step!
-
-import Oceananigans.TimeSteppers: ssp_substep!
-
 using Oceananigans.TimeSteppers: accumulate_ssp_slow_forcing!, install_ssp_slow_forcing!,
                                  _ssp_euler_substep_field!, _ssp_blend_field!, SSPRungeKuttaTimeStepper,
-                                 SSPBarotropicForcing
+                                 SSPBarotropicForcing, implicit_step!, ssp_substep!
 
 # `ImplicitFreeSurface` solves on a predictor velocity, so the Shu-Osher blend would have to be deferred
 # until after a pressure correction that has already overwritten Ψᵐ⁻¹.
@@ -42,10 +38,10 @@ does not arise, while the barotropic stage values are the ones the Shu-Osher rec
 stage is driven by the stage-weighted slow forcing, so its sub-cycle is simultaneously the predictor that
 supplies that stage's transport and the corrector that sets the barotropic pair at `n+1`.
 """
-ssp_substep!(model::HydrostaticFreeSurfaceModel, Δt, a, b, callbacks) =
+TimeSteppers.ssp_substep!(model::HydrostaticFreeSurfaceModel, Δt, a, b, callbacks) =
     ssp_substep!(model, model.free_surface, model.grid, Δt, a, b, callbacks)
 
-@inline function ssp_substep!(model, free_surface, grid, Δt, a, b, callbacks)
+@inline function TimeSteppers.ssp_substep!(model, free_surface, grid, Δt, a, b, callbacks)
     timestepper = model.timestepper
     final_stage = model.clock.stage == timestepper.Nstages
 

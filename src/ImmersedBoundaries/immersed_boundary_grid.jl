@@ -65,7 +65,7 @@ function ImmersedBoundaryGrid(grid::AbstractUnderlyingGrid, ib::AbstractImmersed
                                             active_z_columns)
 end
 
-function with_halo(halo, ibg::ImmersedBoundaryGrid)
+function Grids.with_halo(halo, ibg::ImmersedBoundaryGrid)
     underlying_grid = with_halo(halo, ibg.underlying_grid)
     return ImmersedBoundaryGrid(underlying_grid, ibg.immersed_boundary;
                                 active_cells_map = has_active_cells_map(ibg),
@@ -81,14 +81,14 @@ const IBG = ImmersedBoundaryGrid
 @inline get_ibg_property(ibg::IBG, ::Val{:interior_active_cells})  = getfield(ibg, :interior_active_cells)
 @inline get_ibg_property(ibg::IBG, ::Val{:active_z_columns})       = getfield(ibg, :active_z_columns)
 
-@inline architecture(ibg::IBG) = architecture(ibg.underlying_grid)
+@inline Grids.architecture(ibg::IBG) = architecture(ibg.underlying_grid)
 
 @inline Base.size(ibg::IBG) = size(ibg.underlying_grid)
 @inline Grids.halo_size(ibg::IBG) = halo_size(ibg.underlying_grid)
 
-@inline x_domain(ibg::IBG) = x_domain(ibg.underlying_grid)
-@inline y_domain(ibg::IBG) = y_domain(ibg.underlying_grid)
-@inline z_domain(ibg::IBG) = z_domain(ibg.underlying_grid)
+@inline Grids.x_domain(ibg::IBG) = x_domain(ibg.underlying_grid)
+@inline Grids.y_domain(ibg::IBG) = y_domain(ibg.underlying_grid)
+@inline Grids.z_domain(ibg::IBG) = z_domain(ibg.underlying_grid)
 
 """
     underlying_grid(grid)
@@ -110,8 +110,8 @@ Adapt.adapt_structure(to, ibg::IBG{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
 
 # ImmersedBoundaryGrids require an extra halo point to check the "inactivity" of a `Face` node at N + H
 # (which requires checking `Center` nodes at N + H and N + H + 1)
-inflate_halo_size_one_dimension(req_H, old_H, _, ::IBG)            = max(req_H + 1, old_H)
-inflate_halo_size_one_dimension(req_H, old_H, ::Type{Flat}, ::IBG) = 0
+Grids.inflate_halo_size_one_dimension(req_H, old_H, _, ::IBG)            = max(req_H + 1, old_H)
+Grids.inflate_halo_size_one_dimension(req_H, old_H, ::Type{Flat}, ::IBG) = 0
 
 Grids.has_static_discretization(grid::IBG) = Grids.has_static_discretization(grid.underlying_grid)
 

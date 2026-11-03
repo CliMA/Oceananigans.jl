@@ -1,6 +1,5 @@
 using Oceananigans: fields
 using Oceananigans.DistributedComputations: maybe_distributed_fill_halo_regions!
-using KernelAbstractions.Extras.LoopInfo: @unroll
 
 @inline build_halo_fill_args(arch, f, grid, args...) = convert_to_device(arch, (f.data, f.boundary_conditions, f.indices, instantiated_location(f), grid, args...))
 
@@ -222,22 +221,21 @@ const MINIMUM_SUBSTEPS = 5
 #####
 ##### `ExtendedHalos` substeps into the halo rather than filling it, so its argument groups are empty.
 
-@inline fill_barotropic_halos!(free_surface, arch, substep_clock, ::Tuple{}, exchange_halos) = nothing
+@inline fill_barotropic_halos!(arch, substep_clock, ::Tuple{}, halo_exchange) = nothing
 
 # The halo arguments are built once per barotropic step and close with the reference fields; the substep clock
 # is spliced in right before them.
-@inline function fill_barotropic_halos!(free_surface, arch, substep_clock, halo_args::Tuple, exchange_halos)
-    only_local_halos = fill_only_local_halos(free_surface) && !exchange_halos
+@inline function fill_barotropic_halos!(arch, substep_clock, halo_args::Tuple, halo_exchange)
     field_args = first(halo_args)
-    maybe_distributed_fill_halo_regions!(arch, Base.front(field_args)..., substep_clock, last(field_args); only_local_halos)
-    return fill_barotropic_halos!(free_surface, arch, substep_clock, Base.tail(halo_args), exchange_halos)
+    maybe_distributed_fill_halo_regions!(arch, Base.front(field_args)..., substep_clock, last(field_args); only_local_halos = !halo_exchange)
+    return fill_barotropic_halos!(arch, substep_clock, Base.tail(halo_args), halo_exchange)
 end
 
-@inline exchange_extended_halos!(free_surface, exchange_halos) = nothing
+@inline exchange_extended_halos!(free_surface, halo_exchange) = nothing
 
-function exchange_extended_halos!(free_surface::SplitExplicitFreeSurface{ExtendedHalos}, exchange_halos)
+function exchange_extended_halos!(free_surface::SplitExplicitFreeSurface{ExtendedHalos}, halo_exchange)
     U, V = free_surface.barotropic_velocities
-    exchange_halos && fill_halo_regions!((U, V, free_surface.displacement))
+    halo_exchange && fill_halo_regions!((U, V, free_surface.displacement))
     return nothing
 end
 
@@ -300,7 +298,7 @@ function barotropic_substepper(timestepper::ForwardBackwardScheme, free_surface,
     face_pins = configure_face_pins(arch, grid, U, V, free_surface.boundary_transport)
 
     return (; free_surface_kernel!, velocity_kernel!, η_args = converted_η_args, U_args = converted_U_args,
-              velocity_halos, free_surface_halos, face_pins)
+              velocity_halos, free_surface_halos, face_pins, barotropic_model_fields, Δτᴮ)
 end
 
 function barotropic_substepper(timestepper::RungeKutta3Scheme, free_surface, arch, grid, parameters, substep_arguments)
@@ -362,14 +360,20 @@ function barotropic_substepper(timestepper::RungeKutta3Scheme, free_surface, arc
     return (; first_stage_kernel!, stage_kernel!, final_stage_kernel!, stage_args, stage_halos, stage_pins)
 end
 
-function barotropic_substep!(::ForwardBackwardScheme, substepper, free_surface, arch, substep_clock, averaging_weight, transport_weight, sᵐ, exchange_halos)
+function barotropic_substep!(::ForwardBackwardScheme, substepper, free_surface, arch, substep_clock, averaging_weight, transport_weight, sᵐ, halo_exchange)
 
-    fill_barotropic_halos!(free_surface, arch, substep_clock, substepper.free_surface_halos, exchange_halos)
+    (; barotropic_model_fields, Δτᴮ) = substepper
+    (; U, V, η) = barotropic_model_fields
+
+    fill_barotropic_halos!(arch, substep_clock, substepper.free_surface_halos, halo_exchange)
+    @apply_regionally cache_boundary_conditions!((U, V, η), substep_clock, barotropic_model_fields)
     @apply_regionally apply_barotropic_kernel!(substepper.velocity_kernel!, substepper.U_args, averaging_weight, sᵐ)
+    @apply_regionally step_boundary_conditions!((U, V), substep_clock, barotropic_model_fields, Δτᴮ)
 
-    fill_barotropic_halos!(free_surface, arch, substep_clock, substepper.velocity_halos, exchange_halos)
+    fill_barotropic_halos!(arch, substep_clock, substepper.velocity_halos, halo_exchange)
     pin_barotropic_faces!(substepper.face_pins)
     @apply_regionally apply_barotropic_kernel!(substepper.free_surface_kernel!, substepper.η_args, averaging_weight, transport_weight)
+    @apply_regionally step_boundary_conditions!((η,), substep_clock, barotropic_model_fields, Δτᴮ)
 
     return nothing
 end
@@ -377,37 +381,37 @@ end
 # The stages recurse over their argument tuples rather than indexing them with a running counter: the tuples
 # are heterogeneous, one entry per position in the sequence, and recursion keeps every index a literal.
 @inline function barotropic_stages!(substepper, free_surface, arch, substep_clock, args::Tuple{Any}, halos::Tuple{Any},
-                                    pins::Tuple{Any}, averaging_weight, transport_weight, sᵐ, exchange_halos)
+                                    pins::Tuple{Any}, averaging_weight, transport_weight, sᵐ, halo_exchange)
 
-    fill_barotropic_halos!(free_surface, arch, substep_clock, first(halos), exchange_halos)
+    fill_barotropic_halos!(arch, substep_clock, first(halos), halo_exchange)
     pin_barotropic_faces!(first(pins))
     @apply_regionally apply_barotropic_kernel!(substepper.final_stage_kernel!, first(args), averaging_weight, transport_weight, sᵐ)
     return nothing
 end
 
 @inline function barotropic_stages!(substepper, free_surface, arch, substep_clock, args::Tuple, halos::Tuple,
-                                    pins::Tuple, averaging_weight, transport_weight, sᵐ, exchange_halos)
+                                    pins::Tuple, averaging_weight, transport_weight, sᵐ, halo_exchange)
 
-    fill_barotropic_halos!(free_surface, arch, substep_clock, first(halos), exchange_halos)
+    fill_barotropic_halos!(arch, substep_clock, first(halos), halo_exchange)
     pin_barotropic_faces!(first(pins))
     @apply_regionally apply_barotropic_kernel!(substepper.stage_kernel!, first(args), sᵐ)
 
     return barotropic_stages!(substepper, free_surface, arch, substep_clock, Base.tail(args), Base.tail(halos),
-                              Base.tail(pins), averaging_weight, transport_weight, sᵐ, exchange_halos)
+                              Base.tail(pins), averaging_weight, transport_weight, sᵐ, halo_exchange)
 end
 
-@noinline function barotropic_substep!(::RungeKutta3Scheme, substepper, free_surface, arch, substep_clock, averaging_weight, transport_weight, sᵐ, exchange_halos)
+@noinline function barotropic_substep!(::RungeKutta3Scheme, substepper, free_surface, arch, substep_clock, averaging_weight, transport_weight, sᵐ, halo_exchange)
 
     stage_args  = substepper.stage_args
     stage_halos = substepper.stage_halos
     stage_pins  = substepper.stage_pins
 
-    fill_barotropic_halos!(free_surface, arch, substep_clock, first(stage_halos), exchange_halos)
+    fill_barotropic_halos!(arch, substep_clock, first(stage_halos), halo_exchange)
     pin_barotropic_faces!(first(stage_pins))
     @apply_regionally apply_barotropic_kernel!(substepper.first_stage_kernel!, first(stage_args), sᵐ)
 
     return barotropic_stages!(substepper, free_surface, arch, substep_clock, Base.tail(stage_args), Base.tail(stage_halos),
-                              Base.tail(stage_pins), averaging_weight, transport_weight, sᵐ, exchange_halos)
+                              Base.tail(stage_pins), averaging_weight, transport_weight, sᵐ, halo_exchange)
 end
 
 # `Δt` is the step of the current baroclinic stage and `Δτᴮ` the barotropic substep.
@@ -435,10 +439,10 @@ function iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, Δt,
             @inbounds transport_weight = transport_weights[substep]
             sᵐ = (substep - oneunit(substep) / 2) * Δτᴮ   # MIDPOINT of the substep, measured from tⁿ
             substep_clock = barotropic_substep_clock(clock, substep, Δτᴮ)
-            exchange_halos = substep > 1 && (substep - 1) % exchange_interval == 0
+            halo_exchange = exchange_halos(free_surface, substep, exchange_interval)
 
-            exchange_extended_halos!(free_surface, exchange_halos)
-            barotropic_substep!(timestepper, substepper, free_surface, arch, substep_clock, averaging_weight, transport_weight, sᵐ, exchange_halos)
+            exchange_extended_halos!(free_surface, halo_exchange)
+            barotropic_substep!(timestepper, substepper, free_surface, arch, substep_clock, averaging_weight, transport_weight, sᵐ, halo_exchange)
         end
     end
 
@@ -468,7 +472,7 @@ end
 @inline fill_barotropic_state_halos!(field, ::FillHaloSplitExplicit, model) =
     fill_halo_regions!(field, model.clock, fields(model); async=true)
 
-function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroclinic_timestepper, Δt)
+function HydrostaticFreeSurfaceModels.step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroclinic_timestepper, Δt)
     # Note: free_surface.displacement.grid != model.grid for DistributedSplitExplicitFreeSurface since
     # halo_size(free_surface.displacement.grid) != halo_size(model.grid)
     free_surface_grid = free_surface.displacement.grid

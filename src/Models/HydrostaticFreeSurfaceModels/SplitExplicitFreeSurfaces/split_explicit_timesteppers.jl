@@ -1,6 +1,6 @@
 using Adapt: Adapt
 
-import Oceananigans: prognostic_state, restore_prognostic_state!
+using Oceananigans: prognostic_state, restore_prognostic_state!
 
 """
     struct ForwardBackwardScheme
@@ -101,9 +101,9 @@ Adapt.adapt_structure(to, ts::RungeKutta3Scheme) =
 ##### Checkpointing
 #####
 
-prognostic_state(::ForwardBackwardScheme) = nothing
-restore_prognostic_state!(restored::ForwardBackwardScheme, ::Nothing) = restored
+Oceananigans.prognostic_state(::ForwardBackwardScheme) = nothing
+Oceananigans.restore_prognostic_state!(restored::ForwardBackwardScheme, ::Nothing) = restored
 
 # The Runge-Kutta scratch is rebuilt at every substep.
-prognostic_state(::RungeKutta3Scheme) = nothing
-restore_prognostic_state!(restored::RungeKutta3Scheme, ::Nothing) = restored
+Oceananigans.prognostic_state(::RungeKutta3Scheme) = nothing
+Oceananigans.restore_prognostic_state!(restored::RungeKutta3Scheme, ::Nothing) = restored

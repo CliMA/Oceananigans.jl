@@ -1,9 +1,8 @@
 using Oceananigans: fields
-using Oceananigans.Operators: σⁿ, σ⁻, σ⁻¹ⁿ
 using Oceananigans.Grids: bottommost_active_node
-using Oceananigans.TimeSteppers: implicit_step!
-using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, SplitRungeKuttaTimeStepper,
-                                 SSPRungeKuttaTimeStepper
+using Oceananigans.Operators: σ⁻, σ⁻¹ⁿ, σⁿ
+using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, SplitRungeKuttaTimeStepper, SSPRungeKuttaTimeStepper,
+                                 implicit_step!
 
 get_time_step(closure::CATKEVerticalDiffusivity) = closure.tke_time_step
 
@@ -430,7 +429,7 @@ end
     @inbounds e[i, j, k] = a * σe⁻[i, j, k] / σᶜᶜⁿ + b * e[i, j, k]
 end
 
-@inline function implicit_linear_coefficient(i, j, k, grid, closure::FlavorOfCATKE{<:VITD}, K, ::Val{id}, args...) where id
+@inline function TurbulenceClosures.implicit_linear_coefficient(i, j, k, grid, closure::FlavorOfCATKE{<:VITD}, K, ::Val{id}, args...) where id
     L = K._tupled_implicit_linear_coefficients[id]
     return @inbounds L[i, j, k]
 end

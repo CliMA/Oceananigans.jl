@@ -4,8 +4,6 @@ using Oceananigans.Grids: Face, Center
 using Oceananigans.TimeSteppers: SplitRungeKuttaTimeStepper, SSPRungeKuttaTimeStepper,
                                  MultiStageTimeStepper, ModifiedRungeKutta4TimeStepper
 
-import Oceananigans: prognostic_state
-
 #####
 ##### Time reconstruction of the slow forcing across the barotropic sub-cycle.
 #####
@@ -105,8 +103,8 @@ Adapt.adapt_structure(to, sf::ReconstructedSlowForcing) =
                                       Adapt.adapt(to, sf.nodes))
 
 # The stage values are rebuilt within every time step.
-prognostic_state(::FrozenSlowForcing) = nothing
-prognostic_state(::ReconstructedSlowForcing) = nothing
+Oceananigans.prognostic_state(::FrozenSlowForcing) = nothing
+Oceananigans.prognostic_state(::ReconstructedSlowForcing) = nothing
 
 #####
 ##### The nodes: where in the step each stage forcing was sampled
