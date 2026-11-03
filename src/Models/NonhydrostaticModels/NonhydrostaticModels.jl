@@ -18,7 +18,7 @@ using Oceananigans.Models: Models
 using Oceananigans.Simulations: Simulations, timestepper
 using Oceananigans.Solvers: ConjugateGradientPoissonSolver, GridWithFFTSolver, GridWithFourierTridiagonalSolver,
                             InhomogeneousFormulation, ZDirection
-using Oceananigans.TimeSteppers: TimeSteppers, step_lagrangian_particles!, update_lagrangian_particle_state!,
+using Oceananigans.TimeSteppers: TimeSteppers, substep_lagrangian_particles!, update_lagrangian_particle_state!,
                                  update_state!
 using Oceananigans.TurbulenceClosures: TurbulenceClosures
 using Oceananigans.Utils: foreach_name, named_tuple, sum_of_velocities
@@ -113,7 +113,7 @@ Return a flattened `NamedTuple` of the prognostic fields associated with `Nonhyd
 Oceananigans.prognostic_fields(model::NonhydrostaticModel) = merge(model.velocities, model.tracers)
 
 # Unpack model.particles to update particle properties. See Models/LagrangianParticleTracking/LagrangianParticleTracking.jl
-TimeSteppers.step_lagrangian_particles!(model::NonhydrostaticModel, Δt) = step_lagrangian_particles!(model.particles, model, Δt)
+TimeSteppers.substep_lagrangian_particles!(model::NonhydrostaticModel, Δt, stage) = substep_lagrangian_particles!(model.particles, model, Δt, stage)
 TimeSteppers.update_lagrangian_particle_state!(model::NonhydrostaticModel) = update_lagrangian_particle_state!(model.particles, model)
 
 include("cache_nonhydrostatic_tendencies.jl")

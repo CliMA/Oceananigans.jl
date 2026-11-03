@@ -14,7 +14,8 @@ using Oceananigans.Grids: AbstractHorizontallyCurvilinearGrid, Center, Face, Mut
 using Oceananigans.ImmersedBoundaries: GridFittedBoundary, ImmersedBoundaryGrid
 using Oceananigans.Models: AbstractModel, extract_boundary_conditions, materialize_tracers, timestepper_name,
                            validate_model_halo, validate_tracer_advection
-using Oceananigans.TimeSteppers: AbstractLagrangianParticles, Clock, TimeStepper, materialize_clock!, reconcile_state!,
+using Oceananigans.TimeSteppers: AbstractLagrangianParticles, Clock, TimeStepper, materialize_clock!,
+                                 materialize_lagrangian_particles, reconcile_state!,
                                  time_discretization, update_state!
 using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization, add_closure_specific_boundary_conditions,
                                        build_closure_fields, closure_required_tracers, implicit_diffusion_solver,
@@ -331,6 +332,7 @@ function build_hydrostatic_free_surface_model(grid, ::Val{tracer_names}, timeste
     G⁻ = previous_hydrostatic_tendency_fields(timestepper, velocities, free_surface, grid, tracer_names, boundary_conditions)
     cached_state = previous_hydrostatic_state_fields(timestepper, velocities, free_surface, tracers)
     timestepper = TimeStepper(timestepper, grid, prognostic_fields; implicit_solver, Gⁿ, G⁻, cached_state...)
+    particles = materialize_lagrangian_particles(particles, timestepper)
     materialize_clock!(clock, timestepper)
 
     # Materialize forcing for model tracer and velocity fields.
