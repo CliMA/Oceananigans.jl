@@ -1,15 +1,13 @@
-using Oceananigans.Advection: div_Uc, U_dot_∇u, U_dot_∇v, VectorInvariant,
-                              horizontal_advection_U, horizontal_advection_V, bernoulli_head_U, bernoulli_head_V,
-                              vertical_advection_U, vertical_advection_V,
-                              U_dot_∇u_hydrostatic_metric, U_dot_∇v_hydrostatic_metric
-using Oceananigans.Biogeochemistry: biogeochemical_transition,
-                                    biogeochemical_drift_velocity,
+using Oceananigans.Advection: U_dot_∇u, U_dot_∇u_hydrostatic_metric, U_dot_∇v, U_dot_∇v_hydrostatic_metric, VectorInvariant,
+                              bernoulli_head_U, bernoulli_head_V, div_Uc, horizontal_advection_U, horizontal_advection_V,
+                              vertical_advection_U, vertical_advection_V
+using Oceananigans.Biogeochemistry: biogeochemical_drift_velocity,
+                                    biogeochemical_transition,
                                     include_biogeochemistry_transitions
 using Oceananigans.Forcings: with_advective_forcing
 using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂yᶜᶠᶜ
-using Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∇_dot_qᶜ,
-                                       immersed_∂ⱼ_τ₁ⱼ, immersed_∂ⱼ_τ₂ⱼ, immersed_∇_dot_qᶜ,
-                                       closure_auxiliary_velocity
+using Oceananigans.TurbulenceClosures: closure_auxiliary_velocity, immersed_∂ⱼ_τ₁ⱼ, immersed_∂ⱼ_τ₂ⱼ, immersed_∇_dot_qᶜ,
+                                       ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∇_dot_qᶜ
 using Oceananigans.Utils: sum_of_velocities
 
 @inline momentum_advection_and_coriolis_u(i, j, k, grid, advection, coriolis, U) = U_dot_∇u(i, j, k, grid, advection, U) + x_f_cross_U(i, j, k, grid, coriolis, U)

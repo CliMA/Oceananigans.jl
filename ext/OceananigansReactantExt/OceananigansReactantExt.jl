@@ -46,10 +46,10 @@ using .Solvers
 ##### Telling Reactant how to construct types
 #####
 
-import ConstructionBase: constructorof
+using ConstructionBase: ConstructionBase
 
-constructorof(::Type{<:RectilinearGrid{FT, TX, TY, TZ}}) where {FT, TX, TY, TZ} = RectilinearGrid{TX, TY, TZ}
-constructorof(::Type{<:VectorInvariant{N, FT, TD}}) where {N, FT, TD} = VectorInvariant{N, FT, TD}
+ConstructionBase.constructorof(::Type{<:RectilinearGrid{FT, TX, TY, TZ}}) where {FT, TX, TY, TZ} = RectilinearGrid{TX, TY, TZ}
+ConstructionBase.constructorof(::Type{<:VectorInvariant{N, FT, TD}}) where {N, FT, TD} = VectorInvariant{N, FT, TD}
 
 # https://github.com/CliMA/Oceananigans.jl/blob/da9959f3e5d8ee7cf2fb42b74ecc892874ec1687/src/AbstractOperations/conditional_operations.jl#L8
 Base.@nospecializeinfer function Reactant.traced_type_inner(
@@ -390,16 +390,10 @@ Base.getindex(array::OffsetVector{T, <:Reactant.AbstractConcreteArray{T, 1}}, ::
 
 # These are additional modules that may need to be Reactantified in the future:
 #
-# include("Utils.jl")
 # include("BoundaryConditions.jl")
-# include("Fields.jl")
 # include("MultiRegion.jl")
-# include("Solvers.jl")
 #
-# using .Utils
 # using .BoundaryConditions
-# using .Fields
 # using .MultiRegion
-# using .Solvers
 
 end # module

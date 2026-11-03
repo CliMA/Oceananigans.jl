@@ -53,6 +53,11 @@ The state at the first substep is taken to be the one that corresponds to
 the ``n``-th timestep, `U¹ = Uⁿ`, and the state after the third substep is
 then the state at `Uⁿ⁺¹ = U⁴`.
 
+Unlike [Le and Moin (1991)](@cite LeMoin1991), who use Crank–Nicolson for the implicit terms,
+vertically-implicit terms (diffusion, implicit vertical advection, and implicit flux boundary conditions)
+are treated with backward Euler over each substep `Δτ = Δt * (γᵐ + ζᵐ)`, so the implicit part
+is first-order accurate in time.
+
 References
 ==========
 Le, H. and Moin, P. (1991). An improvement of fractional step methods for the incompressible
