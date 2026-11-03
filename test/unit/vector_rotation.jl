@@ -146,6 +146,8 @@ end
                     for i in 1:Nx+1, j in 1:Ny+1
                         grid.Δxᶜᶠᵃ[i, j] = haversine((λᶠᶠᵃ[i+1, j], φᶠᶠᵃ[i+1, j]), (λᶠᶠᵃ[i, j], φᶠᶠᵃ[i, j]), radius)
                         grid.Δyᶠᶜᵃ[i, j] = haversine((λᶠᶠᵃ[i, j+1], φᶠᶠᵃ[i, j+1]), (λᶠᶠᵃ[i, j], φᶠᶠᵃ[i, j]), radius)
+                        grid.Δx⁻¹ᶜᶠᵃ[i, j] = 1 / grid.Δxᶜᶠᵃ[i, j]
+                        grid.Δy⁻¹ᶠᶜᵃ[i, j] = 1 / grid.Δyᶠᶜᵃ[i, j]
                     end
 
                     # ensure that rotation_angle returns θᵢ

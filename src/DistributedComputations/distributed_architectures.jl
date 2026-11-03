@@ -1,4 +1,3 @@
-using Oceananigans.Architectures
 using Oceananigans.Grids: topology
 
 import Oceananigans.Architectures: device, device!, cpu_architecture, on_architecture, array_type, child_architecture, convert_to_device

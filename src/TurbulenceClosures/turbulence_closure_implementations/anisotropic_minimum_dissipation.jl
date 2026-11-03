@@ -172,9 +172,9 @@ end
         r = norm_uᵢₐ_uⱼₐ_Σᵢⱼᶜᶜᶜ(ijk..., closure, velocities.u, velocities.v, velocities.w)
 
         # So-called buoyancy modification term:
-        Cb_ζ = Cb_norm_wᵢ_bᵢᶜᶜᶜ(ijk..., Cb, closure, buoyancy, velocities.w, tracers) / Δᶠzᶜᶜᶜ(ijk...)
+        Cb_ζ = Cb_norm_wᵢ_bᵢᶜᶜᶜ(ijk..., Cb, closure, buoyancy, velocities.w, tracers) * Δᶠz⁻¹ᶜᶜᶜ(ijk...)
 
-        δ² = 3 / (1 / Δᶠxᶜᶜᶜ(ijk...)^2 + 1 / Δᶠyᶜᶜᶜ(ijk...)^2 + 1 / Δᶠzᶜᶜᶜ(ijk...)^2)
+        δ² = 3 / (Δᶠx⁻¹ᶜᶜᶜ(ijk...)^2 + Δᶠy⁻¹ᶜᶜᶜ(ijk...)^2 + Δᶠz⁻¹ᶜᶜᶜ(ijk...)^2)
 
         νˢᵍˢ = - closure_coefficient(i, j, k, grid, closure.Cν) * δ² * (r - Cb_ζ) / q
     end
@@ -196,7 +196,7 @@ end
         κˢᵍˢ = zero(FT)
     else
         ϑ =  norm_uᵢⱼ_cⱼ_cᵢᶜᶜᶜ(ijk..., closure, velocities.u, velocities.v, velocities.w, tracer)
-        δ² = 3 / (1 / Δᶠxᶜᶜᶜ(ijk...)^2 + 1 / Δᶠyᶜᶜᶜ(ijk...)^2 + 1 / Δᶠzᶜᶜᶜ(ijk...)^2)
+        δ² = 3 / (Δᶠx⁻¹ᶜᶜᶜ(ijk...)^2 + Δᶠy⁻¹ᶜᶜᶜ(ijk...)^2 + Δᶠz⁻¹ᶜᶜᶜ(ijk...)^2)
         κˢᵍˢ = - closure_coefficient(i, j, k, grid, Cκ) * δ² * ϑ / σ
     end
 
@@ -242,11 +242,18 @@ end
 @inline Δᶠyᶜᶜᶜ(i, j, k, grid) = 2 * Δyᶜᶜᶜ(i, j, k, grid)
 @inline Δᶠzᶜᶜᶜ(i, j, k, grid) = 2 * Δzᶜᶜᶜ(i, j, k, grid)
 
+@inline Δᶠx⁻¹ᶜᶜᶜ(i, j, k, grid) = Δx⁻¹ᶜᶜᶜ(i, j, k, grid) / 2
+@inline Δᶠy⁻¹ᶜᶜᶜ(i, j, k, grid) = Δy⁻¹ᶜᶜᶜ(i, j, k, grid) / 2
+@inline Δᶠz⁻¹ᶜᶜᶜ(i, j, k, grid) = Δz⁻¹ᶜᶜᶜ(i, j, k, grid) / 2
+
 for loc in (:ccf, :fcc, :cfc, :ffc, :cff, :fcf), ξ in (:x, :y, :z)
-    Δ_loc = Symbol(:Δᶠ, ξ, :_, loc)
-    Δᶜᶜᶜ = Symbol(:Δᶠ, ξ, :ᶜᶜᶜ)
+    Δ_loc   = Symbol(:Δᶠ, ξ, :_, loc)
+    Δᶜᶜᶜ    = Symbol(:Δᶠ, ξ, :ᶜᶜᶜ)
+    Δ⁻¹_loc = Symbol(:Δᶠ, ξ, :⁻¹_, loc)
+    Δ⁻¹ᶜᶜᶜ  = Symbol(:Δᶠ, ξ, :⁻¹ᶜᶜᶜ)
     @eval begin
-        const $Δ_loc = $Δᶜᶜᶜ
+        const $Δ_loc   = $Δᶜᶜᶜ
+        const $Δ⁻¹_loc = $Δ⁻¹ᶜᶜᶜ
     end
 end
 

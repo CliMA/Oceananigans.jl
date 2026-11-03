@@ -114,7 +114,7 @@ function YinYangGrid(arch::AbstractArchitecture = CPU(),
     connectivity = YinYangConnectivity(overlap, (Nλ, Nφ), stencil_width, masks, interpolation)
 
     λᶠ, φᶠ = panel_faces
-    topology = (Sides{Connected, Connected}, Sides{Connected, Connected}, Bounded)
+    topology = (TwoSided{Connected, Connected}, TwoSided{Connected, Connected}, Bounded)
     panel_size = (Nλ + 2overlap, Nφ + 2overlap, Nz)
     panel(longitude, north_pole) = RotatedLatitudeLongitudeGrid(arch, FT; size = panel_size, z, halo, radius, topology,
                                                                 latitude = (φᶠ[1], φᶠ[end]), longitude, north_pole)
