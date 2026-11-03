@@ -21,6 +21,8 @@ using KernelAbstractions: @kernel, @index
 using Oceananigans: Oceananigans, AbstractModel, initialize!, fields, prognostic_fields
 using Oceananigans.BoundaryConditions: BoundaryConditions, cache_boundary_conditions!, initialize_boundary_conditions!
 using Oceananigans.Architectures: architecture
+using Oceananigans.Grids: Center
+using Oceananigans.Operators: σ⁻¹ⁿ
 using Oceananigans.Utils: AbstractTimeDiscretization, ExplicitTimeDiscretization,
                           VerticallyImplicitTimeDiscretization,
                           AdaptiveVerticallyImplicitDiscretization,

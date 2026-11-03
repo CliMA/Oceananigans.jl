@@ -17,7 +17,6 @@ function cache_fluxes!(dissipation, model, tracer_name)
     stage = model.clock.stage
 
     update_transport!(Uⁿ, Uⁿ⁻¹, grid, params, timestepper, stage, U)
-    store_specific_thickness!(dissipation.previous_state.specific_thickness, grid, params, timestepper, stage)
     tracer_id = findfirst(x -> x == tracer_name, keys(model.tracers))
     cache_fluxes!(dissipation, model, tracer_name, Val(tracer_id))
 
@@ -88,8 +87,7 @@ function cache_advective_fluxes!(Fⁿ, Fⁿ⁻¹, grid, params, ts::SplitRungeKu
     end
 end
 
-# Weight of the flux in the running sum Σₘ βₘ Fᵐ, and whether the sum is kept. Stage m ends on the state that stage
-# m+1 differentiates, and the last stage, whose sum is already assembled, seeds the next time step.
+# Stage m's state feeds stage m+1, so it enters Σₘ βₘ Fᵐ with βₘ₊₁; the last stage restarts the sum.
 @inline function ssp_accumulation_weights(ts::SSPRungeKutta3TimeStepper, stage, FT)
     β = ssp_quadrature_weights(ts.coefficients)
     last_stage = stage == ts.Nstages
@@ -148,22 +146,4 @@ end
     @inbounds Uⁿ.u[i, j, k] = U.u[i, j, k] * Axᶠᶜᶜ(i, j, k, grid)
     @inbounds Uⁿ.v[i, j, k] = U.v[i, j, k] * Ayᶜᶠᶜ(i, j, k, grid)
     @inbounds Uⁿ.w[i, j, k] = U.w[i, j, k] * Azᶜᶜᶠ(i, j, k, grid)
-end
-
-store_specific_thickness!(σ, grid, params, timestepper, stage) = nothing
-
-function store_specific_thickness!(σ, grid, params, ts::SplitRungeKuttaTimeStepper, stage)
-    if stage == ts.Nstages-1
-        launch!(architecture(grid), grid, params, _store_specific_thickness!, σ, grid)
-    end
-    return nothing
-end
-
-@kernel function _store_specific_thickness!(σ, grid)
-    i, j, k = @index(Global, NTuple)
-    @inbounds begin
-        σ.x[i, j, 1] = σⁿ(i, j, k, grid, f, c, c)
-        σ.y[i, j, 1] = σⁿ(i, j, k, grid, c, f, c)
-        σ.z[i, j, 1] = σⁿ(i, j, k, grid, c, c, f)
-    end
 end

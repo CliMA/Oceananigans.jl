@@ -101,10 +101,10 @@ const MINIMUM_SUBSTEPS = 5
 @inline calculate_adaptive_settings(substepping::FNS, substeps) = substepping.fractional_step_size, substepping.averaging_weights, substepping.transport_weights
 @inline calculate_adaptive_settings(substepping::FTS, substeps) = weights_from_substeps(eltype(substepping.Δt_barotropic), substeps, substepping.averaging_kernel)
 
-iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, F, clock, weights, transport_weights, ::Val{Nsubsteps}) where Nsubsteps =
+iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, F, clock, weights, transport_weights, ::Val{Nsubsteps}, start_time = clock.time) where Nsubsteps =
     @apply_regionally iterate_split_explicit_in_halo!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, F, clock, weights, transport_weights, Val(Nsubsteps))
 
-function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GUⁿ, GVⁿ, Δτᴮ, F, clock, weights, transport_weights, ::Val{Nsubsteps}) where Nsubsteps
+function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GUⁿ, GVⁿ, Δτᴮ, F, clock, weights, transport_weights, ::Val{Nsubsteps}, start_time = clock.time) where Nsubsteps
     arch = architecture(grid)
 
     η           = free_surface.displacement
@@ -147,7 +147,7 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
             @inbounds averaging_weight = weights[substep]
             @inbounds transport_weight = transport_weights[substep]
 
-            substep_clock = (; time = add_time_interval(clock.time, Δτᴮ, substep - 1), iteration = clock.iteration, stage = 0, last_stage_Δt = Δτᴮ)
+            substep_clock = (; time = add_time_interval(start_time, Δτᴮ, substep - 1), iteration = clock.iteration, stage = 0, last_stage_Δt = Δτᴮ)
             only_local_halos = !exchange_halos(free_surface, substep, exchange_interval)
 
             maybe_distributed_fill_halo_regions!(arch, η_halo_args[1:end-1]..., substep_clock, η_halo_args[end]; only_local_halos)
@@ -237,6 +237,14 @@ end
 @inline fill_barotropic_state_halos!(field, ::FillHaloSplitExplicit, model) =
     fill_halo_regions!(field, model.clock, fields(model); async=true)
 
+# Every SSP solve restarts from ψⁿ at tⁿ, while the clock has reached the time of the stage
+@inline barotropic_start_time(clock, timestepper, Δt) = clock.time
+
+@inline function barotropic_start_time(clock, ts::SSPRungeKutta3TimeStepper, Δt)
+    τ = (0, ssp_stage_fractions(ts.coefficients)...)
+    return add_time_interval(clock.time, τ[clock.stage] * Δt, -1)
+end
+
 function HydrostaticFreeSurfaceModels.step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroclinic_timestepper, Δt)
     # Note: free_surface.displacement.grid != model.grid for DistributedSplitExplicitFreeSurface since
     # halo_size(free_surface.displacement.grid) != halo_size(model.grid)
@@ -275,14 +283,16 @@ function HydrostaticFreeSurfaceModels.step_free_surface!(free_surface::SplitExpl
     @apply_regionally initialize_free_surface_state!(free_surface, baroclinic_timestepper, barotropic_timestepper)
 
     # Substep halo fills read time series up to the last substep time, which can lie past tⁿ⁺¹
-    t = model.clock.time
+    t = barotropic_start_time(model.clock, baroclinic_timestepper, Δt)
     update_model_field_time_series!(model, Time(t), Time(add_time_interval(t, Δτᴮ, Nsubsteps - 1)))
 
     # Solve for the free surface at tⁿ⁺¹.
-    iterate_split_explicit!(free_surface, free_surface_grid, GUⁿ, GVⁿ, Δτᴮ, F, model.clock, weights, transport_weights, Val(Nsubsteps))
+    # Substep times start from `t`; the η forcing `F` reads `model.clock`, the time of the stage.
+    iterate_split_explicit!(free_surface, free_surface_grid, GUⁿ, GVⁿ, Δτᴮ, F, model.clock, weights, transport_weights, Val(Nsubsteps), t)
 
     # Update eta and velocities for the next timestep. The halos are updated in the `update_state!` function.
     @apply_regionally launch!(architecture(free_surface_grid), free_surface_grid, :xy, _update_split_explicit_state!, η, U, V, free_surface_grid, filtered_state)
+    @apply_regionally HydrostaticFreeSurfaceModels.blend_free_surface!(free_surface, baroclinic_timestepper, model.clock.stage)
 
     # Fill all the barotropic state.
     fill_barotropic_state_halos!((filtered_state.Ũ, filtered_state.Ṽ), free_surface, model)

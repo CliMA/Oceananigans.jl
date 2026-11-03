@@ -2,7 +2,7 @@ using Oceananigans: fields
 using Oceananigans.Grids: bottommost_active_node
 using Oceananigans.Operators: σ⁻, σ⁻¹ⁿ, σⁿ
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, SplitRungeKuttaTimeStepper, SSPRungeKutta3TimeStepper, MultiStageTimeStepper,
-                                 implicit_step!
+                                 _ssp_blend_tracer_field!, implicit_step!
 
 get_time_step(closure::CATKEVerticalDiffusivity) = closure.tke_time_step
 
@@ -143,7 +143,7 @@ function time_step_catke_equation!(model, timestepper::MultiStageTimeStepper, Δ
                        Δτ)
     end
 
-    blend_turbulent_kinetic_energy!(e, timestepper, σe⁻, arch, grid, model.clock.stage, active_cells_map)
+    blend_turbulent_kinetic_energy!(e, timestepper, σe⁻, arch, grid, model.clock.stage)
 
     return nothing
 end
@@ -157,20 +157,13 @@ const c = Center()
 @inline stage_start_turbulent_kinetic_energy(i, j, k, grid, σe⁻, e) = @inbounds σe⁻[i, j, k]
 @inline stage_start_turbulent_kinetic_energy(i, j, k, grid, ::Nothing, e) = @inbounds σ⁻(i, j, k, grid, c, c, c) * e[i, j, k]
 
-blend_turbulent_kinetic_energy!(e, timestepper, σe⁻, arch, grid, stage, active_cells_map) = nothing
+blend_turbulent_kinetic_energy!(e, timestepper, σe⁻, arch, grid, stage) = nothing
 
-function blend_turbulent_kinetic_energy!(e, timestepper::SSPRungeKutta3TimeStepper, σe⁻, arch, grid, stage, active_cells_map)
+function blend_turbulent_kinetic_energy!(e, timestepper::SSPRungeKutta3TimeStepper, σe⁻, arch, grid, stage)
     FT = eltype(grid)
     a, b = timestepper.coefficients[stage]
-    launch!(arch, grid, :xyz, _blend_turbulent_kinetic_energy!, e, σe⁻, grid, convert(FT, a), convert(FT, b); active_cells_map)
+    launch!(arch, grid, :xyz, _ssp_blend_tracer_field!, e, grid, σe⁻, convert(FT, a), convert(FT, b))
     return nothing
-end
-
-# (σe)ᵐ = a (σe)ⁿ + b (σê), with (σe)ⁿ cached in σe⁻
-@kernel function _blend_turbulent_kinetic_energy!(e, σe⁻, grid, a, b)
-    i, j, k = @index(Global, NTuple)
-    σᶜᶜⁿ = σⁿ(i, j, k, grid, c, c, c)
-    @inbounds e[i, j, k] = a * σe⁻[i, j, k] / σᶜᶜⁿ + b * e[i, j, k]
 end
 
 @kernel function compute_TKE_diffusivity!(κe, grid, closure,

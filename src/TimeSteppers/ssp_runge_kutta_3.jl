@@ -11,7 +11,7 @@ Fields
 - `Gⁿ`: tendency fields at the current stage
 - `Ψ⁻`: prognostic fields cached at the beginning of the time step
 - `implicit_solver`: solver for implicit vertical diffusion, or `nothing`
-- `Ψᵐ⁻¹`: free-surface fields at the previous stage
+- `Ψᵐ⁻¹`: barotropic fields `(η, U, V)` of a split-explicit free surface at the previous stage
 - `Ĝ`: stage-weighted barotropic slow forcing `Σₘ βₘ Ĝᵐ` of a split-explicit free surface
 """
 struct SSPRungeKutta3TimeStepper{C, TG, PF, TI, B, S} <: AbstractTimeStepper
@@ -43,7 +43,7 @@ function SSPRungeKutta3TimeStepper(grid, prognostic_fields, args...;
                                   kwargs...) where {TI, TG, PF}
 
     coefficients = ((0//1, 1//1), (3//4, 1//4), (1//3, 2//3))
-    Ψᵐ⁻¹ = map(similar, haskey(Ψ⁻, :U) ? (; Ψ⁻.η, Ψ⁻.U, Ψ⁻.V) : haskey(Ψ⁻, :η) ? (; Ψ⁻.η) : NamedTuple())
+    Ψᵐ⁻¹ = map(similar, haskey(Ψ⁻, :U) ? (; Ψ⁻.η, Ψ⁻.U, Ψ⁻.V) : NamedTuple())
     Ĝ = map(similar, haskey(Gⁿ, :U) ? (; Gⁿ.U, Gⁿ.V) : NamedTuple())
 
     return SSPRungeKutta3TimeStepper(length(coefficients), coefficients, Gⁿ, Ψ⁻, implicit_solver, Ψᵐ⁻¹, Ĝ)
@@ -56,6 +56,14 @@ Return the weights `βₘ` of the stage tendencies in `Ψⁿ⁺¹ = Ψⁿ + Δt 
 coefficients of stage `m` and of every later stage: `(1/6, 1/6, 2/3)` for the three-stage scheme.
 """
 ssp_quadrature_weights(coefficients) = ntuple(m -> prod(coefficients[j][2] for j in m:length(coefficients)), length(coefficients))
+
+"""
+    ssp_stage_fractions(coefficients)
+
+Return the fractions `τᵐ` of `Δt` reached by the state after each stage of the Shu-Osher recursion,
+`τᵐ = bᵐ (τᵐ⁻¹ + 1)` with `τ⁰ = 0`: `(1, 1/2, 1)` for the three-stage scheme.
+"""
+ssp_stage_fractions(coefficients) = accumulate((τ, (a, b)) -> b * (τ + 1), coefficients; init = 0)
 
 prognostic_state(::SSPRungeKutta3TimeStepper) = nothing
 
@@ -78,10 +86,9 @@ function time_step!(model::AbstractModel{<:SSPRungeKutta3TimeStepper}, Δt; call
     maybe_prepare_first_time_step!(model, Δt, callbacks)
 
     cache_current_fields!(model)
+    cache_boundary_conditions!(model)
 
-    # The state after stage m approximates tⁿ + τᵐ Δt, with τᵐ = bᵐ (τᵐ⁻¹ + 1) and τ⁰ = 0.
-    stage_fractions = accumulate((τ, (a, b)) -> b * (τ + 1), model.timestepper.coefficients; init = 0)
-    stage_times = map(τ -> next_time(model.clock, τ * Δt), stage_fractions)
+    stage_times = map(τ -> next_time(model.clock, τ * Δt), ssp_stage_fractions(model.timestepper.coefficients))
 
     for (stage, (a, b)) in enumerate(model.timestepper.coefficients)
 
@@ -104,6 +111,9 @@ function time_step!(model::AbstractModel{<:SSPRungeKutta3TimeStepper}, Δt; call
 
     model.clock.iteration += 1
 
+    # Once per time step: the particle state is not reset to tⁿ between stages, so per-stage updates would compound
+    update_lagrangian_particle_state!(model)
+
     return nothing
 end
 
@@ -120,6 +130,7 @@ function maybe_prepare_first_time_step!(model::AbstractModel{<:SSPRungeKutta3Tim
         model.clock.last_Δt = Δt
         model.clock.last_stage_Δt = Δt
         reconcile_state!(model)
+        initialize_boundary_conditions!(model)
         update_state!(model, callbacks)
     end
     return nothing
@@ -133,6 +144,13 @@ end
 @kernel function _ssp_blend_field!(field, Ψ⁻, a, b)
     i, j, k = @index(Global, NTuple)
     @inbounds field[i, j, k] = a * Ψ⁻[i, j, k] + b * field[i, j, k]
+end
+
+# (σc)ᵐ = a (σc)ⁿ + b (σĉ), with (σc)ⁿ cached in σc⁻
+@kernel function _ssp_blend_tracer_field!(c, grid, σc⁻, a, b)
+    i, j, k = @index(Global, NTuple)
+    σ⁻¹ᶜᶜⁿ = σ⁻¹ⁿ(i, j, k, grid, Center(), Center(), Center())
+    @inbounds c[i, j, k] = a * σc⁻[i, j, k] * σ⁻¹ᶜᶜⁿ + b * c[i, j, k]
 end
 
 const MultiStageTimeStepper = Union{SplitRungeKuttaTimeStepper, SSPRungeKutta3TimeStepper}

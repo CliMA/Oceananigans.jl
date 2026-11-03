@@ -79,7 +79,7 @@ end
 
 @testset "Tracked fields at final positions [HydrostaticFreeSurfaceModel, $arch, $FT, $timestepper]" for
     arch in archs, FT in float_types,
-    timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta2, :SplitRungeKutta3, :SplitRungeKutta4, :SplitRungeKutta5)
+    timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta2, :SplitRungeKutta3, :SplitRungeKutta4, :SplitRungeKutta5, :SSPRungeKutta3)
 
     grid = RectilinearGrid(arch, FT; size=(4, 4, 4), x=(0, 1000), y=(0, 1000), z=(-1000, 0))
     concentration = CenterField(grid)
@@ -88,7 +88,8 @@ end
     values = (x = FT[300], y = FT[300], z = FT[-500], concentration = FT[-1])
     properties = StructArray(on_architecture(arch, values))
     particles = LagrangianParticles(properties; tracked_fields=(; concentration))
-    model = HydrostaticFreeSurfaceModel(grid; particles, timestepper, buoyancy=nothing, tracers=())
+    free_surface_keywords = timestepper == :SSPRungeKutta3 ? (; free_surface = SplitExplicitFreeSurface(grid; substeps=4)) : (;)
+    model = HydrostaticFreeSurfaceModel(grid; particles, timestepper, buoyancy=nothing, tracers=(), free_surface_keywords...)
     set!(model, u = 10)
     time_step!(model, FT(1))
 

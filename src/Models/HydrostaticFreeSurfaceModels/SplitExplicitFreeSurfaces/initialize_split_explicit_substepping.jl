@@ -1,6 +1,6 @@
 using Oceananigans.Grids: peripheral_node
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, SplitRungeKuttaTimeStepper, SSPRungeKutta3TimeStepper,
-                                 MultiStageTimeStepper
+                                 MultiStageTimeStepper, ssp_quadrature_weights, ssp_stage_fractions
 using Oceananigans.Utils: Utils
 
 # This file contains two different methods performed at different stages of the simulation.

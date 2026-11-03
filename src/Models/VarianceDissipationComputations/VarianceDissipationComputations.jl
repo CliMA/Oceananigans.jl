@@ -85,11 +85,7 @@ function VarianceDissipation(tracer_name, grid;
     Fⁿ⁻¹ = c_grid_vector(grid)
     cⁿ⁻¹ = CenterField(grid)
 
-    # σ at the stage the fluxes are cached; it stays at unity for the SSP sums, which are not σ-weighted
-    specific_thickness = (x = Field{Face, Center, Nothing}(grid), y = Field{Center, Face, Nothing}(grid), z = Field{Center, Center, Nothing}(grid))
-    foreach(σ -> fill!(parent(σ), 1), specific_thickness)
-
-    previous_state   = (; cⁿ⁻¹, Uⁿ⁻¹, Uⁿ, specific_thickness)
+    previous_state   = (; cⁿ⁻¹, Uⁿ⁻¹, Uⁿ)
     advective_fluxes = (; Fⁿ, Fⁿ⁻¹)
     diffusive_fluxes = (; Vⁿ, Vⁿ⁻¹)
 
