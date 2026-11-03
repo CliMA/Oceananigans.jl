@@ -1,6 +1,7 @@
 include(joinpath(@__DIR__, "..", "setup", "reactant_test_utils.jl"))
 
 using CUDA
+using KernelAbstractions: get_backend
 using Statistics: mean
 using Oceananigans.OutputReaders: cpu_interpolating_time_indices, Clamp, Cyclical, update_field_time_series!, InMemory,
                                   TimeSeriesInterpolation
@@ -494,6 +495,23 @@ end
     refresh!(field, clock, t) = (clock.time = t; compute!(field); nothing)
     @jit raise = true refresh!(interpolated, clock, Reactant.ConcreteRNumber(5.0))
     @test all(Array(interior(interpolated)) .≈ 2)
+end
+
+@kernel function _bracket!(out, column, z, N)
+    i = @index(Global, Linear)
+    @inbounds out[i] = first(Oceananigans.Fields.index_binary_search(column, z[i], N))
+end
+
+bracket!(out, column, z) = _bracket!(get_backend(out), 2)(out, column, z, length(column); ndrange=length(out))
+
+# A search with an early `return` inside its loop cannot be raised ("cannot raise op to stablehlo")
+@testset "index_binary_search inside a raised kernel" begin
+    column = Float32[100, 200, 300, 400]
+    points = Float32[150, 200, 350, 50, 450]
+    out = Reactant.to_rarray(zeros(Int, length(points)))
+    raised_bracket! = @compile raise_first=true raise=true bracket!(out, Reactant.to_rarray(column), Reactant.to_rarray(points))
+    raised_bracket!(out, Reactant.to_rarray(column), Reactant.to_rarray(points))
+    @test Array(out) == [first(Oceananigans.Fields.index_binary_search(column, z, length(column))) for z in points]
 end
 
 @kernel function _store_adaptive_Δt!(c, td)
