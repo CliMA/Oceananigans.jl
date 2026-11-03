@@ -1,4 +1,6 @@
-using Oceananigans.Fields: ZeroField, ConstantField, AbstractField, FunctionField, location
+using Adapt: Adapt, adapt
+
+using Oceananigans.Fields: AbstractField, ConstantField, FunctionField, ZeroField, location
 using Oceananigans.Utils: prettysummary
 
 function background_velocity_fields(fields, grid, clock)

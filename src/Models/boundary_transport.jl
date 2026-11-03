@@ -1,7 +1,8 @@
-using Oceananigans.BoundaryConditions: BoundaryCondition, NormalFlow, has_target_transport, get_target_transport
-using Oceananigans.AbstractOperations: Integral, Ax, Ay, Az, grid_metric_operation
-using Oceananigans.Fields: Field, interior, compute!
 using GPUArraysCore: @allowscalar
+
+using Oceananigans.AbstractOperations: Ax, Ay, Az, Integral, grid_metric_operation
+using Oceananigans.BoundaryConditions: BoundaryCondition, NormalFlow, get_target_transport, has_target_transport
+using Oceananigans.Fields: Field, compute!, interior
 
 const NFBC = BoundaryCondition{<:NormalFlow} # "Radiantion" NormalFlowBoundaryCondition (with a matching scheme)
 const INFBC = BoundaryCondition{<:NormalFlow{<:Nothing}} # "Imposed-velocity" NormalFlowBoundaryCondition (with no scheme)
