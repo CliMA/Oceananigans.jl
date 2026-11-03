@@ -2,7 +2,7 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 include(joinpath(@__DIR__, "..", "setup", "yin_yang_test_utils.jl"))
 
 using Oceananigans: fields
-using Oceananigans.MultiRegion: YinYangField, remapped_field, yin_yang_masks
+using Oceananigans.MultiRegion: YinYangField, latitude_longitude_grid, remapped_field, yin_yang_masks
 
 @testset "Output of Yin-Yang fields [$(summary(arch))]" for arch in archs
     dir = mktempdir()
@@ -64,6 +64,71 @@ using Oceananigans.MultiRegion: YinYangField, remapped_field, yin_yang_masks
         end
         @test all(isfinite, file["timeseries/c̄/$Nt"])
     end
+    rm(dir; recursive = true)
+end
+
+@testset "Remapped output of Yin-Yang fields [$(summary(arch))]" for arch in archs
+    dir = mktempdir()
+    grid = YinYangGrid(arch; size=(48, 16, 2), z=(-1, 0), radius=1)
+    geographic_grid = latitude_longitude_grid(grid)
+    u, v = XFaceField(grid), YFaceField(grid)
+    set_panel_components!(u, v, solid_body_velocity)
+    fill_halo_regions!((u, v))
+    model = HydrostaticFreeSurfaceModel(grid; tracers = :c, buoyancy = nothing, closure = nothing,
+                                        velocities = PrescribedVelocityFields(; u, v))
+    set!(model, c = (λ, φ, z) -> spherical_harmonics(λ, φ) * (1 + z))
+    c = model.tracers.c
+
+    # Scalars are remapped by the writer; the components of a vector are remapped together
+    uᵍ, vᵍ = remapped_field((u, v), geographic_grid)
+    outputs = (; c, c² = c^2, cˢ = Field(c; indices=(:, :, 1)), u = uᵍ, v = vᵍ)
+    Δt, Nt = 1/16, 4
+    simulation = Simulation(model; Δt, stop_iteration = Nt, verbose = false)
+    simulation.output_writers[:geographic] = JLD2Writer(model, outputs; dir, filename = "geographic", with_halos = false,
+                                                        grid = geographic_grid, schedule = IterationInterval(Nt))
+    simulation.output_writers[:level] = JLD2Writer(model, (; c); dir, filename = "level", with_halos = false, indices = (:, :, 2),
+                                                   grid = geographic_grid, schedule = IterationInterval(Nt))
+    simulation.output_writers[:average] = JLD2Writer(model, (; c); dir, filename = "average", with_halos = false,
+                                                     grid = geographic_grid, schedule = AveragedTimeInterval(Nt * Δt))
+    @test simulation.output_writers[:geographic].outputs.u.operand === uᵍ.operand
+    @test all(output.grid === geographic_grid for output in simulation.output_writers[:geographic].outputs)
+
+    # The right Riemann sum of the remapped tracer, which is the remapping of the right Riemann sum
+    cᵍ = remapped_field(c, geographic_grid)
+    expected_average = zeros(size(cᵍ))
+    function accumulate_expected(sim)
+        sim.model.clock.iteration == 0 && return
+        expected_average .+= Array(interior(compute!(cᵍ))) ./ Nt
+    end
+    simulation.callbacks[:expected] = Callback(accumulate_expected, IterationInterval(1))
+    run!(simulation)
+
+    cpu_geographic_grid = on_architecture(CPU(), geographic_grid)
+    jldopen(joinpath(dir, "geographic.jld2")) do file
+        @test file["serialized/grid"] == cpu_geographic_grid
+        @test file["timeseries/c/$Nt"] ≈ Array{Float32}(interior(compute!(cᵍ)))
+        @test file["timeseries/c²/$Nt"] ≈ Array{Float32}(interior(remapped_field(c^2, geographic_grid)))
+        @test file["timeseries/cˢ/$Nt"] ≈ Array{Float32}(interior(cᵍ, :, :, 1:1))
+        @test file["timeseries/cˢ/serialized/indices"] == (1:64, 1:32, 1:1)
+        @test file["timeseries/u/$Nt"] ≈ Array{Float32}(interior(uᵍ))
+        @test file["timeseries/v/$Nt"] ≈ Array{Float32}(interior(vᵍ))
+        @test file["timeseries/u/serialized/location"] == (Center, Center, Center)
+    end
+
+    time_series = FieldTimeSeries(joinpath(dir, "geographic.jld2"), "c")
+    @test time_series.grid == cpu_geographic_grid
+    @test interior(time_series[end]) ≈ interior(cᵍ) rtol=1e-6
+
+    jldopen(joinpath(dir, "level.jld2")) do file
+        @test file["timeseries/c/$Nt"] ≈ Array{Float32}(interior(cᵍ, :, :, 2:2))
+    end
+
+    jldopen(joinpath(dir, "average.jld2")) do file
+        @test file["timeseries/c/$Nt"] ≈ Float32.(expected_average) rtol=1e-6
+    end
+
+    @test_throws ArgumentError remapped_field(c, grid)
+    @test_throws ArgumentError remapped_field(Field{Nothing, Center, Center}(grid), geographic_grid)
     rm(dir; recursive = true)
 end
 
