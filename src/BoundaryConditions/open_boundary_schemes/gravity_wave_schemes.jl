@@ -7,7 +7,7 @@
                          gravitational_acceleration = defaults.gravitational_acceleration,
                          target_transport = nothing)
 
-Flather (1976) characteristic boundary condition for the shallow water equations.
+[Flather (1976)](@cite flather1976tidal) characteristic boundary condition for the shallow water equations.
 Prescribes the incoming Riemann invariant while letting the outgoing one radiate freely:
 
     Uᵇ = Uᵉˣᵗ + √(g H) ⋅ (ηᵇ − ηᵉˣᵗ)
@@ -88,9 +88,9 @@ get_target_transport(scheme::GravityWaveRadiation) = scheme.target_transport
 """
     SurfaceWaveRadiation(; gravitational_acceleration = defaults.gravitational_acceleration)
 
-Chapman (1985) radiation condition for the free surface displacement at an open boundary,
-the standard companion of [`GravityWaveRadiation`](@ref): the boundary η radiates at the known
-barotropic gravity-wave speed,
+[Chapman (1985)](@cite chapman1985numerical) radiation condition for the free surface displacement
+at an open boundary, the standard companion of [`GravityWaveRadiation`](@ref): the boundary η radiates
+at the known barotropic gravity-wave speed,
 
     ∂η/∂t ± √(g H) ∂η/∂n = 0
 
