@@ -7,7 +7,8 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceMo
 using Oceananigans.TurbulenceClosures: HorizontalScalarDiffusivity
 
 using Oceananigans.DistributedComputations: Distributed, DistributedGrid, DistributedComputations, all_reduce
-using Oceananigans.DistributedComputations: reconstruct_global_topology, partition, cpu_architecture
+using Oceananigans.Architectures: cpu_architecture
+using Oceananigans.DistributedComputations: reconstruct_global_topology, partition
 
 using JLD2
 
