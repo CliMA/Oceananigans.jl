@@ -15,15 +15,19 @@ export
 
 using Adapt: Adapt
 using DocStringExtensions: TYPEDSIGNATURES
-using KernelAbstractions: @kernel, @index
+using KernelAbstractions: @index, @kernel
 
-using Oceananigans: Oceananigans, AbstractModel, initialize!, fields, prognostic_fields
-using Oceananigans.BoundaryConditions: BoundaryConditions, cache_boundary_conditions!, initialize_boundary_conditions!
+using Oceananigans: Oceananigans, AbstractModel, fields, initialize!, prognostic_fields
 using Oceananigans.Architectures: architecture
-using Oceananigans.Utils: AbstractTimeDiscretization, ExplicitTimeDiscretization,
-                          VerticallyImplicitTimeDiscretization,
+using Oceananigans.BoundaryConditions: BoundaryConditions, cache_boundary_conditions!, initialize_boundary_conditions!
+using Oceananigans.Fields: Fields
+using Oceananigans.Units: Units
+using Oceananigans.Utils: @apply_regionally,
+                          AbstractTimeDiscretization,
                           AdaptiveVerticallyImplicitDiscretization,
-                          kernel_time_step, @apply_regionally
+                          ExplicitTimeDiscretization,
+                          VerticallyImplicitTimeDiscretization,
+                          kernel_time_step
 
 """
     abstract type AbstractTimeStepper
@@ -139,17 +143,17 @@ end
 ##### Checkpointing
 #####
 
-function prognostic_state(timestepper::AbstractTimeStepper)
+function Oceananigans.prognostic_state(timestepper::AbstractTimeStepper)
     return (Gⁿ = prognostic_state(timestepper.Gⁿ),
             G⁻ = prognostic_state(timestepper.G⁻))
 end
 
-function restore_prognostic_state!(restored::AbstractTimeStepper, from)
+function Oceananigans.restore_prognostic_state!(restored::AbstractTimeStepper, from)
     restore_prognostic_state!(restored.Gⁿ, from.Gⁿ)
     restore_prognostic_state!(restored.G⁻, from.G⁻)
     return restored
 end
 
-restore_prognostic_state!(::AbstractTimeStepper, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::AbstractTimeStepper, ::Nothing) = nothing
 
 end # module
