@@ -84,8 +84,7 @@ else
         end
     end
 
-    if args.jobs === nothing
-        cpu_memory_per_worker = 4 * 2^30
+    max_default_jobs = begin
         gpu_memory_per_worker = 3 * 2^30
         available_gpu_memory = gpu_free_memory()
 
@@ -93,13 +92,11 @@ else
             println("Available CUDA GPU memory: ", Base.format_bytes(available_gpu_memory))
         end
 
-        jobs = default_njobs()
-        jobs = min(jobs, max(1, Int(Sys.free_memory()) ÷ cpu_memory_per_worker))
-        jobs = min(jobs, max(1, available_gpu_memory ÷ gpu_memory_per_worker))
-        args = ParallelTestRunner.ParsedArgs(Some(jobs), args.verbose, args.quickfail, args.list,
-                                             args.custom, args.positionals)
+        available_gpu_memory ÷ gpu_memory_per_worker
     end
-    jobs = something(args.jobs)
+
+    cpu_memory_per_worker = 4 * 2^30
+    jobs = something(args.jobs, default_njobs(; memory_per_worker = cpu_memory_per_worker, max_default_jobs))
 
     # A worker with Oceananigans and CUDA loaded already uses a few GB, so the runner's default
     # threshold would recycle it after nearly every test.
@@ -111,6 +108,8 @@ else
              test_worker,
              serial,
              max_worker_rss,
+             max_default_jobs,
+             memory_per_worker = cpu_memory_per_worker,
              recycle_on_failure = true,
              history_key = on_gpu ? "gpu" : nothing,
              )
