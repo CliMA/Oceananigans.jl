@@ -206,6 +206,9 @@ Oceananigans.restore_prognostic_state!(restored::WallTimeInterval,  ::Nothing) =
 ##### SpecifiedTimes
 #####
 
+# `FT` is the times' own type, left free of `T`: a traced device array of `FT` times has a traced
+# element type (`TracedRArray{FT}` is an `AbstractVector{TracedRNumber{FT}}`), see `DeviceSpecifiedTimes`
+# in the Reactant extension.
 mutable struct SpecifiedTimes{FT, T <: AbstractVector} <: AbstractSchedule
     times :: T
     previous_actuation :: Int
@@ -234,7 +237,7 @@ function SpecifiedTimes(times...)
 
     if all(t -> t isa Number, times)
         FT = Oceananigans.defaults.FloatType
-        return SpecifiedTimes(sort!([convert(FT, t) for t in times]), 0)
+        return SpecifiedTimes(sort!(collect(FT, times)), 0)
     elseif all(t -> t isa AbstractTime, times)
         TT = typeof(first_time)
         return SpecifiedTimes(sort!(collect(TT, times)), 0)
