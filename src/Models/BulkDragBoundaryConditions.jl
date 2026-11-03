@@ -28,11 +28,10 @@ export BulkDragFunction,
 using Adapt: Adapt
 
 using Oceananigans.Architectures: Architectures, on_architecture
-using Oceananigans.BoundaryConditions: BoundaryConditions, BoundaryCondition, Flux,
-                                       LeftBoundary, RightBoundary, Bottom, Top, ImmersedFacet,
-                                       ExplicitTimeDiscretization, IMEXFluxTimeDiscretization
-using Oceananigans.Grids: AbstractGrid, XDirection, YDirection, ZDirection, Face
-using Oceananigans.Operators: ℑxyᶠᶜᵃ, ℑxyᶜᶠᵃ, ℑxzᶠᵃᶜ, ℑyzᵃᶠᶜ, ℑxzᶜᵃᶠ, ℑyzᵃᶜᶠ
+using Oceananigans.BoundaryConditions: BoundaryConditions, Bottom, BoundaryCondition, ExplicitTimeDiscretization, Flux,
+                                       IMEXFluxTimeDiscretization, ImmersedFacet, LeftBoundary, RightBoundary, Top
+using Oceananigans.Grids: AbstractGrid, Face, XDirection, YDirection, ZDirection
+using Oceananigans.Operators: ℑxyᶜᶠᵃ, ℑxyᶠᶜᵃ, ℑxzᶜᵃᶠ, ℑxzᶠᵃᶜ, ℑyzᵃᶜᶠ, ℑyzᵃᶠᶜ
 
 #####
 ##### Drag formulations
