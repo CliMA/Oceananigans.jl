@@ -1,5 +1,5 @@
 using Adapt: Adapt
-using OffsetArrays: OffsetArrays, AbstractOffsetArray, OffsetArray
+using OffsetArrays: OffsetArrays, AbstractOffsetArray
 using Oceananigans.Architectures: Architectures, AbstractSerialArchitecture, on_architecture
 
 struct StaticStridesOffsetArray{T, N, S, O, A <: AbstractArray{T, N}} <: AbstractOffsetArray{T, N}
@@ -9,15 +9,18 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Return an array that wraps `parent` with offset `indices`, whose sizes and offsets are type parameters, so that the
-size and offsets of the array are compile-time constants. The `indices` take any form accepted by `OffsetArray`, which
-also throws an `OverflowError` if they overflow the axes of `parent`.
+Return an array that wraps `parent` with `offsets`, whose sizes and offsets are type parameters, so that the size and
+offsets of the array are compile-time constants. Throw an `OverflowError` if the `offsets` overflow the axes of `parent`.
 """
-StaticStridesOffsetArray(parent::AbstractArray, indices...) = StaticStridesOffsetArray(OffsetArray(parent, indices...))
+function StaticStridesOffsetArray(parent::AbstractArray{T, N}, offsets::Vararg{Integer, N}) where {T, N}
+    map(OffsetArrays.overflow_check, axes(parent), offsets)
+    return StaticStridesOffsetArray{T, N, size(parent), Int.(offsets), typeof(parent)}(parent)
+end
 
-function StaticStridesOffsetArray(a::OffsetArray{T, N}) where {T, N}
-    p = parent(a)
-    return StaticStridesOffsetArray{T, N, size(p), OffsetArrays.offsets(a), typeof(p)}(p)
+# `linear_index` requires a 1-based parent, so the offsets of a nested offset array are collated
+function StaticStridesOffsetArray(a::AbstractOffsetArray{T, N}, offsets::Vararg{Integer, N}) where {T, N}
+    map(OffsetArrays.overflow_check, axes(a), offsets)
+    return StaticStridesOffsetArray(parent(a), (OffsetArrays.offsets(a) .+ offsets)...)
 end
 
 const SSOA = StaticStridesOffsetArray
