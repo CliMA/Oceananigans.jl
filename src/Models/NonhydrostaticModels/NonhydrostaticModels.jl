@@ -2,30 +2,28 @@ module NonhydrostaticModels
 
 export NonhydrostaticModel, BackgroundField, BackgroundFields
 
+using Adapt: Adapt, adapt
 using DocStringExtensions: TYPEDSIGNATURES
 using KernelAbstractions: @index, @kernel
 
-using Oceananigans: Oceananigans
-using Oceananigans.DistributedComputations
-using Oceananigans.DistributedComputations: DistributedComputations,
-                                            reconstruct_global_grid, Distributed,
-                                            DistributedFFTBasedPoissonSolver,
-                                            DistributedFourierTridiagonalPoissonSolver
-using Oceananigans.Grids
-using Oceananigans.Grids: XYZRegularRG
+using Oceananigans: Oceananigans, fields, prognostic_fields
+using Oceananigans.Advection: Advection, cell_advection_timescale
+using Oceananigans.Architectures: Architectures
+using Oceananigans.DistributedComputations: DistributedComputations, Distributed, DistributedFFTBasedPoissonSolver,
+                                            DistributedFourierTridiagonalPoissonSolver, reconstruct_global_grid
+using Oceananigans.Fields: Fields
+using Oceananigans.Grids: Center, Face, Flat, Periodic, XYZRegularRG, grid, halo_size
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Solvers
-using Oceananigans.Solvers: GridWithFFTSolver, GridWithFourierTridiagonalSolver, ConjugateGradientPoissonSolver,
+using Oceananigans.Models: Models
+using Oceananigans.Simulations: Simulations, timestepper
+using Oceananigans.Solvers: ConjugateGradientPoissonSolver, GridWithFFTSolver, GridWithFourierTridiagonalSolver,
                             InhomogeneousFormulation, ZDirection
-using Oceananigans.Utils
-using Oceananigans.Utils: foreach_name, sum_of_velocities
+using Oceananigans.TimeSteppers: TimeSteppers, step_lagrangian_particles!, update_lagrangian_particle_state!,
+                                 update_state!
+using Oceananigans.TurbulenceClosures: TurbulenceClosures
+using Oceananigans.Utils: foreach_name, named_tuple, sum_of_velocities
 
 using ..Models: initialize_boundary_transport
-
-import Oceananigans: fields, prognostic_fields
-import Oceananigans.Advection: cell_advection_timescale
-import Oceananigans.Simulations: timestepper
-import Oceananigans.TimeSteppers: step_lagrangian_particles!, update_state!, update_lagrangian_particle_state!
 
 function nonhydrostatic_pressure_solver(::Distributed, local_grid::XYZRegularRG, ::Nothing)
     global_grid = reconstruct_global_grid(local_grid)
@@ -90,7 +88,7 @@ include("set_nonhydrostatic_model.jl")
 ##### AbstractModel interface
 #####
 
-function cell_advection_timescale(model::NonhydrostaticModel)
+function Advection.cell_advection_timescale(model::NonhydrostaticModel)
     grid = model.grid
     velocities = total_velocities(model)
     return cell_advection_timescale(grid, velocities)
@@ -102,21 +100,21 @@ $(TYPEDSIGNATURES)
 Return a flattened `NamedTuple` of the fields in `model.velocities`, `model.tracers`, and any
 auxiliary fields for a `NonhydrostaticModel` model.
 """
-fields(model::NonhydrostaticModel) = merge(model.velocities,
-                                           model.tracers,
-                                           model.auxiliary_fields,
-                                           biogeochemical_auxiliary_fields(model.biogeochemistry))
+Oceananigans.fields(model::NonhydrostaticModel) = merge(model.velocities,
+                                                        model.tracers,
+                                                        model.auxiliary_fields,
+                                                        biogeochemical_auxiliary_fields(model.biogeochemistry))
 
 """
 $(TYPEDSIGNATURES)
 
 Return a flattened `NamedTuple` of the prognostic fields associated with `NonhydrostaticModel`.
 """
-prognostic_fields(model::NonhydrostaticModel) = merge(model.velocities, model.tracers)
+Oceananigans.prognostic_fields(model::NonhydrostaticModel) = merge(model.velocities, model.tracers)
 
 # Unpack model.particles to update particle properties. See Models/LagrangianParticleTracking/LagrangianParticleTracking.jl
-step_lagrangian_particles!(model::NonhydrostaticModel, Δt) = step_lagrangian_particles!(model.particles, model, Δt)
-update_lagrangian_particle_state!(model::NonhydrostaticModel) = update_lagrangian_particle_state!(model.particles, model)
+TimeSteppers.step_lagrangian_particles!(model::NonhydrostaticModel, Δt) = step_lagrangian_particles!(model.particles, model, Δt)
+TimeSteppers.update_lagrangian_particle_state!(model::NonhydrostaticModel) = update_lagrangian_particle_state!(model.particles, model)
 
 include("cache_nonhydrostatic_tendencies.jl")
 include("nonhydrostatic_ab2_step.jl")
