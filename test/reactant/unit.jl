@@ -116,7 +116,7 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
 
         for name in propertynames(llg)
             p = getproperty(llg, name)
-            if !(name ∈ (:architecture, :z))
+            if !(name ∈ (:architecture, :z, :south_pole, :north_pole))
                 @test (p isa Number) || (p isa OffsetArray{FT, <:Any, <:Reactant.AbstractConcreteArray})
             end
         end
@@ -131,7 +131,7 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
 
         for name in propertynames(constant_llg)
             p = getproperty(constant_llg, name)
-            if !(name ∈ (:architecture, :z))
+            if !(name ∈ (:architecture, :z, :south_pole, :north_pole))
                 @test (p isa Number) || (p isa OffsetArray{FT, <:Any, <:Array})
             end
         end
