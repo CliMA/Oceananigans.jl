@@ -471,12 +471,25 @@ end
     end
 end
 
-# Without host copies the broadcast indexes device arrays element by element, a scalar-indexing error
-@testset "xnodes and ynodes on a ReactantState LatitudeLongitudeGrid" begin
+# Without host copies, reducing or broadcasting over a node view reads device arrays element by element: a
+# scalar-indexing error
+@testset "Node accessors of ReactantState grids return host arrays" begin
     latlon_grid(arch) = LatitudeLongitudeGrid(arch; size=(16, 16, 4), longitude=(-100, -90), latitude=(30, 40), z=(0, 1000))
-    for ℓ in (Center(), Face())
-        @test xnodes(latlon_grid(ReactantState()), ℓ, ℓ) ≈ xnodes(latlon_grid(CPU()), ℓ, ℓ)
-        @test ynodes(latlon_grid(ReactantState()), ℓ) ≈ ynodes(latlon_grid(CPU()), ℓ)
+    stretched_grid(arch) = RectilinearGrid(arch; size=(4, 4, 4), x=[0, 1, 3, 6, 10], y=[0, 2, 3, 7, 8], z=[0, 1, 3, 6, 10])
+
+    reactant_latlon, cpu_latlon = latlon_grid(ReactantState()), latlon_grid(CPU())
+    reactant_stretched, cpu_stretched = stretched_grid(ReactantState()), stretched_grid(CPU())
+
+    for ℓ in (Center(), Face()), with_halos in (false, true)
+        @test xnodes(reactant_latlon, ℓ, ℓ; with_halos) ≈ xnodes(cpu_latlon, ℓ, ℓ; with_halos)
+        @test ynodes(reactant_latlon, ℓ; with_halos) ≈ ynodes(cpu_latlon, ℓ; with_halos)
+        @test extrema(λnodes(reactant_latlon, ℓ; with_halos)) == extrema(λnodes(cpu_latlon, ℓ; with_halos))
+        @test extrema(φnodes(reactant_latlon, ℓ; with_halos)) == extrema(φnodes(cpu_latlon, ℓ; with_halos))
+        @test extrema(znodes(reactant_latlon, ℓ; with_halos)) == extrema(znodes(cpu_latlon, ℓ; with_halos))
+
+        @test extrema(xnodes(reactant_stretched, ℓ; with_halos)) == extrema(xnodes(cpu_stretched, ℓ; with_halos))
+        @test extrema(ynodes(reactant_stretched, ℓ; with_halos)) == extrema(ynodes(cpu_stretched, ℓ; with_halos))
+        @test extrema(znodes(reactant_stretched, ℓ; with_halos)) == extrema(znodes(cpu_stretched, ℓ; with_halos))
     end
 end
 

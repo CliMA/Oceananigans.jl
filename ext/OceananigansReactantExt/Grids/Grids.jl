@@ -11,7 +11,6 @@ using Oceananigans: Distributed
 using Oceananigans.Architectures: ReactantState, CPU
 using Oceananigans.Grids: AbstractGrid, AbstractUnderlyingGrid, StaticVerticalDiscretization, MutableVerticalDiscretization
 using Oceananigans.Grids: LatitudeLongitudeGrid, RectilinearGrid, OrthogonalSphericalShellGrid
-using Oceananigans.Grids: λnodes, φnodes, hack_cosd
 using Oceananigans.Utils: unparameterized_type
 using Oceananigans.Grids: Center, Face, Periodic, TwoSided, Bounded, Closed, Connected, Flat, FaceExtendedTopology
 using Oceananigans.Fields: Field
@@ -56,27 +55,20 @@ function Base.:(==)(grid1::ReactantStateLatitudeLongitudeGrid, grid2::ReactantSt
     return topology(grid1) == topology(grid2) && size(grid1) == size(grid2) && halo_size(grid1) == halo_size(grid2)
 end
 
-# `xnodes` and `ynodes` are host conveniences that broadcast over views of the coordinate arrays, which on
-# `ReactantState` are device arrays: the broadcast would index them element by element on the host. Copy the
-# coordinates to the host once and broadcast there. Traced arrays, inside a compiled function, are left
-# alone so the broadcast traces.
-host_nodes(a) = a
-host_nodes(a::Reactant.AbstractConcreteArray) = Array(a)
-host_nodes(a::OffsetArray) = OffsetArray(host_nodes(parent(a)), a.offsets)
-host_nodes(v::SubArray) = view(host_nodes(parent(v)), v.indices...)
+# The plural node accessors (`xnodes`, `λnodes`, `rnodes`, ...) are host conveniences built on views of a grid's
+# coordinate arrays, which on `ReactantState` are device arrays: reducing or broadcasting over those views reads
+# them element by element on the host. All of them take the arrays through `_property`, so it hands them host
+# copies. Inside a compiled function or a kernel the arrays are traced or adapted, not concrete, and unaffected.
+const ConcreteCoordinate = Union{Reactant.AbstractConcreteArray, OffsetArray{<:Any, <:Any, <:Reactant.AbstractConcreteArray}}
 
-function Oceananigans.Grids.xnodes(grid::ReactantStateLatitudeLongitudeGrid, ℓx::Union{Face, Center}, ℓy::Union{Face, Center}; with_halos=false)
-    λ = host_nodes(λnodes(grid, ℓx; with_halos))'
-    φ = host_nodes(φnodes(grid, ℓy; with_halos))
-    R = grid.radius
-    return @. R * deg2rad(λ) * hack_cosd(φ)
-end
+host_coordinate(ξ::Reactant.AbstractConcreteArray) = Array(ξ)
+host_coordinate(ξ::OffsetArray) = OffsetArray(Array(parent(ξ)), ξ.offsets)
 
-function Oceananigans.Grids.ynodes(grid::ReactantStateLatitudeLongitudeGrid, ℓy::Union{Face, Center}; with_halos=false)
-    φ = host_nodes(φnodes(grid, ℓy; with_halos))
-    R = grid.radius
-    return @. R * deg2rad(φ)
-end
+Oceananigans.Grids._property(ξ::ConcreteCoordinate, ℓ, T, N, H, with_halos) =
+    Oceananigans.Grids._property(host_coordinate(ξ), ℓ, T, N, H, with_halos)
+
+Oceananigans.Grids._property(ξ::ConcreteCoordinate, ℓx, ℓy, Tx, Ty, Nx, Ny, Hx, Hy, with_halos) =
+    Oceananigans.Grids._property(host_coordinate(ξ), ℓx, ℓy, Tx, Ty, Nx, Ny, Hx, Hy, with_halos)
 
 function Oceananigans.Grids.total_size(grid::ShardedGrid, loc, indices)
     sz = size(grid)
