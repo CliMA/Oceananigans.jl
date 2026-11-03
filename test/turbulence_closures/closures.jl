@@ -530,8 +530,8 @@ end
             @test size(model.closure_fields.𝒥ᴹᴹ) == (1, grid.Ny, grid.Nz)
             @test size(model.closure_fields.LM)  == size(grid)
             @test size(model.closure_fields.MM)  == size(grid)
-            @test size(model.closure_fields.S)   == size(grid)
-            @test size(model.closure_fields.S̄)   == size(grid)
+            @test size(model.closure_fields.Σ)   == size(grid)
+            @test size(model.closure_fields.Σ̄)   == size(grid)
 
             closure = DynamicSmagorinsky(averaging=(1, 2))
             model = NonhydrostaticModel(grid; closure)
@@ -554,8 +554,8 @@ end
             @test size(model.closure_fields.𝒥ᴹᴹ)  == size(grid)
             @test size(model.closure_fields.𝒥ᴸᴹ⁻) == size(grid)
             @test size(model.closure_fields.𝒥ᴹᴹ⁻) == size(grid)
-            @test size(model.closure_fields.S)    == size(grid)
-            @test size(model.closure_fields.S̄)    == size(grid)
+            @test size(model.closure_fields.Σ)    == size(grid)
+            @test size(model.closure_fields.Σ̄)    == size(grid)
         end
     end
 
@@ -577,11 +577,11 @@ end
             model = NonhydrostaticModel(grid, closure=DynamicSmagorinsky(averaging=LagrangianAveraging()))
             set!(model, u = (x, y, z) -> γ * z)
 
-            S = interior(model.closure_fields.S, :, :, 3:6)
-            S̄ = interior(model.closure_fields.S̄, :, :, 3:6)
+            Σ = interior(model.closure_fields.Σ, :, :, 3:6)
+            Σ̄ = interior(model.closure_fields.Σ̄, :, :, 3:6)
 
-            @test all(S .≈ γ)
-            @test all(S̄ .≈ γ)
+            @test all(Σ .≈ γ)
+            @test all(Σ̄ .≈ γ)
         end
     end
 
