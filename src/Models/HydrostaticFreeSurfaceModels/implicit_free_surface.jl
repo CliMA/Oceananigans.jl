@@ -1,15 +1,13 @@
-using Oceananigans.Grids: AbstractGrid, XYRegularRG, static_column_depthᶜᶜᵃ
-using Oceananigans.Grids: surface_kernel_parameters
-using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂yᶜᶠᶜ
-using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
-using Oceananigans.Solvers: solve!
-using Oceananigans.Utils: prettytime, prettysummary
-using Oceananigans.ImmersedBoundaries: MutableGridOfSomeKind
-
-import Oceananigans: prognostic_state, restore_prognostic_state!
-import Oceananigans.DistributedComputations: synchronize_communication!
-
 using Adapt: Adapt
+
+using Oceananigans: prognostic_state, restore_prognostic_state!
+using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
+using Oceananigans.DistributedComputations: synchronize_communication!
+using Oceananigans.Grids: AbstractGrid, XYRegularRG, static_column_depthᶜᶜᵃ, surface_kernel_parameters
+using Oceananigans.ImmersedBoundaries: MutableGridOfSomeKind
+using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂yᶜᶠᶜ
+using Oceananigans.Solvers: solve!
+using Oceananigans.Utils: prettysummary, prettytime
 
 struct ImplicitFreeSurface{E, G, I, M, S} <: AbstractFreeSurface{E, G}
     displacement :: E
@@ -88,7 +86,7 @@ Adapt.adapt_structure(to, free_surface::ImplicitFreeSurface) =
     ImplicitFreeSurface(Adapt.adapt(to, free_surface.displacement), free_surface.gravitational_acceleration,
                         nothing, nothing, nothing)
 
-on_architecture(to, free_surface::ImplicitFreeSurface) =
+Architectures.on_architecture(to, free_surface::ImplicitFreeSurface) =
     ImplicitFreeSurface(on_architecture(to, free_surface.displacement),
                         on_architecture(to, free_surface.gravitational_acceleration),
                         on_architecture(to, free_surface.implicit_step_solver),
@@ -96,7 +94,7 @@ on_architecture(to, free_surface::ImplicitFreeSurface) =
                         on_architecture(to, free_surface.solver_settings))
 
 # Internal function for HydrostaticFreeSurfaceModel
-function materialize_free_surface(free_surface::ImplicitFreeSurface{Nothing}, velocities, grid, bcs)
+function Models.materialize_free_surface(free_surface::ImplicitFreeSurface{Nothing}, velocities, grid, bcs)
     η = free_surface_displacement_field(velocities, free_surface, grid)
     gravitational_acceleration = convert(eltype(grid), free_surface.gravitational_acceleration)
 
@@ -121,7 +119,7 @@ build_implicit_step_solver(::Val{:Default}, grid, settings, gravitational_accele
 @inline explicit_barotropic_pressure_y_gradient(i, j, k, grid, ::ImplicitFreeSurface) = 0
 
 # No variables are asynchronously computed
-synchronize_communication!(::ImplicitFreeSurface) = nothing
+DistributedComputations.synchronize_communication!(::ImplicitFreeSurface) = nothing
 
 """
 Implicitly step forward η.
@@ -204,13 +202,13 @@ end
 ##### Checkpointing
 #####
 
-function prognostic_state(fs::ImplicitFreeSurface)
+function Oceananigans.prognostic_state(fs::ImplicitFreeSurface)
     return (; displacement = prognostic_state(fs.displacement))
 end
 
-function restore_prognostic_state!(restored::ImplicitFreeSurface, from)
+function Oceananigans.restore_prognostic_state!(restored::ImplicitFreeSurface, from)
     restore_prognostic_state!(restored.displacement, from.displacement)
     return restored
 end
 
-restore_prognostic_state!(::ImplicitFreeSurface, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::ImplicitFreeSurface, ::Nothing) = nothing

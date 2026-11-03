@@ -10,8 +10,8 @@
 compute_closure_fields!(closure_fields, ::Nothing, args...; kwargs...) = nothing
 compute_closure_fields!(::Nothing, ::Nothing, args...; kwargs...) = nothing
 
-step_closure_prognostics!(closure_fields, ::Nothing, args...) = nothing
-step_closure_prognostics!(::Nothing, ::Nothing, args...) = nothing
+TimeSteppers.step_closure_prognostics!(closure_fields, ::Nothing, args...) = nothing
+TimeSteppers.step_closure_prognostics!(::Nothing, ::Nothing, args...) = nothing
 
 @inline viscosity(::Nothing, ::Nothing) = 0
 @inline diffusivity(::Nothing, ::Nothing, ::Val{id}) where id = 0
