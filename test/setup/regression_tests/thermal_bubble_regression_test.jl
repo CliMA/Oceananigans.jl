@@ -1,4 +1,5 @@
-using Oceananigans.DistributedComputations: cpu_architecture, partition
+using Oceananigans.Architectures: cpu_architecture
+using Oceananigans.DistributedComputations: partition
 using NCDatasets: Dataset
 
 function run_thermal_bubble_regression_test(arch, grid_type)
