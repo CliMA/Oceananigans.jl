@@ -15,14 +15,26 @@ const Ω = 1
 rotation_u(x, y, z, t) = - Ω * y
 rotation_v(x, y, z, t) = + Ω * x
 
+# NonhydrostaticModel supports RungeKutta3 and QuasiAdamsBashforth2, while
+# HydrostaticFreeSurfaceModel supports SplitRungeKutta3 and QuasiAdamsBashforth2.
+# The fields of the HydrostaticFreeSurfaceModel include a passive tracer, so that particles
+# are advanced with the scheme of the model rather than with a forward Euler step.
+function particle_test_model(grid, timestepper, particles, velocities)
+    if timestepper == :SplitRungeKutta3
+        return HydrostaticFreeSurfaceModel(grid; particles, timestepper, tracers=:c, buoyancy=nothing,
+                                           velocities=PrescribedVelocityFields(; velocities...))
+    else
+        return NonhydrostaticModel(grid; particles, timestepper, advection=nothing, background_fields=velocities)
+    end
+end
+
 function rotating_particle_error(arch, timestepper, Nt; stop_time = 1)
     grid = RectilinearGrid(arch; size=(4, 4, 1), x=(-2, 2), y=(-2, 2), z=(0, 1),
-                           topology=(Periodic, Periodic, Periodic))
+                           topology=(Periodic, Periodic, Bounded))
 
     x, y, z = on_architecture.(Ref(arch), ([1.0], [0.0], [0.5]))
     particles = LagrangianParticles(; x, y, z)
-    background_fields = (u = rotation_u, v = rotation_v)
-    model = NonhydrostaticModel(grid; particles, timestepper, background_fields, advection=nothing)
+    model = particle_test_model(grid, timestepper, particles, (u = rotation_u, v = rotation_v))
 
     Δt = stop_time / Nt
     for _ in 1:Nt
@@ -73,8 +85,7 @@ function shear_flow_model(arch, timestepper, particles)
     grid = RectilinearGrid(arch; size=(4, 4, 4), x=(0, 1), y=(0, 1), z=(0, 1),
                            topology=(Periodic, Periodic, Bounded))
 
-    return NonhydrostaticModel(grid; particles, timestepper, advection=nothing,
-                               background_fields = shear_background_fields)
+    return particle_test_model(grid, timestepper, particles, shear_background_fields)
 end
 
 function particles_by_label(particles)

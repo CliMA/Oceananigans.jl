@@ -63,13 +63,14 @@ end
     # Particles are advanced with the scheme of the model. Quasi-Adams-Bashforth extrapolates
     # from the particle velocity at the previous time step, Uⁿ⁺¹ᐟ² = (3/2 + χ) Uⁿ - (1/2 + χ) Uⁿ⁻¹,
     # while the stages of RungeKutta3 all see the new, spatially uniform velocity.
-    set!(model, u = 1100, w = 800)
+    # The particle lands away from the periodic seam in x for both schemes.
+    set!(model, u = 1250, w = 800)
     time_step!(model, FT(1))
     saved = on_architecture(CPU(), fetch_output(particles, model))
     χ = timestepper == :QuasiAdamsBashforth2 ? model.timestepper.χ : nothing
     extrapolate(Uⁿ, Uⁿ⁻¹, ::Nothing) = Uⁿ
     extrapolate(Uⁿ, Uⁿ⁻¹, χ) = (3/2 + χ) * Uⁿ - (1/2 + χ) * Uⁿ⁻¹
-    x₃ = mod(320 + extrapolate(1100, 10, χ), 1000)
+    x₃ = mod(320 + extrapolate(1250, 10, χ), 1000)
     z₃ = mod(540 + extrapolate(800, 20, χ), 1000)
     @test saved.x ≈ FT[x₃]
     @test saved.z ≈ FT[z₃]
