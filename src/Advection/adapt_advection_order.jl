@@ -91,6 +91,6 @@ function adapt_advection_order(advection::WENO{B}, N::Int, grid::AbstractGrid) w
     if N >= B
         return advection
     else
-        return WENO(eltype(grid); order=2N-1)
+        return WENO(eltype(grid); order=2N-1, stretched=something(advection.coefficients, false))
     end
 end
