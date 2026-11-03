@@ -17,6 +17,7 @@
 #   * How to compute the gradient of a trajectory loss with respect to the network's weights
 #     with Reactant and Enzyme.
 #   * How to train with AdamW from Optimisers.jl, and compare free runs with and without the closure.
+#   * How to animate the coarse runs alongside the truth.
 #
 # ## Install dependencies
 #
@@ -317,24 +318,28 @@ push!(validation_losses, validation_loss(weights))
 #
 # We run the coarse model from the first truth state, with the trained network and without any network
 # (zero weights). After the coarse model has adjusted for half a year, we average for a year and compare its
-# statistics with the truth's. One compiled call starts the run and another advances the model one day.
+# statistics with the truth's. One compiled call starts the run, another advances the model one day, and a
+# third advances it by the three hours between the frames of the animation at the end.
 
 function start_free_run!(θ, model, u₀, v₀)
     start_window!(model, θ, u₀, v₀)
     return nothing
 end
 
-function simulate_day!(θ, model)
+function simulate_hours!(θ, model, ::Val{hours}) where hours
     callbacks = [Callback(update_closure!; parameters=θ, callsite=Oceananigans.UpdateStateCallsite())]
-    @trace track_numbers=false for step in 1:24steps_per_hour
+    @trace track_numbers=false for step in 1:hours * steps_per_hour
         time_step!(model, Δt; callbacks)
     end
     return nothing
 end
 
+snapshot_hours = 3
+
 compile_start = time_ns()
 compiled_start! = @compile raise=true raise_first=true sync=true start_free_run!(θ, model, w.u₀, w.v₀)
-compiled_day! = @compile raise=true raise_first=true sync=true simulate_day!(θ, model)
+compiled_day! = @compile raise=true raise_first=true sync=true simulate_hours!(θ, model, Val(24))
+compiled_snapshot! = @compile raise=true raise_first=true sync=true simulate_hours!(θ, model, Val(snapshot_hours))
 @info @sprintf("Compiled the free run in %.1f s", (time_ns() - compile_start) / 1e9)
 
 kinetic_energy(u, v) = (sum(u^2) / length(u) + sum(v^2) / length(v)) / 2
@@ -349,7 +354,7 @@ function free_run(weights; spinup_days=180, averaging_days=365)
     ū, v̄ = XFaceField(cpu_grid), YFaceField(cpu_grid)
     daily_kinetic_energy = Float64[]
     for day in 1:spinup_days + averaging_days
-        compiled_day!(θ, model)
+        compiled_day!(θ, model, Val(24))
         set!(u, model.velocities.u)
         set!(v, model.velocities.v)
         push!(daily_kinetic_energy, kinetic_energy(u, v))
@@ -413,3 +418,79 @@ save("online_learning_double_gyre.png", fig)
 nothing #hide
 
 # ![](online_learning_double_gyre.png)
+
+# ## Animation
+#
+# Finally, we follow the vorticity of the coarse runs and of the truth over both months of hourly truth,
+# starting from the first truth state: the training month, then the held-out month. We save a frame every
+# three hours.
+
+truth_snapshots = cat(training_vorticity, validation_vorticity; dims=3)[:, :, 1:snapshot_hours:end]
+Nframes = size(truth_snapshots, 3)
+
+function vorticity_snapshots(weights)
+    w = window(training_truth, training_vorticity, 1)
+    θ = map(to_device, weights)
+    compiled_start!(θ, model, w.u₀, w.v₀)
+
+    cpu_grid = on_architecture(CPU(), grid)
+    u, v = XFaceField(cpu_grid), YFaceField(cpu_grid)
+    set!(u, model.velocities.u)
+    set!(v, model.velocities.v)
+    ζ = interior_vorticity(u, v)
+    snapshots = [copy(interior(ζ, :, :, 1))]
+
+    for frame in 2:Nframes
+        compiled_snapshot!(θ, model, Val(snapshot_hours))
+        set!(u, model.velocities.u)
+        set!(v, model.velocities.v)
+        compute!(ζ)
+        push!(snapshots, copy(interior(ζ, :, :, 1)))
+    end
+
+    return stack(snapshots)
+end
+
+no_closure_snapshots = vorticity_snapshots(map(zero, weights))
+learned_snapshots = vorticity_snapshots(weights)
+
+rms_vorticity_error(snapshots) = [sqrt(mean(abs2, snapshots[:, :, n] .- truth_snapshots[:, :, n])) for n in 1:Nframes]
+
+snapshot_days = (0:Nframes-1) .* snapshot_hours ./ 24
+held_out_day = length(training_truth.u.times) / 24
+corners = range(0, Lx / 1kilometer, length=Nx+1)
+
+n = Observable(1)
+
+fig = Figure(size=(1500, 800))
+
+title = @lift @sprintf("Day %.1f (%s month): relative vorticity at 62.5 km", snapshot_days[$n],
+                       snapshot_days[$n] < held_out_day ? "training" : "held-out")
+Label(fig[0, 1:3], title, fontsize=24)
+
+panels = (("truth (1024², filtered to 64²)", truth_snapshots),
+          ("coarse model, no closure", no_closure_snapshots),
+          ("coarse model, learned closure", learned_snapshots))
+
+for (column, (panel_title, snapshots)) in enumerate(panels)
+    ax = Axis(fig[1, column], aspect=1, title=panel_title, xlabel="x (km)",
+              ylabel = column == 1 ? "y (km)" : "", yticklabelsvisible = column == 1)
+    ζₙ = @lift snapshots[:, :, $n]
+    heatmap!(ax, corners, corners, ζₙ, colormap=:balance, colorrange=(-ζmax, ζmax))
+end
+
+ax = Axis(fig[2, 1:3], xlabel="day", ylabel="rms vorticity error (s⁻¹)")
+lines!(ax, snapshot_days, rms_vorticity_error(no_closure_snapshots), label="no closure")
+lines!(ax, snapshot_days, rms_vorticity_error(learned_snapshots), label="learned closure")
+vlines!(ax, held_out_day, color=:gray, linestyle=:dash, label="held-out month starts")
+vlines!(ax, @lift(snapshot_days[$n]), color=:black)
+axislegend(ax, position=:rb)
+
+rowsize!(fig.layout, 2, Relative(0.25))
+
+CairoMakie.record(fig, "online_learning_double_gyre.mp4", 1:Nframes, framerate=32) do frame
+    n[] = frame
+end
+nothing #hide
+
+# ![](online_learning_double_gyre.mp4)
