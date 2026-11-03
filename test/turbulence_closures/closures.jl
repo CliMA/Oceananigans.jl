@@ -530,8 +530,8 @@ end
             @test size(model.closure_fields.𝒥ᴹᴹ) == (1, grid.Ny, grid.Nz)
             @test size(model.closure_fields.LM)  == size(grid)
             @test size(model.closure_fields.MM)  == size(grid)
-            @test size(model.closure_fields.Σ)   == size(grid)
-            @test size(model.closure_fields.Σ̄)   == size(grid)
+            @test size(model.closure_fields.S)   == size(grid)
+            @test size(model.closure_fields.S̄)   == size(grid)
 
             closure = DynamicSmagorinsky(averaging=(1, 2))
             model = NonhydrostaticModel(grid; closure)
@@ -554,8 +554,8 @@ end
             @test size(model.closure_fields.𝒥ᴹᴹ)  == size(grid)
             @test size(model.closure_fields.𝒥ᴸᴹ⁻) == size(grid)
             @test size(model.closure_fields.𝒥ᴹᴹ⁻) == size(grid)
-            @test size(model.closure_fields.Σ)    == size(grid)
-            @test size(model.closure_fields.Σ̄)    == size(grid)
+            @test size(model.closure_fields.S)    == size(grid)
+            @test size(model.closure_fields.S̄)    == size(grid)
         end
     end
 
@@ -571,19 +571,17 @@ end
 
     @testset "Dynamic Smagorinsky strain-rate magnitude" begin
         for arch in archs
-            @info "  Testing that the Germano identity uses |S| = √(2ΣᵢⱼΣᵢⱼ) [$(typeof(arch))]..."
-
             # For u = γz, ΣᵢⱼΣᵢⱼ = γ²/2, so that the strain-rate magnitude |S| equals γ.
             γ = 2.0
             grid = RectilinearGrid(arch, size=(4, 4, 8), extent=(1, 1, 1), topology=(Periodic, Periodic, Bounded))
             model = NonhydrostaticModel(grid, closure=DynamicSmagorinsky(averaging=LagrangianAveraging()))
             set!(model, u = (x, y, z) -> γ * z)
 
-            Σ = interior(model.closure_fields.Σ, :, :, 3:6)
-            Σ̄ = interior(model.closure_fields.Σ̄, :, :, 3:6)
+            S = interior(model.closure_fields.S, :, :, 3:6)
+            S̄ = interior(model.closure_fields.S̄, :, :, 3:6)
 
-            @test all(Σ .≈ γ)
-            @test all(Σ̄ .≈ γ)
+            @test all(S .≈ γ)
+            @test all(S̄ .≈ γ)
         end
     end
 

@@ -257,34 +257,35 @@ end
     return 𝒥ᴸᴹ_ijk / 𝒥ᴹᴹ_ijk * (𝒥ᴹᴹ_ijk > 0)
 end
 
-@kernel function _compute_Σ!(Σ, grid, u, v, w)
+# S = √(2ΣᵢⱼΣᵢⱼ) is the strain-rate magnitude, and S̄ is its test-filtered counterpart
+@kernel function _compute_S!(S, grid, u, v, w)
     i, j, k = @index(Global, NTuple)
 
     @inbounds begin
         Σsq = ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w)
-        Σ[i, j, k] = sqrt(2Σsq)
+        S[i, j, k] = sqrt(2Σsq)
     end
 end
 
-@kernel function _compute_Σ̄!(Σ̄, grid, u, v, w)
+@kernel function _compute_S̄!(S̄, grid, u, v, w)
     i, j, k = @index(Global, NTuple)
 
     @inbounds begin
         Σ̄sq = Σ̄ᵢⱼΣ̄ᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w)
-        Σ̄[i, j, k] = sqrt(2Σ̄sq)
+        S̄[i, j, k] = sqrt(2Σ̄sq)
     end
 end
 
-@kernel function _compute_LM_MM!(LM, MM, Σ, Σ̄, grid, u, v, w)
+@kernel function _compute_LM_MM!(LM, MM, S, S̄, grid, u, v, w)
     i, j, k = @index(Global, NTuple)
-    LM_ijk, MM_ijk = LM_and_MM(i, j, k, grid, Σ, Σ̄, u, v, w)
+    LM_ijk, MM_ijk = LM_and_MM(i, j, k, grid, S, S̄, u, v, w)
     @inbounds begin
         LM[i, j, k] = LM_ijk
         MM[i, j, k] = MM_ijk
     end
 end
 
-@inline function LM_and_MM(i, j, k, grid, Σ, Σ̄, u, v, w)
+@inline function LM_and_MM(i, j, k, grid, S, S̄, u, v, w)
     L₁₁ = L₁₁ᶜᶜᶜ(i, j, k, grid, u, v, w)
     L₂₂ = L₂₂ᶜᶜᶜ(i, j, k, grid, u, v, w)
     L₃₃ = L₃₃ᶜᶜᶜ(i, j, k, grid, u, v, w)
@@ -292,12 +293,12 @@ end
     L₁₃ = L₁₃ᶜᶜᶜ(i, j, k, grid, u, v, w)
     L₂₃ = L₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w)
 
-    M₁₁ = M₁₁ᶜᶜᶜ(i, j, k, grid, u, v, w, Σ, Σ̄)
-    M₂₂ = M₂₂ᶜᶜᶜ(i, j, k, grid, u, v, w, Σ, Σ̄)
-    M₃₃ = M₃₃ᶜᶜᶜ(i, j, k, grid, u, v, w, Σ, Σ̄)
-    M₁₂ = M₁₂ᶜᶜᶜ(i, j, k, grid, u, v, w, Σ, Σ̄)
-    M₁₃ = M₁₃ᶜᶜᶜ(i, j, k, grid, u, v, w, Σ, Σ̄)
-    M₂₃ = M₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w, Σ, Σ̄)
+    M₁₁ = M₁₁ᶜᶜᶜ(i, j, k, grid, u, v, w, S, S̄)
+    M₂₂ = M₂₂ᶜᶜᶜ(i, j, k, grid, u, v, w, S, S̄)
+    M₃₃ = M₃₃ᶜᶜᶜ(i, j, k, grid, u, v, w, S, S̄)
+    M₁₂ = M₁₂ᶜᶜᶜ(i, j, k, grid, u, v, w, S, S̄)
+    M₁₃ = M₁₃ᶜᶜᶜ(i, j, k, grid, u, v, w, S, S̄)
+    M₂₃ = M₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w, S, S̄)
 
     LM_ijk = L₁₁ * M₁₁ + L₂₂ * M₂₂ + L₃₃ * M₃₃ + 2L₁₂ * M₁₂ + 2L₁₃ * M₁₃ + 2L₂₃ * M₂₃
     MM_ijk = M₁₁ * M₁₁ + M₂₂ * M₂₂ + M₃₃ * M₃₃ + 2M₁₂ * M₁₂ + 2M₁₃ * M₁₃ + 2M₂₃ * M₂₃
@@ -316,19 +317,19 @@ function compute_coefficient_fields!(closure_fields, closure::DirectionallyAvera
     cˢ = closure.coefficient
 
     if cˢ.schedule(model)
-        Σ = closure_fields.Σ
-        Σ̄ = closure_fields.Σ̄
-        launch!(arch, grid, :xyz, _compute_Σ!, Σ, grid, velocities...)
-        launch!(arch, grid, :xyz, _compute_Σ̄!, Σ̄, grid, velocities...)
+        S = closure_fields.S
+        S̄ = closure_fields.S̄
+        launch!(arch, grid, :xyz, _compute_S!, S, grid, velocities...)
+        launch!(arch, grid, :xyz, _compute_S̄!, S̄, grid, velocities...)
 
-        # Fill Σ, Σ̄ halos because the M tensor computation uses `filter`
+        # Fill S, S̄ halos because the M tensor computation uses `filter`
         # which reads from neighboring cells (including halo cells).
-        fill_halo_regions!(Σ; only_local_halos=true)
-        fill_halo_regions!(Σ̄; only_local_halos=true)
+        fill_halo_regions!(S; only_local_halos=true)
+        fill_halo_regions!(S̄; only_local_halos=true)
 
         LM = closure_fields.LM
         MM = closure_fields.MM
-        launch!(arch, grid, :xyz, _compute_LM_MM!, LM, MM, Σ, Σ̄, grid, velocities...)
+        launch!(arch, grid, :xyz, _compute_LM_MM!, LM, MM, S, S̄, grid, velocities...)
 
         𝒥ᴸᴹ = closure_fields.𝒥ᴸᴹ
         𝒥ᴹᴹ = closure_fields.𝒥ᴹᴹ
@@ -343,13 +344,13 @@ function allocate_coefficient_fields(closure::DirectionallyAveragedDynamicSmagor
     LM = CenterField(grid)
     MM = CenterField(grid)
 
-    Σ = CenterField(grid)
-    Σ̄ = CenterField(grid)
+    S = CenterField(grid)
+    S̄ = CenterField(grid)
 
     𝒥ᴸᴹ = Field(Average(LM, dims=closure.coefficient.averaging))
     𝒥ᴹᴹ = Field(Average(MM, dims=closure.coefficient.averaging))
 
-    return (; Σ, Σ̄, LM, MM, 𝒥ᴸᴹ, 𝒥ᴹᴹ)
+    return (; S, S̄, LM, MM, 𝒥ᴸᴹ, 𝒥ᴹᴹ)
 end
 
 #####
@@ -361,9 +362,9 @@ const c = Center()
 @inline displace_node(node, δ) = node - δ
 @inline displace_node(::Nothing, δ) = zero(δ)
 
-@kernel function _lagrangian_average_LM_MM!(𝒥ᴸᴹ, 𝒥ᴹᴹ, 𝒥ᴸᴹ⁻, 𝒥ᴹᴹ⁻, 𝒥ᴸᴹ_min, Σ, Σ̄, grid, Δt, u, v, w)
+@kernel function _lagrangian_average_LM_MM!(𝒥ᴸᴹ, 𝒥ᴹᴹ, 𝒥ᴸᴹ⁻, 𝒥ᴹᴹ⁻, 𝒥ᴸᴹ_min, S, S̄, grid, Δt, u, v, w)
     i, j, k = @index(Global, NTuple)
-    LM, MM = LM_and_MM(i, j, k, grid, Σ, Σ̄, u, v, w)
+    LM, MM = LM_and_MM(i, j, k, grid, S, S̄, u, v, w)
     FT = eltype(grid)
 
     @inbounds begin
@@ -418,22 +419,22 @@ function initialize_closure_fields!(closure_fields, closure::LagrangianAveragedD
     cˢ = closure.coefficient
     u, v, w = model.velocities
 
-    Σ = closure_fields.Σ
-    Σ̄ = closure_fields.Σ̄
-    launch!(arch, grid, :xyz, _compute_Σ!, Σ, grid, u, v, w)
-    launch!(arch, grid, :xyz, _compute_Σ̄!, Σ̄, grid, u, v, w)
+    S = closure_fields.S
+    S̄ = closure_fields.S̄
+    launch!(arch, grid, :xyz, _compute_S!, S, grid, u, v, w)
+    launch!(arch, grid, :xyz, _compute_S̄!, S̄, grid, u, v, w)
 
-    # Fill Σ, Σ̄ halos because the M tensor computation uses `filter`
+    # Fill S, S̄ halos because the M tensor computation uses `filter`
     # which reads from neighboring cells (including halo cells).
-    fill_halo_regions!(Σ; only_local_halos=true)
-    fill_halo_regions!(Σ̄; only_local_halos=true)
+    fill_halo_regions!(S; only_local_halos=true)
+    fill_halo_regions!(S̄; only_local_halos=true)
 
     𝒥ᴸᴹ  = closure_fields.𝒥ᴸᴹ
     𝒥ᴹᴹ  = closure_fields.𝒥ᴹᴹ
     𝒥ᴸᴹ_min = cˢ.minimum_numerator
 
     # Compute instantaneous LM, MM and spatially average for initialization
-    launch!(arch, grid, :xyz, _compute_LM_MM!, 𝒥ᴸᴹ, 𝒥ᴹᴹ, Σ, Σ̄, grid, u, v, w)
+    launch!(arch, grid, :xyz, _compute_LM_MM!, 𝒥ᴸᴹ, 𝒥ᴹᴹ, S, S̄, grid, u, v, w)
     parent(𝒥ᴸᴹ) .= max(mean(𝒥ᴸᴹ), 𝒥ᴸᴹ_min)
     parent(𝒥ᴹᴹ) .= mean(𝒥ᴹᴹ)
 
@@ -453,15 +454,15 @@ function step_closure_prognostics!(closure_fields, closure::LagrangianAveragedDy
     time_to_compute = isnothing(cˢ.schedule) || (cˢ.schedule(model) && clock.stage == 1)
 
     if time_to_compute
-        Σ = closure_fields.Σ
-        Σ̄ = closure_fields.Σ̄
-        launch!(arch, grid, :xyz, _compute_Σ!, Σ, grid, u, v, w)
-        launch!(arch, grid, :xyz, _compute_Σ̄!, Σ̄, grid, u, v, w)
+        S = closure_fields.S
+        S̄ = closure_fields.S̄
+        launch!(arch, grid, :xyz, _compute_S!, S, grid, u, v, w)
+        launch!(arch, grid, :xyz, _compute_S̄!, S̄, grid, u, v, w)
 
-        # Fill Σ, Σ̄ halos because the M tensor computation uses `filter`
+        # Fill S, S̄ halos because the M tensor computation uses `filter`
         # which reads from neighboring cells (including halo cells).
-        fill_halo_regions!(Σ; only_local_halos=true)
-        fill_halo_regions!(Σ̄; only_local_halos=true)
+        fill_halo_regions!(S; only_local_halos=true)
+        fill_halo_regions!(S̄; only_local_halos=true)
 
         parent(closure_fields.𝒥ᴸᴹ⁻) .= parent(closure_fields.𝒥ᴸᴹ)
         parent(closure_fields.𝒥ᴹᴹ⁻) .= parent(closure_fields.𝒥ᴹᴹ)
@@ -477,7 +478,7 @@ function step_closure_prognostics!(closure_fields, closure::LagrangianAveragedDy
         closure_fields.previous_compute_time[] = clock.time
 
         launch!(arch, grid, :xyz,
-                _lagrangian_average_LM_MM!, 𝒥ᴸᴹ, 𝒥ᴹᴹ, 𝒥ᴸᴹ⁻, 𝒥ᴹᴹ⁻, 𝒥ᴸᴹ_min, Σ, Σ̄, grid, Δt_lagrangian, u, v, w)
+                _lagrangian_average_LM_MM!, 𝒥ᴸᴹ, 𝒥ᴹᴹ, 𝒥ᴸᴹ⁻, 𝒥ᴹᴹ⁻, 𝒥ᴸᴹ_min, S, S̄, grid, Δt_lagrangian, u, v, w)
     end
 
     return nothing
@@ -493,21 +494,21 @@ function allocate_coefficient_fields(closure::LagrangianAveragedDynamicSmagorins
     𝒥ᴸᴹ = CenterField(grid)
     𝒥ᴹᴹ = CenterField(grid)
 
-    Σ = CenterField(grid)
-    Σ̄ = CenterField(grid)
+    S = CenterField(grid)
+    S̄ = CenterField(grid)
 
     # Initialize to clock.time; will be properly set during initialize_closure_fields!
     previous_compute_time = Ref(clock.time)
 
-    return (; Σ, Σ̄, 𝒥ᴸᴹ, 𝒥ᴹᴹ, 𝒥ᴸᴹ⁻, 𝒥ᴹᴹ⁻, previous_compute_time)
+    return (; S, S̄, 𝒥ᴸᴹ, 𝒥ᴹᴹ, 𝒥ᴸᴹ⁻, 𝒥ᴹᴹ⁻, previous_compute_time)
 end
 
 #####
 ##### Checkpointing
 #####
 
-const DirectionallyAveragedSmagorinskyFields = NamedTuple{(:νₑ, :Σ, :Σ̄, :LM, :MM, :𝒥ᴸᴹ, :𝒥ᴹᴹ)}
-const LagrangianAveragedSmagorinskyFields = NamedTuple{(:νₑ, :Σ, :Σ̄, :𝒥ᴸᴹ, :𝒥ᴹᴹ, :𝒥ᴸᴹ⁻, :𝒥ᴹᴹ⁻, :previous_compute_time)}
+const DirectionallyAveragedSmagorinskyFields = NamedTuple{(:νₑ, :S, :S̄, :LM, :MM, :𝒥ᴸᴹ, :𝒥ᴹᴹ)}
+const LagrangianAveragedSmagorinskyFields = NamedTuple{(:νₑ, :S, :S̄, :𝒥ᴸᴹ, :𝒥ᴹᴹ, :𝒥ᴸᴹ⁻, :𝒥ᴹᴹ⁻, :previous_compute_time)}
 
 function prognostic_state(cf::DirectionallyAveragedSmagorinskyFields)
     return (𝒥ᴸᴹ = prognostic_state(cf.𝒥ᴸᴹ),
