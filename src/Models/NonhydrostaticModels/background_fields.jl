@@ -1,8 +1,6 @@
 using Oceananigans.Fields: ZeroField, ConstantField, AbstractField, FunctionField, location
 using Oceananigans.Utils: prettysummary
 
-using Adapt
-
 function background_velocity_fields(fields, grid, clock)
     u = get(fields, :u, ZeroField())
     v = get(fields, :v, ZeroField())

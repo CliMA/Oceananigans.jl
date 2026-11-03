@@ -41,9 +41,9 @@ Adapt.adapt_structure(to, ni::NotImmersed) = NotImmersed(Adapt.adapt(to, ni.cond
 const IF = AbstractField{<:Any, <:Any, <:Any, <:ImmersedBoundaryGrid}
 
 function AbstractOperations.ConditionalOperation(operand::IF;
-                              func = nothing,
-                              condition = nothing,
-                              mask = zero(eltype(operand)))
+                                                 func = nothing,
+                                                 condition = nothing,
+                                                 mask = zero(eltype(operand)))
 
     condition = validate_condition(condition, operand)
 
@@ -65,9 +65,9 @@ end
 @inline Fields.conditional_length(c::IF, dims::Tuple) = conditional_length(condition_operand(identity, c, NotImmersed(), 0), dims)
 
 @inline function AbstractOperations.evaluate_condition(::NotImmersed{Nothing},
-                                    i, j, k,
-                                    grid::ImmersedBoundaryGrid,
-                                    co::ConditionalOperation) #, args...)
+                                                       i, j, k,
+                                                       grid::ImmersedBoundaryGrid,
+                                                       co::ConditionalOperation) #, args...)
 
     ℓx, ℓy, ℓz = instantiated_location(co)
     immersed = immersed_peripheral_node(i, j, k, grid, ℓx, ℓy, ℓz) | inactive_node(i, j, k, grid, ℓx, ℓy, ℓz)
@@ -75,9 +75,9 @@ end
 end
 
 @inline function AbstractOperations.evaluate_condition(ni::NotImmersed,
-                                    i, j, k,
-                                    grid::ImmersedBoundaryGrid,
-                                    co::ConditionalOperation, args...)
+                                                       i, j, k,
+                                                       grid::ImmersedBoundaryGrid,
+                                                       co::ConditionalOperation, args...)
 
     valid_cell = evaluate_condition(NotImmersed(), i, j, k, grid, co)
     return valid_cell & evaluate_condition(ni.condition, i, j, k, grid, co, args...)
@@ -132,8 +132,8 @@ end
 @inline center_to_nothing(::Type{Nothing}) = Center
 
 @inline function AbstractOperations.evaluate_condition(nic::NotImmersedColumn, i, j, k,
-                                    grid::ImmersedBoundaryGrid,
-                                    co::ConditionalOperation, args...)
+                                                       grid::ImmersedBoundaryGrid,
+                                                       co::ConditionalOperation, args...)
     immersed = is_immersed_column(i, j, k, nic.immersed_column)
     value = !immersed & evaluate_condition(nic.condition, i, j, k, grid, co, args...)
     return value
