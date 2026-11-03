@@ -1,7 +1,7 @@
-using Oceananigans.TurbulenceClosures: AnisotropicMinimumDissipation, LagrangianAveraging
-using Oceananigans.TimeSteppers: update_state!
 using Oceananigans.Architectures: cpu_architecture
 using Oceananigans.DistributedComputations: partition
+using Oceananigans.TimeSteppers: update_state!
+using Oceananigans.TurbulenceClosures: AnisotropicMinimumDissipation, LagrangianAveraging
 
 # Extract a window matching `target_size` from the center of `data`,
 # auto-detecting and stripping halo layers. Works for any saved halo
