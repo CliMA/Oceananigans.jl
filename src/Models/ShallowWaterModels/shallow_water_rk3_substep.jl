@@ -1,9 +1,7 @@
 using Oceananigans.Architectures: architecture
-using Oceananigans.Utils: configure_kernel
 using Oceananigans.BoundaryConditions: step_boundary_conditions!
 using Oceananigans.TimeSteppers: _rk3_substep_field!, stage_Δt
-
-import Oceananigans.TimeSteppers: rk3_substep!
+using Oceananigans.Utils: configure_kernel
 
 """
 $(TYPEDSIGNATURES)
@@ -15,7 +13,7 @@ Advances the solution fields (`uh`, `vh`, `h`) and any tracers using the RK3 sch
 
 where `Gⁿ` and `G⁻` are the current and previous tendencies.
 """
-function rk3_substep!(model::ShallowWaterModel, Δt, γⁿ, ζⁿ, callbacks)
+function TimeSteppers.rk3_substep!(model::ShallowWaterModel, Δt, γⁿ, ζⁿ, callbacks)
 
     compute_tendencies!(model, callbacks)
     grid = model.grid

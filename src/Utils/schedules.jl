@@ -1,6 +1,6 @@
 using Dates: AbstractTime, Period
 
-import Oceananigans: initialize!, prognostic_state, restore_prognostic_state!
+using Oceananigans: initialize!, prognostic_state, restore_prognostic_state!
 
 """
     AbstractSchedule
@@ -17,7 +17,7 @@ schedule_aligned_time_step(schedule, clock, Δt) = Δt
 # Fallback initialization for schedule: call the schedule,
 # then return `true`, indicating that the schedule "actuates" at
 # initial call.
-function initialize!(schedule::AbstractSchedule, model)
+function Oceananigans.initialize!(schedule::AbstractSchedule, model)
     schedule(model)
 
     # the default behavior `return true` dictates that by default,
@@ -49,7 +49,7 @@ function TimeInterval(interval)
     return TimeInterval{IT, TT}(interval, first_actuation_time, 0)
 end
 
-initialize!(schedule::TimeInterval, model) = initialize_actuations!(schedule, model.clock.time)
+Oceananigans.initialize!(schedule::TimeInterval, model) = initialize_actuations!(schedule, model.clock.time)
 
 function initialize_actuations!(schedule::TimeInterval, first_actuation_time)
 
@@ -113,13 +113,13 @@ function schedule_aligned_time_step(schedule::TimeInterval, clock, Δt)
     return min(Δt, δt)
 end
 
-function prognostic_state(schedule::TimeInterval)
+function Oceananigans.prognostic_state(schedule::TimeInterval)
     return (first_actuation_time = schedule.first_actuation_time,
             actuations = schedule.actuations,
             interval = schedule.interval)
 end
 
-function restore_prognostic_state!(restored::TimeInterval, from)
+function Oceananigans.restore_prognostic_state!(restored::TimeInterval, from)
     if hasproperty(from, :interval) && from.interval == restored.interval
         restored.first_actuation_time = from.first_actuation_time
         restored.actuations = from.actuations
@@ -127,7 +127,7 @@ function restore_prognostic_state!(restored::TimeInterval, from)
     return restored
 end
 
-restore_prognostic_state!(::TimeInterval, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::TimeInterval, ::Nothing) = nothing
 
 #####
 ##### IterationInterval
@@ -155,9 +155,9 @@ IterationInterval(interval::Int; offset=0) = IterationInterval(interval, offset)
 next_actuation_time(schedule::IterationInterval) = Inf
 
 # IterationInterval has no state
-prognostic_state(schedule::IterationInterval) = nothing
-restore_prognostic_state!(restored::IterationInterval, from) = restored
-restore_prognostic_state!(restored::IterationInterval, from::Nothing) = nothing
+Oceananigans.prognostic_state(schedule::IterationInterval) = nothing
+Oceananigans.restore_prognostic_state!(restored::IterationInterval, from) = restored
+Oceananigans.restore_prognostic_state!(restored::IterationInterval, from::Nothing) = nothing
 
 #####
 ##### WallTimeInterval
@@ -199,8 +199,8 @@ end
 
 # WallTimeInterval uses absolute wall clock time, which doesn't make sense to checkpoint.
 # On restore, the schedule starts fresh from the current wall time.
-prognostic_state(::WallTimeInterval) = nothing
-restore_prognostic_state!(restored::WallTimeInterval,  ::Nothing) = restored
+Oceananigans.prognostic_state(::WallTimeInterval) = nothing
+Oceananigans.restore_prognostic_state!(restored::WallTimeInterval,  ::Nothing) = restored
 
 #####
 ##### SpecifiedTimes
@@ -267,7 +267,7 @@ function (st::SpecifiedTimes)(model)
     return false
 end
 
-initialize!(st::SpecifiedTimes, model) = st(model)
+Oceananigans.initialize!(st::SpecifiedTimes, model) = st(model)
 
 function schedule_aligned_time_step(schedule::SpecifiedTimes, clock, Δt)
     t★ = next_actuation_time(schedule)
@@ -288,16 +288,16 @@ end
 
 Base.copy(st::SpecifiedTimes) = SpecifiedTimes(copy(st.times), st.previous_actuation)
 
-function prognostic_state(schedule::SpecifiedTimes)
+function Oceananigans.prognostic_state(schedule::SpecifiedTimes)
     return (; previous_actuation = schedule.previous_actuation)
 end
 
-function restore_prognostic_state!(restored::SpecifiedTimes, from)
+function Oceananigans.restore_prognostic_state!(restored::SpecifiedTimes, from)
     restored.previous_actuation = from.previous_actuation
     return restored
 end
 
-restore_prognostic_state!(::SpecifiedTimes, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::SpecifiedTimes, ::Nothing) = nothing
 
 #####
 ##### ConsecutiveIterations
@@ -333,18 +333,18 @@ end
 schedule_aligned_time_step(schedule::ConsecutiveIterations, clock, Δt) =
     schedule_aligned_time_step(schedule.parent, clock, Δt)
 
-function prognostic_state(schedule::ConsecutiveIterations)
+function Oceananigans.prognostic_state(schedule::ConsecutiveIterations)
     return (parent = prognostic_state(schedule.parent),
             previous_parent_actuation_iteration = schedule.previous_parent_actuation_iteration)
 end
 
-function restore_prognostic_state!(restored::ConsecutiveIterations, from)
+function Oceananigans.restore_prognostic_state!(restored::ConsecutiveIterations, from)
     restore_prognostic_state!(restored.parent, from.parent)
     restored.previous_parent_actuation_iteration = from.previous_parent_actuation_iteration
     return restored
 end
 
-restore_prognostic_state!(::ConsecutiveIterations, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::ConsecutiveIterations, ::Nothing) = nothing
 
 #####
 ##### PrecedingIterations
@@ -390,7 +390,7 @@ end
 
 # Delegate so that the copied parent is initialized exactly as the schedule it was copied
 # from, and the two stay in step
-initialize!(schedule::PrecedingIterations, model) = initialize!(schedule.parent, model)
+Oceananigans.initialize!(schedule::PrecedingIterations, model) = initialize!(schedule.parent, model)
 
 # Actuating more often than necessary is harmless, while missing the iteration before the
 # parent actuates silently widens the interval a difference is taken over. Schedules whose
@@ -410,14 +410,14 @@ end
 schedule_aligned_time_step(schedule::PrecedingIterations, clock, Δt) =
     schedule_aligned_time_step(schedule.parent, clock, Δt)
 
-prognostic_state(schedule::PrecedingIterations) = (; parent = prognostic_state(schedule.parent))
+Oceananigans.prognostic_state(schedule::PrecedingIterations) = (; parent = prognostic_state(schedule.parent))
 
-function restore_prognostic_state!(restored::PrecedingIterations, from)
+function Oceananigans.restore_prognostic_state!(restored::PrecedingIterations, from)
     restore_prognostic_state!(restored.parent, from.parent)
     return restored
 end
 
-restore_prognostic_state!(::PrecedingIterations, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::PrecedingIterations, ::Nothing) = nothing
 
 Base.summary(schedule::PrecedingIterations) = string("PrecedingIterations(", summary(schedule.parent), ")")
 
@@ -518,7 +518,7 @@ function (schedule::TimeOffset)(model)
     end
 end
 
-function initialize!(schedule::TimeOffset, model)
+function Oceananigans.initialize!(schedule::TimeOffset, model)
     t = model.clock.time
 
     if schedule.parent_actuation_time isa Number && t isa Dates.AbstractDateTime
@@ -542,20 +542,20 @@ function schedule_aligned_time_step(schedule::TimeOffset, clock, Δt)
     return min(Δt, δt)
 end
 
-function prognostic_state(schedule::TimeOffset)
+function Oceananigans.prognostic_state(schedule::TimeOffset)
     return (parent = prognostic_state(schedule.parent),
             parent_actuation_time = schedule.parent_actuation_time,
             offset_actuated = schedule.offset_actuated)
 end
 
-function restore_prognostic_state!(restored::TimeOffset, from)
+function Oceananigans.restore_prognostic_state!(restored::TimeOffset, from)
     restore_prognostic_state!(restored.parent, from.parent)
     restored.parent_actuation_time = from.parent_actuation_time
     restored.offset_actuated = from.offset_actuated
     return restored
 end
 
-restore_prognostic_state!(::TimeOffset, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::TimeOffset, ::Nothing) = nothing
 
 #####
 ##### Any and AndSchedule

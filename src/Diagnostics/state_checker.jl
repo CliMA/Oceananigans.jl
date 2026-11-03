@@ -14,7 +14,7 @@ for each field in a named tuple of `fields` when `schedule` actuates.
 """
 StateChecker(model; schedule, fields=fields(model)) = StateChecker(schedule, fields)
 
-function run_diagnostic!(sc::StateChecker, model)
+function Oceananigans.run_diagnostic!(sc::StateChecker, model)
     pad = keys(sc.fields) .|> string .|> length |> maximum
 
     @info "State check @ $(summary(model.clock))"
