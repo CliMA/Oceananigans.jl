@@ -262,7 +262,7 @@ end
 
     @inbounds begin
         Σsq = ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w)
-        Σ[i, j, k] = sqrt(Σsq)
+        Σ[i, j, k] = sqrt(2Σsq)
     end
 end
 
@@ -271,7 +271,7 @@ end
 
     @inbounds begin
         Σ̄sq = Σ̄ᵢⱼΣ̄ᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w)
-        Σ̄[i, j, k] = sqrt(Σ̄sq)
+        Σ̄[i, j, k] = sqrt(2Σ̄sq)
     end
 end
 
