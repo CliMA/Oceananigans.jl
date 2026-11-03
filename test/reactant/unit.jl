@@ -471,6 +471,15 @@ end
     end
 end
 
+# Without host copies the broadcast indexes device arrays element by element, a scalar-indexing error
+@testset "xnodes and ynodes on a ReactantState LatitudeLongitudeGrid" begin
+    latlon_grid(arch) = LatitudeLongitudeGrid(arch; size=(16, 16, 4), longitude=(-100, -90), latitude=(30, 40), z=(0, 1000))
+    for ℓ in (Center(), Face())
+        @test xnodes(latlon_grid(ReactantState()), ℓ, ℓ) ≈ xnodes(latlon_grid(CPU()), ℓ, ℓ)
+        @test ynodes(latlon_grid(ReactantState()), ℓ) ≈ ynodes(latlon_grid(CPU()), ℓ)
+    end
+end
+
 @testset "Updating a FieldTimeSeries whose window holds every snapshot, at a traced time" begin
     times = [0.0, 1.0, 2.0, 3.0]
     grid = RectilinearGrid(ReactantState(); size = (2, 2, 2), extent = (1, 1, 1))

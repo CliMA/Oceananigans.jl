@@ -11,6 +11,7 @@ using Oceananigans: Distributed
 using Oceananigans.Architectures: ReactantState, CPU
 using Oceananigans.Grids: AbstractGrid, AbstractUnderlyingGrid, StaticVerticalDiscretization, MutableVerticalDiscretization
 using Oceananigans.Grids: LatitudeLongitudeGrid, RectilinearGrid, OrthogonalSphericalShellGrid
+using Oceananigans.Grids: λnodes, φnodes, hack_cosd
 using Oceananigans.Utils: unparameterized_type
 using Oceananigans.Grids: Center, Face, Periodic, TwoSided, Bounded, Closed, Connected, Flat, FaceExtendedTopology
 using Oceananigans.Fields: Field
@@ -53,6 +54,28 @@ const ReactantStateLatitudeLongitudeGrid =
 # structural metadata instead, which is what equality means for a traced grid.
 function Base.:(==)(grid1::ReactantStateLatitudeLongitudeGrid, grid2::ReactantStateLatitudeLongitudeGrid)
     return topology(grid1) == topology(grid2) && size(grid1) == size(grid2) && halo_size(grid1) == halo_size(grid2)
+end
+
+# `xnodes` and `ynodes` are host conveniences that broadcast over views of the coordinate arrays, which on
+# `ReactantState` are device arrays: the broadcast would index them element by element on the host. Copy the
+# coordinates to the host once and broadcast there. Traced arrays, inside a compiled function, are left
+# alone so the broadcast traces.
+host_nodes(a) = a
+host_nodes(a::Reactant.AbstractConcreteArray) = Array(a)
+host_nodes(a::OffsetArray) = OffsetArray(host_nodes(parent(a)), a.offsets)
+host_nodes(v::SubArray) = view(host_nodes(parent(v)), v.indices...)
+
+function Oceananigans.Grids.xnodes(grid::ReactantStateLatitudeLongitudeGrid, ℓx::Union{Face, Center}, ℓy::Union{Face, Center}; with_halos=false)
+    λ = host_nodes(λnodes(grid, ℓx; with_halos))'
+    φ = host_nodes(φnodes(grid, ℓy; with_halos))
+    R = grid.radius
+    return @. R * deg2rad(λ) * hack_cosd(φ)
+end
+
+function Oceananigans.Grids.ynodes(grid::ReactantStateLatitudeLongitudeGrid, ℓy::Union{Face, Center}; with_halos=false)
+    φ = host_nodes(φnodes(grid, ℓy; with_halos))
+    R = grid.radius
+    return @. R * deg2rad(φ)
 end
 
 function Oceananigans.Grids.total_size(grid::ShardedGrid, loc, indices)
