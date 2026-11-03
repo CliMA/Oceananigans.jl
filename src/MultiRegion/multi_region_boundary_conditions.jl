@@ -173,6 +173,8 @@ end
 ##### MultiRegion boundary condition utils
 #####
 
+# These containers leave some fields untouched or fix type parameters, so their
+# methods are written by hand rather than with `@regional`.
 @inline Utils.getregion(fc::FieldBoundaryConditions, i) =
             FieldBoundaryConditions(_getregion(fc.west, i),
                                     _getregion(fc.east, i),
@@ -194,9 +196,6 @@ end
                                                 cf.field_dependencies,
                                                 cf.field_dependencies_indices,
                                                 cf.field_dependencies_interp)
-
-@inline Utils.getregion(df::DiscreteBoundaryFunction, i) =
-            DiscreteBoundaryFunction(_getregion(df.func, i), _getregion(df.parameters, i))
 
 @inline Utils._getregion(fc::FieldBoundaryConditions, i) =
             FieldBoundaryConditions(getregion(fc.west, i),
@@ -220,7 +219,7 @@ end
                                                 cf.field_dependencies_indices,
                                                 cf.field_dependencies_interp)
 
-@inline Utils._getregion(df::DiscreteBoundaryFunction, i) = DiscreteBoundaryFunction(getregion(df.func, i), getregion(df.parameters, i))
+@regional DiscreteBoundaryFunction
 
 # Everything goes for multi-region BC
 validate_boundary_condition_location(::MultiRegionObject, ::Center, side) = nothing
