@@ -2,7 +2,8 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using MPI
 using Oceananigans.DistributedComputations
-using Oceananigans.DistributedComputations: cpu_architecture, child_architecture, partition, reconstruct_global_grid
+using Oceananigans.Architectures: cpu_architecture
+using Oceananigans.DistributedComputations: child_architecture, partition, reconstruct_global_grid
 using Oceananigans.Grids: λnode, φnode
 using Oceananigans.Operators: Azᶜᶜᶜ, Δxᶠᶜᶜ
 using CUDA
