@@ -1,6 +1,6 @@
 ---
 name: build-docs
-description: Build Oceananigans documentation locally with optional fast-build shortcuts
+description: Use when building or previewing the documentation locally, including a fast build that skips the Literate examples.
 ---
 
 # Build Documentation
@@ -17,7 +17,7 @@ Build the Oceananigans documentation locally.
 3. For **fast build**, temporarily modify `docs/make.jl`:
    - Comment out Literate examples in `example_scripts` and `example_pages`
    - Add `warnonly = [:cross_references, :example_block, :linkcheck]`
-   - Comment out GPU-requiring pages
+   - Comment out pages whose `@example` blocks need a GPU, such as `"Simulation Tips" => "simulation_tips.md"`
    - Optionally set `doctest = false`, `linkcheck = false`, `draft = true`
    - Run the build
    - **Revert all changes** to `docs/make.jl` after building

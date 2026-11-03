@@ -1,170 +1,79 @@
-# Oceananigans.jl — Agent Rules
+# Oceananigans.jl
 
-## Project Overview
+Julia package for ocean-flavored fluid dynamics on CPUs and GPUs (CUDA, AMD, Metal, OneAPI).
+Every model runs the same source on every architecture through KernelAbstractions, so most of
+what follows is about keeping code correct on a GPU that you are probably not testing on.
 
-Oceananigans.jl is a Julia package for fast, friendly, flexible, ocean-flavored fluid dynamics on CPUs and GPUs.
-It solves the incompressible (Boussinesq) Navier-Stokes equations with models including:
-nonhydrostatic (with free surfaces), hydrostatic free-surface, and shallow water —
-on RectilinearGrid, LatitudeLongitudeGrid, ConformalCubedSphereGrid, TripolarGrid, and ImmersedBoundaryGrid.
+## Commands
 
-## Language & Environment
+```sh
+# Run tests on CPU, selected by prefix of test/<group>/<name>.jl
+CUDA_VISIBLE_DEVICES=-1 TEST_ARCHITECTURE=CPU julia --project -e 'using Pkg; Pkg.test("Oceananigans"; test_args=["unit/grids"])'
 
-- **Julia 1.10+** | CPU and GPU (CUDA, AMD, Metal, OneAPI)
-- **Key packages**: KernelAbstractions.jl, CUDA.jl, Enzyme.jl, Reactant.jl
-- **Style**: ExplicitImports.jl for source code; `using Oceananigans` for examples/tests
+# Explicit imports and Aqua checks (run after any change to src/)
+CUDA_VISIBLE_DEVICES=-1 TEST_ARCHITECTURE=CPU julia --project -e 'using Pkg; Pkg.test("Oceananigans"; test_args=["unit/quality_assurance"])'
 
-## Critical Rules
-
-### Kernel Functions (GPU compatibility)
-
-- Use `@kernel` / `@index` (KernelAbstractions.jl)
-- Kernels must be **type-stable** and **allocation-free**
-- Use `ifelse` — never short-circuiting `if`/`else` in kernels
-- No error messages, no Models inside kernels
-- Mark functions called inside kernels with `@inline`
-- **Never loop over grid points outside kernels** — use `launch!`
-
-### Type Stability & Memory
-
-- All structs must be concretely typed
-- Type annotations are for **dispatch**, not documentation
-- Minimize allocation; favor inline computation
-- **Never hardcode Float64**: no literal `0.0` or `1.0` in kernels or constructors.
-  Use `zero(grid)`, `one(grid)`, `convert(FT, 1//2)`, or rational literals
-
-### Imports
-
-- Source code: explicit imports (checked by tests)
-- Examples/docs: rely on `using Oceananigans`; never explicitly import exported names
-
-### Docstrings
-
-- Use DocStringExtensions.jl with `$(TYPEDSIGNATURES)` when the signature does not include
-  default values for args and/or kwargs.
-- **ALWAYS `jldoctest` blocks, NEVER plain `julia` blocks** — doctests are tested; plain blocks rot
-- Include `# output` with verifiable output; prefer `show` methods over boolean comparisons
-- Use unicode for math (`Δt`, `η`, `ρ`), not LaTeX — LaTeX doesn't render in the REPL
-
-### Model Constructors
-
-- `grid` is positional: `NonhydrostaticModel(grid; closure=nothing)`
-- `ShallowWaterModel(grid, gravitational_acceleration; ...)` — both positional
-- Omit semicolon when there are no keyword arguments: `NonhydrostaticModel(grid)` not `NonhydrostaticModel(grid;)`
-
-## Naming Conventions
-
-- **Files**: snake_case matching the type they define — `nonhydrostatic_model.jl`
-- **Types/Constructors**: PascalCase **only for true constructors** — `NonhydrostaticModel`
-- **Functions**: snake_case — `time_step!`; functions that return values are never PascalCase
-- **Kernels**: may prefix with underscore — `_compute_tendency_kernel`
-- **Variables**: English long name or readable unicode math notation — never mix abbreviated and
-  full forms (e.g., `cond` vs `condition`) to imply a difference; be specific
-
-## Module Structure
-
-```
-src/
-├── Oceananigans.jl                 # Main module, exports
-├── Architectures.jl                # CPU/GPU architecture abstractions
-├── Grids/                          # Grid types and constructors
-├── OrthogonalSphericalShellGrids/  # Tripolar and other curvilinear spherical-shell grids
-├── ImmersedBoundaries/             # ImmersedBoundaryGrid and immersed boundary conditions
-├── MultiRegion/                    # Multi-region grids (ConformalCubedSphereGrid)
-├── DistributedComputations/        # MPI-distributed architectures and halo communication
-├── Fields/                         # Field types and operations
-├── AbstractOperations/             # Lazy operations on fields (KernelFunctionOperation, etc.)
-├── Operators/                      # Finite difference operators
-├── BoundaryConditions/             # Boundary condition types
-├── Forcings/                       # Forcing functions
-├── Coriolis/                       # Coriolis formulations
-├── BuoyancyFormulations/           # Buoyancy models
-├── Advection/                      # Advection schemes
-├── TurbulenceClosures/             # LES and eddy viscosity models
-├── Models/                         # Model implementations
-│   ├── NonhydrostaticModels/
-│   ├── HydrostaticFreeSurfaceModels/
-│   ├── ShallowWaterModels/
-│   └── LagrangianParticleTracking/
-├── TimeSteppers/                   # Time stepping schemes
-├── Solvers/                        # Poisson and tridiagonal solvers
-├── Simulations/                    # High-level simulation interface
-├── Diagnostics/                    # Diagnostics and callbacks
-├── OutputWriters/                  # File I/O
-├── OutputReaders/                  # FieldTimeSeries and output loading
-└── Utils/                          # Utilities and helpers
+# Trailing whitespace and blank lines at end of file (CI also requires exactly one final newline)
+git diff --check origin/main
 ```
 
-## Common Pitfalls
+`Pkg.test(; test_args=["--list"])` lists every test with its last duration. The full suite is
+large; run the files closest to the change (the `/run-tests` skill has a mapping). Docstring
+examples are doctests and run in the documentation build.
 
-1. **Type instability** in kernels ruins GPU performance
-2. **Overconstraining types**: use annotations for dispatch, not documentation
-3. **Missing imports**: tests will catch this — add to `using` statements
-4. **Plain `julia` blocks in docstrings**: always use `jldoctest`
-5. **Subtle bugs from missing method imports**, especially in extensions
-6. **Expecting unexported names**: consider exporting them rather than changing user scripts
-7. **Extending `getproperty` to fix undefined property bugs**: fix on the caller side instead
-8. **"Type is not callable" errors**: variable name shadows a function — rename or qualify
-9. **Quick fixes that break correctness**: if a test fails after a change, revisit the original edit
-10. **Commented-out code**: delete it. Git is the journal — don't leave commented code, debugging
-    artifacts, or stale copy-paste remnants
-11. **2D indexing on fields**: always use 3D indexing (`field[i, j, k]`). 2D indexing works by
-    coincidence on some fields but is unsupported and will break
-12. **Hardcoded Float64**: never use `0.0`, `1.0` in kernels or constructors; use `zero(grid)` etc.
-13. **Scope creep in PRs**: keep changes focused on a single concern. Unrelated cleanup goes
-    in a separate PR
-14. **Modifying Project.toml dependencies**: never add, remove, or change `[deps]` or `[weakdeps]`
-    in the root `Project.toml` unless the task absolutely requires it. Dependency changes have
-    wide-reaching consequences — they affect CI, load time, and downstream compatibility.
-    Only touch `[compat]` bounds when explicitly asked.
+## Before you change these, ask
 
-## Git Workflow
+- **Regression reference data and tolerances** (`test/regression/`, `test/setup/data_dependencies.jl`).
+  A failing regression test is evidence of a behavior change. Find the cause; do not regenerate the
+  data or loosen the tolerance to make it pass. When maintainers do regenerate it, the
+  `regression_truth_data_vN` suffix must be bumped, because DataDeps never re-downloads a cached
+  name and CI keeps a persistent depot.
+- **`[deps]` and `[weakdeps]` in `Project.toml`**. They change load time and CI for every
+  downstream package. Touch `[compat]` only when asked.
+- **Exported names and keyword arguments of public constructors**. Downstream packages (ClimaOcean,
+  Breeze, NumericalEarth) and user scripts depend on them.
 
-Follow [ColPrac](https://github.com/SciML/ColPrac). Feature branches, descriptive commits,
-update tests and docs with code changes, check CI before merging.
+## Verifying your work
 
-## Design Principles
+- Read the current definition of anything you call (`@which`, `methods`, or the source under
+  `src/`), including Oceananigans' own API. It changes quickly and remembered signatures go stale.
+- A test that fails on your branch is yours until you reproduce the same failure on `main`.
+- Report results by quoting the test summary line. An exit code alone is not a pass.
+- If a fix makes a failing test run but you cannot explain why it was failing, the fix is
+  probably wrong. Revisit the change that broke it.
+- GPU "dynamic invocation error": rerun on CPU. If it passes there, the cause is almost always a
+  type instability that the CPU tolerates.
+- `UndefVarError` or load failures right after pulling are usually a stale `Manifest.toml`;
+  re-resolve the environment before debugging code.
 
-- **Dispatch over conditionals**: use Julia's type system and multiple dispatch instead of
-  `if`/`else` branching. Backend-specific code goes in `ext/` extensions, not `if` branches in `src/`
-- **Use `on_architecture` for data transfers** — never manual `Array()` / `CuArray()` calls
-- **Defaults serve the common case**: avoid `nothing` defaults when a concrete default (like `CPU()`)
-  covers 80% of usage. Minimize boilerplate for the typical user.
-- **Keyword argument names must be consistent** across related types and constructors
-- **Always use explicit `return`** in functions longer than one expression
-- **One operation per line** as default; break long expressions across lines
+## Conventions that are not visible from the code
 
-## Agent Behavior
+- Model constructors take `grid` positionally and everything else as keywords:
+  `NonhydrostaticModel(grid; closure=nothing)`. Omit the `;` when there are no keywords.
+  (`ShallowWaterModel(grid, gravitational_acceleration; ...)` is the one exception.)
+- Source code uses explicit imports, checked by `unit/quality_assurance`. Examples, docs, and
+  tests use `using Oceananigans`; if a common name is not exported, consider exporting it rather
+  than importing it in the script.
+- Backend-specific code goes in `ext/` and is selected by dispatch, not by `if` branches in `src/`.
+  Move data between architectures with `on_architecture`, not `Array(...)` / `CuArray(...)`.
+- Delete commented-out code and debugging leftovers; git keeps the history. Comments describe the
+  code that is there, not how it got there.
+- Never extend `getproperty` to make an undefined-property error go away; fix the caller.
+- A "type is not callable" error usually means a local variable shadows a function name.
+- Keep a PR to one concern. Unrelated cleanup goes in its own PR.
 
-- Prioritize type stability and GPU compatibility
-- Follow established patterns in existing code
-- Add tests for new functionality; update exports when adding public API
-- Reference physics equations in comments when implementing dynamics
+## Where to look
 
-## Further Reading
+Rules in `.claude/rules/` load automatically in Claude Code when you edit matching files. Other
+agents should read the one that matches the task:
 
-Detailed reference docs are in `.agents/` — read on demand:
+| Task | Read |
+|------|------|
+| Writing or editing kernels, operators, or anything in `src/` | `.claude/rules/kernel-rules.md` |
+| Naming, notation, comments | `.claude/rules/style-rules.md` |
+| Docstrings | `.claude/rules/docstring-rules.md` |
+| Tests | `.claude/rules/testing-rules.md` |
+| Docs pages | `.claude/rules/docs-rules.md` |
+| Examples | `.claude/rules/examples-rules.md` |
 
-| Document | Content |
-|----------|---------|
-| `.agents/testing.md` | Full testing guidelines, running tests, debugging |
-| `.agents/documentation.md` | Building docs, fast builds, doctest details, writing examples |
-| `.agents/validation.md` | Reproducing paper results step-by-step |
-
-### Auto-loading Rules
-
-Rules in `.claude/rules/` load automatically when you touch matching files:
-- `kernel-rules.md` — GPU kernel requirements (src/)
-- `docstring-rules.md` — docstring and jldoctest conventions (src/)
-- `testing-rules.md` — test writing and running (test/)
-- `docs-rules.md` — documentation building and style (docs/)
-- `examples-rules.md` — Literate.jl example conventions (examples/)
-- `style-rules.md` — naming, notation, and comment style (src/, test/, validation/, examples/)
-- `julia-repl-rules.md` — prefer an MCP Julia REPL over Bash when available (always)
-
-### Skills (slash commands)
-
-- `/run-tests` — run targeted tests, prioritized by what's likely to break
-- `/build-docs` — build documentation locally
-- `/add-feature` — checklist for adding new physics/features
-- `/new-simulation` — set up, run, and visualize a new simulation (with or without a reference paper)
-- `/babysit-ci` — monitor CI, auto-fix small issues, pause on bigger problems, retrigger flaky runs
+Skills (`.claude/skills/`): `/run-tests`, `/build-docs`, `/new-simulation`, `/babysit-ci`.
