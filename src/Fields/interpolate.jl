@@ -19,11 +19,13 @@ Return indices `low, high` of `vec`tor for which
 vec[low] ≤ val && vec[high] ≥ val
 ```
 
-using a binary search. The input array `vec` has to be monotonically increasing.
+using a binary search. The input array `vec` has to be monotonically increasing. When `val` equals a
+node that the search visits, both indices are that node's.
 
 The search runs a fixed number of halvings, the bit length of `N`, with no early exit: once the bracket
-is found the remaining passes change nothing. Reactant cannot raise a loop with a second exit, and a fixed
-trip count costs nothing on GPUs, where the threads of a warp wait for the longest search anyway.
+is found the remaining passes change nothing. Reactant cannot raise a loop with a second exit. The fixed
+trip count costs at most a few idle passes on the CPU, and nothing on GPUs, where the threads of a warp
+wait for the longest search anyway.
 
 Code credit: https://gist.github.com/cuongld2/8e4fed9ba44ea2b4598f90e7d5b6c612/155f9cb595314c8db3a266c3316889443b068017
 """

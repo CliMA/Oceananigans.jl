@@ -497,21 +497,30 @@ end
     @test all(Array(interior(interpolated)) .≈ 2)
 end
 
-@kernel function _bracket!(out, column, z, N)
-    i = @index(Global, Linear)
-    @inbounds out[i] = first(Oceananigans.Fields.index_binary_search(column, z[i], N))
+@kernel function _bracket!(low, high, column, z, N)
+    n = @index(Global, Linear)
+    i₁, i₂ = Oceananigans.Fields.index_binary_search(column, z[n], N)
+    @inbounds low[n] = i₁
+    @inbounds high[n] = i₂
 end
 
-bracket!(out, column, z) = _bracket!(get_backend(out), 2)(out, column, z, length(column); ndrange=length(out))
+bracket!(low, high, column, z) = _bracket!(get_backend(low), 16)(low, high, column, z, length(column); ndrange=length(low))
 
 # A search with an early `return` inside its loop cannot be raised ("cannot raise op to stablehlo")
 @testset "index_binary_search inside a raised kernel" begin
-    column = Float32[100, 200, 300, 400]
-    points = Float32[150, 200, 350, 50, 450]
-    out = Reactant.to_rarray(zeros(Int, length(points)))
-    raised_bracket! = @compile raise_first=true raise=true bracket!(out, Reactant.to_rarray(column), Reactant.to_rarray(points))
-    raised_bracket!(out, Reactant.to_rarray(column), Reactant.to_rarray(points))
-    @test Array(out) == [first(Oceananigans.Fields.index_binary_search(column, z, length(column))) for z in points]
+    column = Float32.(cumsum(1:16))
+    midpoints = (column[1:end-1] .+ column[2:end]) ./ 2
+    points = vcat(column, midpoints, column[1] - 1, column[end] + 1)
+
+    low = Reactant.to_rarray(zeros(Int, length(points)))
+    high = Reactant.to_rarray(zeros(Int, length(points)))
+    reactant_column, reactant_points = Reactant.to_rarray(column), Reactant.to_rarray(points)
+    raised_bracket! = @compile raise_first=true raise=true bracket!(low, high, reactant_column, reactant_points)
+    raised_bracket!(low, high, reactant_column, reactant_points)
+
+    expected = [Oceananigans.Fields.index_binary_search(column, z, length(column)) for z in points]
+    @test Array(low) == first.(expected)
+    @test Array(high) == last.(expected)
 end
 
 @kernel function _store_adaptive_Δt!(c, td)
