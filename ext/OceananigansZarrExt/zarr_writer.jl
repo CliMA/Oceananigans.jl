@@ -21,7 +21,8 @@ function OutputWriters.ZarrWriter(model::AbstractModel, outputs;
                                   dimensions = Dict{String, Any}(),
                                   include_grid_metrics = true,
                                   dimension_name_generator = trilocation_dim_name,
-                                  dimension_type = Float64)
+                                  dimension_type = Float64,
+                                  time_origin = nothing)
 
     # Reject ZipStore explicitly — it's read-only in Zarr.jl by design.
     if store isa Zarr.ZipStore
@@ -93,6 +94,8 @@ function OutputWriters.ZarrWriter(model::AbstractModel, outputs;
                               default_output_attributes(model),
                               output_attributes)
 
+    time_origin = materialize_time_origin(time_origin, model.clock.time)
+
     return ZarrWriter(filepath,
                       store,
                       unique_grids,
@@ -114,6 +117,7 @@ function OutputWriters.ZarrWriter(model::AbstractModel, outputs;
                       chunks,
                       dimension_name_generator,
                       dimension_type,
+                      time_origin,
                       false)
 end
 
@@ -293,11 +297,9 @@ Base.@nospecializeinfer function initialize_zarr_store!(@nospecialize(writer::Za
     if is_root
         g = Zarr.zgroup(writer.store; attrs=root_attrs)
 
-        time_units = model.clock.time isa AbstractTime ?
-            "seconds since 2000-01-01 00:00:00" : "seconds"
         time_attrs = Dict{String, Any}(
             "_ARRAY_DIMENSIONS" => ["time"],
-            "units"             => time_units,
+            "units"             => time_units(writer.time_origin),
             "long_name"         => "Time",
             "standard_name"     => "time",
             "axis"              => "T",
@@ -546,7 +548,7 @@ function write_output_serial!(writer::ZarrWriter, model)
     # accumulated sum is "current").
     fetched = [(name, output, fetch_and_convert_output(output, model, writer)) for (name, output) in pairs(writer.outputs)]
 
-    time = zarr_time_value(output_time(model.clock, writer.schedule), writer.dimension_type)
+    time = zarr_time_value(output_time(model.clock, writer.schedule), writer.time_origin, writer.dimension_type)
     append!(g["time"], [time]; dims=1)
     for (name, output, data) in fetched
         data = squeeze_reduced_dimensions(output, data)
@@ -561,10 +563,9 @@ function write_output_serial!(writer::ZarrWriter, model)
     return nothing
 end
 
-zarr_time_value(time, dimension_type) = convert(dimension_type, time)
-function zarr_time_value(time::AbstractTime, dimension_type)
-    epoch = DateTime(2000, 1, 1)
-    milliseconds = Dates.value(DateTime(time) - epoch)
+zarr_time_value(time, time_origin, dimension_type) = convert(dimension_type, time)
+function zarr_time_value(time::AbstractTime, time_origin, dimension_type)
+    milliseconds = Dates.value(DateTime(time) - time_origin)
     return convert(dimension_type, milliseconds) / convert(dimension_type, 1000)
 end
 
@@ -589,7 +590,7 @@ function write_output_distributed!(writer::ZarrWriter, model)
     # Every rank calls `output_time`, not just root: for a schedule like `FilteredTimeInterval` this
     # also advances internal state, which has to stay in step across every rank's own copy of
     # the schedule. Persisting the value, though, is still root-only.
-    time = zarr_time_value(output_time(model.clock, writer.schedule), writer.dimension_type)
+    time = zarr_time_value(output_time(model.clock, writer.schedule), writer.time_origin, writer.dimension_type)
     if is_root
         append!(g["time"], [time]; dims=1)
     end

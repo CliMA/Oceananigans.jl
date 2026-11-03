@@ -2,6 +2,7 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Zarr
 using Dates: value
+using Oceananigans.OutputWriters: time_units
 using Oceananigans.Grids: MutableVerticalDiscretization, rnodes
 using Oceananigans.Utils: unparameterized_type
 
@@ -204,6 +205,53 @@ end
         expected_initial_time = value(DateTime(2021, 1, 1) - epoch) / 1000
         @test group["time"].attrs["units"] == "seconds since 2000-01-01 00:00:00"
         @test group["time"][1] == expected_initial_time
+
+        rm(filepath; recursive=true, force=true)
+    end
+end
+
+@testset "ZarrWriter [time origin]" begin
+    @test time_units(nothing) == "seconds"
+    @test time_units(DateTime(2025, 4, 2, 14)) == "seconds since 2025-04-02 14:00:00"
+    @test time_units(DateTime(2025, 4, 2, 14, 0, 0, 250)) == "seconds since 2025-04-02 14:00:00.250"
+
+    for arch in archs
+        grid = RectilinearGrid(arch; size=(1, 1, 1), extent=(1, 1, 1))
+        filepath = abspath("test_zarr_time_origin.zarr")
+
+        function written_time(model; stop_time, kw...)
+            isdir(filepath) && rm(filepath; recursive=true, force=true)
+            simulation = Simulation(model; Δt=1second, stop_time, verbose=false)
+            simulation.output_writers[:zarr] =
+                ZarrWriter(model, (; c=model.tracers.c);
+                           filename=filepath,
+                           schedule=IterationInterval(1),
+                           overwrite_files=true,
+                           include_grid_metrics=false,
+                           kw...)
+            run!(simulation)
+            time = Zarr.zopen(filepath)["time"]
+            return time.attrs["units"], time[:]
+        end
+
+        # A numeric clock counts bare seconds unless told where its zero sits on the calendar;
+        # the origin changes only the metadata, never the stored values.
+        model = NonhydrostaticModel(grid; timestepper=:QuasiAdamsBashforth2, tracers=:c)
+        units, times = written_time(model; stop_time=2)
+        @test units == "seconds"
+        @test times ≈ [0, 1, 2]
+
+        model = NonhydrostaticModel(grid; timestepper=:QuasiAdamsBashforth2, tracers=:c)
+        units, times = written_time(model; stop_time=2, time_origin=DateTime(2025, 4, 2, 14))
+        @test units == "seconds since 2025-04-02 14:00:00"
+        @test times ≈ [0, 1, 2]
+
+        # A DateTime clock counts from the given origin instead of the default 2000-01-01.
+        clock = Clock(time=DateTime(2021, 1, 1))
+        model = NonhydrostaticModel(grid; clock, timestepper=:QuasiAdamsBashforth2, tracers=:c)
+        units, times = written_time(model; stop_time=DateTime(2021, 1, 1, 0, 0, 2), time_origin=DateTime(2021, 1, 1))
+        @test units == "seconds since 2021-01-01 00:00:00"
+        @test times ≈ [0, 1, 2]
 
         rm(filepath; recursive=true, force=true)
     end

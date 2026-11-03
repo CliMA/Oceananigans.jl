@@ -106,7 +106,8 @@ function NetCDFWriter(model::AbstractModel, outputs;
                       part = 1,
                       file_splitting = NoFileSplitting(),
                       dimension_name_generator = trilocation_dim_name,
-                      dimension_type = Float64)
+                      dimension_type = Float64,
+                      time_origin = nothing)
 
     if with_halos && indices != (:, :, :)
         throw(ArgumentError("If with_halos=true then you cannot pass indices: $indices"))
@@ -141,6 +142,8 @@ function NetCDFWriter(model::AbstractModel, outputs;
     # schedule::AveragedTimeInterval
     schedule, outputs = time_average_outputs(schedule, outputs, model)
 
+    time_origin = materialize_time_origin(time_origin, model.clock.time)
+
     return NetCDFWriter(unique_grids,
                         output_grid_map,
                         filepath,
@@ -161,6 +164,7 @@ function NetCDFWriter(model::AbstractModel, outputs;
                         file_splitting,
                         dimension_name_generator,
                         dimension_type,
+                        time_origin,
                         false)
 end
 
@@ -212,7 +216,8 @@ Base.@nospecializeinfer function initialize_nc_file(@nospecialize(model),
                                                     overwrite_files,
                                                     deflatelevel,
                                                     dimension_name_generator,
-                                                    dimension_type)
+                                                    dimension_type,
+                                                    time_origin)
 
     mode = (overwrite_files || !isfile(filepath)) ? "c" : "a"
 
@@ -244,10 +249,7 @@ Base.@nospecializeinfer function initialize_nc_file(@nospecialize(model),
 
     # Define variables for each dimension and attributes if this is a new file.
     if mode == "c"
-        # DateTime and TimeDate are both <: AbstractTime
-        time_attrib = model.clock.time isa AbstractTime ?
-            Dict("long_name" => "Time", "units" => "seconds since 2000-01-01 00:00:00") :
-            Dict("long_name" => "Time", "units" => "seconds")
+        time_attrib = Dict("long_name" => "Time", "units" => time_units(time_origin))
 
         create_time_dimension!(dataset, attrib=time_attrib, dimension_type=dimension_type)
 
@@ -350,7 +352,8 @@ initialize_nc_file(ow::NetCDFWriter, model) = initialize_nc_file(model,
                                                                  ow.overwrite_files,
                                                                  ow.deflatelevel,
                                                                  ow.dimension_name_generator,
-                                                                 ow.dimension_type)
+                                                                 ow.dimension_type,
+                                                                 ow.time_origin)
 
 #####
 ##### Variable definition
@@ -464,6 +467,12 @@ write_time_dependent_output!(ds, ::ConstantFields, data, time_index, output_name
 float_or_date_time(t) = t
 float_or_date_time(t::AbstractTime) = DateTime(t)
 
+# The `time` variable as something `t` compares with and stores into. A `DateTime` goes through
+# NCDatasets' CF encoding; a numeric clock's seconds bypass it, since with a `time_origin` the
+# decoded values would come back as `DateTime`s.
+time_variable(ds, t) = ds["time"].var
+time_variable(ds, t::DateTime) = ds["time"]
+
 """
     time_index_for_writing(ds, t, ow, filepath)
 
@@ -477,10 +486,11 @@ instead: if `true`, the index of the snapshot `t` belongs at is returned, and if
 `nothing` is returned, keeping what the file already holds.
 """
 function time_index_for_writing(ds, t, ow, filepath)
-    time_index = length(ds["time"]) + 1
+    time = time_variable(ds, t)
+    time_index = length(time) + 1
 
     # The common case: the clock is ahead of every time in the file, so output is appended.
-    if time_index == 1 || ds["time"][time_index - 1] < t
+    if time_index == 1 || time[time_index - 1] < t
         return time_index
     end
 
@@ -489,7 +499,7 @@ function time_index_for_writing(ds, t, ow, filepath)
         return nothing
     end
 
-    return something(findfirst(≥(t), collect(ds["time"])), time_index)
+    return something(findfirst(≥(t), collect(time)), time_index)
 end
 
 """
@@ -530,7 +540,7 @@ function write_output!(ow::NetCDFWriter, model::AbstractModel)
         return nothing
     end
 
-    ds["time"][time_index] = t
+    time_variable(ds, t)[time_index] = t
 
     verbose && @info "Writing NetCDF outputs at time index $(time_index): $(keys(ow.outputs))..."
 

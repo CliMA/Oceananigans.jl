@@ -67,6 +67,8 @@ using Oceananigans.OutputWriters:
     halo_fill_2d_metric,
     materialize_serialized_output,
     serialize_vertical_coordinate,
+    materialize_time_origin,
+    time_units,
     ZarrWriter
 using Oceananigans.Utils:
     materialize_schedule,

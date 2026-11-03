@@ -117,6 +117,54 @@ function test_timedate_netcdf_output(arch)
     return nothing
 end
 
+function test_netcdf_time_origin(arch)
+    grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
+    Arch = typeof(arch)
+    filepath = "test_time_origin_$Arch.nc"
+
+    function written_time(model; stop_time, kw...)
+        isfile(filepath) && rm(filepath)
+        simulation = Simulation(model; Δt=1.5, stop_time, verbose=false)
+        simulation.output_writers[:netcdf] = NetCDFWriter(model, model.velocities;
+                                                          filename = filepath,
+                                                          schedule = IterationInterval(1),
+                                                          include_grid_metrics = false,
+                                                          kw...)
+        run!(simulation)
+        NCDataset(filepath) do ds
+            time = ds["time"]
+            return time.attrib["units"], time.var[:], time[:]
+        end
+    end
+
+    # A numeric clock stores bare seconds; with an origin the stored values are unchanged
+    # and NCDatasets decodes them against the units attribute.
+    model = NonhydrostaticModel(grid; timestepper = :QuasiAdamsBashforth2)
+    units, raw, decoded = written_time(model; stop_time=3)
+    @test units == "seconds"
+    @test raw == [0, 1.5, 3]
+    @test decoded == [0, 1.5, 3]
+
+    time_origin = DateTime(2025, 4, 2, 14)
+    model = NonhydrostaticModel(grid; timestepper = :QuasiAdamsBashforth2)
+    units, raw, decoded = written_time(model; stop_time=3, time_origin)
+    @test units == "seconds since 2025-04-02 14:00:00"
+    @test raw == [0, 1.5, 3]
+    @test decoded == time_origin .+ Millisecond.([0, 1500, 3000])
+
+    # A DateTime clock counts from the given origin instead of the default 2000-01-01.
+    clock = Clock(time=DateTime(2021, 1, 1))
+    model = NonhydrostaticModel(grid; clock, timestepper = :QuasiAdamsBashforth2)
+    units, raw, decoded = written_time(model; stop_time=DateTime(2021, 1, 1, 0, 0, 3), time_origin=DateTime(2021, 1, 1))
+    @test units == "seconds since 2021-01-01 00:00:00"
+    @test raw == [0, 1.5, 3]
+    @test decoded == DateTime(2021, 1, 1) .+ Millisecond.([0, 1500, 3000])
+
+    rm(filepath)
+
+    return nothing
+end
+
 function test_netcdf_grid_metrics_rectilinear(arch, FT)
     Nx, Ny, Nz = 8, 6, 4
     Hx, Hy, Hz = 1, 2, 3
@@ -3869,6 +3917,7 @@ end
         @testset "DateTime and TimeDate output [$A]" begin
             test_datetime_netcdf_output(arch)
             test_timedate_netcdf_output(arch)
+            test_netcdf_time_origin(arch)
             test_netcdf_dimension_type(arch)
         end
 

@@ -80,7 +80,9 @@ using Oceananigans.OutputWriters:
     materialize_serialized_output,
     serialize_vertical_coordinate,
     construct_ossg_halo_padded_array,
-    halo_fill_2d_metric
+    halo_fill_2d_metric,
+    materialize_time_origin,
+    time_units
 using Oceananigans.Utils:
     materialize_schedule, versioninfo_with_gpu, oceananigans_versioninfo, prettykeys
 

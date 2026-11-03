@@ -24,6 +24,29 @@ output_time(clock, schedule) = clock.time
 """
 $(TYPEDSIGNATURES)
 
+The calendar instant a writer's `time` coordinate counts seconds from, as a `DateTime`, or `nothing`
+when it is a bare count. A caller-supplied `time_origin` wins; otherwise an `AbstractTime` clock
+(a `DateTime` or `TimeDate`) counts from 2000-01-01 and a numeric clock has no origin.
+"""
+materialize_time_origin(time_origin, clock_time) = DateTime(time_origin)
+materialize_time_origin(::Nothing, clock_time) = nothing
+materialize_time_origin(::Nothing, clock_time::AbstractTime) = DateTime(2000, 1, 1)
+
+"""
+$(TYPEDSIGNATURES)
+
+CF `units` attribute of a writer's `time` coordinate: `"seconds since <time_origin>"`, which lets a
+CF-aware reader decode every value to a calendar instant, or `"seconds"` without an origin.
+"""
+time_units(::Nothing) = "seconds"
+time_units(time_origin::DateTime) = "seconds since " * Dates.format(time_origin, time_origin_format(time_origin))
+
+time_origin_format(time_origin) =
+    iszero(Dates.millisecond(time_origin)) ? "yyyy-mm-dd HH:MM:SS" : "yyyy-mm-dd HH:MM:SS.sss"
+
+"""
+$(TYPEDSIGNATURES)
+
 Return whether an output written on `schedule` exists at the start of a simulation (iteration 0).
 Most schedules have one (a `TimeInterval`, for instance, treats iteration 0 as its own first
 output); a schedule whose output only exists once it has accumulated some data, like

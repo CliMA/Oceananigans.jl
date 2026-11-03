@@ -9,6 +9,7 @@ export
     FilteredTimeInterval, AbstractFilterKernel, LanczosKernel, BoxcarKernel, HanningKernel
 
 using DocStringExtensions: TYPEDSIGNATURES
+using Dates: Dates, AbstractTime, DateTime
 using OffsetArrays: OffsetArrays, OffsetArray
 using OrderedCollections: OrderedDict
 
