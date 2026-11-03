@@ -164,7 +164,6 @@ end
     return Δt / timestepper.β[nstage]
 end
 
-# Every SSP stage is a forward-Euler step over the full Δt, so the next substep has the same Δτ.
 @inline adaptive_advection_timestep(timestepper::SSPRungeKutta3TimeStepper, clock) = clock.last_stage_Δt
 
 @inline sum_rk3_coefficients(ts, ::Val{1}) = ts.γ¹
