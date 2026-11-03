@@ -2,6 +2,7 @@ using KernelAbstractions: @kernel, @index
 
 using Oceananigans.Grids: node_names
 using Oceananigans.Architectures: cpu_architecture, GPU, CPU, ReactantState
+using Oceananigans.Utils: apply_regionally!
 
 #####
 ##### Utilities
@@ -276,7 +277,28 @@ Base.copyto!(f::Field, src::Base.Broadcast.Broadcasted{<:Base.Broadcast.DefaultA
 Base.copyto!(f::Field, src::Base.Broadcast.Broadcasted{Base.Broadcast.DefaultArrayStyle{0}}) = copyto!(interior(f), src)
 Base.copyto!(f::Field, src::AbstractArray) = copyto!(interior(f), src)
 Base.copyto!(f::Field, src::OffsetArray) = copyto!(interior(f), parent(src))
-Base.copyto!(f::Field, src::Field) = copyto!(parent(f), parent(src))
+
+"""
+$(TYPEDSIGNATURES)
+
+Copy `src` into `dst` and return `dst`. When the two fields have the same location, indices,
+and parent size, the whole parent array is copied, halo regions included. Otherwise only the
+interior points are copied, with `src` broadcast across `dst` as `set!` does. Fields on a
+`MultiRegionGrid` are copied region by region.
+"""
+function Base.copyto!(dst::Field, src::Field)
+    apply_regionally!(copy_regional_field!, dst, src)
+    return dst
+end
+
+function copy_regional_field!(dst, src)
+    if location(dst) === location(src) && dst.indices == src.indices && size(parent(dst)) == size(parent(src))
+        copyto!(parent(dst), parent(src))
+    else
+        interior(dst) .= interior(src)
+    end
+    return nothing
+end
 
 # Disambiguation with SparseArrays.CHOLMOD
 Base.copyto!(f::Field, src::CHOLMOD.Dense) = copyto!(interior(f), src)

@@ -807,6 +807,52 @@ end
         @test_logs (:warn, r"^An error was encountered within set!") @test_throws MethodError set!(c, (x, y) -> x)
     end
 
+    @testset "copyto! between fields [$(summary(arch))]" for arch in archs
+        grid = RectilinearGrid(arch; size=(4, 6, 8), halo=(2, 2, 2), extent=(1, 1, 1), topology=(Periodic, Bounded, Bounded))
+        src = CenterField(grid)
+        set!(src, (x, y, z) -> x + 2y + 3z)
+        fill_halo_regions!(src)
+
+        # Same location, indices, and halos: the whole parent array, halos included, is copied
+        dst = CenterField(grid)
+        @test copyto!(dst, src) === dst
+        @test parent(dst) == parent(src)
+
+        # Different halo sizes: only the interior is copied
+        wide_grid = RectilinearGrid(arch; size=(4, 6, 8), halo=(3, 3, 3), extent=(1, 1, 1), topology=(Periodic, Bounded, Bounded))
+        wide = CenterField(wide_grid)
+        @test copyto!(wide, src) === wide
+        @test interior(wide) == interior(src)
+        @test all(iszero, Array(parent(wide))[1, :, :])
+
+        # Different locations: only the interior is copied
+        ξ = XFaceField(grid)
+        @test copyto!(ξ, src) === ξ
+        @test interior(ξ) == interior(src)
+
+        # Windowed fields with the same indices share their whole parent arrays
+        windowed_src = CenterField(grid; indices=(:, :, 1:2))
+        windowed = CenterField(grid; indices=(:, :, 1:2))
+        set!(windowed_src, (x, y, z) -> x - y)
+        fill_halo_regions!(windowed_src)
+        @test copyto!(windowed, windowed_src) === windowed
+        @test parent(windowed) == parent(windowed_src)
+
+        # A window cannot receive a field with a larger interior
+        @test_throws DimensionMismatch copyto!(windowed, src)
+
+        # A reduced source is broadcast across the destination
+        reduced = Field{Center, Center, Nothing}(grid)
+        set!(reduced, (x, y) -> x + 2y)
+        @test copyto!(dst, reduced) === dst
+        @test interior(dst, :, :, 1) == interior(reduced, :, :, 1)
+        @test interior(dst, :, :, 8) == interior(reduced, :, :, 1)
+
+        # Incompatible sizes are an error rather than a partial copy
+        small = CenterField(RectilinearGrid(arch; size=(4, 6, 4), extent=(1, 1, 1), topology=(Periodic, Bounded, Bounded)))
+        @test_throws DimensionMismatch copyto!(small, src)
+    end
+
     @testset "isapprox on Fields" begin
         for arch in archs, FT in float_types
             # Make sure this doesn't require scalar indexing
