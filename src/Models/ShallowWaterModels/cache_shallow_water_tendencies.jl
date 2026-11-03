@@ -12,7 +12,7 @@ Store the current tendencies `Gⁿ` into `G⁻` for solution fields (`uh`, `vh`,
 This function is called after advancing the model state but before computing new tendencies,
 preserving the tendencies needed for a :RungeKutta3 timestepper.
 """
-function Oceananigans.TimeSteppers.cache_previous_tendencies!(model::ShallowWaterModel)
+function TimeSteppers.cache_previous_tendencies!(model::ShallowWaterModel)
     _cache_field!, _ = configure_kernel(model.architecture, model.grid, :xyz, _cache_field_tendencies!)
 
     # One launch per field: fields have different static sizes,

@@ -1,18 +1,15 @@
-using Oceananigans.ImmersedBoundaries
 using Oceananigans.ImmersedBoundaries:
     AbstractGridFittedBottom,
+    GridFittedBoundary,
     GridFittedVerticalBoundaries,
     PartialCellVerticalBoundaries,
-    GridFittedBoundary,
+    active_cells_maps,
     bottom_height_interior,
     compute_mask,
     has_active_cells_map,
-    has_active_z_columns,
-    active_cells_maps
+    has_active_z_columns
 
 using Oceananigans.Grids: CommunicatingSide, TwoSided
-
-import Oceananigans.ImmersedBoundaries: build_active_cells_map
 
 # For the moment we extend distributed in the `ImmersedBoundaryGrids` module.
 # When we fix the immersed boundary module to remove all the `TurbulenceClosure` stuff
@@ -49,7 +46,7 @@ function reconstruct_global_immersed_boundary(ib::GridFittedBoundary, arch, grid
     return GridFittedBoundary(global_mask)
 end
 
-function with_halo(new_halo, grid::DistributedImmersedBoundaryGrid)
+function Grids.with_halo(new_halo, grid::DistributedImmersedBoundaryGrid)
     active_cells_map      = has_active_cells_map(grid)
     active_z_columns      = has_active_z_columns(grid)
     immersed_boundary     = grid.immersed_boundary
@@ -142,7 +139,7 @@ end
 # The south and north maps span only the x-range of the `halo_independent` region, so that the five maps are disjoint.
 # Therefore, the `interior_active_cells` in this case is a `NamedTuple` containing these 5 elements and their union.
 # Note that boundary-adjacent maps corresponding to non-partitioned directions are set to `nothing`
-function build_active_cells_map(grid::AbstractGrid{<:Any, <:Any, <:Any, <:Any, <:AsynchronousDistributed}, ib)
+function ImmersedBoundaries.build_active_cells_map(grid::AbstractGrid{<:Any, <:Any, <:Any, <:Any, <:AsynchronousDistributed}, ib)
     arch = architecture(grid)
     Rx, Ry, _  = arch.ranks
     Tx, Ty, _  = topology(grid)

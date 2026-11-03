@@ -1,6 +1,7 @@
+using KernelAbstractions.Extras.LoopInfo: @unroll
+
 using Oceananigans: fields
 using Oceananigans.DistributedComputations: maybe_distributed_fill_halo_regions!
-using KernelAbstractions.Extras.LoopInfo: @unroll
 
 @inline build_halo_fill_args(arch, f, grid, args...) = convert_to_device(arch, (f.data, f.boundary_conditions, f.indices, instantiated_location(f), grid, args...))
 
@@ -147,7 +148,7 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
             @inbounds transport_weight = transport_weights[substep]
 
             substep_clock = (; time = add_time_interval(clock.time, Δτᴮ, substep - 1), iteration = clock.iteration, stage = 0, last_stage_Δt = Δτᴮ)
-            only_local_halos = substep == 1 || (substep - 1) % exchange_interval != 0
+            only_local_halos = !exchange_halos(free_surface, substep, exchange_interval)
 
             maybe_distributed_fill_halo_regions!(arch, η_halo_args[1:end-1]..., substep_clock, η_halo_args[end]; only_local_halos)
             @apply_regionally cache_boundary_conditions!((U, V, η), substep_clock, barotropic_model_fields)
@@ -201,7 +202,7 @@ function iterate_split_explicit_in_halo!(free_surface, grid, GUⁿ, GVⁿ, Δτ�
             @inbounds averaging_weight = weights[substep]
             @inbounds transport_weight = transport_weights[substep]
 
-            if substep > 1 && (substep - 1) % exchange_interval == 0
+            if exchange_halos(free_surface, substep, exchange_interval)
                 fill_halo_regions!((U, V, η))
             end
 
@@ -236,7 +237,7 @@ end
 @inline fill_barotropic_state_halos!(field, ::FillHaloSplitExplicit, model) =
     fill_halo_regions!(field, model.clock, fields(model); async=true)
 
-function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroclinic_timestepper, Δt)
+function HydrostaticFreeSurfaceModels.step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroclinic_timestepper, Δt)
     # Note: free_surface.displacement.grid != model.grid for DistributedSplitExplicitFreeSurface since
     # halo_size(free_surface.displacement.grid) != halo_size(model.grid)
     free_surface_grid = free_surface.displacement.grid

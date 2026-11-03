@@ -1,15 +1,12 @@
-using Oceananigans.BoundaryConditions
-using Oceananigans.BoundaryConditions: FieldBoundaryConditions, BoundaryCondition
-using Oceananigans.BoundaryConditions: MultiRegionCommunication, DistributedCommunication
+using KernelAbstractions: @index, @kernel, get_backend
+
+using Oceananigans.Architectures: Architectures, on_architecture
+using Oceananigans.BoundaryConditions: BoundaryConditions, Bottom, BottomAndTop, BoundaryCondition,
+                                       DistributedCommunication, East, FieldBoundaryConditions,
+                                       MultiRegionCommunication, North, South, SouthAndNorth, Top, West, WestAndEast
+using Oceananigans.Fields: Fields, communication_buffers
 using Oceananigans.Grids: CommunicatingSide, halo_size, size, topology
 using Oceananigans.Utils: launch!
-
-using Adapt
-
-using KernelAbstractions: @kernel, @index, get_backend
-
-import Oceananigans.Architectures: on_architecture
-import Oceananigans.Fields: communication_buffers
 
 const MCBC = BoundaryCondition{<:MultiRegionCommunication}
 const DCBC = BoundaryCondition{<:DistributedCommunication}
@@ -37,7 +34,7 @@ Adapt.adapt_structure(to, buff::CommunicationBuffers) =
                          Adapt.adapt(to, buff.northeast),
                          Adapt.adapt(to, buff.state))
 
-on_architecture(arch, buff::CommunicationBuffers) =
+Architectures.on_architecture(arch, buff::CommunicationBuffers) =
     CommunicationBuffers(on_architecture(arch, buff.west),
                          on_architecture(arch, buff.east),
                          on_architecture(arch, buff.south),
@@ -48,8 +45,7 @@ on_architecture(arch, buff::CommunicationBuffers) =
                          on_architecture(arch, buff.northeast),
                          on_architecture(arch, buff.state))
 
-
-communication_buffers(grid::DistributedGrid, data, boundary_conditions) = CommunicationBuffers(grid, data, boundary_conditions)
+Fields.communication_buffers(grid::DistributedGrid, data, boundary_conditions) = CommunicationBuffers(grid, data, boundary_conditions)
 
 """
 $(TYPEDSIGNATURES)

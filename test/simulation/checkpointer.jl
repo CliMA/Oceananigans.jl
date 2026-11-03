@@ -844,6 +844,38 @@ function test_checkpointing_auxiliary_fields(arch)
     return nothing
 end
 
+function stateless_auxiliary_fields_simulation(arch, Model, dir)
+    grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+    clock = Clock(grid)
+    c = CenterField(grid)
+
+    auxiliary_fields = (operation = 2c,
+                        function_field = FunctionField{Center, Center, Center}((x, y, z, t) -> t, grid; clock))
+
+    model = Model(grid; clock, auxiliary_fields)
+    simulation = Simulation(model; Δt=0.1, stop_iteration=5, verbose=false)
+    simulation.output_writers[:checkpointer] = Checkpointer(model; schedule=IterationInterval(5), dir)
+    return simulation
+end
+
+function test_checkpointing_stateless_auxiliary_fields(arch, Model)
+    dir = mktempdir()
+
+    simulation = stateless_auxiliary_fields_simulation(arch, Model, dir)
+    @test_nowarn run!(simulation)
+
+    # Operations and FunctionFields are computed on the fly, so they add nothing to checkpoints
+    @test prognostic_state(simulation.model.auxiliary_fields) == (operation = nothing, function_field = nothing)
+
+    restored_simulation = stateless_auxiliary_fields_simulation(arch, Model, dir)
+    @test_logs pickup_log set!(restored_simulation; checkpoint=:latest)
+    @test iteration(restored_simulation) == 5
+
+    rm(dir; recursive=true)
+
+    return nothing
+end
+
 # A stand-in for a sediment model: `sediment` evolves with the model but is not a tracer,
 # so the biogeochemistry checkpoints it by extending `prognostic_state`
 struct SedimentBiogeochemistry{S} <: AbstractBiogeochemistry
@@ -2398,6 +2430,12 @@ for arch in archs
 
     @testset "Auxiliary fields checkpointing [$(typeof(arch))]" begin
         test_checkpointing_auxiliary_fields(arch)
+    end
+
+    for Model in (NonhydrostaticModel, HydrostaticFreeSurfaceModel)
+        @testset "Stateless auxiliary fields checkpointing [$(nameof(Model))] [$(typeof(arch))]" begin
+            test_checkpointing_stateless_auxiliary_fields(arch, Model)
+        end
     end
 
     for Model in (NonhydrostaticModel, HydrostaticFreeSurfaceModel)

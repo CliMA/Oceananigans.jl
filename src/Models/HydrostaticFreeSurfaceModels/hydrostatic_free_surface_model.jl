@@ -1,25 +1,25 @@
-using Oceananigans.Advection: AbstractAdvectionScheme, Centered, VectorInvariant, WENOVectorInvariant, adapt_advection_order, materialize_advection, weno_order
+using Oceananigans: prognostic_state, restore_prognostic_state!
+using Oceananigans.Advection: AbstractAdvectionScheme, Centered, VectorInvariant, WENOVectorInvariant,
+                              adapt_advection_order, materialize_advection, weno_order
 using Oceananigans.Architectures: AbstractArchitecture, ReactantState
-using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
-using Oceananigans.BoundaryConditions: FieldBoundaryConditions, needs_implicit_solver, regularize_field_boundary_conditions, validate_implicit_explicit_flux_locations
-using Oceananigans.BuoyancyFormulations: validate_buoyancy, materialize_buoyancy
+using Oceananigans.Biogeochemistry: AbstractBiogeochemistry, biogeochemical_auxiliary_fields, validate_biogeochemistry
+using Oceananigans.BoundaryConditions: FieldBoundaryConditions, needs_implicit_solver,
+                                       regularize_field_boundary_conditions, validate_implicit_explicit_flux_locations
+using Oceananigans.BuoyancyFormulations: materialize_buoyancy, validate_buoyancy
 using Oceananigans.DistributedComputations: Distributed
-using Oceananigans.Fields: Field, CenterField, ZeroField, tracernames, TracerFields
+using Oceananigans.Fields: CenterField, Field, TracerFields, ZeroField, tracernames
 using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: AbstractHorizontallyCurvilinearGrid, architecture, halo_size, MutableVerticalDiscretization, Face, Center
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
-using Oceananigans.Models: AbstractModel, validate_model_halo, validate_tracer_advection, extract_boundary_conditions, materialize_tracers, timestepper_name
-using Oceananigans.TimeSteppers: Clock, TimeStepper, AbstractLagrangianParticles, materialize_clock!, time_discretization
-using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_closure_fields, add_closure_specific_boundary_conditions,
-                                       implicit_diffusion_solver, VerticallyImplicitTimeDiscretization,
-                                       closure_required_tracers, initialize_closure_fields!
+using Oceananigans.Grids: AbstractHorizontallyCurvilinearGrid, Center, Face, MutableVerticalDiscretization,
+                          architecture, halo_size
+using Oceananigans.ImmersedBoundaries: GridFittedBoundary, ImmersedBoundaryGrid
+using Oceananigans.Models: AbstractModel, extract_boundary_conditions, materialize_tracers, timestepper_name,
+                           validate_model_halo, validate_tracer_advection
+using Oceananigans.TimeSteppers: AbstractLagrangianParticles, Clock, TimeStepper, materialize_clock!, reconcile_state!,
+                                 time_discretization, update_state!
+using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization, add_closure_specific_boundary_conditions,
+                                       build_closure_fields, closure_required_tracers, implicit_diffusion_solver,
+                                       initialize_closure_fields!, validate_closure, with_tracers
 using Oceananigans.Utils: tupleit
-
-import Oceananigans
-import Oceananigans: initialize!, prognostic_state, restore_prognostic_state!
-import Oceananigans.Models: total_velocities
-import Oceananigans.TimeSteppers: update_state!, reconcile_state!, materialize_clock!
-import Oceananigans.TurbulenceClosures: buoyancy_force, buoyancy_tracers
 
 PressureField(grid) = (; pHY′ = CenterField(grid))
 
@@ -428,7 +428,7 @@ validate_momentum_advection(momentum_advection::Nothing,         grid::Orthogona
 validate_momentum_advection(momentum_advection::VectorInvariant, grid::OrthogonalSphericalShellGrid) = momentum_advection
 validate_momentum_advection(momentum_advection, grid::OrthogonalSphericalShellGrid) = error("$(typeof(momentum_advection)) is not supported with $(typeof(grid))")
 
-function reconcile_state!(model::HydrostaticFreeSurfaceModel)
+function TimeSteppers.reconcile_state!(model::HydrostaticFreeSurfaceModel)
     mask_immersed_horizontal_velocities!(model.velocities)
     fill_halo_regions!(prognostic_fields(model), model.clock, fields(model))
     reconcile_free_surface!(model.free_surface, model.grid, model.clock, model.velocities)
@@ -436,23 +436,23 @@ function reconcile_state!(model::HydrostaticFreeSurfaceModel)
     return nothing
 end
 
-function initialize!(model::HydrostaticFreeSurfaceModel)
+function Oceananigans.initialize!(model::HydrostaticFreeSurfaceModel)
     reconcile_state!(model)
     initialize_closure_fields!(model.closure_fields, model.closure, model)
     return nothing
 end
 
 # return the total advective velocities
-@inline total_velocities(model::HydrostaticFreeSurfaceModel) = model.velocities
-timestepper(model::HydrostaticFreeSurfaceModel) = model.timestepper
-buoyancy_force(model::HydrostaticFreeSurfaceModel) = model.buoyancy
-buoyancy_tracers(model::HydrostaticFreeSurfaceModel) = model.tracers
+@inline Models.total_velocities(model::HydrostaticFreeSurfaceModel) = model.velocities
+Simulations.timestepper(model::HydrostaticFreeSurfaceModel) = model.timestepper
+TurbulenceClosures.buoyancy_force(model::HydrostaticFreeSurfaceModel) = model.buoyancy
+TurbulenceClosures.buoyancy_tracers(model::HydrostaticFreeSurfaceModel) = model.tracers
 
 #####
 ##### Checkpointing
 #####
 
-function prognostic_state(model::HydrostaticFreeSurfaceModel)
+function Oceananigans.prognostic_state(model::HydrostaticFreeSurfaceModel)
     return (clock = prognostic_state(model.clock),
             particles = prognostic_state(model.particles),
             velocities = prognostic_state(model.velocities),
@@ -466,7 +466,7 @@ function prognostic_state(model::HydrostaticFreeSurfaceModel)
             biogeochemistry = prognostic_state(model.biogeochemistry))
 end
 
-function restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel, from)
+function Oceananigans.restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel, from)
     restore_prognostic_state!(restored.clock, from.clock)
     restore_prognostic_state!(restored.particles, from.particles)
     restore_prognostic_state!(restored.velocities, from.velocities)
@@ -481,4 +481,4 @@ function restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel, from)
     return restored
 end
 
-restore_prognostic_state!(::HydrostaticFreeSurfaceModel, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::HydrostaticFreeSurfaceModel, ::Nothing) = nothing
