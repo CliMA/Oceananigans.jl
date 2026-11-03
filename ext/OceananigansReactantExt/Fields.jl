@@ -7,11 +7,12 @@ using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Architectures: on_architecture, CPU
 using Oceananigans.Fields: Field, ReducedAbstractField, interior, interpolate!, copyable_fields
 
-import Oceananigans.Architectures: AnyConcreteReactantArray
 import Oceananigans.DistributedComputations: reconstruct_global_field, synchronize_communication!
 import Oceananigans.Fields: set_to_field!, set_to_function!, set!
-import Oceananigans.Grids: ReactantGrid, ShardedGrid
-import Oceananigans.OceananigansReactantExt: deconcretize
+
+import ..Architectures: AnyConcreteReactantArray
+import ..Grids: ReactantGrid, ShardedGrid
+import ..OceananigansReactantExt: deconcretize
 
 const ReactantField{LX, LY, LZ, O} = Field{LX, LY, LZ, O, <:ReactantGrid}
 const ShardedDistributedField{LX, LY, LZ, O} = Field{LX, LY, LZ, O, <:ShardedGrid}
