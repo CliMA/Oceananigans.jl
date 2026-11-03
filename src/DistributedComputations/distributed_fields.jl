@@ -150,6 +150,8 @@ function maybe_all_reduce!(op, f::ReducedAbstractField)
     return f
 end
 
+# Reduce `data` with `op` only across ranks that share the same position along the
+# partitioned dimensions that are not reduced.
 function all_reduce_along!(op, data, arch, reduced_dims)
     R = ranks(arch)
     unreduced_partition_dims = filter(d -> R[d] > 1 && d ∉ reduced_dims, (1, 2, 3))
