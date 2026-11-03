@@ -35,14 +35,14 @@ What differs from the eager `Simulation`:
   `Reactant.Periodic(n)` or `Reactant.Binomial(budget)`), as a `NamedTuple` of those fields or an
   [`AutomaticDifferentiation`](@ref). See [`time_step_for!`](@ref).
 """
-function Simulation(model::ReactantModel; Δt,
-                    verbose = true,
-                    stop_iteration = Inf,
-                    stop_time = nothing,
-                    wall_time_limit = Inf,
-                    align_time_step = false,
-                    minimum_relative_step = 0,
-                    automatic_differentiation = AutomaticDifferentiation(checkpointing = false))
+function Oceananigans.Simulations.Simulation(model::ReactantModel; Δt,
+                                             verbose = true,
+                                             stop_iteration = Inf,
+                                             stop_time = nothing,
+                                             wall_time_limit = Inf,
+                                             align_time_step = false,
+                                             minimum_relative_step = 0,
+                                             automatic_differentiation = AutomaticDifferentiation(checkpointing = false))
 
     Δt = Float64(Δt)
     automatic_differentiation = convert(AutomaticDifferentiation, automatic_differentiation)
@@ -126,5 +126,5 @@ function stop_criteria(model, Δt, stop_time)
     return (Float64(N), RemainderStep(Float64(remainder)))
 end
 
-iteration(sim::ReactantSimulation) = Reactant.to_number(iteration(sim.model))
+Oceananigans.Simulations.iteration(sim::ReactantSimulation) = Reactant.to_number(iteration(sim.model))
 time(sim::ReactantSimulation) = Reactant.to_number(time(sim.model))

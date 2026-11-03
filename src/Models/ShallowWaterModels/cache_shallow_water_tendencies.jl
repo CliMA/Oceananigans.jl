@@ -1,12 +1,11 @@
-using KernelAbstractions.Extras.LoopInfo: @unroll
-
-import Oceananigans.TimeSteppers: cache_previous_tendencies!
-
 """ Store source terms for `uh`, `vh`, and `h`. """
 @kernel function _cache_solution_tendencies!(G⁻, grid, G⁰)
     i, j, k = @index(Global, NTuple)
-    @unroll for t in 1:3
-        @inbounds G⁻[t][i, j, k] = G⁰[t][i, j, k]
+
+    @inbounds begin
+        G⁻[1][i, j, k] = G⁰[1][i, j, k]
+        G⁻[2][i, j, k] = G⁰[2][i, j, k]
+        G⁻[3][i, j, k] = G⁰[3][i, j, k]
     end
 end
 
@@ -24,7 +23,7 @@ Store the current tendencies `Gⁿ` into `G⁻` for solution fields (`uh`, `vh`,
 This function is called after advancing the model state but before computing new tendencies,
 preserving the tendencies needed for a :RungeKutta3 timestepper.
 """
-function cache_previous_tendencies!(model::ShallowWaterModel)
+function TimeSteppers.cache_previous_tendencies!(model::ShallowWaterModel)
     _cache_solution!, _ = configure_kernel(model.architecture, model.grid, :xyz, _cache_solution_tendencies!)
     _cache_tracer!, _ = configure_kernel(model.architecture, model.grid, :xyz, _cache_field_tendencies!)
 

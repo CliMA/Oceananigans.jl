@@ -1,7 +1,5 @@
-using Oceananigans.TurbulenceClosures: implicit_step!
-using Oceananigans.ImmersedBoundaries: peripheral_node, MutableGridOfSomeKind
-
-import Oceananigans.TimeSteppers: rk_substep!, cache_current_fields!
+using Oceananigans.ImmersedBoundaries: MutableGridOfSomeKind, peripheral_node
+using Oceananigans.TimeSteppers: cache_current_fields!, implicit_step!, rk_substep!
 
 """
 $(TYPEDSIGNATURES)
@@ -11,7 +9,7 @@ Perform a single split Runge-Kutta substep for `HydrostaticFreeSurfaceModel`.
 Dispatches to the appropriate method based on the free surface type (explicit or implicit).
 The substep advances the state from the cached initial fields `Ψ⁻` using: `U = Ψ⁻ + Δτ * Gⁿ`.
 """
-rk_substep!(model::HydrostaticFreeSurfaceModel, Δτ, callbacks) =
+TimeSteppers.rk_substep!(model::HydrostaticFreeSurfaceModel, Δτ, callbacks) =
     rk_substep!(model, model.free_surface, model.grid, Δτ, callbacks)
 
 """
@@ -30,7 +28,7 @@ The order of operations for explicit free surfaces is:
 7. Correct barotropic mode to reconcile baroclinic and barotropic velocities
 8. Advance tracers
 """
-@inline function rk_substep!(model, free_surface, grid, Δτ, callbacks)
+@inline function TimeSteppers.rk_substep!(model, free_surface, grid, Δτ, callbacks)
     @apply_regionally begin
         update_transport_velocities!(model.transport_velocities, model.velocities, free_surface)
 
@@ -75,7 +73,7 @@ For implicit free surfaces, a predictor-corrector approach is used:
 6. Advance grid scaling (for z-star coordinates)
 7. Advance tracers
 """
-@inline function rk_substep!(model, free_surface::ImplicitFreeSurface, grid, Δτ, callbacks)
+@inline function TimeSteppers.rk_substep!(model, free_surface::ImplicitFreeSurface, grid, Δτ, callbacks)
 
     @apply_regionally begin
         update_transport_velocities!(model.transport_velocities, model.velocities, free_surface)
@@ -158,6 +156,7 @@ function rk_substep_velocities!(velocities, model, Δt)
     implicit_substep_velocity!(model, Δt, Val(:u))
     implicit_substep_velocity!(model, Δt, Val(:v))
     add_barotropic_acceleration!(velocities, model.grid, model.free_surface, ηⁿ, -Δt)
+    step_boundary_conditions!(velocities, model.clock, fields(model), Δt)
 
     return nothing
 end
@@ -213,6 +212,7 @@ function rk_substep_tracers!(tracers, model, Δt)
     foreach_name(tracers) do val_tracer_index, val_tracer_name
         rk_substep_tracer!(model, Δt, val_tracer_index, val_tracer_name)
     end
+    step_boundary_conditions!(tracers, model.clock, fields(model), Δt)
     return nothing
 end
 

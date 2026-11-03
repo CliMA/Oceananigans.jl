@@ -22,7 +22,8 @@ using MPI
 MPI.Init(threadlevel=:multiple)
 
 using Oceananigans.BoundaryConditions: fill_halo_regions!, DCBC
-using Oceananigans.DistributedComputations: Distributed, index2rank, cpu_architecture, child_architecture, reconstruct_global_grid,
+using Oceananigans.Architectures: cpu_architecture
+using Oceananigans.DistributedComputations: Distributed, index2rank, child_architecture, reconstruct_global_grid,
                                             synchronize_communication!
 using Oceananigans.Fields: AbstractField, interior, dot!
 using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary, bottom_height_interior
