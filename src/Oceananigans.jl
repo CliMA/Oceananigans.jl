@@ -35,7 +35,7 @@ export
     Distributed, Partition,
 
     # Advection schemes
-    Centered, UpwindBiased, WENO,
+    Centered, UpwindBiased, WENO, DecreasingOrderAdvectionScheme,
     VectorInvariant, WENOVectorInvariant, FluxFormAdvection,
     AdaptiveImplicitVerticalAdvection,
 
