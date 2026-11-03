@@ -4,7 +4,7 @@
 
 using KernelAbstractions: @index, @kernel
 using Oceananigans.Fields: Field, FieldBoundaryConditions, FieldStatus, FunctionField, compute!, instantiated_location,
-                           offset_index, set_status!, validate_indices
+                           offset_index, remapped_field, set_status!, validate_indices
 using Oceananigans.Grids: default_indices, new_data
 using Oceananigans.Utils: @apply_regionally, KernelParameters, launch!
 
@@ -102,3 +102,7 @@ end
     i, j, k = @index(Global, NTuple)
     @inbounds data[i, j, k] = operand[i, j, k]
 end
+
+# Operations are materialized before they are remapped
+Fields.remapped_field(operand::OperationOrFunctionField, destination_grid; kw...) =
+    remapped_field(Field(operand), destination_grid; kw...)

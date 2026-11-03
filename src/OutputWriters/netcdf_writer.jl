@@ -109,6 +109,11 @@ Optional keyword arguments
                 outputs that return custom data).
 
 - `with_halos`: Boolean defining whether to include halos in the outputs. Default: `false`.
+
+- `grid`: A grid onto which every field output is remapped with [`remapped_field`](@ref) before it is
+          written, so that `indices` and `with_halos` refer to `grid`, whose coordinates are saved to the
+          file. Fields that already live on `grid` are written as they are. Default: `nothing`, which
+          writes each output on its own grid.
                 Note that to postprocess saved output (e.g., compute derivatives, etc.),
                 information about the boundary conditions is often crucial. In those cases,
                 you might need to set `with_halos = true`. Cannot be used with custom `indices`.

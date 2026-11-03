@@ -94,6 +94,11 @@ Keyword arguments
 
 - `with_halos`: Whether to include halo regions. Default: `false`.
 
+- `grid`: A grid onto which every field output is remapped with [`remapped_field`](@ref) before it is
+          written, so that `indices` and `with_halos` refer to `grid`, whose coordinates are saved to the
+          store. Fields that already live on `grid` are written as they are. Default: `nothing`, which
+          writes each output on its own grid.
+
 - `global_attributes`: Metadata to store on the root Zarr group.
 
 - `output_attributes`: Attributes to add to individual output arrays.

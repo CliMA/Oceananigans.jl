@@ -7,6 +7,7 @@ export interior, data, xnode, ynode, znode
 export set!, compute!, @compute, regrid!
 export VelocityFields, TracerFields, tracernames
 export interpolate, interpolate!
+export remap!, remapped_field
 
 using Adapt: Adapt, adapt
 using DocStringExtensions: TYPEDSIGNATURES
@@ -39,6 +40,7 @@ include("scans.jl")
 include("regridding_fields.jl")
 include("field_tuples.jl")
 include("interpolate.jl")
+include("remapped_fields.jl")
 include("show_fields.jl")
 include("broadcasting_abstract_fields.jl")
 
