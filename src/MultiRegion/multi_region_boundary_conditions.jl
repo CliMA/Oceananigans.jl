@@ -11,7 +11,8 @@ using Oceananigans.BoundaryConditions:
     fill_halo_event!,
     needs_implicit_solver,
     MultiRegionFillHalo,
-    MultiRegionCommunicationBoundaryCondition
+    MultiRegionCommunicationBoundaryCondition,
+    XZReducedCondition
 
 @inline bc_str(::MultiRegionObject) = "MultiRegion Boundary Conditions"
 
@@ -185,6 +186,8 @@ end
 
 @inline Utils.getregion(bc::BoundaryCondition, i) = BoundaryCondition(bc.classification, _getregion(bc.condition, i))
 
+@inline Utils.getregion(c::XZReducedCondition{D}, i) where D = XZReducedCondition{D}(_getregion(c.condition, i))
+
 @inline Utils.getregion(cf::ContinuousBoundaryFunction{X, Y, Z, I}, i) where {X, Y, Z, I} =
             ContinuousBoundaryFunction{X, Y, Z, I}(cf.func,
                                                 _getregion(cf.parameters, i),
@@ -207,6 +210,8 @@ end
                                     getregion(fc.ordered_bcs, i))
 
 @inline Utils._getregion(bc::BoundaryCondition, i) = BoundaryCondition(bc.classification, getregion(bc.condition, i))
+
+@inline Utils._getregion(c::XZReducedCondition{D}, i) where D = XZReducedCondition{D}(getregion(c.condition, i))
 
 @inline Utils._getregion(cf::ContinuousBoundaryFunction{X, Y, Z, I}, i) where {X, Y, Z, I} =
             ContinuousBoundaryFunction{X, Y, Z, I}(cf.func,

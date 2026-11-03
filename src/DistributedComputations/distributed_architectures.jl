@@ -1,9 +1,7 @@
-using Oceananigans.Architectures
-using Oceananigans.Grids: topology
-
-import Oceananigans.Architectures: device, device!, cpu_architecture, on_architecture, array_type, child_architecture, convert_to_device
-import Oceananigans.Grids: zeros
-import Oceananigans.Utils: sync_device!
+using Oceananigans.Architectures: Architectures, array_type, child_architecture, convert_to_device,
+                                  device, device!, on_architecture
+using Oceananigans.Grids: Grids, topology, zeros
+using Oceananigans.Utils: Utils, sync_device!
 
 #####
 ##### Partitioning
@@ -319,13 +317,12 @@ const AsynchronousDistributed = Distributed{<:Any, false}
 
 ranks(arch::Distributed) = ranks(arch.partition)
 
-child_architecture(arch::Distributed) = arch.child_architecture
-device(arch::Distributed)             = device(child_architecture(arch))
-
-zeros(arch::Distributed, FT, N...)         = zeros(child_architecture(arch), FT, N...)
-array_type(arch::Distributed)              = array_type(child_architecture(arch))
-sync_device!(arch::Distributed)            = sync_device!(arch.child_architecture)
-convert_to_device(arch::Distributed, arg)  = convert_to_device(child_architecture(arch), arg)
+Architectures.child_architecture(arch::Distributed)     = arch.child_architecture
+Architectures.device(arch::Distributed)                 = device(child_architecture(arch))
+Architectures.array_type(arch::Distributed)             = array_type(child_architecture(arch))
+Architectures.convert_to_device(arch::Distributed, arg) = convert_to_device(child_architecture(arch), arg)
+Grids.zeros(arch::Distributed, FT, N...) = zeros(child_architecture(arch), FT, N...)
+Utils.sync_device!(arch::Distributed)    = sync_device!(arch.child_architecture)
 
 # Switch to a synchronized architecture
 synchronized(arch) = arch
@@ -339,8 +336,8 @@ synchronized(arch::Distributed) = Distributed{true}(child_architecture(arch),
                                                     arch.field_count,
                                                     arch.devices)
 
-cpu_architecture(arch::DistributedCPU) = arch
-cpu_architecture(arch::Distributed{A, S}) where {A, S} =
+Architectures.cpu_architecture(arch::DistributedCPU) = arch
+Architectures.cpu_architecture(arch::Distributed{A, S}) where {A, S} =
     Distributed{S}(CPU(),
                    arch.partition,
                    arch.ranks,
