@@ -41,8 +41,8 @@ end
 """
     AdaptiveVerticallyImplicitDiscretization([FT = Oceananigans.defaults.FloatType]; cfl = 0.5)
 
-An adaptively implicit vertical discretization scheme following
-[Shchepetkin (2015)](@cite Shchepetkin2015) / CROCO.
+An adaptively implicit vertical discretization scheme following [Shchepetkin (2015)](@cite Shchepetkin2015),
+as implemented in the [Coastal and Regional Ocean COmmunity model (CROCO)](https://www.croco-ocean.org).
 
 Splits vertical advection into explicit and implicit parts based on the local vertical Courant number
 `α = |w| Δt / Δz`. When `α ≤ cfl`, advection is fully explicit using `explicit_scheme`. When `α > cfl`,
