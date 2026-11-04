@@ -5,7 +5,7 @@ using DocStringExtensions: TYPEDEF, TYPEDSIGNATURES
 using Oceananigans: restore_prognostic_state!
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Units: Time
-using Oceananigans.Utils: prettytime, seconds_to_nanosecond
+using Oceananigans.Utils: prettytime, seconds_to_nanosecond, time_difference_seconds
 
 """
 $(TYPEDEF)
@@ -57,6 +57,12 @@ function reset!(clock::Clock{TT, KT, DT, IT, S}) where {TT, KT, DT, IT, S}
     return nothing
 end
 
+# `zero(DateTime)` is year 0, so a calendar clock has no zero to return to.
+function reset!(clock::Clock{<:AbstractTime})
+    throw(ArgumentError("Cannot reset! a clock keeping $(typeof(clock.time)) time: there is no zero " *
+                        "calendar instant. Set `clock.time` to the start of the run instead."))
+end
+
 """
 $(TYPEDSIGNATURES)
 
@@ -80,8 +86,14 @@ function Base.:(==)(clock1::Clock, clock2::Clock)
            clock1.stage == clock2.stage
 end
 
+approximately_equal_times(a, b; kw...) = isapprox(a, b; kw...)
+
+# Calendar instants have no magnitude for a relative tolerance, so only `atol` (seconds) applies.
+approximately_equal_times(a::AbstractTime, b::AbstractTime; atol=0, kw...) =
+    abs(time_difference_seconds(a, b)) <= atol
+
 function Base.isapprox(a::Clock, b::Clock; kw...)
-    return isapprox(a.time, b.time; kw...) &&
+    return approximately_equal_times(a.time, b.time; kw...) &&
            isapprox(a.last_Δt, b.last_Δt; kw...) &&
            isapprox(a.last_stage_Δt, b.last_stage_Δt; kw...) &&
            a.iteration == b.iteration &&

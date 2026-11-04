@@ -85,7 +85,7 @@ function OutputReaders.FieldTimeSeries(typed_path::ZarrPath, name::String;
         boundary_conditions = FieldBoundaryConditions(grid, loc)
     end
 
-    isnothing(times) && (times = group["time"][:] |> collect)
+    isnothing(times) && (times = zarr_times(group))
 
     Nt = time_indices_length(backend, times)
     data = new_data(eltype(grid), grid, loc, file_indices, Nt)
@@ -97,6 +97,28 @@ function OutputReaders.FieldTimeSeries(typed_path::ZarrPath, name::String;
     return time_series
 end
 
+# The `seconds since <epoch>` axis a calendar clock writes decodes back to that clock's instants,
+# as NCDatasets does for NetCDF; a bare `seconds` axis stays numeric.
+function zarr_times(group)
+    time = group["time"]
+    values = collect(time[:])
+    epoch = time_epoch(get(time.attrs, "units", "seconds"))
+    isnothing(epoch) && return values
+    return [epoch + Dates.Millisecond(round(Int, 1000 * value)) for value in values]
+end
+
+function time_epoch(units)
+    m = match(r"^seconds since (.+)$", units)
+    isnothing(m) && return nothing
+    stamp = replace(strip(m[1]), "T" => " ", "Z" => "")
+    return DateTime(stamp, Dates.dateformat"yyyy-mm-dd HH:MM:SS.sss")
+end
+
+matching_time(file_time, t, Δt) = isapprox(file_time, t; atol=100*eps(Δt), rtol=sqrt(eps(Δt)))
+
+# Calendar instants are exact to the millisecond, so a match is within that resolution.
+matching_time(file_time::AbstractTime, t, Δt) = abs(time_difference_seconds(file_time, t)) < 1e-3
+
 #####
 ##### set! / set_from_zarr!
 #####
@@ -104,7 +126,7 @@ end
 function OutputReaders.set_from_zarr!(fts::InMemoryFTS, path::String, name; warn_missing_data=true)
     group = _open_zarr_for_read(path)
     arr   = group[name]
-    file_times = group["time"][:]
+    file_times = zarr_times(group)
 
     arch = architecture(fts)
     cpu_times = on_architecture(CPU(), fts.times)
@@ -113,11 +135,11 @@ function OutputReaders.set_from_zarr!(fts::InMemoryFTS, path::String, name; warn
 
     # The on-disk Zarr array is (spatial..., Nt). We read slice n into the corresponding
     # fts entry. For each requested fts time index, find the closest matching file time.
-    Δt = length(file_times) > 1 ? abs(file_times[2] - file_times[1]) : one(eltype(file_times))
+    Δt = length(file_times) > 1 ? abs(time_difference_seconds(file_times[2], file_times[1])) : 1.0
 
     for n in time_indices(fts)
         t = cpu_times[n]
-        file_index = findfirst(ft -> isapprox(ft, t; atol=100*eps(Δt), rtol=sqrt(eps(eltype(file_times)))), file_times)
+        file_index = findfirst(ft -> matching_time(ft, t, Δt), file_times)
         if isnothing(file_index)
             warn_missing_data && @warn "No data at time $t (index $n) for $name in $path"
             continue

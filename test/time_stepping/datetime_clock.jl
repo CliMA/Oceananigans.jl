@@ -8,7 +8,7 @@ using TimesDates: TimeDate
 using Oceananigans
 using Oceananigans.Simulations: Simulation, run!, Callback, add_callback!
 using Oceananigans.Units: hour, Time
-using Oceananigans.TimeSteppers: Clock, tick!
+using Oceananigans.TimeSteppers: Clock, tick!, reset!
 using Oceananigans.Utils: TimeInterval, SpecifiedTimes, schedule_aligned_time_step, IterationInterval
 using Oceananigans.OutputWriters: AveragedTimeInterval
 using Oceananigans.OutputReaders: Cyclical
@@ -312,6 +312,32 @@ end
         simulation = Simulation(model; Δt=60, stop_iteration=3, verbose=false)
         run!(simulation)
         @test model.clock.time == TimeType(2020, 1, 1, 0, 3)
+    end
+
+    @testset "reset! refuses a DateTime clock" begin
+        grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+        model = HydrostaticFreeSurfaceModel(grid; clock=Clock(time=DateTime(2020, 1, 1)))
+        simulation = Simulation(model; Δt=60, stop_iteration=1, verbose=false)
+        @test_throws ArgumentError reset!(model.clock)
+        @test_throws ArgumentError reset!(simulation)
+    end
+
+    @testset "Clock isapprox (DateTime)" begin
+        clock1 = Clock(time=DateTime(2020, 1, 1), last_Δt=1.0, last_stage_Δt=1.0, iteration=1, stage=1)
+        clock2 = Clock(time=DateTime(2020, 1, 1), last_Δt=1.0, last_stage_Δt=1.0, iteration=1, stage=1)
+        clock3 = Clock(time=DateTime(2020, 1, 1, 0, 0, 0, 1), last_Δt=1.0, last_stage_Δt=1.0, iteration=1, stage=1)
+        @test clock1 ≈ clock2
+        @test !(clock1 ≈ clock3)
+        @test isapprox(clock1, clock3; atol=0.01)
+    end
+
+    @testset "Skipping a step below minimum_relative_step (DateTime)" begin
+        grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+        model = HydrostaticFreeSurfaceModel(grid; clock=Clock(time=DateTime(2020, 1, 1)))
+        stop_time = DateTime(2020, 1, 1) + Dates.Second(100) + Dates.Millisecond(1)
+        simulation = Simulation(model; Δt=100, stop_time, minimum_relative_step=0.1, verbose=false)
+        @test_logs (:warn, r"^Resetting clock to 2020-01-01T00:01:40.001") run!(simulation)
+        @test model.clock.time == stop_time
     end
 
     start_time = DateTime(2020, 1, 1)

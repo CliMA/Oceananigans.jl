@@ -70,6 +70,12 @@ function test_datetime_netcdf_output(arch)
     @test ds["time"][Nt] == DateTime(2021, 2, 1)
 
     close(ds)
+
+    fts = FieldTimeSeries(filepath, "T"; architecture=arch)
+    @test length(fts.times) == Nt
+    @test fts.times[1] == DateTime(2021, 1, 1)
+    @test fts.times[Nt] == DateTime(2021, 2, 1)
+
     rm(filepath)
 
     return nothing
