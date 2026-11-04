@@ -4,16 +4,16 @@ using Oceananigans.DistributedComputations:
     Distributed,
     HaloImage,
     RankConnectivity,
-    with_connectivity,
-    local_ranges,
     child_architecture,
+    concatenate_local_sizes,
+    insert_connected_topology,
+    local_ranges,
     ranks,
-    concatenate_local_sizes
+    with_connectivity
 
-using Oceananigans.Grids: topology, Bounded, Connected, FaceFolded, FaceFoldConnected, TwoSided, RightFaceFolded,
-    DistributedFoldedTopology
-using Oceananigans.DistributedComputations: insert_connected_topology
-using Oceananigans.Utils: Utils
+using Oceananigans.Grids: Bounded, Connected, DistributedFoldedTopology, FaceFoldConnected, FaceFolded,
+                          RightFaceFolded, TwoSided, topology
+using Oceananigans.Utils: Utils, StaticStridesOffsetArray
 
 const DistributedTripolarGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} =
     OrthogonalSphericalShellGrid{FT, TX, TY, TZ, CZ, <:Tripolar, CC, FC, CF, FF, <:Distributed{<:Union{CPU, GPU}}}
@@ -138,14 +138,14 @@ end
 function partition_tripolar_metric(global_grid, metric_name, irange, jrange)
 
     metric = getproperty(global_grid, metric_name)
-    offsets = metric.offsets
+    offsets = OffsetArrays.offsets(metric)
     partitioned_metric = metric[irange, jrange]
 
-    if partitioned_metric isa OffsetArray
-        partitioned_metric = partitioned_metric.parent
+    if partitioned_metric isa AbstractOffsetArray
+        partitioned_metric = parent(partitioned_metric)
     end
 
-    return OffsetArray(partitioned_metric, offsets...)
+    return StaticStridesOffsetArray(partitioned_metric, offsets...)
 end
 
 #####

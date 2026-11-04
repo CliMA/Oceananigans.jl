@@ -137,6 +137,8 @@ the features they describe! Also, if you have developed a new feature in Oceanan
 
 If you have work using Oceananigans that you would like to have listed here, please open a pull request to add it or let us know!
 
+1. Zheng, Z., Wenegrat, J. O., Fox-Kemper, B., Chor, T., and Brett, G. J. (2026). [Submesoscale frontogenesis drives strong finescale tracer subduction](https://doi.org/10.1029/2026JC024594), _Journal of Geophysical Research: Oceans_, **131(10)**, e2026JC024594. DOI: [10.1029/2026JC024594](https://doi.org/10.1029/2026JC024594)
+
 1. Baker, L. E. (2026). [Online and offline Lagrangian filtering with PDEs: Theoretical framework and implementation in OceananigansLagrangianFilter.jl](https://doi.org/10.22541/essoar.15010660/v1), _ESS Open Archive_. DOI: [10.22541/essoar.15010660/v1](https://doi.org/10.22541/essoar.15010660/v1)
 
 1. Parfenyev, V. and Vergeles, S. (2026). [Wave-driven geostrophic vortices in rotating turbulence](https://doi.org/10.48550/arXiv.2610.15863), _arXiv preprint_, arXiv:2610.15863. DOI: [10.48550/arXiv.2610.15863](https://doi.org/10.48550/arXiv.2610.15863)
@@ -155,7 +157,7 @@ If you have work using Oceananigans that you would like to have listed here, ple
 
 1. Li, X., Klingbeil, K., and Burchard, H. (2026). [Introducing the coincidence index: A novel diagnostic and production-based framework for water body interaction analysis and its application to study the interaction of river plumes](https://doi.org/10.1029/2026MS005737), _Journal of Advances in Modeling Earth Systems_, **18(8)**, e2026MS005737. DOI: [10.1029/2026MS005737](https://doi.org/10.1029/2026MS005737)
 
-1. Liang, H., Zakem, E. J., Lauderdale, J. M., and Ferrari, R. (2026). [Beyond the Martin Curve: A mechanistic yet simple model for dynamic ocean particulate organic carbon fluxes](https://doi.org/10.1029/2026GB009184), _Global Biogeochemical Cycles_, **40(8)**, e2026GB009184. DOI: [10.1029/2026GB009184](https://doi.org/10.1029/2026GB009184)
+1. Liang, H., Zakem, E. J., Lauderdale, J. M., and Ferrari, R. (2026). [Beyond the Martin curve: A mechanistic yet simple model for dynamic ocean particulate organic carbon fluxes](https://doi.org/10.1029/2026GB009184), _Global Biogeochemical Cycles_, **40(8)**, e2026GB009184. DOI: [10.1029/2026GB009184](https://doi.org/10.1029/2026GB009184)
 
 1. Garraway, C. A. J. (2026). [Evaluating the potential of macroalgal cultivation & intentional biomass sinking as an mCDR strategy in the Northeastern United States: A case study for Point Judith, Rhode Island](https://doi.org/10.17760/d20869480), _Master's thesis_, Northeastern University. DOI: [10.17760/d20869480](https://doi.org/10.17760/d20869480)
 
@@ -251,7 +253,7 @@ If you have work using Oceananigans that you would like to have listed here, ple
 
 1. Wagner, G. L. and Constantinou, N. C. (2025) [Phenomenology of decaying turbulence beneath surface waves](https://doi.org/10.1017/jfm.2025.10649), _Journal of Fluid Mechanics_, **1020**, A51. DOI: [10.1017/jfm.2025.10649](https://doi.org/10.1017/jfm.2025.10649)
 
-1. de la Calle, E. and García, C. (2025) [Evaluation of Juliana Tool: A translator for Julia’s CUDA.jl code into KernelAbstraction.jl](https://doi.org/10.1016/j.future.2025.107813), _Future Generation Computer Systems_, **171**, 107813. DOI: [10.1016/j.future.2025.107813](https://doi.org/10.1016/j.future.2025.107813)
+1. de la Calle, E. and García, C. (2025) [Evaluation of Juliana tool: A translator for Julia’s CUDA.jl code into KernelAbstraction.jl](https://doi.org/10.1016/j.future.2025.107813), _Future Generation Computer Systems_, **171**, 107813. DOI: [10.1016/j.future.2025.107813](https://doi.org/10.1016/j.future.2025.107813)
 
 1. Wang S., Kang W., Zhang Y., and Marshall J. (2025) [The fate of rotating point plumes in an unstratified environment: from free growth to boundary interactions](https://doi.org/10.1017/jfm.2025.10533), _Journal of Fluid Mechanics_, **1018**, A19. DOI:[10.1017/jfm.2025.10533](https://doi.org/10.1017/jfm.2025.10533)
 
@@ -309,13 +311,13 @@ If you have work using Oceananigans that you would like to have listed here, ple
 
 1. Simoes-Sousa, I. T., Tandon, A., Pereira, F., Lazaneo, C. Z., and Mahadevan, A. (2022). [Mixed layer eddies supply nutrients to enhance the spring phytoplankton bloom](https://doi.org/10.3389/fmars.2022.825027), _Frontiers in Marine Sciences_, **9**, 825027. DOI: [10.3389/fmars.2022.825027](https://doi.org/10.3389/fmars.2022.825027)
 
-1. Chor, T., Wenegrat, J. O., and Taylor, J. (2022). [Insights into the mixing efficiency of submesoscale Centrifugal-Symmetric instabilities.](https://doi.org/10.1175/JPO-D-21-0259.1), _Journal of Physical Oceanography_, **52(10)**, 2273-2287. DOI: [10.1175/JPO-D-21-0259.1](https://doi.org/10.1175/JPO-D-21-0259.1)
+1. Chor, T., Wenegrat, J. O., and Taylor, J. (2022). [Insights into the mixing efficiency of submesoscale centrifugal-symmetric instabilities](https://doi.org/10.1175/JPO-D-21-0259.1), _Journal of Physical Oceanography_, **52(10)**, 2273-2287. DOI: [10.1175/JPO-D-21-0259.1](https://doi.org/10.1175/JPO-D-21-0259.1)
 
 1. Bire, S., Kang, W., Ramadhan, A., Campin, J.-M., and Marshall, J. (2022). [Exploring ocean circulation on icy moons heated from below.](https://doi.org/10.1029/2021JE007025), _Journal of Geophysical Research: Planets_, **127**, e2021JE007025. DOI: [10.1029/2021JE007025](https://doi.org/10.1029/2021JE007025)
 
 1. Rackauckas, C., Ma, Y., Martensen, J., Warner, C., Zubov, K., Supekar, R., Skinner, D., Ramadhan, A., and Edelman, A. (2021) [Universal differential equations for scientific machine learning](https://doi.org/10.48550/arXiv.2001.04385), _arXiv_, arXiv.2001.04385. DOI: [10.48550/arXiv.2001.04385](https://doi.org/10.48550/arXiv.2001.04385)
 
-1. Coakley, S., Miles, T. N., Glenn, S., and Lim, H. S. (2021). [Observation-Large eddy simulation comparison of ocean mixing under Typhoon Soulik (2018)](https://doi.org/10.23919/OCEANS44145.2021.9705670), _OCEANS 2021: San Diego – Porto, 2021_, pp. 1-7. DOI: [10.23919/OCEANS44145.2021.9705670](https://doi.org/10.23919/OCEANS44145.2021.9705670)
+1. Coakley, S., Miles, T. N., Glenn, S., and Lim, H. S. (2021). [Observation–large eddy simulation comparison of ocean mixing under Typhoon Soulik (2018)](https://doi.org/10.23919/OCEANS44145.2021.9705670), _OCEANS 2021: San Diego – Porto, 2021_, pp. 1-7. DOI: [10.23919/OCEANS44145.2021.9705670](https://doi.org/10.23919/OCEANS44145.2021.9705670)
 
 1. Arnscheidt, C. W., Marshall, J., Dutrieux, P., Rye, C. D., and Ramadhan, A. (2021). [On the settling depth of meltwater escaping from beneath Antarctic ice shelves](https://doi.org/10.1175/JPO-D-20-0286.1), _Journal of Physical Oceanography_, **51(7)**, 2257–2270. DOI: [10.1175/JPO-D-20-0286.1](https://doi.org/10.1175/JPO-D-20-0286.1)
 

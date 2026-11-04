@@ -1,12 +1,9 @@
+using KernelAbstractions: @index, @kernel, get_backend
+
+using Oceananigans.Architectures: Architectures, on_architecture
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions
+using Oceananigans.Fields: Fields, communication_buffers
 using Oceananigans.Grids: halo_size
-
-using Adapt
-
-using KernelAbstractions: @kernel, @index, get_backend
-
-import Oceananigans.Architectures: on_architecture
-import Oceananigans.Fields: communication_buffers
 
 """
     CommunicationBuffers(west, east, south, north, state)
@@ -24,7 +21,7 @@ end
 
 # Buffers are never needed in kernels and stay where they are
 Adapt.adapt_structure(to, buff::CommunicationBuffers) = nothing
-on_architecture(arch, buff::CommunicationBuffers) = buff
+Architectures.on_architecture(arch, buff::CommunicationBuffers) = buff
 
 """
     HaloBuffer(rank, tag, data, irange, jrange, sign, requests)
@@ -42,10 +39,10 @@ struct HaloBuffer{D}
   requests :: MPI.UnsafeMultiRequest
 end
 
-communication_buffers(grid::DistributedGrid, data, ::Nothing, loc) = nothing
-communication_buffers(grid::DistributedGrid, data, ::Missing, loc) = nothing
+Fields.communication_buffers(grid::DistributedGrid, data, ::Nothing, loc) = nothing
+Fields.communication_buffers(grid::DistributedGrid, data, ::Missing, loc) = nothing
 
-function communication_buffers(grid::DistributedGrid, data, bcs::FieldBoundaryConditions, loc)
+function Fields.communication_buffers(grid::DistributedGrid, data, bcs::FieldBoundaryConditions, loc)
     arch = architecture(grid)
     local_rank = arch.local_rank
 
@@ -100,7 +97,7 @@ end
 ##### Packing, unpacking and completing the messages of the sides of a fill
 #####
 
-function fill_send_buffers!(c::OffsetArray, sides::Tuple)
+function fill_send_buffers!(c::AbstractOffsetArray, sides::Tuple)
     for side in sides, buffer in side.send
         buffer.data .= buffer.sign .* view(parent(c), buffer.irange, buffer.jrange, :)
     end
@@ -114,7 +111,7 @@ end
 
 copy_from_buffer!(c, recv) = _copy_from_buffer!(get_backend(recv))(c, recv; ndrange = size(c))
 
-function recv_from_buffers!(c::OffsetArray, sides::Tuple)
+function recv_from_buffers!(c::AbstractOffsetArray, sides::Tuple)
     for side in sides, buffer in side.recv
         copy_from_buffer!(view(parent(c), buffer.irange, buffer.jrange, :), buffer.data)
     end

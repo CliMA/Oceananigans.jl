@@ -1,14 +1,13 @@
-using KernelAbstractions: @kernel, @index
+using KernelAbstractions: @index, @kernel
 
 using Oceananigans.Fields: instantiated_location
 
-using Oceananigans.BoundaryConditions
 using Oceananigans.BoundaryConditions:
     DistributedFillHalo,
-    get_boundary_kernels,
-    extract_bc
-
-import Oceananigans.BoundaryConditions: fill_halo_event!, fill_halo_regions!
+    extract_bc,
+    fill_halo_event!,
+    fill_halo_regions!,
+    get_boundary_kernels
 
 # Each field gets `halo_tag_slots` consecutive MPI tags, one per message exchanged with a given rank
 const halo_tag_slots = 32
@@ -17,7 +16,7 @@ const halo_tag_slots = 32
 ##### Filling halos for halo communication boundary conditions
 #####
 
-fill_halo_regions!(field::DistributedField, args::Vararg{Any, N}; kwargs...) where N =
+BoundaryConditions.fill_halo_regions!(field::DistributedField, args::Vararg{Any, N}; kwargs...) where N =
     fill_halo_regions!(field.data,
                        field.boundary_conditions,
                        field.indices,
@@ -35,11 +34,11 @@ function maybe_distributed_fill_halo_regions!(arch::Distributed, c, boundary_con
 end
 
 # Otherwise we recover the architecture from the (still distributed) grid.
-function fill_halo_regions!(c::OffsetArray, boundary_conditions, indices, loc, grid::DistributedGrid, buffers, args::Vararg{Any, N}; kwargs...) where N
+function BoundaryConditions.fill_halo_regions!(c::AbstractOffsetArray, boundary_conditions, indices, loc, grid::DistributedGrid, buffers, args::Vararg{Any, N}; kwargs...) where N
     return distributed_fill_halo_regions!(architecture(grid), c, boundary_conditions, indices, loc, grid, buffers, args; kwargs...)
 end
 
-fill_halo_regions!(c::OffsetArray, ::Nothing, indices, loc, grid::DistributedGrid, args...; kwargs...) = nothing
+BoundaryConditions.fill_halo_regions!(c::AbstractOffsetArray, ::Nothing, indices, loc, grid::DistributedGrid, args...; kwargs...) = nothing
 
 function distributed_fill_halo_regions!(arch, c, boundary_conditions, indices, loc, grid, buffers, args; only_local_halos = false, kwargs...)
     # Complete an asynchronous fill of this field still in flight before its send buffers and requests are reused

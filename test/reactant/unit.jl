@@ -117,7 +117,7 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
         for name in propertynames(llg)
             p = getproperty(llg, name)
             if !(name ∈ (:architecture, :z))
-                @test (p isa Number) || (p isa OffsetArray{FT, <:Any, <:Reactant.AbstractConcreteArray})
+                @test (p isa Number) || (p isa StaticStridesOffsetArray{FT, <:Any, <:Any, <:Any, <:Reactant.AbstractConcreteArray})
             end
         end
 
@@ -132,7 +132,7 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
         for name in propertynames(constant_llg)
             p = getproperty(constant_llg, name)
             if !(name ∈ (:architecture, :z))
-                @test (p isa Number) || (p isa OffsetArray{FT, <:Any, <:Array})
+                @test (p isa Number) || (p isa StaticStridesOffsetArray{FT, <:Any, <:Any, <:Any, <:Array})
             end
         end
 
@@ -164,7 +164,7 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
         for name in propertynames(rllg)
             p = getproperty(rllg, name)
             if !(name ∈ (:architecture, :z, :conformal_mapping))
-                @test (p isa Number) || (p isa OffsetArray{FT, <:Any, <:Reactant.AbstractConcreteArray})
+                @test (p isa Number) || (p isa StaticStridesOffsetArray{FT, <:Any, <:Any, <:Any, <:Reactant.AbstractConcreteArray})
             end
         end
 
@@ -182,7 +182,7 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
         for name in propertynames(constant_rllg)
             p = getproperty(constant_rllg, name)
             if !(name ∈ (:architecture, :z, :conformal_mapping))
-                @test (p isa Number) || (p isa OffsetArray{FT, <:Any, <:Array})
+                @test (p isa Number) || (p isa StaticStridesOffsetArray{FT, <:Any, <:Any, <:Any, <:Array})
             end
         end
 
@@ -494,4 +494,25 @@ end
     refresh!(field, clock, t) = (clock.time = t; compute!(field); nothing)
     @jit raise = true refresh!(interpolated, clock, Reactant.ConcreteRNumber(5.0))
     @test all(Array(interior(interpolated)) .≈ 2)
+end
+
+@kernel function _store_adaptive_Δt!(c, td)
+    i, j, k = @index(Global, NTuple)
+    @inbounds c[i, j, k] = td.Δt
+end
+
+function store_adaptive_Δt!(c, td, Δt)
+    td.Δt[] = Δt
+    grid = c.grid
+    launch!(architecture(grid), grid, :xyz, _store_adaptive_Δt!, c, td)
+    return nothing
+end
+
+# A traced Δt held by AdaptiveVerticallyImplicitDiscretization must be adapted when it is passed to a kernel
+@testset "AdaptiveVerticallyImplicitDiscretization with a traced Δt in a kernel" begin
+    grid = RectilinearGrid(ReactantState(); size = (2, 2, 2), extent = (1, 1, 1))
+    c = CenterField(grid)
+    td = Oceananigans.TimeSteppers.AdaptiveVerticallyImplicitDiscretization(0.5, Ref(Reactant.ConcreteRNumber(0.0)))
+    @jit store_adaptive_Δt!(c, td, Reactant.ConcreteRNumber(3.0))
+    @test all(Array(interior(c)) .== 3)
 end

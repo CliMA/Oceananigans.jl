@@ -269,8 +269,8 @@ end
 #####
 
 # SplitRungeKuttaTimeStepper is self-starting!
-prognostic_state(ts::SplitRungeKuttaTimeStepper) = nothing
-restore_prognostic_state!(restored::SplitRungeKuttaTimeStepper, ::Nothing) = restored
+Oceananigans.prognostic_state(ts::SplitRungeKuttaTimeStepper) = nothing
+Oceananigans.restore_prognostic_state!(restored::SplitRungeKuttaTimeStepper, ::Nothing) = restored
 
 #####
 ##### Show methods

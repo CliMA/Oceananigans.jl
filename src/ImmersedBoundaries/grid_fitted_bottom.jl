@@ -1,8 +1,8 @@
-using Oceananigans.Grids: Grids, constructor_arguments, rnode
-using Oceananigans.Fields: Field, fill_halo_regions!, interior
 using Oceananigans.BoundaryConditions: FBC
+using Oceananigans.Fields: Field, fill_halo_regions!, interior
+using Oceananigans.Grids: Grids, constructor_arguments, rnode
 using Oceananigans.Utils: KernelParameters
-using OffsetArrays: OffsetArray
+using OffsetArrays: AbstractOffsetArray
 
 #####
 ##### GridFittedVerticalBoundaries (2.5D immersed boundary with modified bottom and top heights)
@@ -106,7 +106,7 @@ end
 
 set_bottom_height!(bottom_field, bottom_height) = set!(bottom_field, bottom_height)
 
-function set_bottom_height!(bottom_field, bottom_height::OffsetArray)
+function set_bottom_height!(bottom_field, bottom_height::AbstractOffsetArray)
     source = on_architecture(architecture(bottom_field), bottom_height_interior(bottom_height))
     copyto!(interior(bottom_field), source)
     return bottom_field
@@ -124,7 +124,7 @@ end
 $(TYPEDSIGNATURES)
 
 Return a `Field` at `(Center, Center, Nothing)` that wraps the bottom height of `grid`, which is
-stored on `grid.immersed_boundary` as a bare `OffsetArray`. The returned `Field` shares its data
+stored on `grid.immersed_boundary` as a bare `StaticStridesOffsetArray`. The returned `Field` shares its data
 with `grid`, so mutating it mutates the bottom height of `grid`. If `grid` has no immersed bottom,
 the returned `Field` is a copy filled with the bottom of the domain.
 """
@@ -207,7 +207,7 @@ Adapt.adapt_structure(to, ib::GridFittedVerticalBoundaries) =
 $(TYPEDSIGNATURES)
 
 Returns a new `ib` that holds the numerical `immersed_boundary`.
-If `ib` is an `AbstractGridFittedBottom`, `ib.bottom_height` is an `OffsetArray` holding the
+If `ib` is an `AbstractGridFittedBottom`, `ib.bottom_height` is a `StaticStridesOffsetArray` holding the
 z-coordinate of the top-most interface of the last ``immersed`` cell in the column (wrap it as a
 `Field` with [`bottom_height_field`](@ref)). If `ib` is a `GridFittedBoundary`, `ib.mask` is a `Field` of
 booleans that indicates whether a cell is immersed or not.
@@ -365,10 +365,10 @@ end
 ##### Static column depth
 #####
 
-@inline static_column_depthᶜᶜᵃ(i, j, ibg::AGFBIBG) = top_height(i, j, ibg) - bottom_height(i, j, ibg)
-@inline static_column_depthᶜᶠᵃ(i, j, ibg::AGFBIBG) = face_column_depth(i, j, i, j-1, ibg, ibg.immersed_boundary)
-@inline static_column_depthᶠᶜᵃ(i, j, ibg::AGFBIBG) = face_column_depth(i, j, i-1, j, ibg, ibg.immersed_boundary)
-@inline static_column_depthᶠᶠᵃ(i, j, ibg::AGFBIBG) = min(static_column_depthᶠᶜᵃ(i, j-1, ibg), static_column_depthᶠᶜᵃ(i, j, ibg))
+@inline Grids.static_column_depthᶜᶜᵃ(i, j, ibg::AGFBIBG) = top_height(i, j, ibg) - bottom_height(i, j, ibg)
+@inline Grids.static_column_depthᶜᶠᵃ(i, j, ibg::AGFBIBG) = face_column_depth(i, j, i, j-1, ibg, ibg.immersed_boundary)
+@inline Grids.static_column_depthᶠᶜᵃ(i, j, ibg::AGFBIBG) = face_column_depth(i, j, i-1, j, ibg, ibg.immersed_boundary)
+@inline Grids.static_column_depthᶠᶠᵃ(i, j, ibg::AGFBIBG) = min(static_column_depthᶠᶜᵃ(i, j-1, ibg), static_column_depthᶠᶜᵃ(i, j, ibg))
 
 # Without a top, adjacent columns share their top, so the shallower column depth is the open depth of the face
 @inline face_column_depth(i, j, i⁻, j⁻, ibg, ::GridFittedBottom) = min(static_column_depthᶜᶜᵃ(i⁻, j⁻, ibg), static_column_depthᶜᶜᵃ(i, j, ibg))
@@ -391,11 +391,11 @@ const XFlatAGFIBG = ImmersedBoundaryGrid{<:Any, <:Flat, <:Any, <:Any, <:Any, <:A
 const YFlatAGFIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Flat, <:Any, <:Any, <:AbstractGridFittedBottom}
 const XYFlatAGFIBG = ImmersedBoundaryGrid{<:Any, <:Flat, <:Flat, <:Any, <:Any, <:AbstractGridFittedBottom}
 
-@inline static_column_depthᶠᶜᵃ(i, j, ibg::XFlatAGFIBG) = static_column_depthᶜᶜᵃ(i, j, ibg)
-@inline static_column_depthᶜᶠᵃ(i, j, ibg::YFlatAGFIBG) = static_column_depthᶜᶜᵃ(i, j, ibg)
-@inline static_column_depthᶠᶠᵃ(i, j, ibg::XFlatAGFIBG) = static_column_depthᶜᶠᵃ(i, j, ibg)
-@inline static_column_depthᶠᶠᵃ(i, j, ibg::YFlatAGFIBG) = static_column_depthᶠᶜᵃ(i, j, ibg)
-@inline static_column_depthᶠᶠᵃ(i, j, ibg::XYFlatAGFIBG) = static_column_depthᶜᶜᵃ(i, j, ibg)
+@inline Grids.static_column_depthᶠᶜᵃ(i, j, ibg::XFlatAGFIBG) = static_column_depthᶜᶜᵃ(i, j, ibg)
+@inline Grids.static_column_depthᶜᶠᵃ(i, j, ibg::YFlatAGFIBG) = static_column_depthᶜᶜᵃ(i, j, ibg)
+@inline Grids.static_column_depthᶠᶠᵃ(i, j, ibg::XFlatAGFIBG) = static_column_depthᶜᶠᵃ(i, j, ibg)
+@inline Grids.static_column_depthᶠᶠᵃ(i, j, ibg::YFlatAGFIBG) = static_column_depthᶠᶜᵃ(i, j, ibg)
+@inline Grids.static_column_depthᶠᶠᵃ(i, j, ibg::XYFlatAGFIBG) = static_column_depthᶜᶜᵃ(i, j, ibg)
 
 function Grids.constructor_arguments(grid::AGFBIBG)
     underlying_grid_args, underlying_grid_kwargs = constructor_arguments(grid.underlying_grid)

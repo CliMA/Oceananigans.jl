@@ -1,8 +1,8 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
-using Oceananigans.Utils: get_active_cells_map
 using Oceananigans.DistributedComputations: partition_1d, create_cost_map, Sizes,
                                             GeneralizedBlockDistribution, SimplifiedGeneralizedBlockDistribution, JaggedBlockDistribution
+using Oceananigans.Utils: get_active_cells_map
 
 sizes = [ (60, 60, 30) ]
 halos = [ (4, 4, 4) ]

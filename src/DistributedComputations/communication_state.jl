@@ -8,7 +8,7 @@ end
 
 # CommunicationState only lives on host, so never needs to be converted
 Adapt.adapt_structure(to, cs::CommunicationState) = nothing
-on_architecture(arch, cs::CommunicationState) = cs
+Architectures.on_architecture(arch, cs::CommunicationState) = cs
 
 function communication_state(arch::Distributed)
     pack_event = new_event(arch)

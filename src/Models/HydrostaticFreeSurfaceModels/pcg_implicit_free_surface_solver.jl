@@ -1,11 +1,10 @@
-using Oceananigans.Operators: Azᶜᶜᶜ, Azᶜᶜᶠ, Δx_qᶜᶠᶜ, Δxᶜᶠᵃ, Δx⁻¹ᶠᶜᶠ, Δy_qᶠᶜᶜ, Δyᶠᶜᵃ, Δy⁻¹ᶜᶠᶠ,
-    δxᶜᵃᵃ, δxᶜᶜᶜ, δyᵃᶜᵃ, δyᶜᶜᶜ, δxᶠᶜᶠ, δyᶜᶠᶠ
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+using Oceananigans.Architectures: architecture
 using Oceananigans.DistributedComputations: DistributedGrid
-using Oceananigans.Grids: isrectilinear, halo_size
-
-using Oceananigans.Solvers: Solvers, solve!, ConjugateGradientSolver
-import Oceananigans.Architectures: architecture
+using Oceananigans.Grids: halo_size, isrectilinear
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+using Oceananigans.Operators: Azᶜᶜᶜ, Azᶜᶜᶠ, Δx_qᶜᶠᶜ, Δxᶜᶠᵃ, Δx⁻¹ᶠᶜᶠ, Δy_qᶠᶜᶜ, Δyᶠᶜᵃ, Δy⁻¹ᶜᶠᶠ, δxᶜᵃᵃ, δxᶜᶜᶜ, δxᶠᶜᶠ,
+                              δyᵃᶜᵃ, δyᶜᶜᶜ, δyᶜᶠᶠ
+using Oceananigans.Solvers: Solvers, ConjugateGradientSolver, solve!
 
 """
     struct PCGImplicitFreeSurfaceSolver{V, S, R}
@@ -20,7 +19,7 @@ struct PCGImplicitFreeSurfaceSolver{V, S, R}
     right_hand_side :: R
 end
 
-architecture(solver::PCGImplicitFreeSurfaceSolver) =
+Architectures.architecture(solver::PCGImplicitFreeSurfaceSolver) =
     architecture(solver.preconditioned_conjugate_gradient_solver)
 
 # The assumption is that the horizontal spacings do not depend on the z-direction
