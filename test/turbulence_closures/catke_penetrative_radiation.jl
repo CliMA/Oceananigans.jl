@@ -21,17 +21,17 @@ SingleBandRadiation(Jʳ, κ) = TwoBandRadiation(Jʳ, 1.0, κ, κ)
 Forcings.penetrative_radiation(R::TwoBandRadiation) = R
 Forcings.surface_radiative_buoyancy_flux(i, j, grid, R::TwoBandRadiation, buoyancy, fields) = R.surface_buoyancy_flux
 
-function Forcings.transmitted_fraction(R::TwoBandRadiation, i, j, grid, d)
+function Forcings.transmitted_fraction(i, j, grid, R::TwoBandRadiation, d)
     ϵ, κ₁, κ₂ = R.first_band_fraction, R.first_absorption_coefficient, R.second_absorption_coefficient
     return ϵ * exp(-κ₁ * d) + (1 - ϵ) * exp(-κ₂ * d)
 end
 
-function Forcings.transmitted_fraction_derivative(R::TwoBandRadiation, i, j, grid, d)
+function Forcings.transmitted_fraction_derivative(i, j, grid, R::TwoBandRadiation, d)
     ϵ, κ₁, κ₂ = R.first_band_fraction, R.first_absorption_coefficient, R.second_absorption_coefficient
     return - ϵ * κ₁ * exp(-κ₁ * d) - (1 - ϵ) * κ₂ * exp(-κ₂ * d)
 end
 
-function Forcings.transmitted_thickness(R::TwoBandRadiation, i, j, grid, h)
+function Forcings.transmitted_thickness(i, j, grid, R::TwoBandRadiation, h)
     ϵ, κ₁, κ₂ = R.first_band_fraction, R.first_absorption_coefficient, R.second_absorption_coefficient
     return - ϵ * expm1(-κ₁ * h) / κ₁ - (1 - ϵ) * expm1(-κ₂ * h) / κ₂
 end
@@ -39,7 +39,7 @@ end
 # The radiation heats the column as the divergence of the radiative flux through each cell
 @inline function radiative_flux(i, j, k, grid, R)
     d = - znode(i, j, k, grid, Center(), Center(), Face())
-    return R.surface_buoyancy_flux * Forcings.transmitted_fraction(R, i, j, grid, d)
+    return R.surface_buoyancy_flux * Forcings.transmitted_fraction(i, j, grid, R, d)
 end
 
 @inline (R::TwoBandRadiation)(i, j, k, grid, clock, fields) = - ∂zᶜᶜᶜ(i, j, k, grid, radiative_flux, R)

@@ -9,14 +9,14 @@
 @inline convective_buoyancy_production(i, j, grid, ::Nothing, h, Jᵇ, Jʳ) = h * Jᵇ
 
 @inline function convective_buoyancy_production(i, j, grid, radiation, h, Jᵇ, Jʳ)
-    𝒯 = transmitted_fraction(radiation, i, j, grid, h)
-    ℒ = transmitted_thickness(radiation, i, j, grid, h)
+    𝒯 = transmitted_fraction(i, j, grid, radiation, h)
+    ℒ = transmitted_thickness(i, j, grid, radiation, h)
     return h * (Jᵇ + Jʳ * 𝒯) - 2 * Jʳ * ℒ
 end
 
 @inline function convective_buoyancy_production_rate(i, j, grid, radiation, h, Jᵇ, Jʳ)
-    𝒯  = transmitted_fraction(radiation, i, j, grid, h)
-    𝒯′ = transmitted_fraction_derivative(radiation, i, j, grid, h)
+    𝒯  = transmitted_fraction(i, j, grid, radiation, h)
+    𝒯′ = transmitted_fraction_derivative(i, j, grid, radiation, h)
     return Jᵇ - Jʳ * (𝒯 - h * 𝒯′)
 end
 
@@ -26,7 +26,7 @@ end
 
 @inline function convective_layer_depth(i, j, grid, radiation, w★³, Jᵇ, Jʳ, Jᵇᵋ)
     H = static_column_depthᶜᶜᵃ(i, j, grid)
-    ℒ = transmitted_thickness(radiation, i, j, grid, H)
+    ℒ = transmitted_thickness(i, j, grid, radiation, H)
     h = max(w★³ / (Jᵇ - Jʳ + Jᵇᵋ), (w★³ + 2 * Jʳ * ℒ) / (Jᵇ + Jᵇᵋ))
 
     for _ in 1:3
