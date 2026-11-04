@@ -1,15 +1,6 @@
-using Oceananigans.BoundaryConditions: BoundaryConditions,
-                                       BoundaryCondition,
-                                       DefaultBoundaryCondition,
-                                       LeftBoundary,
-                                       RightBoundary,
-                                       regularize_boundary_condition,
-                                       VBC, GBC, FBC, IEFBC, Flux,
-                                       needs_implicit_solver
-
-import Oceananigans.BoundaryConditions: regularize_immersed_boundary_condition,
-                                        bc_str,
-                                        update_boundary_condition!
+using Oceananigans.BoundaryConditions: BoundaryConditions, BoundaryCondition, DefaultBoundaryCondition, FBC, Flux, GBC,
+                                       IEFBC, LeftBoundary, RightBoundary, VBC, bc_str, needs_implicit_solver,
+                                       regularize_boundary_condition, regularize_immersed_boundary_condition
 
 struct ImmersedBoundaryCondition{W, E, S, N, B, T}
     west :: W
@@ -22,7 +13,7 @@ end
 
 const IBC = ImmersedBoundaryCondition
 
-bc_str(::IBC) = "ImmersedBoundaryCondition"
+BoundaryConditions.bc_str(::IBC) = "ImmersedBoundaryCondition"
 
 Base.summary(ibc::IBC) =
     string(bc_str(ibc), " with ",
@@ -78,13 +69,13 @@ end
 #####
 
 const ZFBC = BoundaryCondition{<:Flux, Nothing}
-regularize_immersed_boundary_condition(ibc::ZFBC, ibg::IBG, args...) = ibc # keep it
+BoundaryConditions.regularize_immersed_boundary_condition(ibc::ZFBC, ibg::IBG, args...) = ibc # keep it
 
-regularize_immersed_boundary_condition(default::DefaultBoundaryCondition, ibg::IBG, loc, field_name, args...) =
+BoundaryConditions.regularize_immersed_boundary_condition(default::DefaultBoundaryCondition, ibg::IBG, loc, field_name, args...) =
     regularize_immersed_boundary_condition(default.boundary_condition, ibg, loc, field_name, args...)
 
 # Convert certain non-immersed boundary conditions to immersed boundary conditions
-function regularize_immersed_boundary_condition(ibc::Union{VBC, GBC, FBC}, ibg::IBG, loc, field_name, args...)
+function BoundaryConditions.regularize_immersed_boundary_condition(ibc::Union{VBC, GBC, FBC}, ibg::IBG, loc, field_name, args...)
     _ibc = ImmersedBoundaryCondition(Tuple(ibc for i=1:6)...)
     regularize_immersed_boundary_condition(_ibc, ibg, loc, field_name, args...)
 end
@@ -92,7 +83,7 @@ end
 """
 $(TYPEDSIGNATURES)
 """
-function regularize_immersed_boundary_condition(bc::IBC, grid, loc, field_name, prognostic_field_names)
+function BoundaryConditions.regularize_immersed_boundary_condition(bc::IBC, grid, loc, field_name, prognostic_field_names)
 
     west   = isa(loc[1], Center) ? regularize_boundary_condition(bc.west,   grid, loc, 1, LeftBoundary,  prognostic_field_names) : nothing
     east   = isa(loc[1], Center) ? regularize_boundary_condition(bc.east,   grid, loc, 1, RightBoundary, prognostic_field_names) : nothing
@@ -111,7 +102,7 @@ Adapt.adapt_structure(to, bc::ImmersedBoundaryCondition) = ImmersedBoundaryCondi
                                                                                      Adapt.adapt(to, bc.bottom),
                                                                                      Adapt.adapt(to, bc.top))
 
-update_boundary_condition!(bc::ImmersedBoundaryCondition, args...) = nothing
+BoundaryConditions.update_boundary_condition!(bc::ImmersedBoundaryCondition, args...) = nothing
 
 #####
 ##### Alternative implementation for immersed flux divergence

@@ -2,11 +2,11 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Oceananigans.Fields: VelocityFields
 using Oceananigans.BoundaryConditions: UPivot, TPivot, FPivot, regularize_field_boundary_conditions
+using Oceananigans.Models: materialize_free_surface
 using Oceananigans.Models.HydrostaticFreeSurfaceModels
 using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: calculate_substeps,
                                                                                   calculate_adaptive_settings,
                                                                                   constant_averaging_kernel,
-                                                                                  materialize_free_surface,
                                                                                   SplitExplicitFreeSurface,
                                                                                   iterate_split_explicit!
 

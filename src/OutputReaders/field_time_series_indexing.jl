@@ -231,12 +231,18 @@ const FTS0  = FlavorOfFTS{Nothing, Nothing, Nothing}
 @inline BoundaryConditions.getbc(f::XFTS, i::Int, ::Int, grid::AbstractGrid, clock, args...) = @inbounds f[i, 1, 1, Time(clock.time)]
 
 # West - east and top - bottom, this case is not really well defined since the indexes could be i and j or j and k
-# so we check which dimension of the grid is 1 and pick the corresponding index
+# so we check which dimension of the grid is 1 and pick the corresponding index. Regularized boundary conditions
+# do not reach this method: they wrap the series in an `XZReducedCondition` that knows its boundary.
 @inline function BoundaryConditions.getbc(f::YFTS, i1::Int, i2::Int, grid::AbstractGrid, clock, args...)
     Nx, _, Nz = size(grid)
     j = ifelse(Nz == 1, i1, i2)
     return @inbounds f[1, j, 1, Time(clock.time)]
 end
+
+@inline BoundaryConditions.xz_reduced_getbc(f::YFTS, j, grid, clock, args...) = @inbounds f[1, j, 1, Time(clock.time)]
+
+BoundaryConditions.regularize_boundary_condition(f::YFTS, grid, loc, dim, args...) =
+    BoundaryConditions.xz_reduced_condition(f, Val(dim))
 
 # West - east and south - north boundary conditions, only the last index is valid (the first one is either i or j)
 @inline BoundaryConditions.getbc(f::ZFTS, ::Int, k::Int, grid::AbstractGrid, clock, args...) = @inbounds f[1, 1, k, Time(clock.time)]

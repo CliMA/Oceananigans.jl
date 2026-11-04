@@ -1,4 +1,4 @@
-using Oceananigans.Utils: shortsummary, prettysummary
+using Oceananigans.Utils: prettysummary, shortsummary
 
 """
     KernelFunctionOperation{LX, LY, LZ}(kernel_function, grid, arguments...)
@@ -108,8 +108,8 @@ end
 @inline kept_index(::Type{Nothing}, index) = ()
 @inline kept_index(::Type, index) = (index,)
 
-indices(κ::KernelFunctionOperation) = intersect_indices(location(κ), κ.arguments...)
-compute_at!(κ::KernelFunctionOperation, time) = Tuple(compute_at!(d, time) for d in κ.arguments)
+Fields.indices(κ::KernelFunctionOperation) = intersect_indices(location(κ), κ.arguments...)
+Fields.compute_at!(κ::KernelFunctionOperation, time) = Tuple(compute_at!(d, time) for d in κ.arguments)
 
 "Adapt `KernelFunctionOperation` to work on the GPU via KernelAbstractions."
 Adapt.adapt_structure(to, κ::KernelFunctionOperation{LX, LY, LZ}) where {LX, LY, LZ} =

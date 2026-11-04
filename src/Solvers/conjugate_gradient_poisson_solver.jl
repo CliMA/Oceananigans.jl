@@ -525,7 +525,7 @@ end
 
 Construct a pointwise (Jacobi-like) approximate-inverse preconditioner for the
 `ConjugateGradientPoissonSolver`, following the "diagonally dominant" approximation of
-Marshall et al. (1997, §4.2). It approximates `M ≈ (V∇²)⁻¹` with a single sparse sweep that
+[Marshall et al. (1997)](@cite Marshall97FV), §4.2. It approximates `M ≈ (V∇²)⁻¹` with a single sparse sweep that
 keeps all seven points of the stencil but never solves a coupled system, so it is cheap and
 applies uniformly to any topology and grid aspect ratio.
 
@@ -558,6 +558,12 @@ which inverts the vertical sub-system exactly, is also another viable option.
 
 However the FFT-based preconditioner is the recommended option over the `DiagonallyDominantPreconditioner`
 or the [`ColumnwiseTridiagonalPreconditioner`](@ref) as it converges in much fewer iterations for most scenarios.
+
+References
+==========
+* Marshall, J., Adcroft, A., Hill, C., Perelman, L., & Heisey, C. (1997). "A finite-volume,
+  incompressible Navier Stokes model for studies of the ocean on parallel computers."
+  Journal of Geophysical Research: Oceans, 102(C3), 5753-5766.
 """
 struct DiagonallyDominantPreconditioner end
 Base.summary(::DiagonallyDominantPreconditioner) = "DiagonallyDominantPreconditioner"
