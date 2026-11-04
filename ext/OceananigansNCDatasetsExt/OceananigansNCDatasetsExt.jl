@@ -83,7 +83,7 @@ using Oceananigans.OutputWriters:
     halo_fill_2d_metric
 using Oceananigans.Utils:
     materialize_schedule, versioninfo_with_gpu, oceananigans_versioninfo, prettykeys,
-    time_difference_seconds
+    time_difference_in_seconds
 
 import NCDatasets: defVar
 import Oceananigans: initialize!, write_output!

@@ -117,7 +117,7 @@ end
 matching_time(file_time, t, Δt) = isapprox(file_time, t; atol=100*eps(Δt), rtol=sqrt(eps(Δt)))
 
 # Calendar instants are exact to the millisecond, so a match is within that resolution.
-matching_time(file_time::AbstractTime, t, Δt) = abs(time_difference_seconds(file_time, t)) < 1e-3
+matching_time(file_time::AbstractTime, t, Δt) = abs(time_difference_in_seconds(file_time, t)) < 1e-3
 
 #####
 ##### set! / set_from_zarr!
@@ -135,7 +135,7 @@ function OutputReaders.set_from_zarr!(fts::InMemoryFTS, path::String, name; warn
 
     # The on-disk Zarr array is (spatial..., Nt). We read slice n into the corresponding
     # fts entry. For each requested fts time index, find the closest matching file time.
-    Δt = length(file_times) > 1 ? abs(time_difference_seconds(file_times[2], file_times[1])) : 1.0
+    Δt = length(file_times) > 1 ? abs(time_difference_in_seconds(file_times[2], file_times[1])) : 1.0
 
     for n in time_indices(fts)
         t = cpu_times[n]

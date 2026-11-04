@@ -71,7 +71,7 @@ using Oceananigans.OutputWriters:
 using Oceananigans.Utils:
     materialize_schedule,
     versioninfo_with_gpu, oceananigans_versioninfo,
-    prettykeys, time_difference_seconds
+    prettykeys, time_difference_in_seconds
 
 const c = Center()
 const f = Face()

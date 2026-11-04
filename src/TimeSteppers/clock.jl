@@ -5,7 +5,7 @@ using DocStringExtensions: TYPEDEF, TYPEDSIGNATURES
 using Oceananigans: restore_prognostic_state!
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Units: Time
-using Oceananigans.Utils: prettytime, seconds_to_nanosecond, time_difference_seconds
+using Oceananigans.Utils: prettytime, seconds_to_nanosecond, time_difference_in_seconds
 
 """
 $(TYPEDEF)
@@ -98,7 +98,7 @@ end
 approximately_equal_times(a, b; kw...) = isapprox(a, b; kw...)
 
 # Calendar instants have no magnitude for a relative tolerance, so only `atol` (seconds) applies.
-approximately_equal_times(a::AbstractTime, b::AbstractTime; atol=0, kw...) = abs(time_difference_seconds(a, b)) <= atol
+approximately_equal_times(a::AbstractTime, b::AbstractTime; atol=0, kw...) = abs(time_difference_in_seconds(a, b)) <= atol
 
 function Base.isapprox(a::Clock, b::Clock; kw...)
     return approximately_equal_times(a.time, b.time; kw...) &&
