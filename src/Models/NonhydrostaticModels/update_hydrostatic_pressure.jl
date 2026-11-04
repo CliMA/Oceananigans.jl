@@ -1,3 +1,4 @@
+using Oceananigans.BuoyancyFormulations: z_dot_g_bᶜᶜᶜ, z_dot_g_bᶜᶜᶠ
 using Oceananigans.Grids: topology
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, PartialCellVerticalBoundaries
 using Oceananigans.Operators: Δzᶜᶜᶜ, Δzᶜᶜᶠ
