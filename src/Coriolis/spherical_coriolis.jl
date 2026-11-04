@@ -51,7 +51,7 @@ Keyword arguments
 - `rotation_rate`: Sphere's rotation rate; default: Earth's rotation rate.
 - `scheme`: Discretization scheme. Options include `EnstrophyConserving()` (default),
   `EnergyConserving()`, `ActiveWeightedEnstrophyConserving()`,
-  `ActiveWeightedEnergyConserving()`, and `TriadScheme()`.
+  `ActiveWeightedEnergyConserving()`, `ThicknessWeightedEnergyConserving()`, and `TriadScheme()`.
 - `formulation`: Either `NonhydrostaticFormulation()` (default) or `HydrostaticFormulation()`.
 
 Example
@@ -161,7 +161,8 @@ const OrthogonalSphericalShellGridOfSomeKind =
     SphericalCoriolis(coriolis.rotation_rate, coriolis.scheme, HydrostaticFormulation())
 
 for Scheme in (:EnstrophyConserving, :EnergyConserving, :TriadScheme,
-               :ActiveWeightedEnstrophyConserving, :ActiveWeightedEnergyConserving, :DualGridScheme)
+               :ActiveWeightedEnstrophyConserving, :ActiveWeightedEnergyConserving, :ThicknessWeightedEnergyConserving,
+               :DualGridScheme)
     @eval begin
         @inline x_f_cross_U(i, j, k, grid, coriolis::NonhydrostaticSphericalCoriolis{<:$Scheme}, U) =
             x_f_cross_U(i, j, k, grid, hydrostatic(coriolis), U) + x_f̃_cross_U(i, j, k, grid, coriolis, U)
