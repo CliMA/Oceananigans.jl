@@ -4,7 +4,7 @@ using Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid, metrics_precom
                           pop_flat_elements, grid_name, new_data, halo_size, with_halo,
                           minimum_xspacing, minimum_yspacing, minimum_zspacing
 using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary,
-                                       bottom_height_field, set_bottom_height!
+                                       height_field, set_bottom_height!
 using Oceananigans.Models: PrescribedVelocityFields
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModels
 using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: SplitExplicitFreeSurfaces,
@@ -178,13 +178,13 @@ function DistributedComputations.reconstruct_global_grid(mrg::ImmersedMultiRegio
 end
 
 function reconstruct_global_immersed_boundary(ib::GridFittedBottom, mrg::MultiRegionGrids)
-    bottom_field  = bottom_height_field(ib.bottom_height, mrg)
+    bottom_field  = height_field(ib.bottom_height, mrg)
     global_bottom = reconstruct_global_field(bottom_field)
     return GridFittedBottom(interior(global_bottom), ib.immersed_condition)
 end
 
 function reconstruct_global_immersed_boundary(ib::PartialCellBottom, mrg::MultiRegionGrids)
-    bottom_field  = bottom_height_field(ib.bottom_height, mrg)
+    bottom_field  = height_field(ib.bottom_height, mrg)
     global_bottom = reconstruct_global_field(bottom_field)
     return PartialCellBottom(interior(global_bottom), ib.minimum_fractional_cell_height)
 end
@@ -208,7 +208,7 @@ function Oceananigans.Architectures.on_architecture(arch, ibg::ImmersedRegionalG
 end
 
 # On a multi-region grid the stored bottom height is a `MultiRegionObject` of per-region halo-inclusive
-# `OffsetArray`s; strip each region's halos before copying (the bare-`OffsetArray` method does this per region).
+# `StaticStridesOffsetArray`s; strip each region's halos before copying (the bare-`AbstractOffsetArray` method does this per region).
 Oceananigans.ImmersedBoundaries.set_bottom_height!(bottom_field, bottom_height::MultiRegionObject) =
     @apply_regionally set_bottom_height!(bottom_field, bottom_height)
 

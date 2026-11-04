@@ -21,7 +21,7 @@ end
 @inline baseline_velocities(model, ::SplitRungeKuttaTimeStepper) = model.timestepper.Ψ⁻
 @inline baseline_velocities(model, ::QuasiAdamsBashforth2TimeStepper) = model.transport_velocities
 
-function compute_free_surface_tendency!(grid, model, free_surface::SplitExplicitFreeSurface, Δt)
+function HydrostaticFreeSurfaceModels.compute_free_surface_tendency!(grid, model, free_surface::SplitExplicitFreeSurface, Δt)
     GUⁿ = model.timestepper.Gⁿ.U
     GVⁿ = model.timestepper.Gⁿ.V
 

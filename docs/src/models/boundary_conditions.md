@@ -439,7 +439,7 @@ PerturbationAdvection{Float64}
 └── target_transport: nothing
 
 julia> open_boundary = NormalFlowBoundaryCondition(1; scheme)
-NormalFlowBoundaryCondition{PerturbationAdvection{Float64, Nothing, Nothing}}: 1
+NormalFlowBoundaryCondition{PerturbationAdvection{Float64, Nothing, Nothing, Nothing}}: 1
 ```
 
 The boundary value and timescales need to be carefully chosen to allow information to enter/
@@ -467,7 +467,7 @@ PerturbationAdvection{Float64}
 └── target_transport: 2.0
 
 julia> open_boundary = NormalFlowBoundaryCondition(1; scheme)
-NormalFlowBoundaryCondition{PerturbationAdvection{Float64, Nothing, Float64}}: 1
+NormalFlowBoundaryCondition{PerturbationAdvection{Float64, Nothing, Float64, Nothing}}: 1
 ```
 
 The same keyword is accepted by [`NormalRadiation`](@ref) and [`ObliqueRadiation`](@ref):
@@ -558,7 +558,7 @@ julia> model.velocities.u
 ├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: Value, top: Value, immersed: Nothing
-└── data: 22×22×22 OffsetArray(::Array{Float64, 3}, -2:19, -2:19, -2:19) with eltype Float64 with indices -2:19×-2:19×-2:19
+└── data: 22×22×22 StaticStridesOffsetArray(::Array{Float64, 3}, -2:19, -2:19, -2:19) with eltype Float64 with indices -2:19×-2:19×-2:19
     └── max=0.0, min=0.0, mean=0.0
 
 julia> model.tracers.c
@@ -566,7 +566,7 @@ julia> model.tracers.c
 ├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: Gradient, top: Value, immersed: Nothing
-└── data: 22×22×22 OffsetArray(::Array{Float64, 3}, -2:19, -2:19, -2:19) with eltype Float64 with indices -2:19×-2:19×-2:19
+└── data: 22×22×22 StaticStridesOffsetArray(::Array{Float64, 3}, -2:19, -2:19, -2:19) with eltype Float64 with indices -2:19×-2:19×-2:19
     └── max=0.0, min=0.0, mean=0.0
 ```
 

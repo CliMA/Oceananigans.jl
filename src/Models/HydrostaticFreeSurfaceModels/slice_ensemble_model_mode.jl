@@ -1,13 +1,9 @@
-using Oceananigans.Grids: Flat, Bounded, BoundaryTopology, y_domain
+using Oceananigans.Coriolis: x_f_cross_U, y_f_cross_U, z_f_cross_U
+using Oceananigans.Grids: BoundaryTopology, Bounded, Flat, XYRegularRG, y_domain
 using Oceananigans.TimeSteppers: time_discretization
-using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure
-using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: _top_tke_flux, CATKEVDArray
-
-import Oceananigans.Grids: validate_size, validate_halo, XYRegularRG
-import Oceananigans.TurbulenceClosures: compute_closure_fields!, with_tracers
-import Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∇_dot_qᶜ
-import Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: top_tke_flux
-import Oceananigans.Coriolis: x_f_cross_U, y_f_cross_U, z_f_cross_U
+using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure, compute_closure_fields!, with_tracers, ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ,
+                                       ∇_dot_qᶜ
+using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: CATKEVDArray, _top_tke_flux
 
 #####
 ##### Implements a "slice ensemble model mode" for HydrostaticFreeSurfaceModel
@@ -16,17 +12,17 @@ import Oceananigans.Coriolis: x_f_cross_U, y_f_cross_U, z_f_cross_U
 const YZSliceGrid = Union{AbstractGrid{<:AbstractFloat, <:Flat, <:BoundaryTopology, <:Bounded},
                           AbstractGrid{<:AbstractFloat, <:Flat, <:Periodic, <:Bounded}}
 
-@inline function ∂ⱼ_τ₁ⱼ(i, j, k, grid::YZSliceGrid, closure_array::ClosureArray, args...)
+@inline function TurbulenceClosures.∂ⱼ_τ₁ⱼ(i, j, k, grid::YZSliceGrid, closure_array::ClosureArray, args...)
     @inbounds closure = closure_array[i]
     return ∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, args...)
 end
 
-@inline function ∂ⱼ_τ₂ⱼ(i, j, k, grid::YZSliceGrid, closure_array::ClosureArray, args...)
+@inline function TurbulenceClosures.∂ⱼ_τ₂ⱼ(i, j, k, grid::YZSliceGrid, closure_array::ClosureArray, args...)
     @inbounds closure = closure_array[i]
     return ∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, args...)
 end
 
-@inline function ∇_dot_qᶜ(i, j, k, grid::YZSliceGrid, closure_array::ClosureArray, c, tracer_index, args...)
+@inline function TurbulenceClosures.∇_dot_qᶜ(i, j, k, grid::YZSliceGrid, closure_array::ClosureArray, c, tracer_index, args...)
     @inbounds closure = closure_array[i]
     return ∇_dot_qᶜ(i, j, k, grid, closure, c, tracer_index, args...)
 end
@@ -41,15 +37,15 @@ end
 
 SliceEnsembleSize(; size, ensemble=0, halo=(1, 1)) = SliceEnsembleSize(ensemble, size[1], size[2], halo[1], halo[2])
 
-validate_size(TX, TY, TZ, e::SliceEnsembleSize) = tuple(e.ensemble, e.Ny, e.Nz)
-validate_halo(TX, TY, TZ, size, e::SliceEnsembleSize) = tuple(0, e.Hy, e.Hz)
+Grids.validate_size(TX, TY, TZ, e::SliceEnsembleSize) = tuple(e.ensemble, e.Ny, e.Nz)
+Grids.validate_halo(TX, TY, TZ, size, e::SliceEnsembleSize) = tuple(0, e.Hy, e.Hz)
 
 #####
 ##### CATKEVerticalDiffusivity helpers
 #####
 
 """ Compute the flux of TKE through the surface / top boundary. """
-@inline function top_tke_flux(i, j, grid::YZSliceGrid, clock, fields, parameters, closure_array::CATKEVDArray, buoyancy)
+@inline function TKEBasedVerticalDiffusivities.top_tke_flux(i, j, grid::YZSliceGrid, clock, fields, parameters, closure_array::CATKEVDArray, buoyancy)
     top_tracer_bcs = parameters.top_tracer_boundary_conditions
     top_velocity_bcs = parameters.top_velocity_boundary_conditions
     @inbounds closure = closure_array[i]
@@ -73,9 +69,9 @@ end
 
 const CoriolisVector = AbstractVector{<:AbstractRotation}
 
-@inline x_f_cross_U(i, j, k, grid::YZSliceGrid, coriolis::CoriolisVector, U) = @inbounds x_f_cross_U(i, j, k, grid, coriolis[i], U)
-@inline y_f_cross_U(i, j, k, grid::YZSliceGrid, coriolis::CoriolisVector, U) = @inbounds y_f_cross_U(i, j, k, grid, coriolis[i], U)
-@inline z_f_cross_U(i, j, k, grid::YZSliceGrid, coriolis::CoriolisVector, U) = @inbounds z_f_cross_U(i, j, k, grid, coriolis[i], U)
+@inline Coriolis.x_f_cross_U(i, j, k, grid::YZSliceGrid, coriolis::CoriolisVector, U) = @inbounds x_f_cross_U(i, j, k, grid, coriolis[i], U)
+@inline Coriolis.y_f_cross_U(i, j, k, grid::YZSliceGrid, coriolis::CoriolisVector, U) = @inbounds y_f_cross_U(i, j, k, grid, coriolis[i], U)
+@inline Coriolis.z_f_cross_U(i, j, k, grid::YZSliceGrid, coriolis::CoriolisVector, U) = @inbounds z_f_cross_U(i, j, k, grid, coriolis[i], U)
 
 function FFTImplicitFreeSurfaceSolver(grid::YZSliceGrid, settings=nothing, gravitational_acceleration=nothing)
     grid isa XYRegularRG ||

@@ -23,6 +23,12 @@ slightly larger than the rigid-wall value 0.4 because the large eddy simulations
 calibrate CATKE include surface wave effects. Because `Cᵇ` is not constrained by those
 surface-forced simulations, it is instead chosen such that ``κ = 0.4`` at the bottom, which
 gives `Cᵇ = 0.967`.
+
+References
+==========
+* Wagner, G. L., Hillier, A., Constantinou, N. C., Silvestri, S., Souza, A., Burns, K., Hill, C.,
+  Campin, J.-M., Marshall, J., & Ferrari, R. (2025). "Formulation and calibration of CATKE, a one-equation
+  parameterization for microscale ocean mixing." Journal of Advances in Modeling Earth Systems, 17, e2024MS004522.
 """
 Base.@kwdef struct CATKEMixingLength{FT}
     Cˢ   :: FT = 1.131  # Surface distance coefficient for shear length scale
