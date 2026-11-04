@@ -28,9 +28,10 @@ Oceananigans.Architectures.array_type(::ReactantState) = ConcreteRArray
 Oceananigans.Architectures.on_architecture(::ReactantState, a::Reactant.AnyTracedRArray) = a
 Oceananigans.Architectures.on_architecture(::CPU, a::AnyConcreteReactantArray) = Array(a)
 
-using OffsetArrays: OffsetArray
-const ConcreteReactantOffsetArray = OffsetArray{<:Any, <:Any, <:AnyConcreteReactantArray}
-Oceananigans.Architectures.on_architecture(::CPU, a::ConcreteReactantOffsetArray) = OffsetArray(Array(parent(a)), a.offsets)
+using OffsetArrays: OffsetArrays, AbstractOffsetArray
+using Oceananigans.Utils: StaticStridesOffsetArray
+const ConcreteReactantOffsetArray = StaticStridesOffsetArray{<:Any, <:Any, <:Any, <:Any, <:AnyConcreteReactantArray}
+Oceananigans.Architectures.on_architecture(::CPU, a::ConcreteReactantOffsetArray) = StaticStridesOffsetArray(Array(parent(a)), OffsetArrays.offsets(a)...)
 
 const ArraysToRArray = Union{Array,
     Reactant.AnyConcretePJRTArray,

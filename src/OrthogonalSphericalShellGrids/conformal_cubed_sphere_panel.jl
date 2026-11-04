@@ -6,7 +6,7 @@ using Oceananigans.BoundaryConditions: fill_halo_kernel, select_bc
 using Oceananigans.Grids: Bounded, Connected, offset_data, static_column_depthᶜᶜᵃ, validate_topology, xnodes, ynodes
 using Oceananigans.ImmersedBoundaries: AbstractGridFittedBottom
 using Oceananigans.Operators: Δx_qᶠᶜᶜ, Δy_qᶜᶠᶜ, δxᶠᶠᶜ, δyᶠᶠᶜ
-using OffsetArrays: OffsetArray
+using OffsetArrays: OffsetArrays, AbstractOffsetArray
 
 struct CubedSphereConformalMapping{Rotation, Fξ, Fη, Cξ, Cη}
     rotation :: Rotation
@@ -842,7 +842,7 @@ end
 
 @inline Grids.static_column_depthᶜᶠᵃ(i, j, grid::YFlatAGFIBConformalCubedSpherePanelGrid) = static_column_depthᶜᶜᵃ(i, j, grid)
 
-@inline function BoundaryConditions.fill_halo_kernels(bcs::FieldBoundaryConditions, data::OffsetArray, grid::ConformalCubedSpherePanelGridOfSomeKind, loc, indices)
+@inline function BoundaryConditions.fill_halo_kernels(bcs::FieldBoundaryConditions, data::AbstractOffsetArray, grid::ConformalCubedSpherePanelGridOfSomeKind, loc, indices)
     reduced_dimensions = findall(x -> x isa Nothing, loc)
     reduced_dimensions = tuple(reduced_dimensions...)
     # Fill the bottom and top halos across the full horizontal span of `data`,
