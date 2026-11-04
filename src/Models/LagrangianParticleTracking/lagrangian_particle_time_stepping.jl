@@ -366,6 +366,12 @@ end
 TimeSteppers.step_lagrangian_particles!(::Nothing, model, Δt) = nothing
 TimeSteppers.substep_lagrangian_particles!(::Nothing, model, Δt, stage) = nothing
 
+# Particle types that only extend `step_lagrangian_particles!` are stepped once per time step, at the first stage
+function TimeSteppers.substep_lagrangian_particles!(particles::AbstractLagrangianParticles, model, Δt, stage)
+    stage == 1 && TimeSteppers.step_lagrangian_particles!(particles, model, Δt)
+    return nothing
+end
+
 """
 $(TYPEDSIGNATURES)
 
