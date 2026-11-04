@@ -24,16 +24,12 @@ This function is called after advancing the model state but before computing new
 preserving the tendencies needed for a :RungeKutta3 timestepper.
 """
 function TimeSteppers.cache_previous_tendencies!(model::ShallowWaterModel)
-    _cache_solution!, _ = configure_kernel(model.architecture, model.grid, :xyz, _cache_solution_tendencies!)
-    _cache_tracer!, _ = configure_kernel(model.architecture, model.grid, :xyz, _cache_field_tendencies!)
+    _cache_field!, _ = configure_kernel(model.architecture, model.grid, :xyz, _cache_field_tendencies!)
 
-    _cache_solution!(model.timestepper.G⁻, model.grid, model.timestepper.Gⁿ)
-
-    # Tracer fields
-    for i in 4:length(model.timestepper.G⁻)
-        @inbounds Gc⁻ = model.timestepper.G⁻[i]
-        @inbounds Gc⁰ = model.timestepper.Gⁿ[i]
-        _cache_tracer!(Gc⁻, model.grid, Gc⁰)
+    # One launch per field: fields have different static sizes,
+    # so a NamedTuple of them can't be indexed in a kernel
+    for (G⁻, Gⁿ) in zip(model.timestepper.G⁻, model.timestepper.Gⁿ)
+        _cache_field!(G⁻, model.grid, Gⁿ)
     end
 
     return nothing

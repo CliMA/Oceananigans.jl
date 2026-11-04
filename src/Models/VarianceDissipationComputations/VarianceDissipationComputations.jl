@@ -4,6 +4,7 @@ export VarianceDissipation, flatten_dissipation_fields
 
 using DocStringExtensions: TYPEDSIGNATURES
 using KernelAbstractions: @index, @kernel
+using OffsetArrays: OffsetArrays
 
 using Oceananigans: Oceananigans, UpdateStateCallsite
 using Oceananigans.Advection: _advective_tracer_flux_x,
