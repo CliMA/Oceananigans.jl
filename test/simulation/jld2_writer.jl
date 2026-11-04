@@ -38,6 +38,7 @@ struct ManyFieldsKernelFunction{F}
 end
 
 @inline (kernel::ManyFieldsKernelFunction)(i, j, k, grid) = @inbounds kernel.fields[1][i, j, k]
+Adapt.adapt_structure(to, kernel::ManyFieldsKernelFunction) = ManyFieldsKernelFunction(Adapt.adapt(to, kernel.fields))
 
 function test_jld2_large_outputs(arch)
     grid = RectilinearGrid(arch, size=(2, 2, 8), extent=(1, 1, 1))
