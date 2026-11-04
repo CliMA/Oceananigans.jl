@@ -1,6 +1,6 @@
 using Adapt: Adapt
 
-import Oceananigans: prognostic_state, restore_prognostic_state!
+using Oceananigans: prognostic_state, restore_prognostic_state!
 
 """
     struct ForwardBackwardScheme
@@ -43,5 +43,5 @@ initialize_free_surface_timestepper!(::ForwardBackwardScheme, args...) = nothing
 ##### Checkpointing
 #####
 
-prognostic_state(::ForwardBackwardScheme) = nothing
-restore_prognostic_state!(restored::ForwardBackwardScheme, ::Nothing) = restored
+Oceananigans.prognostic_state(::ForwardBackwardScheme) = nothing
+Oceananigans.restore_prognostic_state!(restored::ForwardBackwardScheme, ::Nothing) = restored

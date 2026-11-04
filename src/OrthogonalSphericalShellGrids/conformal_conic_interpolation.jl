@@ -1,5 +1,4 @@
 using Oceananigans.Fields: FractionalIndices, fractional_z_index
-import Oceananigans.Fields: _fractional_indices
 
 # A ConformalConicGrid is exactly uniform in its projected (x, y) meters
 # plane, so the fractional index is a closed-form O(1) lookup: forward-project the
@@ -20,17 +19,17 @@ const CenterOrFace = Union{Center, Face}
     return ii, jj
 end
 
-@inline function _fractional_indices((λ, φ, z)::NTuple{3, Any},
-                                     grid::ConformalConicGrid,
-                                     ℓx::CenterOrFace, ℓy::CenterOrFace, ℓz::CenterOrFace)
+@inline function Fields._fractional_indices((λ, φ, z)::NTuple{3, Any},
+                                            grid::ConformalConicGrid,
+                                            ℓx::CenterOrFace, ℓy::CenterOrFace, ℓz::CenterOrFace)
     ii, jj = conformal_conic_fractional_indices(λ, φ, grid, ℓx, ℓy)
     kk     = fractional_z_index(z, (ℓx, ℓy, ℓz), grid)
     return FractionalIndices(ii, jj, kk)
 end
 
-@inline function _fractional_indices((λ, φ)::NTuple{2, Any},
-                                     grid::ConformalConicGrid,
-                                     ℓx::CenterOrFace, ℓy::CenterOrFace, ::Nothing)
+@inline function Fields._fractional_indices((λ, φ)::NTuple{2, Any},
+                                            grid::ConformalConicGrid,
+                                            ℓx::CenterOrFace, ℓy::CenterOrFace, ::Nothing)
     ii, jj = conformal_conic_fractional_indices(λ, φ, grid, ℓx, ℓy)
     return FractionalIndices(ii, jj, nothing)
 end
