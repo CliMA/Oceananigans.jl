@@ -13,7 +13,7 @@ using DocStringExtensions: TYPEDSIGNATURES
 using GPUArraysCore: GPUArraysCore
 using LinearAlgebra: LinearAlgebra
 using MPI: MPI
-using OffsetArrays: OffsetArrays, OffsetArray
+using OffsetArrays: AbstractOffsetArray
 using Statistics: Statistics
 
 using Oceananigans: Oceananigans
@@ -29,7 +29,7 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaries, ImmersedBoundaryGrid,
                                        materialize_immersed_boundary
 using Oceananigans.Solvers: Solvers, GridWithFourierTridiagonalSolver, compute_preconditioner_rhs!,
                             fft_poisson_solver
-using Oceananigans.Utils: Utils
+using Oceananigans.Utils: Utils, StaticStridesOffsetArray
 
 
 include("distributed_macros.jl")
