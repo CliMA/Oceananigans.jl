@@ -48,8 +48,15 @@ end
 
 materialize_clock!(clock::Clock, timestepper) = nothing
 
-function reset!(clock::Clock{TT, KT, DT, IT, S}) where {TT, KT, DT, IT, S}
-    clock.time = zero(TT)
+"""
+$(TYPEDSIGNATURES)
+
+Reset `clock` to `t_init` at iteration 0 and stage 1, with no previous time step. Without
+`t_init` a numeric clock returns to zero; a calendar clock has no zero and must be given its
+initial time.
+"""
+function reset!(clock::Clock{TT, KT, DT, IT, S}, t_init::Union{Number, AbstractTime} = zero(TT)) where {TT, KT, DT, IT, S}
+    clock.time = t_init
     clock.iteration = zero(IT)
     clock.stage = 1
     clock.last_Δt = Inf
@@ -57,10 +64,12 @@ function reset!(clock::Clock{TT, KT, DT, IT, S}) where {TT, KT, DT, IT, S}
     return nothing
 end
 
+reset!(clock::Clock, ::Nothing) = reset!(clock)
+
 # `zero(DateTime)` is year 0, so a calendar clock has no zero to return to.
 function reset!(clock::Clock{<:AbstractTime})
     return throw(ArgumentError("Cannot reset! a clock keeping $(typeof(clock.time)) time: there is no zero " *
-                               "calendar instant. Set `clock.time` to the start of the run instead."))
+                               "calendar instant. Pass the initial time, `reset!(clock, t_init)`."))
 end
 
 """

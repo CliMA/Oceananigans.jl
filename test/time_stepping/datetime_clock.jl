@@ -320,6 +320,11 @@ end
         simulation = Simulation(model; Δt=60, stop_iteration=1, verbose=false)
         @test_throws ArgumentError reset!(model.clock)
         @test_throws ArgumentError reset!(simulation)
+
+        run!(simulation)
+        reset!(simulation; t_init=DateTime(2020, 1, 2))
+        @test model.clock.time == DateTime(2020, 1, 2)
+        @test model.clock.iteration == 0
     end
 
     @testset "Clock isapprox (DateTime)" begin
