@@ -29,6 +29,7 @@ Zarr = "0a941bbe-ad1d-11e8-39d9-ab76183a1d99"
 Oceananigans = {path = ".."}
 
 [compat]
+Adapt = "4.7.4"
 CairoMakie = "0.15"
 CUDA = "=5.8.5, 5.9.1, 6"
 ConservativeRegridding = "0.2"
