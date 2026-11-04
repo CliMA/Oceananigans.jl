@@ -45,6 +45,7 @@ Polynomials = "4"
 Reactant = "0.2.278 - 0.2.292"
 Rotations = "1"
 SeawaterPolynomials = "0.3.11"
+StructArrays = "0.7.4"
 
 [preferences.Reactant]
 xla_runtime = "IFRT"
