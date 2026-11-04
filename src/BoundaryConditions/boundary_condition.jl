@@ -108,8 +108,34 @@ MultiRegionCommunicationBoundaryCondition() = BoundaryCondition(MultiRegionCommu
 
 ValueBoundaryCondition(val; scheme = nothing, kwargs...)      = BoundaryCondition(Value(scheme), val; kwargs...)
 GradientBoundaryCondition(val; kwargs...)                     = BoundaryCondition(Gradient(), val; kwargs...)
-NormalFlowBoundaryCondition(val; scheme = nothing, kwargs...) = BoundaryCondition(NormalFlow(scheme), val; kwargs...)
 MultiRegionCommunicationBoundaryCondition(val; kwargs...)     = BoundaryCondition(MultiRegionCommunication(), val; kwargs...)
+
+"""
+    NormalFlowBoundaryCondition(val; scheme = nothing, rebalance = false, kwargs...)
+
+Return a [`NormalFlow`](@ref) `BoundaryCondition` that sets the boundary-normal velocity to `val`.
+
+With the default `scheme = nothing` the value is imposed as is. A radiation `scheme` such as
+[`PerturbationAdvection`](@ref) instead radiates the boundary-normal velocity out of the domain.
+
+With `rebalance = true` the imposed value joins the net-zero transport correction of
+`Oceananigans.Models.enforce_net_zero_transport!`, which `NonhydrostaticModel` applies before
+each pressure solve: the boundary is filled with `val`, then shifted uniformly, together with
+every other rebalanced or radiating boundary, so that their combined net transport vanishes. Use
+it for prescribed inflow and outflow that need not balance exactly, for example a nested domain
+driven by a coarser model. `rebalance` and `scheme` are mutually exclusive, since a radiating
+boundary is already rebalanced.
+
+`kwargs` (`parameters`, `discrete_form`, `field_dependencies`) apply to `val`.
+"""
+function NormalFlowBoundaryCondition(val; scheme = nothing, rebalance = false, kwargs...)
+    if rebalance
+        isnothing(scheme) || throw(ArgumentError("`rebalance = true` applies to an imposed normal flow; " *
+                                                 "a boundary with a `scheme` already joins the net-zero transport correction."))
+        scheme = Rebalanced()
+    end
+    return BoundaryCondition(NormalFlow(scheme), val; kwargs...)
+end
 
             UPivotZipperBoundaryCondition(val; kwargs...) = BoundaryCondition(Zipper{UPivot}(), val; kwargs...)
             TPivotZipperBoundaryCondition(val; kwargs...) = BoundaryCondition(Zipper{TPivot}(), val; kwargs...)
@@ -252,6 +278,9 @@ validate_boundary_condition_topology(bc, ::TwoSided{L, R}, side) where {L, R} = 
 validate_boundary_condition_topology(bc::Union{VBC, NFBC}, ::Closed, side) =
     isnothing(bc.classification.scheme) ? nothing : throw(ArgumentError(
         "Cannot set $side $bc on a `Closed` side; open boundary schemes need an `Open` side."))
+
+# A rebalanced imposed normal flow reads no exterior state, so like any imposed normal flow it is allowed on a `Closed` side
+validate_boundary_condition_topology(::BoundaryCondition{<:NormalFlow{Rebalanced}}, ::Closed, side) = nothing
 
 validate_boundary_condition_topology(bc::FBC, ::Open, side) =
     isnothing(bc.condition) ? nothing : throw(ArgumentError(

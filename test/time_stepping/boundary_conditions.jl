@@ -6,7 +6,9 @@ using Oceananigans.BoundaryConditions: ContinuousBoundaryFunction, BoundaryAdjac
 using Oceananigans: prognostic_fields
 using Oceananigans.BoundaryConditions: has_target_transport, get_target_transport, ObliqueRadiation, MixedBoundaryCondition,
                                        cache_boundary_conditions!, step_boundary_conditions!
-using Oceananigans.Models: possible_field_time_series, boundary_total_area
+using Oceananigans.Models: possible_field_time_series, boundary_total_area, needs_transport_correction
+using Oceananigans.Grids: immersed_peripheral_node
+using Oceananigans.Solvers: ConjugateGradientPoissonSolver
 using Oceananigans.OutputReaders: extract_field_time_series
 using Oceananigans.Fields: flattened_unique_values
 using Oceananigans.Units: Time
@@ -336,6 +338,142 @@ function test_fixed_imposed_velocity_open_boundary_conserves_mass(arch, FT; N = 
     run!(Simulation(model; stop_time=1, Δt, verbose=false))
     compute!(∫δu)
     @test Array(interior(∫δu))[1, 1, 1] ≈ 0 atol = 5 * eps(FT)
+end
+
+# Net transport through a boundary plane, counting only the faces off the immersed boundary.
+function boundary_plane_transport(u, side)
+    N = size(u.grid)
+    plane = side == :west ? view(u, 1, :, :) : view(u, N[1] + 1, :, :)
+    ∫udA = Field(Integral(plane, dims=(2, 3)))
+    compute!(∫udA)
+    return @allowscalar ∫udA[]
+end
+
+# The grid for the immersed-face tests: the lower half of the west column is immersed, so the west
+# boundary has half the active area of the east boundary.
+function west_immersed_grid(arch, FT; N)
+    underlying = RectilinearGrid(arch, FT, size=(N, N, N), extent=(1, 1, 1), topology=(Open, Bounded, Bounded))
+    bottom(x, y) = -1 + (1 - x) / 2
+    return ImmersedBoundaryGrid(underlying, GridFittedBottom(bottom))
+end
+
+immersed_west_faces(grid, N) = [(j, k) for j in 1:N, k in 1:N if immersed_peripheral_node(1, j, k, grid, Face(), Center(), Center())]
+
+function test_net_zero_transport_skips_immersed_faces(arch, FT; N = 8)
+    grid = west_immersed_grid(arch, FT; N)
+    cpu_grid = on_architecture(CPU(), grid)
+    immersed = immersed_west_faces(cpu_grid, N)
+    @test length(immersed) == N^2 ÷ 2
+    @test boundary_total_area(:west, grid) ≈ 1/2
+    @test boundary_total_area(:east, grid) ≈ 1
+
+    scheme = PerturbationAdvection(; inflow_timescale=1e-1, outflow_timescale=Inf)
+    u_bcs = FieldBoundaryConditions(west = NormalFlowBoundaryCondition(FT(1); scheme),
+                                    east = NormalFlowBoundaryCondition(FT(1); scheme))
+    pressure_solver = ConjugateGradientPoissonSolver(grid)
+    model = NonhydrostaticModel(grid; boundary_conditions=(; u=u_bcs), pressure_solver)
+
+    # `set!` masks the immersed faces; the uniform flow then carries half as much transport
+    # through the west boundary as through the east, a net outflow that the correction must remove.
+    set!(model, u = (x, y, z) -> 1 + 1e-2 * rand(); enforce_incompressibility=false)
+    u = model.velocities.u
+    @test boundary_plane_transport(u, :west) - boundary_plane_transport(u, :east) ≈ -1/2 atol=0.1
+
+    enforce_net_zero_transport!(model.velocities, model.boundary_transport)
+
+    @test boundary_plane_transport(u, :west) - boundary_plane_transport(u, :east) ≈ 0 atol=10 * N^2 * eps(FT)
+
+    # The immersed faces are walls: the shift must not touch them, so the correction also balances
+    # the unmasked transport seen by a pressure solver that works on the underlying grid.
+    u_cpu = Array(interior(u))
+    @test all(u_cpu[1, j, k] == 0 for (j, k) in immersed)
+    @test sum(u_cpu[1, :, :] .- u_cpu[N+1, :, :]) / N^2 ≈ 0 atol=10 * N^2 * eps(FT)
+
+    # The same for a targeted boundary on the immersed side
+    Q = FT(1/4)
+    targeted = PerturbationAdvection(; inflow_timescale=1e-1, outflow_timescale=Inf, target_transport=Q)
+    u_bcs = FieldBoundaryConditions(west = NormalFlowBoundaryCondition(FT(1); scheme=targeted),
+                                    east = NormalFlowBoundaryCondition(FT(1); scheme))
+    model = NonhydrostaticModel(grid; boundary_conditions=(; u=u_bcs), pressure_solver)
+    set!(model, u = (x, y, z) -> 1 + 1e-2 * rand(); enforce_incompressibility=false)
+    u = model.velocities.u
+    enforce_net_zero_transport!(model.velocities, model.boundary_transport)
+
+    @test boundary_plane_transport(u, :west) ≈ Q atol=10 * N^2 * eps(FT)
+    @test boundary_plane_transport(u, :east) ≈ Q atol=10 * N^2 * eps(FT)
+    u_cpu = Array(interior(u))
+    @test all(u_cpu[1, j, k] == 0 for (j, k) in immersed)
+end
+
+function test_rebalanced_imposed_boundaries(arch, FT; N = 8)
+    # Imposed values never rebalance by default
+    @test !needs_transport_correction(NormalFlowBoundaryCondition(FT(1)))
+    @test needs_transport_correction(NormalFlowBoundaryCondition(FT(1); rebalance=true))
+    @test_throws ArgumentError NormalFlowBoundaryCondition(FT(1); rebalance=true, scheme=PerturbationAdvection())
+
+    # Unequal imposed inflow and outflow: fixed, they would force a net inflow of 1/2 with no solution
+    # of the pressure Poisson problem. Rebalanced, the imbalance is split evenly between them.
+    u_bcs = FieldBoundaryConditions(west = NormalFlowBoundaryCondition(FT(1); rebalance=true),
+                                    east = NormalFlowBoundaryCondition(FT(1/2); rebalance=true))
+
+    # Allowed on `Closed` sides too, like any imposed normal flow
+    bounded_grid = RectilinearGrid(arch, FT, size=(N, N, N), extent=(1, 1, 1), topology=(Bounded, Bounded, Bounded))
+    model = NonhydrostaticModel(bounded_grid; boundary_conditions=(; u=u_bcs))
+    @test model.boundary_transport.total_area_pool_boundaries ≈ 2
+
+    grid = RectilinearGrid(arch, FT, size=(N, N, N), extent=(1, 1, 1), topology=(Open, Bounded, Bounded))
+    Δt = 0.1 * minimum_xspacing(grid) / 2
+
+    for timestepper in (:RungeKutta3, :QuasiAdamsBashforth2)
+        model = NonhydrostaticModel(grid; boundary_conditions=(; u=u_bcs), timestepper)
+        set!(model, u = (x, y, z) -> 1 + 1e-2 * rand())
+        u, v, w = model.velocities
+
+        for _ in 1:5
+            time_step!(model, Δt)
+        end
+
+        # Nothing after the pressure correction refills the boundary faces, so the balanced
+        # boundaries survive the step: the final state is divergence-free up to and including
+        # the boundary-adjacent edges and corners.
+        @test boundary_plane_transport(u, :west) ≈ 3/4 atol=10 * N^2 * eps(FT)
+        @test boundary_plane_transport(u, :east) ≈ 3/4 atol=10 * N^2 * eps(FT)
+
+        δ = Field(∂x(u) + ∂y(v) + ∂z(w))
+        compute!(δ)
+        @test maximum(abs, interior(δ)) < 100 * N * eps(FT)
+
+        # The correction is a fixed point of balanced data
+        before = Array(interior(u))
+        enforce_net_zero_transport!(model.velocities, model.boundary_transport)
+        @test Array(interior(u)) == before
+    end
+end
+
+function test_net_zero_transport_for_momentum(arch, FT; N = 4)
+    # Mass-flux use: the correction is uniform in momentum over each boundary, so the velocity
+    # increment scales as 1/ρ and the mass-flux integral closes exactly for any ρ(z).
+    grid = RectilinearGrid(arch, FT, size=(N, N, N), x=(0, 1), y=(0, 1), z=(-1, 0), topology=(Open, Bounded, Bounded))
+    bcs = FieldBoundaryConditions(grid, (Face(), Center(), Center()),
+                                  west = NormalFlowBoundaryCondition(0; rebalance=true),
+                                  east = NormalFlowBoundaryCondition(0; rebalance=true))
+    ρu = XFaceField(grid; boundary_conditions=bcs)
+    ρv = YFaceField(grid)
+    ρw = ZFaceField(grid)
+
+    ρ(z) = 1 + (z + 1) / 2
+    set!(ρu, (x, y, z) -> ρ(z) * (1 + x)) # ρ in at the west, 2ρ out at the east: net mass inflow -∫ρ dz = -5/4
+    before = Array(interior(ρu))
+
+    momentum = (; ρu, ρv, ρw)
+    bt = initialize_boundary_transport(momentum)
+    @test bt.total_area_pool_boundaries ≈ 2
+    enforce_net_zero_transport!(momentum, bt)
+    after = Array(interior(ρu))
+
+    @test all(after[1, :, :] .- before[1, :, :] .≈ 5/8)
+    @test all(after[N+1, :, :] .- before[N+1, :, :] .≈ -5/8)
+    @test boundary_plane_transport(ρu, :west) ≈ boundary_plane_transport(ρu, :east)
 end
 
 function test_targeted_south_transport_achieved(arch, FT, ModelType, Scheme; N = 4)
@@ -834,6 +972,9 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
 
         test_zero_inflow_open_boundary_conserves_mass(arch, FT)
         test_fixed_imposed_velocity_open_boundary_conserves_mass(arch, FT)
+        test_net_zero_transport_skips_immersed_faces(arch, FT)
+        test_rebalanced_imposed_boundaries(arch, FT)
+        test_net_zero_transport_for_momentum(arch, FT)
     end
 
     @testset "FieldTimeSeries boundary conditions [$(summary(arch)), $FT]" for arch in archs, FT in (Float64,)

@@ -497,6 +497,27 @@ boundaries) to satisfy the zero-net-transport solvability condition.
 before the implicit free-surface solve so that the free surface stays consistent, but the
 subsequent barotropic correction perturbs the boundary velocity slightly.
 
+### 13. Imposed open boundary that rebalances
+
+A prescribed inflow or outflow, for example from a coarser model driving a nested domain, has no
+reason to balance the other boundaries to round-off, yet the pressure Poisson problem of a
+`NonhydrostaticModel` without a free surface is solvable only when the net transport through the
+boundaries vanishes. An imposed `NormalFlowBoundaryCondition` is fixed by default and never
+adjusted; with `rebalance=true` it joins the net-zero transport correction instead:
+
+```jldoctest
+julia> using Oceananigans
+
+julia> inflow = NormalFlowBoundaryCondition(1; rebalance=true)
+NormalFlowBoundaryCondition{Rebalanced}: 1
+```
+
+Before each pressure solve the boundary is filled with the prescribed value and then shifted
+uniformly, together with every other rebalanced or radiating boundary, so that their combined net
+transport vanishes. The correction, `Oceananigans.Models.enforce_net_zero_transport!`, acts only
+on the faces off an immersed boundary, and works on momentum components `(; ρu, ρv, ρw)` as well
+as on velocities: the shift is then uniform in mass flux, and the velocity increment scales as `1/ρ`.
+
 ## Building boundary conditions on a field
 
 To create a set of [`FieldBoundaryConditions`](@ref) for a temperature field,
