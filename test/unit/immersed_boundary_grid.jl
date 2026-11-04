@@ -604,7 +604,7 @@ end
             for Boundaries in (GridFittedVerticalBoundaries, PartialCellVerticalBoundaries)
                 for (bottom_height, top_height) in ((-0.5, -0.25), (-0.5, height_function), (height_function, -0.25))
                     ib = Boundaries(; bottom_height, top_height)
-                    @test contains(summary(ib), string(Boundaries))
+                    @test contains(summary(ib), string(nameof(Boundaries)))
                     @test startswith(sprint(show, ib), summary(ib))
                 end
             end
