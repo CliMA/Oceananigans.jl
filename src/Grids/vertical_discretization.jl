@@ -35,7 +35,7 @@ struct StaticVerticalDiscretization{C, D, E, F} <: AbstractVerticalCoordinate
 end
 
 function StaticVerticalDiscretization(cᵃᵃᶠ, cᵃᵃᶜ, Δᵃᵃᶠ, Δᵃᵃᶜ)
-    Δ⁻¹ᵃᵃᶠ, Δ⁻¹ᵃᵃᶜ = map(Δ -> on_architecture(architecture(Δ), 1 ./ on_architecture(CPU(), Δ)), (Δᵃᵃᶠ, Δᵃᵃᶜ))
+    Δ⁻¹ᵃᵃᶠ, Δ⁻¹ᵃᵃᶜ = map(Δ -> on_architecture(architecture(Δ), reciprocal_metric(on_architecture(CPU(), Δ))), (Δᵃᵃᶠ, Δᵃᵃᶜ))
     return StaticVerticalDiscretization(cᵃᵃᶠ, cᵃᵃᶜ, Δᵃᵃᶠ, Δᵃᵃᶜ, Δ⁻¹ᵃᵃᶠ, Δ⁻¹ᵃᵃᶜ)
 end
 
@@ -159,7 +159,7 @@ function generate_coordinate(FT, topo, size, halo, coordinate::MutableVerticalDi
     r_faces = coordinate.cᵃᵃᶠ
 
     LR, rᵃᵃᶠ, rᵃᵃᶜ, Δrᵃᵃᶠ, Δrᵃᵃᶜ = generate_coordinate(FT, topo[3](), Nz, Hz, r_faces, :r, arch)
-    Δr⁻¹ᵃᵃᶠ, Δr⁻¹ᵃᵃᶜ = map(Δ -> on_architecture(arch, 1 ./ on_architecture(CPU(), Δ)), (Δrᵃᵃᶠ, Δrᵃᵃᶜ))
+    Δr⁻¹ᵃᵃᶠ, Δr⁻¹ᵃᵃᶜ = map(Δ -> on_architecture(arch, reciprocal_metric(on_architecture(CPU(), Δ))), (Δrᵃᵃᶠ, Δrᵃᵃᶜ))
 
     args = (topo, (Nx, Ny, Nz), (Hx, Hy, Hz))
 
@@ -296,7 +296,7 @@ julia> z = znodes(horz_periodic_grid, Center(), Center(), Center())
 -0.8333333333333334:0.3333333333333333:-0.16666666666666666
 
 julia> z = znodes(horz_periodic_grid, Center(), Center(), Center(), with_halos=true)
-5-element view(OffsetArray(::StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}, Int64}, 0:4), :) with eltype Float64 with indices 0:4:
+5-element view(StaticStridesOffsetArray(::StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}, Int64}, 0:4), :) with eltype Float64 with indices 0:4:
  -1.1666666666666667
  -0.8333333333333334
  -0.5

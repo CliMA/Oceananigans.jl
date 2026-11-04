@@ -64,7 +64,7 @@ export
     LinearEquationOfState,
 
     # Surface wave Stokes drift via Craik-Leibovich equations
-    UniformStokesDrift, StokesDrift,
+    UniformStokesDrift, StokesDrift, FieldStokesDrift,
 
     # Turbulence closures
     VerticalScalarDiffusivity,
