@@ -1,6 +1,7 @@
-using Oceananigans.TurbulenceClosures: AnisotropicMinimumDissipation, LagrangianAveraging
+using Oceananigans.Architectures: cpu_architecture
+using Oceananigans.DistributedComputations: partition
 using Oceananigans.TimeSteppers: update_state!
-using Oceananigans.DistributedComputations: cpu_architecture, partition
+using Oceananigans.TurbulenceClosures: AnisotropicMinimumDissipation, LagrangianAveraging
 
 # Extract a window matching `target_size` from the center of `data`,
 # auto-detecting and stripping halo layers. Works for any saved halo
@@ -207,15 +208,11 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
     T₁ = partition(load_interior(solution₁.T, size(T)), cpu_arch, size(T))
     S₁ = partition(load_interior(solution₁.S, size(S)), cpu_arch, size(S))
 
-    @show size(test_fields.w), size(w₁)
-
     correct_fields = (u = u₁,
                       v = v₁,
                       w = w₁,
                       T = T₁,
                       S = S₁)
-
-    summarize_regression_test(test_fields, correct_fields)
 
     @test all(test_fields.u .≈ correct_fields.u)
     @test all(test_fields.v .≈ correct_fields.v)

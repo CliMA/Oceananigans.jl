@@ -37,7 +37,7 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4, width = 0.05,
 
     simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration)
 
-    @info "Running Gaussian advection diffusion test for wxy, and cxy with Nx = $Nx and Δt = $Δt ($(typeof(advection).name.wrapper) buffer $(required_halo_size(advection)))..."
+    @info "Running Gaussian advection diffusion test for wxy, and cxy with Nx = $Nx and Δt = $Δt ($(nameof(typeof(advection))) buffer $(required_halo_size(advection)))..."
     run!(simulation)
 
     x = xnodes(model.tracers.c)
@@ -71,7 +71,7 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4, width = 0.05,
 
     simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration)
 
-    @info "Running Gaussian advection diffusion test for uyz and cyz with Ny = $Nx and Δt = $Δt ($(typeof(advection).name.wrapper) buffer $(required_halo_size(advection)))..."
+    @info "Running Gaussian advection diffusion test for uyz and cyz with Ny = $Nx and Δt = $Δt ($(nameof(typeof(advection))) buffer $(required_halo_size(advection)))..."
     run!(simulation)
 
     # Calculate errors
@@ -98,7 +98,7 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4, width = 0.05,
 
     simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration)
 
-    @info "Running Gaussian advection diffusion test for vxz and cxz with Nz = $Nx and Δt = $Δt ($(typeof(advection).name.wrapper) buffer $(required_halo_size(advection)))..."
+    @info "Running Gaussian advection diffusion test for vxz and cxz with Nz = $Nx and Δt = $Δt ($(nameof(typeof(advection))) buffer $(required_halo_size(advection)))..."
     run!(simulation)
 
     # Calculate errors

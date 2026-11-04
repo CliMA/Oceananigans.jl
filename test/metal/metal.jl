@@ -2,9 +2,9 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_poisson_solvers.jl"))
 
 using Metal
+using Oceananigans.Fields: interpolate!
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 using SeawaterPolynomials.TEOS10: TEOS10EquationOfState
-using Oceananigans.Fields: interpolate!
 
 Oceananigans.defaults.FloatType = Float32
 
@@ -119,6 +119,15 @@ end
     add_2(i, j, k, grid, c) = @inbounds c[i, j, k] + 2
     add_2_kfo = KernelFunctionOperation{Center,Center,Center}(add_2, grid, c)
     @test minimum(add_2_kfo) == 3
+end
+
+@testset "MetalGPU: set! from a Float64 array" begin
+    arch = GPU(Metal.MetalBackend())
+    grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+    c = CenterField(grid)
+    a = rand(Float64, 4, 4, 4)
+    set!(c, a)
+    @test Array(interior(c)) == Float32.(a)
 end
 
 @testset "MetalGPU: TimeStepWizard" begin

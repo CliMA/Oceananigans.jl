@@ -1,4 +1,5 @@
-using Oceananigans.DistributedComputations: cpu_architecture, partition
+using Oceananigans.Architectures: cpu_architecture
+using Oceananigans.DistributedComputations: partition
 using NCDatasets: Dataset
 
 function run_thermal_bubble_regression_test(arch, grid_type)
@@ -87,8 +88,6 @@ function run_thermal_bubble_regression_test(arch, grid_type)
                         w = partition(reference_fields.w, cpu_arch, size(reference_fields.w)),
                         T = partition(reference_fields.T, cpu_arch, size(reference_fields.T)),
                         S = partition(reference_fields.S, cpu_arch, size(reference_fields.S)))
-
-    summarize_regression_test(test_fields, reference_fields)
 
     @test all(test_fields.u .≈ reference_fields.u)
     @test all(test_fields.v .≈ reference_fields.v)

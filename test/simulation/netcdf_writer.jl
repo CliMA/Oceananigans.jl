@@ -13,7 +13,7 @@ using Oceananigans: Clock
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant, ImplicitFreeSurface
 using Oceananigans.OutputWriters: trilocation_dim_name, vertical_coordinate_name
 using Oceananigans.Grids: ξname, ηname, rname, ξnodes, ηnodes
-using Oceananigans.Fields: interpolate!
+using Oceananigans.Fields: interpolate!, OneField, ZeroField, ConstantField
 
 # Messages logged by verbose NetCDF `writers`, which write in turn at each of `time_indices`
 function netcdf_writing_logs(writers, time_indices)
@@ -3296,6 +3296,37 @@ function test_netcdf_dimension_type(arch)
     return nothing
 end
 
+function test_constant_fields_output_writing(grid)
+    model = NonhydrostaticModel(grid)
+    simulation = Simulation(model; Δt=1, stop_iteration=1, verbose=false)
+    outputs = (z = ZeroField(), o = OneField(), c = ConstantField(10))
+
+    dir = mktempdir()
+    simulation.output_writers[:constants] = NetCDFWriter(model, outputs;
+                                                         dir,
+                                                         schedule = TimeInterval(1),
+                                                         filename = "test_constants.nc",
+                                                         overwrite_files = true,
+                                                         verbose = false)
+    run!(simulation)
+
+    ds = NCDataset(joinpath(dir, "test_constants.nc"))
+
+    @test ds["z"][] == 0
+    @test ds["z"].attrib["type"] == "ZeroField"
+
+    @test ds["o"][] == 1
+    @test ds["o"].attrib["type"] == "OneField"
+
+    @test ds["c"][] == 10
+    @test ds["c"].attrib["type"] == "ConstantField"
+
+    close(ds)
+    rm(dir; recursive=true)
+
+    return nothing
+end
+
 #####
 ##### OrthogonalSphericalShellGrid output tests
 #####
@@ -3734,7 +3765,15 @@ function test_netcdf_rectilinear_mvd_output(arch)
     # Field dim signature ends in `r_aac` for a Center field.
     @test dimnames(ds["T"]) == ("x_caa", "y_aca", "r_aac", "time")
 
+    # Only the reference interfaces of the mutable coordinate are serialized.
+    r_faces = collect(range(-100.0, 0.0; length=6))
+    @test ds.group["underlying_grid_reconstruction_kwargs"].attrib["z"] == "MutableVerticalDiscretization($r_faces)"
     close(ds)
+
+    reconstructed = reconstruct_grid(fp; architecture=arch)
+    @test reconstructed.z isa Oceananigans.Grids.MutableVerticalDiscretization
+    @test Array(Oceananigans.Grids.rnodes(reconstructed, Face())) == r_faces
+
     rm(fp)
     return nothing
 end
@@ -3947,6 +3986,10 @@ end
                 test_netcdf_multiple_grids_defvar(grid1, grid2, immersed=false)
                 test_netcdf_multiple_grids_defvar(grid1, grid2, immersed=true)
             end
+        end
+
+        @testset "Constant fields output writing [$A]" begin
+            test_constant_fields_output_writing(rectilinear_grid1)
         end
 
         @testset "OrthogonalSphericalShellGrid output [$A]" begin

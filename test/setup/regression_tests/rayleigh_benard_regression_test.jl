@@ -1,7 +1,8 @@
+using Oceananigans.Architectures: cpu_architecture
+using Oceananigans.DistributedComputations: partition, reconstruct_global_grid
+using Oceananigans.BuoyancyFormulations: BuoyancyForce
 using Oceananigans.Grids: xnode, znode
 using Oceananigans.TimeSteppers: update_state!
-using Oceananigans.BuoyancyFormulations: BuoyancyForce
-using Oceananigans.DistributedComputations: cpu_architecture, partition, reconstruct_global_grid
 
 strip_halos(a, grid) = view(a, grid.Hx+1:grid.Nx+grid.Hx,
                                grid.Hy+1:grid.Ny+grid.Hy,
@@ -181,8 +182,6 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
                         w = partition(Array(w₁), cpu_arch, size(test_fields.w)),
                         b = partition(Array(b₁), cpu_arch, size(b)),
                         c = partition(Array(c₁), cpu_arch, size(c)))
-
-    summarize_regression_test(test_fields, reference_fields)
 
     CUDA.allowscalar(true)
     @test all(test_fields.u .≈ reference_fields.u)

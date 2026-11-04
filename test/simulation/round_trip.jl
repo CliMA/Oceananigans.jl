@@ -1,6 +1,7 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Oceananigans.Grids: topology
+using Oceananigans.Utils: unparameterized_type
 using Oceananigans.OrthogonalSphericalShellGrids: TripolarGrid, ConformalCubedSpherePanelGrid
 
 # Load only the writer extension packages needed for the selected writers, so a
@@ -54,19 +55,28 @@ function round_trip_grids(arch)
             ("cubed_sphere_panel",    cubed_sphere_panel)]
 end
 
-# Each writer needs its own filename convention and on-disk path to read back.
+# Each writer needs its own filename convention, and the warnings its reader emits.
 # Set ENV["FTS_ROUND_TRIP_WRITERS"] (e.g. "jld2" or "jld2,netcdf") to run a subset.
+netcdf_reader_logs = ((:warn, "Reading boundary conditions from NetCDF files is not supported for FieldTimeSeries. " *
+                              "Using default FieldBoundaryConditions for `grid` and `location`."),)
+zarr_reader_logs = ((:warn, "Reading boundary conditions from Zarr stores is not supported. " *
+                            "Using default FieldBoundaryConditions for `grid` and `location`."),)
+
 function round_trip_writers()
-    writers = [(name="jld2",   Writer=JLD2Writer,   filename=base -> base,          path=base -> base * ".jld2"),
-               (name="netcdf", Writer=NetCDFWriter, filename=base -> base * ".nc",  path=base -> base * ".nc"),
-               (name="zarr",   Writer=ZarrWriter,   filename=base -> base,          path=base -> base * ".zarr")]
+    writers = [(name="jld2",   Writer=JLD2Writer,   filename=base -> base,         reader_logs=()),
+               (name="netcdf", Writer=NetCDFWriter, filename=base -> base * ".nc", reader_logs=netcdf_reader_logs),
+               (name="zarr",   Writer=ZarrWriter,   filename=base -> base,         reader_logs=zarr_reader_logs)]
     return filter(w -> w.name in FTS_ROUND_TRIP_WRITER_NAMES, writers)
 end
+
+# The FFT-based pressure solver is only approximate on immersed boundary grids, and warns about it
+pressure_solver_logs(grid) = grid isa ImmersedBoundaryGrid ?
+    ((:warn, r"^The FFT-based pressure_solver for NonhydrostaticModels on ImmersedBoundaryGrid"),) : ()
 
 function round_trip_model(grid)
     underlying = grid isa ImmersedBoundaryGrid ? grid.underlying_grid : grid
     if underlying isa RectilinearGrid
-        return NonhydrostaticModel(grid; tracers=:c)
+        return @test_logs pressure_solver_logs(grid)... NonhydrostaticModel(grid; tracers=:c)
     else
         free_surface = SplitExplicitFreeSurface(grid; substeps=10)
         return HydrostaticFreeSurfaceModel(grid; free_surface, tracers=:c)
@@ -76,9 +86,9 @@ end
 function grids_match(reconstructed, original)
     size(reconstructed) == size(original) || return false
     topology(reconstructed) == topology(original) || return false
-    typeof(reconstructed).name === typeof(original).name || return false
+    unparameterized_type(typeof(reconstructed)) === unparameterized_type(typeof(original)) || return false
     if original isa ImmersedBoundaryGrid
-        typeof(reconstructed.underlying_grid).name === typeof(original.underlying_grid).name || return false
+        unparameterized_type(typeof(reconstructed.underlying_grid)) === unparameterized_type(typeof(original.underlying_grid)) || return false
     end
     return true
 end
@@ -99,39 +109,34 @@ end
 
 function field_time_series_round_trips(grid_name, grid, writer_spec, arch)
     base = "fts_round_trip_$(grid_name)_$(writer_spec.name)_$(typeof(arch))"
-    path = writer_spec.path(base)
-    isfile(path) && rm(path; force=true)
-    ispath(path) && rm(path; force=true, recursive=true)
+    dir = mktempdir()
 
     model = round_trip_model(grid)
     set!(model, c=cᵢ)
 
     snapshots = Array{eltype(grid), 3}[]
-    sim = Simulation(model; Δt=1, stop_iteration=2)
+    sim = Simulation(model; Δt=1, stop_iteration=2, verbose=false)
     sim.callbacks[:save] = Callback(s -> push!(snapshots, Array(interior(s.model.tracers.c))), IterationInterval(1))
     sim.output_writers[:writer] = writer_spec.Writer(model, (; c=model.tracers.c);
+                                                      dir,
                                                       filename=writer_spec.filename(base),
                                                       schedule=IterationInterval(1),
                                                       overwrite_files=true)
     run!(sim)
 
-    fts = FieldTimeSeries(path, "c"; architecture=arch)
+    path = sim.output_writers[:writer].filepath
+    fts = @test_logs writer_spec.reader_logs... FieldTimeSeries(path, "c"; architecture=arch)
     matches = grids_match(fts.grid, grid) && values_match(fts, snapshots)
 
-    isfile(path) && rm(path; force=true)
-    ispath(path) && rm(path; force=true, recursive=true)
+    rm(dir; recursive=true)
 
     return matches
 end
 
 @testset "FieldTimeSeries round-trip across writers and grids" begin
-    @info "Testing FieldTimeSeries round-trip across writers and grids..."
     for arch in archs
-        for (grid_name, grid) in round_trip_grids(arch)
-            for writer_spec in round_trip_writers()
-                @info "  $grid_name × $(writer_spec.name) [$(typeof(arch))]..."
-                @test field_time_series_round_trips(grid_name, grid, writer_spec, arch)
-            end
+        @testset "$grid_name × $(writer_spec.name) [$(typeof(arch))]" for (grid_name, grid) in round_trip_grids(arch), writer_spec in round_trip_writers()
+            @test field_time_series_round_trips(grid_name, grid, writer_spec, arch)
         end
     end
 end

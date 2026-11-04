@@ -1,4 +1,5 @@
-using Oceananigans.Grids: LatitudeLongitudeGrid, validate_lat_lon_grid_args
+using Oceananigans.Grids: Center, LatitudeLongitudeGrid, validate_lat_lon_grid_args, λnode, φnode
+using Oceananigans.Operators: Operators
 using Oceananigans.Utils: KernelParameters, launch!
 using StaticArrays: @SMatrix, SVector
 
@@ -167,29 +168,31 @@ arguments are interpreted in degrees. The rotation aligns the grid pole with the
 geographic pole, then maps the rotated point back to geographic coordinates.
 """
 function rotate_coordinates(λ′, φ′, λ₀, φ₀)
-    λ′ *= π / 180
-    φ′ *= π / 180
-    λ₀ *= π / 180
-    φ₀ *= π / 180
-
-    dλ = λ₀
-    dφ = π/2 - φ₀
-
-    # Convert to Cartesian
+    FT = typeof(float(λ′))
+    λ′, φ′, dλ, φ₀ = map(x -> deg2rad(convert(FT, x)), (λ′, φ′, λ₀, φ₀))
+    dφ = convert(FT, π) / 2 - φ₀
     X′ = SVector(spherical_to_cartesian(φ′, λ′; check_latitude_bounds = false)...)
-
-    # Rotate Cartesian coordinates
-    Ry = y_rotation_matrix(dφ)
-    Rz = z_rotation_matrix(dλ)
-    X = Rz * Ry * X′
-
-    # Convert back to Spherical
+    X = z_rotation_matrix(dλ) * y_rotation_matrix(dφ) * X′
     φ, λ = cartesian_to_spherical(X)
+    return rad2deg(λ), rad2deg(φ)
+end
 
-    λ *= 180 / π
-    φ *= 180 / π
+# The angle θ (radians) from the geographic basis at the geographic point `(λ, φ)` to the basis of a frame whose north
+# pole is at `(λ₀, φ₀)` (degrees), with the convention of `Operators.rotation_angle`: the bearing of the frame's pole.
+@inline function rotated_basis_angle(λ, φ, λ₀, φ₀)
+    FT = typeof(deg2rad(λ))
+    λ, φ, λ₀, φ₀ = map(x -> deg2rad(convert(FT, x)), (λ, φ, λ₀, φ₀))
+    sinθ = cos(φ₀) * sin(λ₀ - λ)
+    cosθ = cos(φ) * sin(φ₀) - sin(φ) * cos(φ₀) * cos(λ - λ₀)
+    return atan(sinθ, cosθ)
+end
 
-    return λ, φ
+# The closed-form angle between the intrinsic and geographic bases at the node `(i, j)` at `(ℓx, ℓy)`
+@inline function Operators.rotation_angle(i, j, grid::RotatedLatitudeLongitudeGrid, ℓx, ℓy)
+    λ = λnode(i, j, 1, grid, ℓx, ℓy, Center())
+    φ = φnode(i, j, 1, grid, ℓx, ℓy, Center())
+    λ₀, φ₀ = grid.conformal_mapping.north_pole
+    return rotated_basis_angle(λ, φ, λ₀, φ₀)
 end
 
 @kernel function _rotate_metrics!(grid, source_grid)
@@ -240,6 +243,21 @@ end
         # Note transposition of location
         grid.Δyᶜᶜᵃ[i, j] = lat_lon_metric(source_grid.Δyᶠᶜᵃ, i, j)
         grid.Δyᶠᶠᵃ[i, j] = lat_lon_metric(source_grid.Δyᶜᶠᵃ, i, j)
+
+        grid.Δx⁻¹ᶜᶜᵃ[i, j] = 1 / grid.Δxᶜᶜᵃ[i, j]
+        grid.Δx⁻¹ᶠᶜᵃ[i, j] = 1 / grid.Δxᶠᶜᵃ[i, j]
+        grid.Δx⁻¹ᶜᶠᵃ[i, j] = 1 / grid.Δxᶜᶠᵃ[i, j]
+        grid.Δx⁻¹ᶠᶠᵃ[i, j] = 1 / grid.Δxᶠᶠᵃ[i, j]
+
+        grid.Δy⁻¹ᶜᶜᵃ[i, j] = 1 / grid.Δyᶜᶜᵃ[i, j]
+        grid.Δy⁻¹ᶠᶜᵃ[i, j] = 1 / grid.Δyᶠᶜᵃ[i, j]
+        grid.Δy⁻¹ᶜᶠᵃ[i, j] = 1 / grid.Δyᶜᶠᵃ[i, j]
+        grid.Δy⁻¹ᶠᶠᵃ[i, j] = 1 / grid.Δyᶠᶠᵃ[i, j]
+
+        grid.Az⁻¹ᶜᶜᵃ[i, j] = 1 / grid.Azᶜᶜᵃ[i, j]
+        grid.Az⁻¹ᶠᶜᵃ[i, j] = 1 / grid.Azᶠᶜᵃ[i, j]
+        grid.Az⁻¹ᶜᶠᵃ[i, j] = 1 / grid.Azᶜᶠᵃ[i, j]
+        grid.Az⁻¹ᶠᶠᵃ[i, j] = 1 / grid.Azᶠᶠᵃ[i, j]
     end
 end
 

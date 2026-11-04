@@ -13,7 +13,7 @@ using Oceananigans.BoundaryConditions: NormalRadiation
     # Clockless fill must not crash — previously triggered InvalidIRError on GPU.
     # Periodic in x/z so only the y (normal) boundaries need explicit BCs.
     grid = RectilinearGrid(CPU(); size=(4, 4, 4), x=(0,1), y=(0,1), z=(0,1),
-                           topology=(Periodic, Bounded, Periodic))
+                           topology=(Periodic, (Closed, Open), Periodic))
     south_bc = NormalFlowBoundaryCondition(0.0)
     v_bcs = FieldBoundaryConditions(grid, (Center(), Face(), Center()); south=south_bc, north=rnfbc)
     v = YFaceField(grid; boundary_conditions=v_bcs)

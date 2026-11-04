@@ -44,36 +44,36 @@ index_right(i, ::Center) = i + 1
 index_right(i, ::Face)   = i
 
 @inline Base.div(i, j, k, grid::AbstractGrid, loc, q_west, q_east, q_south, q_north, q_bottom, q_top) =
-    1 / volume(i, j, k, grid, loc...) * (δx_Ax_q(i, j, k, grid, loc, q_west, q_east) +
+    V⁻¹(i, j, k, grid, loc...) * (δx_Ax_q(i, j, k, grid, loc, q_west, q_east) +
                                          δy_Ay_q(i, j, k, grid, loc, q_south, q_north) +
                                          δz_Az_q(i, j, k, grid, loc, q_bottom, q_top))
 
 @inline function δx_Ax_q(i, j, k, grid, (LX, LY, LZ), qᵂ, qᴱ)
     iᵂ = index_left(i, LX)
-    Axᵂ = Ax(iᵂ, j, k, grid, LX, LY, LZ)
+    Axᵂ = Ax(iᵂ, j, k, grid, flip_location(LX), LY, LZ)
 
     iᴱ = index_right(i, LX)
-    Axᴱ = Ax(iᴱ, j, k, grid, LX, LY, LZ)
+    Axᴱ = Ax(iᴱ, j, k, grid, flip_location(LX), LY, LZ)
 
     return Axᴱ * qᴱ - Axᵂ * qᵂ
 end
 
 @inline function δy_Ay_q(i, j, k, grid, (LX, LY, LZ), qˢ, qᴺ)
     jˢ = index_left(j, LY)
-    Ayˢ = Ay(i, jˢ, k, grid, LX, LY, LZ)
+    Ayˢ = Ay(i, jˢ, k, grid, LX, flip_location(LY), LZ)
 
     jᴺ = index_right(j, LY)
-    Ayᴺ = Ay(i, jᴺ, k, grid, LX, LY, LZ)
+    Ayᴺ = Ay(i, jᴺ, k, grid, LX, flip_location(LY), LZ)
 
     return Ayᴺ * qᴺ - Ayˢ * qˢ
 end
 
 @inline function δz_Az_q(i, j, k, grid, (LX, LY, LZ), qᴮ, qᵀ)
     kᴮ = index_left(k, LZ)
-    Azᴮ = Az(i, j, kᴮ, grid, LX, LY, LZ)
+    Azᴮ = Az(i, j, kᴮ, grid, LX, LY, flip_location(LZ))
 
     kᵀ = index_right(k, LZ)
-    Azᵀ = Az(i, j, kᵀ, grid, LX, LY, LZ)
+    Azᵀ = Az(i, j, kᵀ, grid, LX, LY, flip_location(LZ))
 
     return Azᵀ * qᵀ - Azᴮ * qᴮ
 end

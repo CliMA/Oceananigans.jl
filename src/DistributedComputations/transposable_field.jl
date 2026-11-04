@@ -168,7 +168,7 @@ function twin_grid(grid::DistributedGrid; local_direction = :y)
         return grid
     end
 
-    new_arch  = Distributed(child_arch; partition = Partition(ranks...))
+    new_arch  = Distributed(child_arch; partition = Partition(ranks...), field_count = arch.field_count)
     global_sz = global_size(new_arch, (nnx, nny, nnz))
     global_sz = deflate_tuple(TX, TY, TZ, global_sz)
     global_hl = halo_size(grid)

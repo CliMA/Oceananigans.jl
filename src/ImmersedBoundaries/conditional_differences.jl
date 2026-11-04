@@ -70,7 +70,7 @@ for (d, ξ) in enumerate((:x, :y, :z))
 
         @eval begin
             @inline Operators.$δξ(i, j, k, ibg::IBG, args...)              = $conditional_δξ($(other_locs[1]), $(other_locs[2]), i, j, k, ibg, $δξᵃ, args...)
-            @inline Operators.$δξ(i, j, k, ibg::IBG, f::Function, args...) = $conditional_δξ($(other_locs[1]), $(other_locs[2]), i, j, k, ibg, $δξᵃ, f, args...)
+            @inline Operators.$δξ(i, j, k, ibg::IBG, ϕ::Function, args...) = $conditional_δξ($(other_locs[1]), $(other_locs[2]), i, j, k, ibg, $δξᵃ, ϕ, args...)
        end
     end
 end
@@ -78,8 +78,8 @@ end
 # Topology-aware immersed boundary operators
 #   * Velocities are `0` on `peripheral_node`s and
 #   * Tracers should ensure no-flux on `inactive_node`s
-@inline conditional_uᶠᶜᶜ(i, j, k, grid, f, args...) = f(i, j, k, grid, args...) * !peripheral_node(i, j, k, grid, f, c, c)
-@inline conditional_vᶜᶠᶜ(i, j, k, grid, f, args...) = f(i, j, k, grid, args...) * !peripheral_node(i, j, k, grid, c, f, c)
+@inline conditional_uᶠᶜᶜ(i, j, k, grid, ϕ, args...) = ϕ(i, j, k, grid, args...) * !peripheral_node(i, j, k, grid, f, c, c)
+@inline conditional_vᶜᶠᶜ(i, j, k, grid, ϕ, args...) = ϕ(i, j, k, grid, args...) * !peripheral_node(i, j, k, grid, c, f, c)
 
 @inline conditional_uᶠᶜᶜ(i, j, k, grid, u::AbstractArray) = @inbounds u[i, j, k] * !peripheral_node(i, j, k, grid, f, c, c)
 @inline conditional_vᶜᶠᶜ(i, j, k, grid, v::AbstractArray) = @inbounds v[i, j, k] * !peripheral_node(i, j, k, grid, c, f, c)

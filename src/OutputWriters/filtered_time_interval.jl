@@ -3,7 +3,7 @@ using Oceananigans.Diagnostics: AbstractDiagnostic
 using Oceananigans.Fields: Fields, indices, location
 using Oceananigans.Grids: Grids, grid
 using Oceananigans.OutputWriters: fetch_output, output_time, has_initial_output
-using Oceananigans.Utils: AbstractSchedule, IterationInterval, prettytime
+using Oceananigans.Utils: AbstractSchedule, IterationInterval, prettytime, unparameterized_type
 
 """
     AbstractFilterKernel
@@ -196,7 +196,7 @@ end
 function time_average_outputs(filter::FilteredTimeInterval, outputs::AbstractDict, model)
     # `NetCDFWriter`/`ZarrWriter` pass an `OrderedDict`, not a `Dict`; build the same concrete
     # dictionary type back so their output order is preserved.
-    DictType = Base.typename(typeof(outputs)).wrapper
+    DictType = unparameterized_type(typeof(outputs))
     filtered_outputs = DictType(name => TimeFilteredOutput(output, filter, model) for (name, output) in outputs)
     return filter, filtered_outputs
 end

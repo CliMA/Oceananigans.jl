@@ -41,7 +41,6 @@ function time_step_tke_dissipation_equations!(model, Δt)
     e_index = findfirst(k -> k == :e, keys(model.tracers))
     ϵ_index = findfirst(k -> k == :ϵ, keys(model.tracers))
     implicit_solver = model.timestepper.implicit_solver
-    active_cells_map = get_active_cells_map(grid, Val(:xyz))
 
     FT = eltype(model.tracers.e)
     Δτ = get_time_step(closure)
@@ -65,8 +64,7 @@ function time_step_tke_dissipation_equations!(model, Δt)
                 compute_tke_dissipation_closure_fields!,
                 κe, κϵ,
                 grid, closure,
-                model.velocities, model.tracers, buoyancy_force(model);
-                active_cells_map)
+                model.velocities, model.tracers, buoyancy_force(model))
 
         # Compute the linear implicit component of the RHS (closure_fields, L)
         # and step forward
@@ -76,8 +74,7 @@ function time_step_tke_dissipation_equations!(model, Δt)
                 grid, closure,
                 model.velocities, previous_velocities,
                 model.tracers, buoyancy_force(model), closure_fields,
-                Δτ, χ, Gⁿe, G⁻e, Gⁿϵ, G⁻ϵ;
-                active_cells_map)
+                Δτ, χ, Gⁿe, G⁻e, Gⁿϵ, G⁻ϵ)
 
         implicit_step!(e, implicit_solver, closure,
                        model.closure_fields, Val(e_index),
@@ -194,7 +191,7 @@ end
     end
 end
 
-@inline function implicit_linear_coefficient(i, j, k, grid, closure::FlavorOfTD{<:VITD}, K, ::Val{id}, args...) where id
+@inline function TurbulenceClosures.implicit_linear_coefficient(i, j, k, grid, closure::FlavorOfTD{<:VITD}, K, ::Val{id}, args...) where id
     L = K._tupled_implicit_linear_coefficients[id]
     return @inbounds L[i, j, k]
 end
@@ -265,11 +262,11 @@ end
 #####
 
 """ Add TKE boundary conditions specific to `TKEDissipationVerticalDiffusivity`. """
-function add_closure_specific_boundary_conditions(closure::FlavorOfTD,
-                                                  user_bcs,
-                                                  grid,
-                                                  tracer_names,
-                                                  buoyancy)
+function TurbulenceClosures.add_closure_specific_boundary_conditions(closure::FlavorOfTD,
+                                                                     user_bcs,
+                                                                     grid,
+                                                                     tracer_names,
+                                                                     buoyancy)
 
     top_tracer_bcs = top_tracer_boundary_conditions(grid, tracer_names, user_bcs)
     top_velocity_bcs = top_velocity_boundary_conditions(grid, user_bcs)

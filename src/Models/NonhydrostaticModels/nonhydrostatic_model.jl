@@ -1,25 +1,25 @@
+using Oceananigans: prognostic_state, restore_prognostic_state!
 using Oceananigans.Advection: Centered, adapt_advection_order, materialize_advection
-using Oceananigans.Architectures: AbstractArchitecture
-using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
+using Oceananigans.Architectures: AbstractArchitecture, architecture
+using Oceananigans.Biogeochemistry: AbstractBiogeochemistry, biogeochemical_auxiliary_fields, validate_biogeochemistry
 using Oceananigans.BoundaryConditions: MixedBoundaryCondition, needs_implicit_solver,
                                        regularize_field_boundary_conditions, validate_implicit_explicit_flux_locations
-using Oceananigans.BuoyancyFormulations: validate_buoyancy, materialize_buoyancy
+using Oceananigans.BuoyancyFormulations: materialize_buoyancy, validate_buoyancy
 using Oceananigans.DistributedComputations: Distributed
-using Oceananigans.Fields: Field, tracernames, VelocityFields, CenterField, ZFaceField
+using Oceananigans.Fields: CenterField, Field, VelocityFields, ZFaceField, tracernames
 using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: topology, inflate_halo_size, with_halo, architecture, halo_size
+using Oceananigans.Grids: architecture, topology
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Models: AbstractModel, extract_boundary_conditions, materialize_free_surface, validate_tracer_advection, materialize_tracers, timestepper_name
+using Oceananigans.Models: AbstractModel, extract_boundary_conditions, materialize_free_surface, materialize_tracers,
+                           timestepper_name, total_velocities, validate_model_halo, validate_tracer_advection
 using Oceananigans.Solvers: FFTBasedPoissonSolver
-using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!, materialize_clock!, AbstractLagrangianParticles, time_discretization
-using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_closure_fields, implicit_diffusion_solver, VerticallyImplicitTimeDiscretization, initialize_closure_fields!
+using Oceananigans.TimeSteppers: AbstractLagrangianParticles, Clock, TimeStepper, materialize_clock!,
+                                 time_discretization, update_state!
+using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization, build_closure_fields,
+                                       implicit_diffusion_solver, initialize_closure_fields!, validate_closure,
+                                       with_tracers
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE
 using Oceananigans.Utils: tupleit
-
-import Oceananigans: prognostic_state, restore_prognostic_state!
-import Oceananigans.Architectures: architecture
-import Oceananigans.Models: total_velocities
-import Oceananigans.TurbulenceClosures: buoyancy_force, buoyancy_tracers
 
 const ParticlesOrNothing = Union{Nothing, AbstractLagrangianParticles}
 const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}
@@ -258,7 +258,8 @@ function materialize_nonhydrostatic_model(grid, ::Val{tracer_names}, timestepper
     advection = merge(momentum_advection_tuple, tracer_advection_tuple)
     advection = materialize_model_advection(advection, grid)
 
-    grid = inflate_grid_halo_size(grid, values(advection)..., closure)
+    # Check halos and throw an error if the grid's halo is too small
+    validate_model_halo(grid, values(advection)..., closure)
 
     # Collect boundary conditions for all model prognostic fields and, if specified, some model
     # auxiliary fields. Boundary conditions are "regularized" based on the _name_ of the field:
@@ -365,50 +366,24 @@ function build_nonhydrostatic_model(grid, ::Val{tracer_names}, timestepper,
     return model
 end
 
-architecture(model::NonhydrostaticModel) = model.architecture
-timestepper(model::NonhydrostaticModel) = model.timestepper
+Architectures.architecture(model::NonhydrostaticModel) = model.architecture
+Simulations.timestepper(model::NonhydrostaticModel) = model.timestepper
 
-# Kept out of the constructor so the mapping does not capture `grid`, which is rebound by
-# `inflate_grid_halo_size` and would therefore be boxed.
 function materialize_model_advection(advection, grid)
     advection = map(scheme -> adapt_advection_order(scheme, grid), advection)
     return map(scheme -> materialize_advection(scheme, grid), advection)
 end
 
-Base.@constprop :aggressive @inline function inflate_grid_halo_size(grid, tendency_terms...)
-    user_halo = halo_size(grid)
-    required_halo = inflate_halo_size(user_halo..., grid, tendency_terms...)
-    needs_inflation = any(map(<, user_halo, required_halo))
-    return inflate_grid_halo_size(needs_inflation, grid, required_halo)
-end
-
-# `needs_inflation` folds to a compile-time constant when the halo sizes do, so the grid type is
-# known to the compiler whenever the user grid already has sufficient halos
-@inline inflate_grid_halo_size(needs_inflation::Bool, grid, required_halo) =
-    needs_inflation ? with_inflated_halo(grid, required_halo) : grid
-
-@noinline function with_inflated_halo(grid, required_halo)
-    Hx, Hy, Hz = required_halo
-    @warn "Inflating model grid halo size to ($Hx, $Hy, $Hz) and recreating grid. " *
-          "Note that an ImmersedBoundaryGrid requires an extra halo point in all non-flat directions compared to a non-immersed boundary grid. " *
-          "The model grid will be different from the input grid. To avoid this warning, " *
-          "pass halo=($Hx, $Hy, $Hz) when constructing the grid."
-
-    return with_halo((Hx, Hy, Hz), grid)
-end
-
 # return the total advective velocities
-@inline total_velocities(m::NonhydrostaticModel) = sum_of_velocities(m.velocities, m.background_fields.velocities)
-buoyancy_force(model::NonhydrostaticModel) = model.buoyancy
-buoyancy_tracers(model::NonhydrostaticModel) = model.tracers
+@inline Models.total_velocities(m::NonhydrostaticModel) = sum_of_velocities(m.velocities, m.background_fields.velocities)
+TurbulenceClosures.buoyancy_force(model::NonhydrostaticModel) = model.buoyancy
+TurbulenceClosures.buoyancy_tracers(model::NonhydrostaticModel) = model.tracers
 
 #####
 ##### Initialization
 #####
 
-import Oceananigans: initialize!
-
-function initialize!(model::NonhydrostaticModel)
+function Oceananigans.initialize!(model::NonhydrostaticModel)
     initialize_closure_fields!(model.closure_fields, model.closure, model)
     return nothing
 end
@@ -417,7 +392,7 @@ end
 ##### Checkpointing
 #####
 
-function prognostic_state(model::NonhydrostaticModel)
+function Oceananigans.prognostic_state(model::NonhydrostaticModel)
     return (clock = prognostic_state(model.clock),
             particles = prognostic_state(model.particles),
             velocities = prognostic_state(model.velocities),
@@ -425,10 +400,11 @@ function prognostic_state(model::NonhydrostaticModel)
             closure_fields = prognostic_state(model.closure_fields),
             timestepper = prognostic_state(model.timestepper),
             auxiliary_fields = prognostic_state(model.auxiliary_fields),
-            boundary_transport = prognostic_state(model.boundary_transport))
+            boundary_transport = prognostic_state(model.boundary_transport),
+            biogeochemistry = prognostic_state(model.biogeochemistry))
 end
 
-function restore_prognostic_state!(restored::NonhydrostaticModel, from)
+function Oceananigans.restore_prognostic_state!(restored::NonhydrostaticModel, from)
     restore_prognostic_state!(restored.clock, from.clock)
     restore_prognostic_state!(restored.particles, from.particles)
     restore_prognostic_state!(restored.velocities, from.velocities)
@@ -437,7 +413,8 @@ function restore_prognostic_state!(restored::NonhydrostaticModel, from)
     restore_prognostic_state!(restored.closure_fields, from.closure_fields)
     restore_prognostic_state!(restored.auxiliary_fields, from.auxiliary_fields)
     restore_prognostic_state!(restored.boundary_transport, from.boundary_transport)
+    restore_prognostic_state!(restored.biogeochemistry, from.biogeochemistry)
     return restored
 end
 
-restore_prognostic_state!(::NonhydrostaticModel, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::NonhydrostaticModel, ::Nothing) = nothing

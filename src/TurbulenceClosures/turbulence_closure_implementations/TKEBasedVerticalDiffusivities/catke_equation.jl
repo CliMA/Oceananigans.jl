@@ -19,7 +19,7 @@ end
 ##### Terms in the turbulent kinetic energy equation, all at cell centers
 #####
 
-@inline dissipation(i, j, k, grid, closure::FlavorOfCATKE{<:VITD}, args...) = zero(grid)
+@inline TurbulenceClosures.dissipation(i, j, k, grid, closure::FlavorOfCATKE{<:VITD}, args...) = zero(grid)
 
 @inline function dissipation_length_scaleᶜᶜᶜ(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers,
                                              buoyancy, surface_buoyancy_flux)
@@ -71,7 +71,7 @@ end
 end
 
 # Fallbacks for explicit time discretization
-@inline function dissipation(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, args...)
+@inline function TurbulenceClosures.dissipation(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, args...)
     eᵢ = @inbounds tracers.e[i, j, k]
     ω = dissipation_rate(i, j, k, grid, closure, velocities, tracers, args...)
     return ω * eᵢ
@@ -110,11 +110,11 @@ end
 #####
 
 """ Add TKE boundary conditions specific to `CATKEVerticalDiffusivity`. """
-function add_closure_specific_boundary_conditions(closure::FlavorOfCATKE,
-                                                  user_bcs,
-                                                  grid,
-                                                  tracer_names,
-                                                  buoyancy)
+function TurbulenceClosures.add_closure_specific_boundary_conditions(closure::FlavorOfCATKE,
+                                                                     user_bcs,
+                                                                     grid,
+                                                                     tracer_names,
+                                                                     buoyancy)
 
     top_tracer_bcs = top_tracer_boundary_conditions(grid, tracer_names, user_bcs)
     top_velocity_bcs = top_velocity_boundary_conditions(grid, user_bcs)
