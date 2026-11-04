@@ -118,9 +118,9 @@ function DC.distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, l
     CUDA.record(pack_done)
     CUDA.wait(pack_done, communicator.comm_stream)
 
-    NCCL.groupStart()
-    enqueue_nccl_send_recv!(kernel!, bcs, nccl_comm, buffers; stream=communicator.comm_stream)
-    NCCL.groupEnd()
+    NCCL.group() do
+        enqueue_nccl_send_recv!(kernel!, bcs, nccl_comm, buffers; stream=communicator.comm_stream)
+    end
 
     comm_done = CUDA.CuEvent(CUDA.EVENT_DISABLE_TIMING)
     CUDA.record(comm_done, communicator.comm_stream)
@@ -178,12 +178,12 @@ function DC.fill_corners!(c, connectivity, arch::NCCLDistributedArchitecture,
     DC.fill_send_buffers!(c, buffers, grid, Val(:corners))
 
     nccl_comm = arch.communicator.nccl
-    NCCL.groupStart()
-    nccl_corner_send_recv!(nccl_comm, connectivity.southwest, buffers.southwest)
-    nccl_corner_send_recv!(nccl_comm, connectivity.southeast, buffers.southeast)
-    nccl_corner_send_recv!(nccl_comm, connectivity.northwest, buffers.northwest)
-    nccl_corner_send_recv!(nccl_comm, connectivity.northeast, buffers.northeast)
-    NCCL.groupEnd()
+    NCCL.group() do
+        nccl_corner_send_recv!(nccl_comm, connectivity.southwest, buffers.southwest)
+        nccl_corner_send_recv!(nccl_comm, connectivity.southeast, buffers.southeast)
+        nccl_corner_send_recv!(nccl_comm, connectivity.northwest, buffers.northwest)
+        nccl_corner_send_recv!(nccl_comm, connectivity.northeast, buffers.northeast)
+    end
 
     DC.recv_from_buffers!(c, buffers, grid, Val(:corners))
     return nothing
@@ -194,23 +194,19 @@ nccl_corner_send_recv!(nccl_comm, corner_rank, ::Nothing) = nothing
 nccl_corner_send_recv!(nccl_comm, ::Nothing, ::Nothing) = nothing
 
 function nccl_corner_send_recv!(nccl_comm, corner_rank, buffers)
-    NCCL.Send(nccl_buffer(buffers.send), nccl_comm; dest=corner_rank)
-    NCCL.Recv!(nccl_buffer(buffers.recv), nccl_comm; source=corner_rank)
+    NCCL.Send(buffers.send, nccl_comm; dest=corner_rank)
+    NCCL.Recv!(buffers.recv, nccl_comm; source=corner_rank)
     return nothing
 end
 
 #####
-##### Enqueue NCCL Send/Recv (called inside groupStart/groupEnd)
+##### Enqueue NCCL Send/Recv (called inside NCCL.group)
 #####
-
-# NCCL has no Bool dtype; reinterpret as UInt8 (same size)
-nccl_buffer(a::AbstractArray{Bool}) = reinterpret(UInt8, a)
-nccl_buffer(a) = a
 
 function _nccl_send_recv_pair!(buf, bc, nccl_comm; stream_kw...)
     isnothing(buf) && return nothing
-    NCCL.Send(nccl_buffer(buf.send), nccl_comm; dest=bc.condition.to, stream_kw...)
-    NCCL.Recv!(nccl_buffer(buf.recv), nccl_comm; source=bc.condition.to, stream_kw...)
+    NCCL.Send(buf.send, nccl_comm; dest=bc.condition.to, stream_kw...)
+    NCCL.Recv!(buf.recv, nccl_comm; source=bc.condition.to, stream_kw...)
     return nothing
 end
 
@@ -221,10 +217,10 @@ end
 function _nccl_send_recv_dual!(buf1, bc1, buf2, bc2, nccl_comm; stream_kw...)
     isnothing(buf1) && return _nccl_send_recv_pair!(buf2, bc2, nccl_comm; stream_kw...)
     isnothing(buf2) && return _nccl_send_recv_pair!(buf1, bc1, nccl_comm; stream_kw...)
-    NCCL.Send(nccl_buffer(buf1.send), nccl_comm; dest=bc1.condition.to, stream_kw...)
-    NCCL.Send(nccl_buffer(buf2.send), nccl_comm; dest=bc2.condition.to, stream_kw...)
-    NCCL.Recv!(nccl_buffer(buf2.recv), nccl_comm; source=bc2.condition.to, stream_kw...)
-    NCCL.Recv!(nccl_buffer(buf1.recv), nccl_comm; source=bc1.condition.to, stream_kw...)
+    NCCL.Send(buf1.send, nccl_comm; dest=bc1.condition.to, stream_kw...)
+    NCCL.Send(buf2.send, nccl_comm; dest=bc2.condition.to, stream_kw...)
+    NCCL.Recv!(buf2.recv, nccl_comm; source=bc2.condition.to, stream_kw...)
+    NCCL.Recv!(buf1.recv, nccl_comm; source=bc1.condition.to, stream_kw...)
     return nothing
 end
 

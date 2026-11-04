@@ -35,7 +35,7 @@ Oceananigans = {path = ".."}
 
 [compat]
 Adapt = "4.1.1"
-CUDA = "=5.8.5, 5.9.1"
+CUDA = "6"
 DataDeps = "0.7"
 Dates = "<0.0.1, 1"
 Distances = "0.10"
