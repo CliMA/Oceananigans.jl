@@ -59,8 +59,8 @@ end
 
 # `zero(DateTime)` is year 0, so a calendar clock has no zero to return to.
 function reset!(clock::Clock{<:AbstractTime})
-    throw(ArgumentError("Cannot reset! a clock keeping $(typeof(clock.time)) time: there is no zero " *
-                        "calendar instant. Set `clock.time` to the start of the run instead."))
+    return throw(ArgumentError("Cannot reset! a clock keeping $(typeof(clock.time)) time: there is no zero " *
+                               "calendar instant. Set `clock.time` to the start of the run instead."))
 end
 
 """
