@@ -39,10 +39,10 @@ maybe_polar_boundary_condition(grid, side, ::Face,    ℓz::LZ) where LZ = Polar
     n = 0
     @inbounds for i in 1:grid.Nx
         inactive = inactive_node(i, j, k, grid, loc...)
-        c̄ += ifelse(inactive, 0, c[i, j, k])
+        c̄ += ifelse(inactive, zero(c̄), c[i, j, k])
         n += ifelse(inactive, 0, 1)
     end
-    @inbounds data[i′, j′, k] = ifelse(n == 0,  0,  c̄ / n)
+    @inbounds data[i′, j′, k] = ifelse(n == 0, zero(c̄), c̄ / n)
 end
 
 function update_pole_value!(bc::PolarValue, c, grid, loc)
