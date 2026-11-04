@@ -89,8 +89,7 @@ end
 approximately_equal_times(a, b; kw...) = isapprox(a, b; kw...)
 
 # Calendar instants have no magnitude for a relative tolerance, so only `atol` (seconds) applies.
-approximately_equal_times(a::AbstractTime, b::AbstractTime; atol=0, kw...) =
-    abs(time_difference_seconds(a, b)) <= atol
+approximately_equal_times(a::AbstractTime, b::AbstractTime; atol=0, kw...) = abs(time_difference_seconds(a, b)) <= atol
 
 function Base.isapprox(a::Clock, b::Clock; kw...)
     return approximately_equal_times(a.time, b.time; kw...) &&
