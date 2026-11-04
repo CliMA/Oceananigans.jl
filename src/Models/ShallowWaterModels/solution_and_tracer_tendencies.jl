@@ -3,7 +3,7 @@ using Oceananigans.Coriolis: x_f_cross_U, y_f_cross_U
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Operators: Az⁻¹ᶜᶜᶜ, Az⁻¹ᶜᶠᶜ, Az⁻¹ᶠᶜᶜ, div_xyᶜᶜᶜ, Δx_qᶜᶠᶜ, Δxᶠᶜᶜ, Δy_qᶠᶜᶜ, Δyᶜᶠᶜ, δxᶜᵃᵃ, δxᶠᵃᵃ, δyᵃᶜᵃ,
                               δyᵃᶠᵃ, ℑxyᶠᶠᵃ, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ, ∂xᵣᶠᶜᶜ, ∂yᵣᶜᶠᶜ
-using Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ
+using Oceananigans.TurbulenceClosures: boundary_∂ⱼ_τ₁ⱼ, boundary_∂ⱼ_τ₂ⱼ, boundary_∇_dot_qᶜ, ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ
 
 @inline half_g_h²(i, j, k, grid, h, g)  = @inbounds 1/2 * g * h[i, j, k]^2
 @inline h_plus_hB(i, j, k, grid, h, hB) = @inbounds h[i, j, k] + hB[i, j, k]
@@ -35,6 +35,7 @@ Compute the tendency for the x-directional transport, uh
                                       closure_fields,
                                       clock,
                                       formulation,
+                                      boundary_conditions,
                                       forcing)
 
     g = gravitational_acceleration
@@ -46,6 +47,7 @@ Compute the tendency for the x-directional transport, uh
              - x_f_cross_U(i, j, k, grid, coriolis, solution)
              - bathymetry_contribution_x(i, j, k, grid, g, solution.h, bathymetry, formulation)
              - sw_∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, closure_fields, clock, model_fields, formulation)
+             - boundary_∂ⱼ_τ₁ⱼ(i, j, k, grid, solution[1], boundary_conditions, closure, closure_fields, clock, merge(solution, tracers), nothing)
              + forcing(i, j, k, grid, clock, merge(solution, tracers)))
 end
 
@@ -64,6 +66,7 @@ Compute the tendency for the y-directional transport, vh.
                                       closure_fields,
                                       clock,
                                       formulation,
+                                      boundary_conditions,
                                       forcing)
 
      g = gravitational_acceleration
@@ -75,6 +78,7 @@ Compute the tendency for the y-directional transport, vh.
              - y_f_cross_U(i, j, k, grid, coriolis, solution)
              - bathymetry_contribution_y(i, j, k, grid, g, solution.h, bathymetry, formulation)
              - sw_∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, closure_fields, clock, model_fields, formulation)
+             - boundary_∂ⱼ_τ₂ⱼ(i, j, k, grid, solution[2], boundary_conditions, closure, closure_fields, clock, merge(solution, tracers), nothing)
              + forcing(i, j, k, grid, clock, merge(solution, tracers)))
 end
 
@@ -91,9 +95,11 @@ Compute the tendency for the height, h.
                                      closure_fields,
                                      clock,
                                      formulation,
+                                     boundary_conditions,
                                      forcing)
 
     return ( - div_Uh(i, j, k, grid, advection, solution, formulation)
+             - boundary_∇_dot_qᶜ(i, j, k, grid, solution.h, boundary_conditions, closure, closure_fields, nothing, clock, merge(solution, tracers), nothing)
              + forcing(i, j, k, grid, clock, merge(solution, tracers)))
 end
 
@@ -106,12 +112,14 @@ end
                                  closure_fields,
                                  clock,
                                  formulation,
+                                 boundary_conditions,
                                  forcing) where tracer_index
 
     @inbounds c = tracers[tracer_index]
 
     return ( - div_Uc(i, j, k, grid, advection, solution, c, formulation)
              + c_div_U(i, j, k, grid, solution, c, formulation)
+             - boundary_∇_dot_qᶜ(i, j, k, grid, c, boundary_conditions, closure, closure_fields, val_tracer_index, clock, merge(solution, tracers), nothing)
              + forcing(i, j, k, grid, clock, merge(solution, tracers))
             )
 end

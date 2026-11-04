@@ -4,7 +4,7 @@ using Oceananigans.Forcings: ContinuousForcing
 using Oceananigans.Models: BoundaryConditionOperation, BoundaryConditionField,
                            ForcingOperation, ForcingField, ForcingKernelFunction
 
-u_bottom_drag_continuous(x, y, t, grid, u, v, Cᴰ) = -Cᴰ * u * sqrt(u^2 + v^2)
+u_bottom_drag_continuous(x, y, t, u, Cᴰ) = -Cᴰ * u * abs(u)
 v_bottom_drag_discrete(i, j, grid, clock, fields, Cᴰ) = - @inbounds Cᴰ * fields.v[i, j, 1]
 
 v_west_drag_discrete(j, k, grid, clock, fields, Cᴰ)  = - @inbounds Cᴰ * fields.v[1, j, k]
