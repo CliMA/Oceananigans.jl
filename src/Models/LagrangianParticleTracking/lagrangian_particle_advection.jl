@@ -52,9 +52,9 @@ places the particle on the faces of its previous cell and flags it as absorbed.
     # Return the particle to the previous cell
     tx, ty, tz = map(immersed_boundary_topology, topology(ibg))
 
-    xb⁺, _ = enforce_boundary_conditions(tx, x̃, xᴸ, xᴿ, bc, bc)
-    yb⁺, _ = enforce_boundary_conditions(ty, ỹ, yᴸ, yᴿ, bc, bc)
-    zb⁺, _ = enforce_boundary_conditions(tz, z̃, zᴸ, zᴿ, bc, bc)
+    xb⁺, _ = enforce_boundary_conditions(bc, bc, tx, x̃, xᴸ, xᴿ)
+    yb⁺, _ = enforce_boundary_conditions(bc, bc, ty, ỹ, yᴸ, yᴿ)
+    zb⁺, _ = enforce_boundary_conditions(bc, bc, tz, z̃, zᴸ, zᴿ)
 
     x⁺ = ifelse(immersed, xb⁺, x)
     y⁺ = ifelse(immersed, yb⁺, y)
@@ -131,9 +131,9 @@ at an [`AbsorbingBoundary`](@ref).
 
     # Enforce boundary conditions for particles.
     bcs = boundary_conditions
-    x⁺, absorbed_x = enforce_boundary_conditions(tx, x̃, xᴸ, xᴿ, bcs.west, bcs.east)
-    y⁺, absorbed_y = enforce_boundary_conditions(ty, ỹ, yᴸ, yᴿ, bcs.south, bcs.north)
-    z⁺, absorbed_z = enforce_boundary_conditions(tz, z̃, zᴸ, zᴿ, bcs.bottom, bcs.top)
+    x⁺, absorbed_x = enforce_boundary_conditions(bcs.west, bcs.east, tx, x̃, xᴸ, xᴿ)
+    y⁺, absorbed_y = enforce_boundary_conditions(bcs.south, bcs.north, ty, ỹ, yᴸ, yᴿ)
+    z⁺, absorbed_z = enforce_boundary_conditions(bcs.bottom, bcs.top, tz, z̃, zᴸ, zᴿ)
     absorbed = absorbed_x | absorbed_y | absorbed_z
 
     if grid isa ImmersedBoundaryGrid
