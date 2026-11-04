@@ -1,7 +1,8 @@
+using Oceananigans.Architectures: cpu_architecture
+using Oceananigans.DistributedComputations: partition, reconstruct_global_grid
+using Oceananigans.BuoyancyFormulations: BuoyancyForce
 using Oceananigans.Grids: xnode, znode
 using Oceananigans.TimeSteppers: update_state!
-using Oceananigans.BuoyancyFormulations: BuoyancyForce
-using Oceananigans.DistributedComputations: cpu_architecture, partition, reconstruct_global_grid
 
 strip_halos(a, grid) = view(a, grid.Hx+1:grid.Nx+grid.Hx,
                                grid.Hy+1:grid.Ny+grid.Hy,

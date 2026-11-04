@@ -1,6 +1,6 @@
-using Oceananigans.Operators: Δzᶜᶜᶜ, Δzᶜᶜᶠ
-using Oceananigans.ImmersedBoundaries: PartialCellVerticalBoundaries, ImmersedBoundaryGrid
 using Oceananigans.Grids: topology
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, PartialCellVerticalBoundaries
+using Oceananigans.Operators: Δzᶜᶜᶜ, Δzᶜᶜᶠ
 
 """
 Update the hydrostatic pressure perturbation pHY′. This is done by integrating

@@ -76,7 +76,7 @@ of the primary mesh. The nodes of the primary mesh are
 znodes(grid, Center(), with_halos=true)
 
 # output
-6-element view(OffsetArray(::Vector{Float64}, 0:5), :) with eltype Float64 with indices 0:5:
+6-element view(StaticStridesOffsetArray(::Vector{Float64}, 0:5), :) with eltype Float64 with indices 0:5:
  -0.05
   0.05
   0.2
@@ -120,7 +120,7 @@ c = Field{Center, Center, Center}(grid)
 ├── grid: 4×5×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
-└── data: 6×7×6 OffsetArray(::Array{Float64, 3}, 0:5, 0:6, 0:5) with eltype Float64 with indices 0:5×0:6×0:5
+└── data: 6×7×6 StaticStridesOffsetArray(::Array{Float64, 3}, 0:5, 0:6, 0:5) with eltype Float64 with indices 0:5×0:6×0:5
     └── max=0.0, min=0.0, mean=0.0
 ```
 
@@ -144,7 +144,7 @@ u = Field{Face, Center, Center}(grid)
 ├── grid: 4×5×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
-└── data: 6×7×6 OffsetArray(::Array{Float64, 3}, 0:5, 0:6, 0:5) with eltype Float64 with indices 0:5×0:6×0:5
+└── data: 6×7×6 StaticStridesOffsetArray(::Array{Float64, 3}, 0:5, 0:6, 0:5) with eltype Float64 with indices 0:5×0:6×0:5
     └── max=0.0, min=0.0, mean=0.0
 ```
 
@@ -246,7 +246,7 @@ set!(c, 42)
 ├── grid: 4×5×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
-└── data: 6×7×6 OffsetArray(::Array{Float64, 3}, 0:5, 0:6, 0:5) with eltype Float64 with indices 0:5×0:6×0:5
+└── data: 6×7×6 StaticStridesOffsetArray(::Array{Float64, 3}, 0:5, 0:6, 0:5) with eltype Float64 with indices 0:5×0:6×0:5
     └── max=42.0, min=42.0, mean=42.0
 ```
 
@@ -307,7 +307,7 @@ set!(c, fun_stuff)
 ├── grid: 4×5×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
-└── data: 6×7×6 OffsetArray(::Array{Float64, 3}, 0:5, 0:6, 0:5) with eltype Float64 with indices 0:5×0:6×0:5
+└── data: 6×7×6 StaticStridesOffsetArray(::Array{Float64, 3}, 0:5, 0:6, 0:5) with eltype Float64 with indices 0:5×0:6×0:5
     └── max=1.75, min=0.25, mean=1.0
 ```
 
@@ -342,7 +342,7 @@ set!(one_d_c, still_pretty_fun)
 ├── grid: 7×1×1 RectilinearGrid{Float64, Periodic, Flat, Flat} on CPU with 3×0×0 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Nothing, north: Nothing, bottom: Nothing, top: Nothing, immersed: Nothing
-└── data: 13×1×1 OffsetArray(::Array{Float64, 3}, -2:10, 1:1, 1:1) with eltype Float64 with indices -2:10×1:1×1:1
+└── data: 13×1×1 StaticStridesOffsetArray(::Array{Float64, 3}, -2:10, 1:1, 1:1) with eltype Float64 with indices -2:10×1:1×1:1
     └── max=19.5, min=1.5, mean=10.5
 ```
 
@@ -501,7 +501,7 @@ and more generally
 typeof(c.data)
 
 # output
-OffsetArrays.OffsetArray{Float64, 3, Array{Float64, 3}}
+Oceananigans.Utils.StaticStridesOffsetArray{Float64, 3, (6, 7, 6), (-1, -1, -1), Array{Float64, 3}}
 ```
 
 Thus, for example, the `x`-indices of `c.data` vary from `1 - Hx` to `Nx + Hx` -- in this
@@ -539,7 +539,7 @@ surface_c = Field{Center, Center, Center}(grid, indices=(:, :, grid.Nz))
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: Nothing, top: Nothing, immersed: Nothing
 ├── indices: (:, :, 4:4)
-└── data: 6×7×1 OffsetArray(::Array{Float64, 3}, 0:5, 0:6, 4:4) with eltype Float64 with indices 0:5×0:6×4:4
+└── data: 6×7×1 StaticStridesOffsetArray(::Array{Float64, 3}, 0:5, 0:6, 4:4) with eltype Float64 with indices 0:5×0:6×4:4
     └── max=0.0, min=0.0, mean=0.0
 ```
 
@@ -586,7 +586,7 @@ set!(v, (x, y, z) -> x^2 * y) # set v to something non-trivial
 ├── indices: (:, :, 4:4)
 ├── operand: BinaryOperation at (Face, Face, Center)
 ├── status: time=0.0
-└── data: 6×7×1 OffsetArray(::Array{Float64, 3}, 0:5, 0:6, 4:4) with eltype Float64 with indices 0:5×0:6×4:4
+└── data: 6×7×1 StaticStridesOffsetArray(::Array{Float64, 3}, 0:5, 0:6, 4:4) with eltype Float64 with indices 0:5×0:6×4:4
     └── max=0.05, min=-0.0375, mean=0.0025
 ```
 

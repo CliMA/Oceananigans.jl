@@ -1,4 +1,4 @@
-import Oceananigans: prognostic_state
+using Oceananigans: prognostic_state
 
 """
     FunctionField{LX, LY, LZ}(func, grid; clock=nothing, parameters=nothing) where {LX, LY, LZ}
@@ -75,7 +75,7 @@ Architectures.on_architecture(to, f::FunctionField{LX, LY, LZ}) where {LX, LY, L
                               parameters = on_architecture(to, f.parameters))
 
 # A FunctionField is evaluated from its function, so it has no state of its own to checkpoint
-prognostic_state(::FunctionField) = nothing
+Oceananigans.prognostic_state(::FunctionField) = nothing
 
 Base.show(io::IO, field::FunctionField) =
     print(io, "FunctionField located at ", show_location(field), "\n",

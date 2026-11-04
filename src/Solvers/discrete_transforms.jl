@@ -44,6 +44,11 @@ $(TYPEDSIGNATURES)
 
 Twiddle factors are needed to perform DCTs on the GPU. See equations (19a) and (22) of [Makhoul80](@citet)
 for the forward and backward twiddle factors respectively.
+
+References
+==========
+* Makhoul, J. (1980). "A fast cosine transform in one and two dimensions." IEEE Transactions on
+  Acoustics, Speech, and Signal Processing, 28, 27-34.
 """
 function twiddle_factors(arch::GPU, grid, dims)
     # We only perform 1D DCTs.
