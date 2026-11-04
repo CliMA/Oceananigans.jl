@@ -46,7 +46,7 @@ end
 # but exposes the local copy so we can elide it from the network.
 function nccl_alltoall!(buffer, counts, nccl_comm)
     my_rank = NCCL.rank(nccl_comm)
-    nranks  = NCCL.size(nccl_comm)
+    nranks  = NCCL.nranks(nccl_comm)
     count   = counts[1]
 
     local_offset = my_rank * count
@@ -54,22 +54,14 @@ function nccl_alltoall!(buffer, counts, nccl_comm)
 
     nranks == 1 && return nothing
 
-    T = eltype(buffer.send)
-    # NCCL has no complex datatype: send Complex{R} as 2× the real type R (count already doubled
-    # above). ncclDataType_t(::Type{Complex}) is undefined, so map to the underlying real type.
-    nccl_count = T <: Complex ? 2 * count : count
-    datatype = NCCL.ncclDataType_t(T <: Complex ? real(T) : T)
-    stream = CUDA.stream()
-
-    NCCL.groupStart()
-    for r in 0:(nranks - 1)
-        r == my_rank && continue
-        send_ptr = pointer(buffer.send, r * count + 1)
-        recv_ptr = pointer(buffer.recv, r * count + 1)
-        NCCL.LibNCCL.ncclSend(send_ptr, Int32(nccl_count), datatype, Int32(r), nccl_comm.handle, stream)
-        NCCL.LibNCCL.ncclRecv(recv_ptr, Int32(nccl_count), datatype, Int32(r), nccl_comm.handle, stream)
+    NCCL.group() do
+        for r in 0:(nranks - 1)
+            r == my_rank && continue
+            chunk = (r * count + 1):((r + 1) * count)
+            NCCL.Send(view(buffer.send, chunk), nccl_comm; dest=r)
+            NCCL.Recv!(view(buffer.recv, chunk), nccl_comm; source=r)
+        end
     end
-    NCCL.groupEnd()
 
     return nothing
 end
