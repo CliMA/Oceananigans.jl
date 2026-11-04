@@ -316,7 +316,7 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
 
         @test architecture(grid) isa ReactantState
         @test grid.z isa MutableVerticalDiscretization
-        @test grid.z.cᵃᵃᶠ isa OffsetArray{Float64, 1, <:Reactant.AbstractConcreteArray}
+        @test grid.z.cᵃᵃᶠ isa StaticStridesOffsetArray{Float64, 1, <:Any, <:Any, <:Reactant.AbstractConcreteArray}
         @test architecture(grid.z.σᶜᶜⁿ) isa ReactantState
         @test architecture(grid.z.ηⁿ) isa ReactantState
     end
