@@ -19,7 +19,7 @@ end
     WENO([FT=Oceananigans.defaults.FloatType;]
          weight_computation=Nothing,
          order = 5,
-         boundary_scheme = Centered(FT; order=2),
+         buffer_scheme = DecreasingOrderAdvectionScheme(boundary_scheme = Centered(FT; order=2)),
          time_discretization = ExplicitTimeDiscretization(),
          bounds = nothing,
          maximum_courant_number = 5//18)
@@ -37,9 +37,9 @@ Keyword arguments
                         Default: `Nothing` (deferred; a architecture-dependent default is assigned in
                         `materialize_advection`)
 - `order`: The order of the WENO advection scheme. Default: 5.
-- `boundary_scheme`: The reconstruction the buffer chain terminates in, used in a cell whose stencil no longer
-                     fits, i.e. against a boundary. The chain steps the order down by two until third order and
-                     then reaches for it. Default: `Centered(FT; order=2)`.
+- `buffer_scheme`: The reconstruction used in a cell whose stencil does not fit, i.e. against a boundary. With a
+                   `DecreasingOrderAdvectionScheme` the chain steps the order down by two until third order and then
+                   reaches for its `boundary_scheme`. Default: `DecreasingOrderAdvectionScheme(boundary_scheme = Centered(FT; order=2))`.
 - `bounds` (experimental): A tuple `(cᵐⁱⁿ, cᵐᵃˣ)` switching on the maximum-principle-satisfying limiter of
                            Zhang and Shu (2010), which rescales the reconstruction of every cell towards the cell
                            mean so that the advective update stays within `bounds`. One rescaling factor is
@@ -62,7 +62,7 @@ julia> WENO()
 WENO{3, Float64, Nothing}(order=5)
 ├── buffer_scheme: WENO{2, Float64, Nothing}(order=3)
 │   └── buffer_scheme: Centered(order=2)
-└── advecting_velocity_scheme: Centered(order=4)
+└── advecting_velocity_scheme: Centered(order=2)
 ```
 
 To build a 9th-order scheme (often a good choice for a stable
@@ -75,18 +75,18 @@ WENO{5, Float64, Nothing}(order=9)
 │   └── buffer_scheme: WENO{3, Float64, Nothing}(order=5)
 │       └── buffer_scheme: WENO{2, Float64, Nothing}(order=3)
 │           └── buffer_scheme: Centered(order=2)
-└── advecting_velocity_scheme: Centered(order=8)
+└── advecting_velocity_scheme: Centered(order=2)
 ```
 
 To terminate the chain in a boundary reconstruction other than the default:
 
 ```jldoctest weno
-julia> WENO(order=7, boundary_scheme=UpwindBiased(order=1))
+julia> WENO(order=7, buffer_scheme=DecreasingOrderAdvectionScheme(boundary_scheme=UpwindBiased(order=1)))
 WENO{4, Float64, Nothing}(order=7)
 ├── buffer_scheme: WENO{3, Float64, Nothing}(order=5)
 │   └── buffer_scheme: WENO{2, Float64, Nothing}(order=3)
 │       └── buffer_scheme: UpwindBiased(order=1)
-└── advecting_velocity_scheme: Centered(order=6)
+└── advecting_velocity_scheme: Centered(order=2)
 ```
 
 ```jldoctest weno
@@ -96,7 +96,7 @@ WENO{5, Float64, Nothing}(order=9, bounds=(0.0, 1.0))
 │   └── buffer_scheme: WENO{3, Float64, Nothing}(order=5, bounds=(0.0, 1.0))
 │       └── buffer_scheme: WENO{2, Float64, Nothing}(order=3, bounds=(0.0, 1.0))
 │           └── buffer_scheme: Centered(order=2)
-└── advecting_velocity_scheme: Centered(order=8)
+└── advecting_velocity_scheme: Centered(order=2)
 ```
 
 To build a WENO scheme that uses approximate division on a GPU to execute faster:
@@ -105,14 +105,13 @@ julia> WENO(;weight_computation=Oceananigans.Utils.BackendOptimizedDivision)
 WENO{3, Float64, Oceananigans.Utils.BackendOptimizedDivision}(order=5)
 ├── buffer_scheme: WENO{2, Float64, Oceananigans.Utils.BackendOptimizedDivision}(order=3)
 │   └── buffer_scheme: Centered(order=2)
-└── advecting_velocity_scheme: Centered(order=4)
+└── advecting_velocity_scheme: Centered(order=2)
 ```
 """
 function WENO(FT::DataType=Oceananigans.defaults.FloatType;
               weight_computation::DataType=Nothing,
               order = 5,
-              boundary_scheme = Centered(FT; order=2),
-              buffer_scheme = nothing,
+              buffer_scheme = DecreasingOrderAdvectionScheme(boundary_scheme = Centered(FT; order=2)),
               time_discretization = ExplicitTimeDiscretization(),
               bounds = nothing,
               maximum_courant_number = 5//18)
@@ -126,10 +125,10 @@ function WENO(FT::DataType=Oceananigans.defaults.FloatType;
         # WENO(order=1) is equivalent to UpwindBiased(order=1)
         return UpwindBiased(FT; order=1)
     else
-        advecting_velocity_scheme = Centered(FT; order=order-1)
+        advecting_velocity_scheme = Centered(FT; order=2)
 
-        if isnothing(buffer_scheme)
-            buffer_scheme = order ≤ 3 ? boundary_scheme : WENO(FT; order=order-2, bounds, maximum_courant_number, weight_computation, boundary_scheme)
+        if buffer_scheme isa DecreasingOrderAdvectionScheme
+            buffer_scheme = order ≤ 3 ? buffer_scheme.boundary_scheme : WENO(FT; order=order-2, bounds, maximum_courant_number, weight_computation, buffer_scheme)
         end
 
         N = Int((order + 1) ÷ 2)

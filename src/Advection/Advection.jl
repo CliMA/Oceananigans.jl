@@ -11,7 +11,7 @@ export
     advective_tracer_flux_y,
     advective_tracer_flux_z,
 
-    Centered, UpwindBiased, WENO,
+    Centered, UpwindBiased, WENO, DecreasingOrderAdvectionScheme,
     VectorInvariant, WENOVectorInvariant,
     FluxFormAdvection,
     AdaptiveImplicitVerticalAdvection,
@@ -23,18 +23,18 @@ using Adapt: Adapt
 using Base: Callable
 using DocStringExtensions: TYPEDSIGNATURES
 using MuladdMacro: @muladd
-using OffsetArrays: OffsetArray
+using Oceananigans.Utils: StaticStridesOffsetArray
 
 using Oceananigans: Oceananigans, fully_supported_float_types
 using Oceananigans.Architectures: Architectures, architecture, on_architecture, CPU
-using Oceananigans.Grids: Grids, AbstractGrid, Center, Face, Flat, with_halo,
+using Oceananigans.Grids: Grids, AbstractGrid, Center, Face, Flat, with_halo, horizontally_extended_interior_kernel_parameters,
                           required_halo_size_x, required_halo_size_y, required_halo_size_z,
                           XFlatGrid, YFlatGrid, ZFlatGrid
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Operators: flux_div_xyᶜᶜᶜ, ∂t_σ, Ax_qᶠᶜᶜ, Axᶠᶜᶜ, Ay_qᶜᶠᶜ, Ayᶜᶠᶜ, Az_qᶜᶜᶠ,
                               Azᶜᶜᶜ, Azᶜᶜᶠ, Az⁻¹ᶜᶠᶜ, Az⁻¹ᶠᶜᶜ, V⁻¹ᶜᶜᶠ, V⁻¹ᶜᶠᶜ, V⁻¹ᶠᶜᶜ,
                               Δx_qᶜᶠᶜ, Δx⁻¹ᶠᶜᶜ, Δy_qᶠᶜᶜ, Δy⁻¹ᶜᶠᶜ,
-                              δxᶜᵃᵃ, δxᶠᵃᵃ, δyᵃᶜᵃ, δyᵃᶠᵃ, δzᵃᵃᶜ, ℑxᶜᵃᵃ, ℑyᵃᶜᵃ, ℑzᵃᵃᶜ, ℑzᵃᵃᶠ
+                              δxᶜᵃᵃ, δxᶠᵃᵃ, δyᵃᶜᵃ, δyᵃᶠᵃ, δzᵃᵃᶜ, ℑxᶜᵃᵃ, ℑxᶠᵃᵃ, ℑyᵃᶜᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶜ, ℑzᵃᵃᶠ
 
 abstract type AbstractAdvectionScheme{B, FT, TD} end
 abstract type AbstractCenteredAdvectionScheme{B, FT, TD} <: AbstractAdvectionScheme{B, FT, TD} end
@@ -55,6 +55,18 @@ const advection_buffers = [1, 2, 3, 4, 5, 6]
 @inline Grids.required_halo_size_x(::AbstractAdvectionScheme{B}) where B = B
 @inline Grids.required_halo_size_y(::AbstractAdvectionScheme{B}) where B = B
 @inline Grids.required_halo_size_z(::AbstractAdvectionScheme{B}) where B = B
+
+"""
+    DecreasingOrderAdvectionScheme(; boundary_scheme = nothing)
+
+The default `buffer_scheme` of an advection scheme: the same scheme two orders lower, stepping down until the lowest order
+of its family, and then `boundary_scheme`, the reconstruction used in a cell whose stencil fits no scheme of the chain.
+"""
+struct DecreasingOrderAdvectionScheme{B}
+    boundary_scheme :: B
+end
+
+DecreasingOrderAdvectionScheme(; boundary_scheme = nothing) = DecreasingOrderAdvectionScheme(boundary_scheme)
 
 include("time_discretization.jl")
 include("centered_advective_fluxes.jl")

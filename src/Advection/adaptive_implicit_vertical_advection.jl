@@ -1,7 +1,8 @@
-using Oceananigans.Operators: Δzᶜᶜᶜ, Δzᶜᶜᶠ, Δzᶠᶜᶠ, Δzᶜᶠᶠ, Az_qᶜᶜᶠ, Azᶜᶜᶠ, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
+using Oceananigans.Operators: Δz⁻¹ᶜᶜᶜ, Δz⁻¹ᶜᶜᶠ, Δz⁻¹ᶠᶜᶠ, Δz⁻¹ᶜᶠᶠ, Az_qᶜᶜᶠ, Azᶜᶜᶠ, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
 using Oceananigans.Grids: Center, Face
 using Oceananigans.BoundaryConditions: BoundaryConditions, _unwrap_for_gpu
 using Oceananigans.TimeSteppers: SplitRungeKuttaTimeStepper, RungeKutta3TimeStepper
+using Oceananigans.Utils: foreach_name
 
 const AVID = AdaptiveVerticallyImplicitDiscretization
 
@@ -18,33 +19,33 @@ const AVID = AdaptiveVerticallyImplicitDiscretization
 # When |w| * Δt / Δz > cfl: scale = cfl * Δz / (|w| * Δt) < 1
 @inline function explicit_velocity_scaleᶜᶜᶠ(i, j, k, grid, scheme, td, W)
     Δt = _unwrap_for_gpu(td.Δt)
-    Δz = Δzᶜᶜᶠ(i, j, k, grid)
+    Δz⁻¹ = Δz⁻¹ᶜᶜᶠ(i, j, k, grid)
     w  = @inbounds W[i, j, k]
-    α  = abs(w) * Δt / Δz
+    α  = abs(w) * Δt * Δz⁻¹
     return ifelse(α > td.cfl, td.cfl / α, one(α))
 end
 
 @inline function explicit_velocity_scaleᶠᶜᶠ(i, j, k, grid, scheme, td, W)
     Δt = _unwrap_for_gpu(td.Δt)
-    Δz = Δzᶠᶜᶠ(i, j, k, grid)
+    Δz⁻¹ = Δz⁻¹ᶠᶜᶠ(i, j, k, grid)
     w  = _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, W)
-    α  = abs(w) * Δt / Δz
+    α  = abs(w) * Δt * Δz⁻¹
     return ifelse(α > td.cfl, td.cfl / α, one(α))
 end
 
 @inline function explicit_velocity_scaleᶜᶠᶠ(i, j, k, grid, scheme, td, W)
     Δt = _unwrap_for_gpu(td.Δt)
-    Δz = Δzᶜᶠᶠ(i, j, k, grid)
+    Δz⁻¹ = Δz⁻¹ᶜᶠᶠ(i, j, k, grid)
     w  = _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, W)
-    α  = abs(w) * Δt / Δz
+    α  = abs(w) * Δt * Δz⁻¹
     return ifelse(α > td.cfl, td.cfl / α, one(α))
 end
 
 @inline function explicit_velocity_scaleᶜᶜᶜ(i, j, k, grid, scheme, td, W)
     Δt = _unwrap_for_gpu(td.Δt)
-    Δz = Δzᶜᶜᶜ(i, j, k, grid)
+    Δz⁻¹ = Δz⁻¹ᶜᶜᶜ(i, j, k, grid)
     w  = _symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, W)
-    α  = abs(w) * Δt / Δz
+    α  = abs(w) * Δt * Δz⁻¹
     return ifelse(α > td.cfl, td.cfl / α, one(α))
 end
 
@@ -103,18 +104,39 @@ field the scheme advects, or `nothing` for the `momentum` entry.
 """
 update_advection!(advection, model) = nothing
 
-# `advection` is `(momentum, tracer_names...)`, with the tracer entries in `model.tracers` order.
+# Split in two so that a model can refresh the bounds-preserving limiters, which read the tracer halos,
+# once the halo communication has completed. `advection` is `(momentum, tracer_names...)`.
+update_adaptive_timesteps!(advection, model) = nothing
+update_bounds_preserving_limiters!(advection, model) = nothing
+
 @inline function update_advection!(advection::NamedTuple, model)
-    update_advection!(advection.momentum, model, nothing)
-    return update_tracer_advection!(Base.tail(values(advection)), values(model.tracers), model)
+    update_adaptive_timesteps!(advection, model)
+    return update_bounds_preserving_limiters!(advection, model)
 end
 
-@inline update_tracer_advection!(::Tuple{}, ::Tuple{}, model) = nothing
+@inline function update_adaptive_timesteps!(advection::NamedTuple, model)
+    update_adaptive_timestep!(advection.momentum, model)
 
-@inline function update_tracer_advection!(schemes::Tuple, tracers::Tuple, model)
-    update_advection!(first(schemes), model, first(tracers))
-    return update_tracer_advection!(Base.tail(schemes), Base.tail(tracers), model)
+    foreach_name(model.tracers) do _, val_name
+        update_tracer_adaptive_timestep!(advection, model, val_name)
+    end
+
+    return nothing
 end
+
+@inline update_tracer_adaptive_timestep!(advection, model, ::Val{name}) where name =
+    update_adaptive_timestep!(advection[name], model)
+
+@inline function update_bounds_preserving_limiters!(advection::NamedTuple, model)
+    foreach_name(model.tracers) do _, val_name
+        update_tracer_bounds_preserving_limiter!(advection, model, val_name)
+    end
+
+    return nothing
+end
+
+@inline update_tracer_bounds_preserving_limiter!(advection, model, ::Val{name}) where name =
+    update_bounds_preserving_limiter!(advection[name], model.grid, model.tracers[name])
 
 @inline function update_advection!(scheme, model, tracer)
     update_adaptive_timestep!(scheme, model)
@@ -122,9 +144,9 @@ end
     return nothing
 end
 
-update_advection!(scheme::FluxFormAdvection, model, tracer) = update_advection!(scheme.z, model, tracer)
-
 update_adaptive_timestep!(scheme, model) = nothing
+
+update_adaptive_timestep!(scheme::FluxFormAdvection, model) = update_adaptive_timestep!(scheme.z, model)
 
 @inline function update_adaptive_timestep!(scheme::AdaptiveImplicitVerticalAdvection, model)
     td = TimeSteppers.time_discretization(scheme)

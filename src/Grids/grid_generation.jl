@@ -77,15 +77,15 @@ function generate_coordinate(FT, topo::AT, N, H, node_generator, coordinate_name
         Δᶠ[i] = Δᶠ[i-1]
     end
 
-    Δᶜ = OffsetArray(on_architecture(arch, Δᶜ), -H)
-    Δᶠ = OffsetArray(on_architecture(arch, Δᶠ), -H - 1)
+    Δᶜ = StaticStridesOffsetArray(on_architecture(arch, Δᶜ), -H)
+    Δᶠ = StaticStridesOffsetArray(on_architecture(arch, Δᶠ), -H - 1)
 
-    OF = OffsetArray(trimmed_F, -H)
-    OC = OffsetArray(        C, -H)
+    OF = StaticStridesOffsetArray(trimmed_F, -H)
+    OC = StaticStridesOffsetArray(        C, -H)
 
     # Convert to appropriate array type for arch
-    OF = OffsetArray(on_architecture(arch, OF.parent), OF.offsets...)
-    OC = OffsetArray(on_architecture(arch, OC.parent), OC.offsets...)
+    OF = StaticStridesOffsetArray(on_architecture(arch, parent(OF)), OffsetArrays.offsets(OF)...)
+    OC = StaticStridesOffsetArray(on_architecture(arch, parent(OC)), OffsetArrays.offsets(OC)...)
 
     if coordinate_name == :z
         return L, StaticVerticalDiscretization(OF, OC, Δᶠ, Δᶜ)
@@ -106,11 +106,40 @@ end
 #                       │                               │
 # extended interval:    f₁                              f₂
 extend_node_interval(::AT, N, node_interval::Tuple{<:Number, <:Number}) = node_interval
-function extend_node_interval(::Sides{Closed, CenterFolded}, N, node_interval::Tuple{<:Number, <:Number})
+function extend_node_interval(::TwoSided{Closed, CenterFolded}, N, node_interval::Tuple{<:Number, <:Number})
     c₁, c₂ = @. BigFloat(node_interval)
     L = c₂ - c₁
     Δ = L / (N - 1)
     return (c₁ - Δ/2, c₂ + Δ/2)
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+`total` nodes at location `ℓ` spaced by `(c₂ - c₁) / N`, of which faces `H + 1` to `H + N + 1` go from `c₁` to `c₂`
+and centers lie halfway between faces.
+"""
+function regular_nodes(FT, ℓ, c₁, c₂, N, H, total)
+    R = promote_type(FT, Float64)
+    Δ = (c₂ - c₁) / N
+    shift = ℓ isa Center ? 1/2 : 0
+    # Anchored at the node nearest zero, so that a node at zero is exact
+    k = clamp(round(Int, - c₁ / Δ - shift), 0, N)
+    anchor = clamp(H + 1 + k, 1, total)
+    reference = c₁ + (anchor - H - 1 + shift) * Δ
+    return StepRangeLen{FT, R, R}(R(reference), R(Δ), total, anchor)
+end
+
+# No public type is wider than Float64, so Float64 nodes take the extended-precision reference and step of `range`
+function regular_nodes(::Type{Float64}, ℓ, c₁, c₂, N, H, total)
+    interior = range(Float64(c₁), Float64(c₂), length = N + 1)
+    if !(interior isa StepRangeLen)
+        error("Regular Float64 coordinates need `range` to return a `StepRangeLen`, but it returned a $(typeof(interior))")
+    end
+    reference = ℓ isa Center ? interior.ref + interior.step / 2 : interior.ref
+    anchor = interior.offset + H
+    nodes = StepRangeLen{Float64}(reference, interior.step, max(total, anchor), anchor)
+    return nodes[1:total]
 end
 
 # Generate a regularly-spaced coordinate passing the domain extent (2-tuple) and number of points
@@ -130,23 +159,17 @@ function generate_coordinate(FT, topo::AT, N, H, node_interval::Tuple{<:Number, 
     # Convert to get the correct type also when using single precision
     Δᶠ = Δᶜ = Δ = L / N
 
-    F₋ = c₁ - H * Δ
-    F₊ = F₋ + total_extent(topo, H, Δ, L)
-
-    C₋ = F₋ + Δ / 2
-    C₊ = C₋ + L + Δ * (2H - 1)
-
     TF = total_length(Face(),   topo, N, H)
     TC = total_length(Center(), topo, N, H)
 
-    F = range(FT(F₋), FT(F₊), length = TF)
-    C = range(FT(C₋), FT(C₊), length = TC)
+    F = regular_nodes(FT, Face(),   c₁, c₂, N, H, TF)
+    C = regular_nodes(FT, Center(), c₁, c₂, N, H, TC)
 
     F = on_architecture(arch, F)
     C = on_architecture(arch, C)
 
-    F = OffsetArray(F, -H)
-    C = OffsetArray(C, -H)
+    F = StaticStridesOffsetArray(F, -H)
+    C = StaticStridesOffsetArray(C, -H)
 
     if coordinate_name == :z
         return FT(L), StaticVerticalDiscretization(F, C, FT(Δᶠ), FT(Δᶜ))

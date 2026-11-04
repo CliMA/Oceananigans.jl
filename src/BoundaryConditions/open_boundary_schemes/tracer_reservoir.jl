@@ -37,7 +37,7 @@ TracerReservoir{Float64}
 struct TracerReservoir{FT, S} <: AbstractRadiationScheme{FT}
     inflow_length_scale  :: FT
     outflow_length_scale :: FT
-    φᵇ :: S  # reservoir value at the base of the stage (2D array or nothing)
+    φ⁻ :: S  # reservoir value at the base of the stage (2D array or nothing)
 end
 
 function TracerReservoir(FT = defaults.FloatType;
@@ -56,7 +56,7 @@ end
 Adapt.adapt_structure(to, r::TracerReservoir) =
     TracerReservoir(adapt(to, r.inflow_length_scale),
                     adapt(to, r.outflow_length_scale),
-                    adapt(to, r.φᵇ))
+                    adapt(to, r.φ⁻))
 
 Base.summary(::TracerReservoir{FT}) where FT = "TracerReservoir{$FT}"
 
@@ -92,7 +92,7 @@ end
         cᵉˣᵗ = getbc(bc, i, j, grid, clock, model_fields)
         uₙ = normal_velocity(side, model_fields, grid, 0, i, j)
         d = abs(uₙ) * Δt
-        cʳ = reservoir_update(reservoir.φᵇ[i, j], c[i₁, j₁, k₁], cᵉˣᵗ, d, outward(side, uₙ) >= 0, reservoir)
+        cʳ = reservoir_update(reservoir.φ⁻[i, j], c[i₁, j₁, k₁], cᵉˣᵗ, d, outward(side, uₙ) >= 0, reservoir)
         c[iᵇ, jᵇ, kᵇ] = ifelse(immersed_boundary_point(side, loc, grid, i, j), zero(grid), cʳ)
     end
 

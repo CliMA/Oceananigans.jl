@@ -20,7 +20,7 @@ const serialized_output_values = Dict{Symbol, Any}(
     :Face => Face,
     :Flat => Flat,
     :Periodic => Periodic,
-    :Sides => Sides,
+    :TwoSided => TwoSided,
     :Bounded => Bounded,
     :Closed => Closed,
     :Open => Open,
@@ -30,32 +30,37 @@ const serialized_output_values = Dict{Symbol, Any}(
     :CenterFoldConnected => CenterFoldConnected,
     :FaceFoldConnected => FaceFoldConnected,
     # Names of these topologies in older output files
-    :FullyConnected => Sides{Connected, Connected},
-    :LeftConnected => Sides{Connected, Closed},
-    :RightConnected => Sides{Closed, Connected},
-    :RightFaceFolded => Sides{Closed, FaceFolded},
-    :RightCenterFolded => Sides{Closed, CenterFolded},
-    :LeftConnectedRightCenterFolded => Sides{Connected, CenterFolded},
-    :LeftConnectedRightFaceFolded => Sides{Connected, FaceFolded},
-    :LeftConnectedRightCenterConnected => Sides{Connected, CenterFoldConnected},
-    :LeftConnectedRightFaceConnected => Sides{Connected, FaceFoldConnected},
+    :Sides => TwoSided,
+    :FullyConnected => TwoSided{Connected, Connected},
+    :LeftConnected => TwoSided{Connected, Closed},
+    :RightConnected => TwoSided{Closed, Connected},
+    :RightFaceFolded => TwoSided{Closed, FaceFolded},
+    :RightCenterFolded => TwoSided{Closed, CenterFolded},
+    :LeftConnectedRightCenterFolded => TwoSided{Connected, CenterFolded},
+    :LeftConnectedRightFaceFolded => TwoSided{Connected, FaceFolded},
+    :LeftConnectedRightCenterConnected => TwoSided{Connected, CenterFoldConnected},
+    :LeftConnectedRightFaceConnected => TwoSided{Connected, FaceFoldConnected},
     :RectilinearGrid => RectilinearGrid,
     :LatitudeLongitudeGrid => LatitudeLongitudeGrid,
     :OrthogonalSphericalShellGrid => OrthogonalSphericalShellGrid,
     :TripolarGrid => TripolarGrid,
     :RotatedLatitudeLongitudeGrid => RotatedLatitudeLongitudeGrid,
     :ConformalCubedSpherePanelGrid => ConformalCubedSpherePanelGrid,
-    :LambertConformalConicGrid => LambertConformalConicGrid,
+    :ConformalConicGrid => ConformalConicGrid,
+    :LambertConformalConicGrid => ConformalConicGrid,
     :MutableVerticalDiscretization => MutableVerticalDiscretization,
     :GridFittedBoundary => GridFittedBoundary,
     :GridFittedBottom => GridFittedBottom,
     :PartialCellBottom => PartialCellBottom,
+    :GridFittedVerticalBoundaries => GridFittedVerticalBoundaries,
+    :PartialCellVerticalBoundaries => PartialCellVerticalBoundaries,
     :CenterImmersedCondition => CenterImmersedCondition,
     :InterfaceImmersedCondition => InterfaceImmersedCondition,
     :Tripolar => Tripolar,
     :LatitudeLongitudeRotation => LatitudeLongitudeRotation,
     :CubedSphereConformalMapping => CubedSphereConformalMapping,
-    :LambertConformalConic => LambertConformalConic,
+    :ConformalConic => ConformalConic,
+    :LambertConformalConic => ConformalConic,
     :ColumnEnsembleSize => ColumnEnsembleSize,
     :Colon => Colon,
     :Tuple => Tuple,
@@ -151,8 +156,8 @@ function materialize_parameterized_output_type(expression)
         return Tuple{parameters...}
     elseif base_type === ColumnEnsembleSize
         return ColumnEnsembleSize{parameters...}
-    elseif base_type === Sides
-        return Sides{parameters...}
+    elseif base_type === TwoSided
+        return TwoSided{parameters...}
     end
 
     throw(ArgumentError("Unsupported serialized parametric type: $base_type"))

@@ -15,15 +15,19 @@ export
 
 using Adapt: Adapt
 using DocStringExtensions: TYPEDSIGNATURES
-using KernelAbstractions: @kernel, @index
+using KernelAbstractions: @index, @kernel
 
-using Oceananigans: Oceananigans, AbstractModel, initialize!, fields, prognostic_fields
-using Oceananigans.BoundaryConditions: BoundaryConditions, cache_boundary_conditions!, initialize_boundary_conditions!
+using Oceananigans: Oceananigans, AbstractModel, fields, initialize!, prognostic_fields
 using Oceananigans.Architectures: architecture
-using Oceananigans.Utils: AbstractTimeDiscretization, ExplicitTimeDiscretization,
-                          VerticallyImplicitTimeDiscretization,
+using Oceananigans.BoundaryConditions: BoundaryConditions, cache_boundary_conditions!, initialize_boundary_conditions!
+using Oceananigans.Fields: Fields
+using Oceananigans.Units: Units
+using Oceananigans.Utils: @apply_regionally,
+                          AbstractTimeDiscretization,
                           AdaptiveVerticallyImplicitDiscretization,
-                          kernel_time_step, @apply_regionally
+                          ExplicitTimeDiscretization,
+                          VerticallyImplicitTimeDiscretization,
+                          kernel_time_step
 
 """
     abstract type AbstractTimeStepper
@@ -43,8 +47,11 @@ step_closure_prognostics!(model, Δt::Number) = nothing
 reconcile_state!(model) = nothing
 
 # The exterior states of open boundaries are prognostic, like the fields they belong to
-BoundaryConditions.cache_boundary_conditions!(model::AbstractModel) = @apply_regionally cache_boundary_conditions!(prognostic_fields(model), model.clock, fields(model))
-BoundaryConditions.initialize_boundary_conditions!(model::AbstractModel) = @apply_regionally initialize_boundary_conditions!(prognostic_fields(model), model.clock, fields(model))
+BoundaryConditions.cache_boundary_conditions!(model::AbstractModel{<:AbstractTimeStepper}) = @apply_regionally cache_boundary_conditions!(prognostic_fields(model), model.clock, fields(model))
+BoundaryConditions.initialize_boundary_conditions!(model::AbstractModel{<:AbstractTimeStepper}) = @apply_regionally initialize_boundary_conditions!(prognostic_fields(model), model.clock, fields(model))
+
+# Models without a time stepper need not define `prognostic_fields` or `fields`
+BoundaryConditions.initialize_boundary_conditions!(model) = nothing
 
 # Prepare the model for the first time step, in case run! is not used.
 function maybe_prepare_first_time_step!(model, Δt, callbacks)
@@ -135,17 +142,17 @@ end
 ##### Checkpointing
 #####
 
-function prognostic_state(timestepper::AbstractTimeStepper)
+function Oceananigans.prognostic_state(timestepper::AbstractTimeStepper)
     return (Gⁿ = prognostic_state(timestepper.Gⁿ),
             G⁻ = prognostic_state(timestepper.G⁻))
 end
 
-function restore_prognostic_state!(restored::AbstractTimeStepper, from)
+function Oceananigans.restore_prognostic_state!(restored::AbstractTimeStepper, from)
     restore_prognostic_state!(restored.Gⁿ, from.Gⁿ)
     restore_prognostic_state!(restored.G⁻, from.G⁻)
     return restored
 end
 
-restore_prognostic_state!(::AbstractTimeStepper, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::AbstractTimeStepper, ::Nothing) = nothing
 
 end # module

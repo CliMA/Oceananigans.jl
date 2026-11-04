@@ -1,17 +1,10 @@
 """
-    struct IMEXFluxTimeDiscretization{C} <: AbstractTimeDiscretization
+    IMEXFluxTimeDiscretization(implicit_coefficient=nothing)
 
-Time-discretization of an affine `Flux` boundary condition `J(φᵦ) = Fₑ + λ φᵦ`, where `φᵦ` is the
-boundary-cell field value. `Fₑ` is integrated through the tendency and the linear part `λ φᵦ` — with
-`λ` the stored `implicit_coefficient` — by the vertical tridiagonal solver.
-
-    IMEXFluxTimeDiscretization(implicit_coefficient)
-
-Build the discretization carrying `λ`, then pass it to [`FluxBoundaryCondition`](@ref):
-
-```julia
-FluxBoundaryCondition(Fₑ; time_discretization = IMEXFluxTimeDiscretization(λ))
-```
+Time discretization of a `Flux` boundary condition split at the boundary cell as `J ≈ Fₑ + λ φᵦ`,
+where `φᵦ` is the boundary-cell value. `Fₑ` is integrated explicitly and `λ φᵦ` by the vertical
+tridiagonal solver. Without `implicit_coefficient`, the condition chooses the split; otherwise
+the flux is `Fₑ` and `λ = implicit_coefficient`.
 """
 struct IMEXFluxTimeDiscretization{C} <: AbstractTimeDiscretization
     implicit_coefficient :: C
@@ -24,12 +17,7 @@ Base.summary(::IMEXFluxTimeDiscretization) = "IMEXFluxTimeDiscretization"
 Adapt.adapt_structure(to, td::IMEXFluxTimeDiscretization) =
     IMEXFluxTimeDiscretization(Adapt.adapt(to, td.implicit_coefficient))
 
-"""
-    struct IMEXFlux{E, C}
-
-The condition of a `Flux` boundary condition with `IMEXFluxTimeDiscretization`, holding the
-`explicit_flux` `Fₑ` and the `implicit_coefficient` `λ` of the affine flux `J(φᵦ) = Fₑ + λ φᵦ`.
-"""
+# A user-supplied split J = explicit_flux + implicit_coefficient * φᵦ
 struct IMEXFlux{E, C}
     explicit_flux        :: E
     implicit_coefficient :: C
@@ -37,55 +25,77 @@ end
 
 const IEFBC = BoundaryCondition{<:Flux{<:IMEXFluxTimeDiscretization}}
 
-function materialize_flux_boundary_condition(explicit_flux, time_discretization::IMEXFluxTimeDiscretization;
+function materialize_flux_boundary_condition(flux, time_discretization::IMEXFluxTimeDiscretization;
                                              parameters, discrete_form, field_dependencies)
 
-    Fₑ = materialize_condition(explicit_flux,                            parameters, discrete_form, field_dependencies)
-    λ  = materialize_condition(time_discretization.implicit_coefficient, parameters, discrete_form, field_dependencies)
+    condition = materialize_condition(flux, parameters, discrete_form, field_dependencies)
+    λ = time_discretization.implicit_coefficient
+    isnothing(λ) || (condition = IMEXFlux(condition, materialize_condition(λ, parameters, discrete_form, field_dependencies)))
 
-    return BoundaryCondition(Flux(IMEXFluxTimeDiscretization()), IMEXFlux(Fₑ, λ))
+    return BoundaryCondition(Flux(IMEXFluxTimeDiscretization()), condition)
 end
 
 """
+    IMEXFluxBoundaryCondition(flux; kwargs...)
     IMEXFluxBoundaryCondition(explicit_flux, implicit_coefficient; kwargs...)
 
-Return a `Flux` boundary condition with the affine flux `J(φᵦ) = explicit_flux + implicit_coefficient φᵦ`.
-Shorthand for
-
-```julia
-FluxBoundaryCondition(explicit_flux; time_discretization = IMEXFluxTimeDiscretization(implicit_coefficient), kwargs...)
-```
+Shorthand for `FluxBoundaryCondition` with an [`IMEXFluxTimeDiscretization`](@ref).
 """
+IMEXFluxBoundaryCondition(J; kwargs...) =
+    FluxBoundaryCondition(J; time_discretization = IMEXFluxTimeDiscretization(), kwargs...)
+
 IMEXFluxBoundaryCondition(Fₑ, λ; kwargs...) =
     FluxBoundaryCondition(Fₑ; time_discretization = IMEXFluxTimeDiscretization(λ), kwargs...)
 
 @inline getbc(condition::IMEXFlux, args...) = getbc(condition.explicit_flux, args...)
 
-"""
-    implicit_flux_coefficient(bc, i, j, grid, clock, fields)
+# Domain boundaries take two horizontal indices, immersed facets the three indices of the adjacent cell.
+# `Nothing` is spelled out per boundary to avoid ambiguities.
+@inline boundary_flux(condition, ::Union{Bottom, Top}, i, j, k, grid, args...) = getbc(condition, i, j, grid, args...)
+@inline boundary_flux(condition, ::ImmersedFacet,      i, j, k, grid, args...) = getbc(condition, i, j, k, grid, args...)
+@inline boundary_flux(::Nothing, ::Union{Bottom, Top}, i, j, k, grid, args...) = zero(grid)
+@inline boundary_flux(::Nothing, ::ImmersedFacet,      i, j, k, grid, args...) = zero(grid)
 
-The linear coefficient `λ` of an implicit-explicit `Flux` boundary condition, which the vertically-implicit
-solver embeds in the boundary-cell diagonal. Zero for any other boundary condition.
-"""
-@inline implicit_flux_coefficient(bc, i, j, grid, clock, fields) = zero(grid)
-@inline implicit_flux_coefficient(bc::IEFBC, i, j, grid, clock, fields) = getbc(bc.condition.implicit_coefficient, i, j, grid, clock, fields)
+# A top flux enters the tendency as -J/Δz, a bottom or immersed flux as +J/Δz,
+# so the implicit step damps φᵦ for λ ≥ 0 on the top and λ ≤ 0 elsewhere.
+@inline dissipative_part(::Top, λ) = max(λ, zero(λ))
+@inline dissipative_part(::Union{Bottom, ImmersedFacet}, λ) = min(λ, zero(λ))
 
-@inline immersed_implicit_flux_coefficient(bc, i, j, k, grid, clock, fields) = zero(grid)
-@inline immersed_implicit_flux_coefficient(bc::IEFBC, i, j, k, grid, clock, fields) = getbc(bc.condition.implicit_coefficient, i, j, k, grid, clock, fields)
+# Patankar split: λ is the dissipative part of J / φᵦ and Fₑ = J - λ φᵦ
+@inline function patankar_split(condition, boundary, i, j, k, grid, ϕ, args...)
+    J  = boundary_flux(condition, boundary, i, j, k, grid, args...)
+    φᵦ = @inbounds ϕ[i, j, k]
+    λ  = dissipative_part(boundary, ifelse(φᵦ == 0, zero(J), J / φᵦ))
+    return J - λ * φᵦ, λ
+end
+
+# The split J ≈ Fₑ + λ φᵦ: `explicit_flux` returns Fₑ and `implicit_flux_coefficient` returns λ.
+# Conditions that know their own split (`IMEXFlux`, `BulkDragFunction`) extend both.
+@inline implicit_flux_coefficient(condition, boundary, i, j, k, grid, ϕ, args...) = patankar_split(condition, boundary, i, j, k, grid, ϕ, args...)[2]
+@inline explicit_flux(condition, boundary, i, j, k, grid, ϕ, args...)             = patankar_split(condition, boundary, i, j, k, grid, ϕ, args...)[1]
+
+@inline implicit_flux_coefficient(c::IMEXFlux, boundary, i, j, k, grid, ϕ, args...) = boundary_flux(c.implicit_coefficient, boundary, i, j, k, grid, args...)
+@inline explicit_flux(c::IMEXFlux, boundary, i, j, k, grid, ϕ, args...)             = boundary_flux(c.explicit_flux,        boundary, i, j, k, grid, args...)
+
+# Only an implicit-explicit flux has a linear part
+@inline implicit_flux_coefficient(::Nothing,           boundary, i, j, k, grid, ϕ, args...) = zero(grid)
+@inline implicit_flux_coefficient(::BoundaryCondition, boundary, i, j, k, grid, ϕ, args...) = zero(grid)
+@inline implicit_flux_coefficient(bc::IEFBC,           boundary, i, j, k, grid, ϕ, args...) = implicit_flux_coefficient(bc.condition, boundary, i, j, k, grid, ϕ, args...)
+
+@inline explicit_flux(::Nothing,             boundary, i, j, k, grid, ϕ, args...) = zero(grid)
+@inline explicit_flux(bc::BoundaryCondition, boundary, i, j, k, grid, ϕ, args...) = boundary_flux(bc, boundary, i, j, k, grid, args...)
+@inline explicit_flux(bc::IEFBC,             boundary, i, j, k, grid, ϕ, args...) = explicit_flux(bc.condition, boundary, i, j, k, grid, ϕ, args...)
 
 needs_implicit_solver(bc) = false
 needs_implicit_solver(bc::IEFBC) = true
 
-"""
-    total_boundary_flux(bc, i, j, k, grid, clock, fields, ϕ)
+# The realized flux Fₑ + λ φᵦ, for derived boundary conditions such as the TKE closure's friction velocity.
+# Only the IEFBC method indexes ϕ, which may otherwise be a constant (e.g. salinity in TemperatureSeawaterBuoyancy).
+@inline total_boundary_flux(bc, boundary, i, j, k, grid, ϕ, args...) = explicit_flux(bc, boundary, i, j, k, grid, ϕ, args...)
 
-The realized boundary flux of `bc` for the field `ϕ`, evaluated with the boundary-cell value `ϕ[i, j, k]`
-(`k = Nz` on a top boundary, `k = 1` on a bottom boundary). A derived boundary condition that needs the
-actual flux, such as the friction velocity `u★` of a TKE closure, reconstructs `Fₑ + λ φᵦ` with this
-function. For any other boundary condition it is `getbc`.
-"""
-@inline total_boundary_flux(bc, i, j, k, grid, clock, fields, ϕ) = getbc(bc, i, j, grid, clock, fields)
-@inline total_boundary_flux(bc::IEFBC, i, j, k, grid, clock, fields, ϕ) = @inbounds getbc(bc, i, j, grid, clock, fields) + implicit_flux_coefficient(bc, i, j, grid, clock, fields) * ϕ[i, j, k]
+@inline total_boundary_flux(bc::IEFBC, boundary, i, j, k, grid, ϕ, args...) =
+    explicit_flux(bc, boundary, i, j, k, grid, ϕ, args...) +
+    implicit_flux_coefficient(bc, boundary, i, j, k, grid, ϕ, args...) * @inbounds ϕ[i, j, k]
 
 function validate_implicit_explicit_flux_locations(bcs)
     for side in (bcs.west, bcs.east, bcs.south, bcs.north)

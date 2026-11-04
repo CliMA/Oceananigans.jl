@@ -76,10 +76,6 @@ Testing infrastructure is provided by [atdepth](https://www.atdepth.org) and the
 - [Citing and otherwise spreading the word](#citing-and-otherwise-spreading-the-word)
 - [Contributing](#contributing)
 - [Movies](#movies)
-  - [Deep convection](#deep-convection)
-  - [Free convection](#free-convection)
-  - [Winds blowing over the ocean](#winds-blowing-over-the-ocean)
-  - [Free convection with wind stress](#free-convection-with-wind-stress)
 - [Performance benchmarks](#performance-benchmarks)
 
 ## Installation instructions
@@ -120,7 +116,7 @@ run!(simulation)
 But there's more: loading CUDA.jl (via `using CUDA`) and changing `CPU()` to `GPU()` makes this code run on a CUDA-enabled Nvidia GPU.
 
 Dive into [the documentation](https://clima.github.io/OceananigansDocumentation/stable/) for more code examples and tutorials.
-Below, you'll find movies from GPU simulations along with CPU and GPU [performance benchmarks](https://github.com/clima/Oceananigans.jl#performance-benchmarks).
+Below, you'll find [movies](#movies) from GPU simulations and a link to our [performance benchmarks](#performance-benchmarks).
 
 ## The Oceananigans knowledge base
 
@@ -223,33 +219,47 @@ For more information check out our [contributor's guide](https://clima.github.io
 
 ## Movies
 
-### [Deep convection](https://www.youtube.com/watch?v=kpUrxnKKMjI)
+Click on a thumbnail to watch the movie on YouTube.
+Descriptions of these simulations, and more movies, can be found in the
+[gallery](https://clima.github.io/OceananigansDocumentation/stable/gallery) and the
+[examples](https://clima.github.io/OceananigansDocumentation/stable/) of the documentation.
 
-[![Watch deep convection in action](https://raw.githubusercontent.com/ali-ramadhan/ali-ramadhan.Github.io/master/img/surface_temp_3d_00130_halfsize.png)](https://www.youtube.com/watch?v=kpUrxnKKMjI)
-
-### [Free convection](https://www.youtube.com/watch?v=yq4op9h3xcU)
-
-[![Watch free convection in action](https://raw.githubusercontent.com/ali-ramadhan/ali-ramadhan.Github.io/master/img/free_convection_0956.png)](https://www.youtube.com/watch?v=yq4op9h3xcU)
-
-### [Winds blowing over the ocean](https://www.youtube.com/watch?v=IRncfbvuiy8)
-
-[![Watch winds blowing over the ocean](https://raw.githubusercontent.com/ali-ramadhan/ali-ramadhan.Github.io/master/img/wind_stress_0400.png)](https://www.youtube.com/watch?v=IRncfbvuiy8)
-
-### [Free convection with wind stress](https://www.youtube.com/watch?v=ob6OMQgPfI4)
-
-[![Watch free convection with wind stress in action](https://raw.githubusercontent.com/ali-ramadhan/ali-ramadhan.Github.io/master/img/wind_stress_unstable_7500.png)](https://www.youtube.com/watch?v=ob6OMQgPfI4)
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <a href="https://www.youtube.com/watch?v=kpUrxnKKMjI">
+        <img alt="Deep convection" src="https://img.youtube.com/vi/kpUrxnKKMjI/hqdefault.jpg" width="100%">
+      </a>
+      <br><a href="https://www.youtube.com/watch?v=kpUrxnKKMjI"><strong>Deep convection</strong></a>
+    </td>
+    <td align="center" width="50%">
+      <a href="https://www.youtube.com/watch?v=yq4op9h3xcU">
+        <img alt="Free convection" src="https://img.youtube.com/vi/yq4op9h3xcU/hqdefault.jpg" width="100%">
+      </a>
+      <br><a href="https://www.youtube.com/watch?v=yq4op9h3xcU"><strong>Free convection</strong></a>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <a href="https://www.youtube.com/watch?v=IRncfbvuiy8">
+        <img alt="Winds blowing over the ocean" src="https://img.youtube.com/vi/IRncfbvuiy8/hqdefault.jpg" width="100%">
+      </a>
+      <br><a href="https://www.youtube.com/watch?v=IRncfbvuiy8"><strong>Winds blowing over the ocean</strong></a>
+    </td>
+    <td align="center" width="50%">
+      <a href="https://www.youtube.com/watch?v=ob6OMQgPfI4">
+        <img alt="Free convection with wind stress" src="https://img.youtube.com/vi/ob6OMQgPfI4/hqdefault.jpg" width="100%">
+      </a>
+      <br><a href="https://www.youtube.com/watch?v=ob6OMQgPfI4"><strong>Free convection with wind stress</strong></a>
+    </td>
+  </tr>
+</table>
 
 ## Performance benchmarks
 
-We continuously measure the performance of Oceananigans by initializing models of various sizes with different schemes and closures and measuring the wall clock time taken per model iteration (or time step). These benchmarks are run on every commit in main and tracked on our [performance dashboard](https://numericalearth.github.io/OceananigansBenchmarks/).
+We continuously measure the performance of Oceananigans by initializing models of various sizes with different schemes and closures
+and measuring the wall clock time taken per model iteration (or time step).
+These benchmarks are run on every commit to `main` and tracked on our [performance dashboard](https://numericalearth.github.io/OceananigansBenchmarks/).
 
-To make full use of or fully saturate the computing power of a GPU such as an Nvidia Tesla V100 or
-a Titan V, the model should have around ~10 million grid points or more.
-
-Sometimes counter-intuitively running with `Float32` is slower than `Float64`. This is likely due
-to type mismatches causing slowdowns as floats have to be converted between 32-bit and 64-bit, an
-issue that needs to be addressed meticulously. Due to other bottlenecks such as memory accesses and
-GPU register pressure, `Float32` models may not provide much of a speedup so the main benefit becomes
-lower memory costs (by around a factor of 2).
-
-![Performance benchmark plots](https://user-images.githubusercontent.com/20099589/89906791-d2c85b00-dbb9-11ea-969a-4b8db2c31680.png)
+For performance of large-scale, realistic ocean simulations on multiple GPUs, see
+[Silvestri et al. (2025)](https://doi.org/10.1029/2024MS004465).

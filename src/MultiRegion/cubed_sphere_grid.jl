@@ -294,7 +294,7 @@ function BoundaryConditions.fill_halo_regions!(grid::ConformalCubedSphereGridOfS
             getregion(field, region).data .= getproperty(getregion(grid, region), name)
         end
 
-        if TX == Sides{Connected, Connected}
+        if TX == TwoSided{Connected, Connected}
             fill_halo_regions!(field)
         end
 
@@ -331,7 +331,7 @@ function BoundaryConditions.fill_halo_regions!(grid::ConformalCubedSphereGridOfS
             getregion(field₂, region).data .= getproperty(getregion(grid, region), name₂)
         end
 
-        if TX == Sides{Connected, Connected}
+        if TX == TwoSided{Connected, Connected}
             fill_halo_regions!((field₁, field₂); signed = false)
         end
 
@@ -482,8 +482,7 @@ function SplitExplicitFreeSurfaces.maybe_extend_halos(TX, TY, grid::ConformalCub
     end
 end
 
-function SplitExplicitFreeSurfaces.maybe_augmented_kernel_parameters(TX, TY, grid::ConformalCubedSphereGridOfSomeKind,
-                                                                     substepping::FixedSubstepNumber)
-    @apply_regionally kernel_parameters = maybe_augmented_kernel_parameters(TX, TY, grid, substepping)
+function SplitExplicitFreeSurfaces.materialize_kernel_parameters(TX, TY, grid::ConformalCubedSphereGridOfSomeKind, substepping::FixedSubstepNumber, strategy)
+    @apply_regionally kernel_parameters = materialize_kernel_parameters(TX, TY, grid, substepping, strategy)
     return kernel_parameters
 end

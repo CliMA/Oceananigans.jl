@@ -1,4 +1,4 @@
-using Oceananigans.Operators: Vᶜᶠᶜ, Vᶠᶜᶜ, δxᶠᶜᶜ, δyᶜᶠᶜ, ζ₃ᶠᶠᶜ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ
+using Oceananigans.Operators: δxᶠᶜᶜ, δyᶜᶠᶜ, ζ₃ᶠᶠᶜ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ
 
 # These are also used in Coriolis/hydrostatic_spherical_coriolis.jl
 struct EnergyConserving{FT}    <: AbstractAdvectionScheme{1, FT, ExplicitTimeDiscretization} end
@@ -190,7 +190,7 @@ nothing_to_default(user_value; default=nothing) = isnothing(user_value) ? defaul
                         vertical_order = nothing,
                         divergence_order = nothing,
                         kinetic_energy_gradient_order = nothing,
-                        boundary_scheme = UpwindBiased(FT; order=1),
+                        buffer_scheme = DecreasingOrderAdvectionScheme(boundary_scheme = UpwindBiased(FT; order=1)),
                         weno_kw...)
 
 Return a vector-invariant weighted essentially non-oscillatory (WENO) scheme.
@@ -221,7 +221,7 @@ function WENOVectorInvariant(FT::DataType = Oceananigans.defaults.FloatType;
                              divergence_order = nothing,
                              kinetic_energy_gradient_order = nothing,
                              time_discretization = ExplicitTimeDiscretization(),
-                             boundary_scheme = UpwindBiased(FT; order=1),
+                             buffer_scheme = DecreasingOrderAdvectionScheme(boundary_scheme = UpwindBiased(FT; order=1)),
                              weno_kw...)
 
     if isnothing(order) # apply global defaults
@@ -236,10 +236,10 @@ function WENOVectorInvariant(FT::DataType = Oceananigans.defaults.FloatType;
         kinetic_energy_gradient_order = nothing_to_default(kinetic_energy_gradient_order, default = order)
     end
 
-    vorticity_scheme               = WENO(FT; order=vorticity_order, boundary_scheme, weno_kw...)
-    vertical_advection_scheme      = WENO(FT; order=vertical_order, boundary_scheme, time_discretization, weno_kw...)
-    kinetic_energy_gradient_scheme = WENO(FT; order=kinetic_energy_gradient_order, boundary_scheme, weno_kw...)
-    divergence_scheme              = WENO(FT; order=divergence_order, boundary_scheme, weno_kw...)
+    vorticity_scheme               = WENO(FT; order=vorticity_order, buffer_scheme, weno_kw...)
+    vertical_advection_scheme      = WENO(FT; order=vertical_order, buffer_scheme, time_discretization, weno_kw...)
+    kinetic_energy_gradient_scheme = WENO(FT; order=kinetic_energy_gradient_order, buffer_scheme, weno_kw...)
+    divergence_scheme              = WENO(FT; order=divergence_order, buffer_scheme, weno_kw...)
 
     default_upwinding = OnlySelfUpwinding(cross_scheme = divergence_scheme)
     upwinding = nothing_to_default(upwinding; default = default_upwinding)
@@ -342,20 +342,30 @@ end
 ##### Upwinding vertical advection (2. and 3.)
 #####
 
+# Vertical fluxes vanish on faces that touch an immersed boundary
+@inline vertical_flux_Wu(i, j, k, grid, scheme, W, u) =
+    conditional_flux(i, j, k, grid, Face(), Center(), Face(), zero(grid), _advective_momentum_flux_Wu(i, j, k, grid, scheme, W, u))
+
+@inline vertical_flux_Wv(i, j, k, grid, scheme, W, v) =
+    conditional_flux(i, j, k, grid, Center(), Face(), Face(), zero(grid), _advective_momentum_flux_Wv(i, j, k, grid, scheme, W, v))
+
+@inline vector_invariant_flux_Wu(i, j, k, grid, scheme, W, u) = vertical_flux_Wu(i, j, k, grid, scheme.vertical_advection_scheme, W, u)
+@inline vector_invariant_flux_Wv(i, j, k, grid, scheme, W, v) = vertical_flux_Wv(i, j, k, grid, scheme.vertical_advection_scheme, W, v)
+
 @inline function vertical_advection_U(i, j, k, grid, scheme::VectorInvariant, U)
 
     Φᵟ = upwinded_divergence_flux_Uᶠᶜᶜ(i, j, k, grid, scheme, U.u, U.v)
-    𝒜ᶻ = δzᵃᵃᶜ(i, j, k, grid, _advective_momentum_flux_Wu, scheme.vertical_advection_scheme, U.w, U.u)
+    𝒜ᶻ = δzᵃᵃᶜ(i, j, k, grid, vector_invariant_flux_Wu, scheme, U.w, U.u)
 
-    return 1/Vᶠᶜᶜ(i, j, k, grid) * (Φᵟ + 𝒜ᶻ)
+    return V⁻¹ᶠᶜᶜ(i, j, k, grid) * (Φᵟ + 𝒜ᶻ)
 end
 
 @inline function vertical_advection_V(i, j, k, grid, scheme::VectorInvariant, U)
 
     Φᵟ = upwinded_divergence_flux_Vᶜᶠᶜ(i, j, k, grid, scheme, U.u, U.v)
-    𝒜ᶻ = δzᵃᵃᶜ(i, j, k, grid, _advective_momentum_flux_Wv, scheme.vertical_advection_scheme, U.w, U.v)
+    𝒜ᶻ = δzᵃᵃᶜ(i, j, k, grid, vector_invariant_flux_Wv, scheme, U.w, U.v)
 
-    return 1/Vᶜᶠᶜ(i, j, k, grid) * (Φᵟ + 𝒜ᶻ)
+    return V⁻¹ᶜᶠᶜ(i, j, k, grid) * (Φᵟ + 𝒜ᶻ)
 end
 
 #####

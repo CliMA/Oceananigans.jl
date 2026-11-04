@@ -43,6 +43,7 @@ Distributed.addprocs(2)
         "ocean_wind_mixing_and_convection.jl",
         "shallow_water_Bickley_jet.jl",
         "spherical_baroclinic_instability.jl",
+        "yin_yang_grid.jl",
         "polar_vortex_crystal.jl",
         "hydrostatic_lock_exchange.jl",
         "internal_tide.jl",
@@ -143,6 +144,7 @@ example_pages = [
     "Spherical baroclinic instability"      => "literated/spherical_baroclinic_instability.md",
     "Polar vortex crystal"                  => "literated/polar_vortex_crystal.md",
     "Global wind-driven gyres"              => "literated/global_wind_driven_gyres.md",
+    "Barotropic jet and Double Drake on a Yin-Yang grid" => "literated/yin_yang_grid.md",
     "Single column parameter estimation"    => "literated/single_column_parameter_estimation.md",
 ]
 
@@ -265,12 +267,11 @@ format = DocumenterVitepress.MarkdownVitepress(;
         keep = :patch, # keep all versions of docs
     )
 
-DocMeta.setdocmeta!(Oceananigans, :DocTestSetup, :(using Oceananigans); recursive=true)
-
 modules = Module[]
 OceananigansNCDatasetsExt = isdefined(Base, :get_extension) ? Base.get_extension(Oceananigans, :OceananigansNCDatasetsExt) : Oceananigans.OceananigansNCDatasetsExt
+OceananigansMakieExt = isdefined(Base, :get_extension) ? Base.get_extension(Oceananigans, :OceananigansMakieExt) : Oceananigans.OceananigansMakieExt
 
-for m in [Oceananigans, OceananigansNCDatasetsExt]
+for m in [Oceananigans, OceananigansNCDatasetsExt, OceananigansMakieExt]
     if !isnothing(m)
         push!(modules, m)
     end
@@ -281,10 +282,6 @@ makedocs(; sitename = "Oceananigans.jl",
          format, pages, modules,
          plugins = [bib],
          warnonly = [:cross_references],
-         doctestfilters = [
-             r"┌ Warning:.*",  # remove standard warning lines
-             r"└ @ .*",        # remove the source location of warnings
-         ],
          clean = true,
          linkcheck = true,
          linkcheck_ignore = [
@@ -293,7 +290,7 @@ makedocs(; sitename = "Oceananigans.jl",
              r"https://clima\.caltech\.edu/?",
          ],
          draft = false,        # set to true to speed things up
-         doctest = true,       # set to false to speed things up
+         doctest = false,      # doctests run in test/doctests/doctests.jl
          checkdocs = :exports, # set to :none to speed things up
          )
 
@@ -309,7 +306,7 @@ function recursive_find(directory, pattern)
     end
 end
 
-@info "Cleaning up temporary .jld2 and .nc output created by doctests or literated examples..."
+@info "Cleaning up temporary .jld2 and .nc output created by literated examples..."
 
 for pattern in [r"\.jld2", r"\.nc"]
     filenames = recursive_find(@__DIR__, pattern)

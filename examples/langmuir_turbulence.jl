@@ -43,7 +43,7 @@ Random.seed!(1337) # for reproducible results
 #
 # We use a modest resolution and the same total extent as in the paper by [Wagner2021](@citet),
 
-grid = RectilinearGrid(GPU(), size=(128, 128, 64), extent=(128, 128, 64))
+grid = RectilinearGrid(GPU(), size=(128, 128, 64), extent=(128, 128, 64), halo=(5, 5, 5))
 
 # ### The Stokes Drift profile
 #

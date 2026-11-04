@@ -1,6 +1,8 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
+using Oceananigans.Diagnostics: hasnan
 using Oceananigans.Fields: dot!
+using Oceananigans.Utils: getregion
 
 # To be extended as we find new use cases
 @testset "Test @apply_regionally macro" begin
@@ -174,4 +176,11 @@ end
     western_half(i, j, k, grid, c) = i <= size(grid, 1) ÷ 2
     @test dot(a, b; condition=western_half) == 2 * 3 * Ncells ÷ 2
     @test Array(dot!(r, a, b; condition=western_half))[1] == 2 * 3 * Ncells ÷ 2
+end
+
+@testset "NaN in one region of a multi-region field [$(summary(arch))]" for arch in archs
+    c = CenterField(MultiRegionGrid(RectilinearGrid(arch; size=(8, 8, 1), extent=(1, 1, 1)); partition=XPartition(2)))
+    @test !hasnan(c)
+    set!(getregion(c, 2), NaN)
+    @test hasnan(c)
 end

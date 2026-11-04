@@ -1,10 +1,10 @@
 using Oceananigans: defaults, instantiated_location
 using Oceananigans.Grids: column_depthᶠᶜᵃ, column_depthᶜᶠᵃ, column_depthᶜᶜᵃ, immersed_peripheral_node
-using Oceananigans.Operators: Δxᶠᶜᶜ, Δyᶜᶠᶜ, Δzᶜᶜᶠ
+using Oceananigans.Operators: Δx⁻¹ᶠᶜᶜ, Δy⁻¹ᶜᶠᶜ, Δz⁻¹ᶜᶜᶠ
 
 #####
 ##### Open boundary schemes whose exterior state is prognostic: the time stepper caches, steps and initializes it, and the
-##### halo fill leaves it in place. `φᵇ` holds the state at the base of a stage.
+##### halo fill leaves it in place. `φ⁻` holds the state at the base of a stage.
 #####
 
 abstract type AbstractRadiationScheme{FT} end
@@ -35,10 +35,10 @@ const AFA = Tuple{Any, Face, Any}
 @inline normal_velocity(side::Union{South, North}, model_fields, grid, n, i, k) = @inbounds model_fields.v[i, normal_index(side, Face(), grid.Ny, n), k]
 @inline normal_velocity(side::Union{Bottom, Top},  model_fields, grid, n, i, j) = @inbounds model_fields.w[i, j, normal_index(side, Face(), grid.Nz, n)]
 
-# Spacing between the exterior state and the first interior value
-@inline boundary_spacing(side::Union{West, East},   grid, j, k) = Δxᶠᶜᶜ(normal_index(side, Face(), grid.Nx, 0), j, k, grid)
-@inline boundary_spacing(side::Union{South, North}, grid, i, k) = Δyᶜᶠᶜ(i, normal_index(side, Face(), grid.Ny, 0), k, grid)
-@inline boundary_spacing(side::Union{Bottom, Top},  grid, i, j) = Δzᶜᶜᶠ(i, j, normal_index(side, Face(), grid.Nz, 0), grid)
+# Reciprocal of the spacing between the exterior state and the first interior value
+@inline reciprocal_boundary_spacing(side::Union{West, East},   grid, j, k) = Δx⁻¹ᶠᶜᶜ(normal_index(side, Face(), grid.Nx, 0), j, k, grid)
+@inline reciprocal_boundary_spacing(side::Union{South, North}, grid, i, k) = Δy⁻¹ᶜᶠᶜ(i, normal_index(side, Face(), grid.Ny, 0), k, grid)
+@inline reciprocal_boundary_spacing(side::Union{Bottom, Top},  grid, i, j) = Δz⁻¹ᶜᶜᶠ(i, j, normal_index(side, Face(), grid.Nz, 0), grid)
 
 # Component of a boundary-normal velocity pointing out of the domain
 @inline outward(::Union{West, South, Bottom}, U) = -U
@@ -68,7 +68,7 @@ function materialize_radiation_storage(scheme::AbstractRadiationScheme, grid, lo
                         dim == 2 ? (connected_range(loc[1], topology(grid, 1), Sx, Hx), 1:Sz) :
                                    (1:Sx, 1:Sy)
 
-    buffer() = OffsetArray(zeros(arch, FT, map(length, tangential_ranges)...), map(r -> first(r) - 1, tangential_ranges)...)
+    buffer() = StaticStridesOffsetArray(zeros(arch, FT, map(length, tangential_ranges)...), map(r -> first(r) - 1, tangential_ranges)...)
     return radiation_storage(scheme, buffer)
 end
 
@@ -125,7 +125,7 @@ initialize_boundary_condition!(bc::RBC, side, field, clock, model_fields) = upda
 
 @inline function cache_exterior_state!(side, i, j, grid, c, bc, loc)
     iᵇ, jᵇ, kᵇ = boundary_point(side, loc, grid, 0, i, j)
-    @inbounds bc.classification.scheme.φᵇ[i, j] = c[iᵇ, jᵇ, kᵇ]
+    @inbounds bc.classification.scheme.φ⁻[i, j] = c[iᵇ, jᵇ, kᵇ]
     return nothing
 end
 

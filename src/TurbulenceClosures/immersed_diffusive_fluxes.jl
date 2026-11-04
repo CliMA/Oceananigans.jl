@@ -1,7 +1,6 @@
-using Oceananigans.BoundaryConditions: Value, Gradient, BoundaryCondition
-using Oceananigans.BoundaryConditions: getbc
+using Oceananigans.BoundaryConditions: Bottom, ImmersedFacet, Top, explicit_flux, getbc
 using Oceananigans.BoundaryConditions: FBC, ZFBC, PBC, MCBC, DCBC, VBC, GBC, MBC, NFBC, ZBC
-using Oceananigans.Operators: index_left, index_right, Δx, Δy, Δz, div
+using Oceananigans.Operators: index_left, index_right, Δx⁻¹, Δy⁻¹, Δz⁻¹, div
 
 using Oceananigans.Advection: conditional_flux
 
@@ -55,7 +54,7 @@ for side in (:west, :south, :bottom)
     side_ib_flux = Symbol(side, :_ib_flux)
     @eval begin
         @inline $side_ib_flux(i, j, k, ibg, ::Nothing, args...) = zero(eltype(ibg))
-        @inline $side_ib_flux(i, j, k, ibg, bc::FBC, loc, c, closure, K, id, args...) = + getbc(bc, i, j, k, ibg, args...)
+        @inline $side_ib_flux(i, j, k, ibg, bc::FBC, loc, c, closure, K, id, args...) = + explicit_flux(bc, ImmersedFacet(), i, j, k, ibg, c, args...)
     end
 end
 
@@ -63,7 +62,7 @@ for side in (:east, :north, :top)
     side_ib_flux = Symbol(side, :_ib_flux)
     @eval begin
         @inline $side_ib_flux(i, j, k, ibg, ::Nothing, args...) = zero(eltype(ibg))
-        @inline $side_ib_flux(i, j, k, ibg, bc::FBC, loc, c, closure, K, id, args...) = - getbc(bc, i, j, k, ibg, args...)
+        @inline $side_ib_flux(i, j, k, ibg, bc::FBC, loc, c, closure, K, id, args...) = - explicit_flux(bc, ImmersedFacet(), i, j, k, ibg, c, args...)
     end
 end
 
@@ -76,19 +75,19 @@ const VBCorGBC = Union{VBC, GBC}
 const ASD = AbstractScalarDiffusivity
 
 # "Gradient" utility for Value or Gradient boundary conditions
-@inline right_gradient(i, j, k, ibg, κ, Δ, bc::GBC, c, clock, fields) = getbc(bc, i, j, k, ibg, clock, fields)
-@inline left_gradient(i, j, k, ibg, κ, Δ, bc::GBC, c, clock, fields)  = getbc(bc, i, j, k, ibg, clock, fields)
+@inline right_gradient(i, j, k, ibg, κ, Δ⁻¹, bc::GBC, c, clock, fields) = getbc(bc, i, j, k, ibg, clock, fields)
+@inline left_gradient(i, j, k, ibg, κ, Δ⁻¹, bc::GBC, c, clock, fields)  = getbc(bc, i, j, k, ibg, clock, fields)
 
-@inline function right_gradient(i, j, k, ibg, κ, Δ, bc::VBC, c, clock, fields)
+@inline function right_gradient(i, j, k, ibg, κ, Δ⁻¹, bc::VBC, c, clock, fields)
     cᵇ = getbc(bc, i, j, k, ibg, clock, fields)
     cⁱʲᵏ = @inbounds c[i, j, k]
-    return 2 * (cᵇ - cⁱʲᵏ) / Δ
+    return 2 * (cᵇ - cⁱʲᵏ) * Δ⁻¹
 end
 
-@inline function left_gradient(i, j, k, ibg, κ, Δ, bc::VBC, c, clock, fields)
+@inline function left_gradient(i, j, k, ibg, κ, Δ⁻¹, bc::VBC, c, clock, fields)
     cᵇ = getbc(bc, i, j, k, ibg, clock, fields)
     cⁱʲᵏ = @inbounds c[i, j, k]
-    return 2 * (cⁱʲᵏ - cᵇ) / Δ
+    return 2 * (cⁱʲᵏ - cᵇ) * Δ⁻¹
 end
 
 # Metric and index gymnastics for the 6 facets of the cube
@@ -100,44 +99,44 @@ end
 @inline flip(::Center) = Face()
 
 @inline function _west_ib_flux(i, j, k, ibg, bc::VBCorGBC, (LX, LY, LZ), c, closure::ASD, K, id, clock, fields)
-    Δ = Δx(i, j, k, ibg, LX, LY, LZ)
+    Δ⁻¹ = Δx⁻¹(i, j, k, ibg, LX, LY, LZ)
     κ = h_diffusivity(index_left(i, LX), j, k, ibg, flip(LX), LY, LZ, closure, K, id, clock, fields)
-    ∇c = left_gradient(i, j, k, ibg, κ, Δ, bc, c, clock, fields)
+    ∇c = left_gradient(i, j, k, ibg, κ, Δ⁻¹, bc, c, clock, fields)
     return - κ * ∇c
 end
 
 @inline function _east_ib_flux(i, j, k, ibg, bc::VBCorGBC, (LX, LY, LZ), c, closure::ASD, K, id, clock, fields)
-    Δ = Δx(i, j, k, ibg, LX, LY, LZ)
+    Δ⁻¹ = Δx⁻¹(i, j, k, ibg, LX, LY, LZ)
     κ = h_diffusivity(index_right(i, LX), j, k, ibg, flip(LX), LY, LZ, closure, K, id, clock, fields)
-    ∇c = right_gradient(i, j, k, ibg, κ, Δ, bc, c, clock, fields)
+    ∇c = right_gradient(i, j, k, ibg, κ, Δ⁻¹, bc, c, clock, fields)
     return - κ * ∇c
 end
 
 @inline function _south_ib_flux(i, j, k, ibg, bc::VBCorGBC, (LX, LY, LZ), c, closure::ASD, K, id, clock, fields)
-    Δ = Δy(i, j, k, ibg, LX, LY, LZ)
+    Δ⁻¹ = Δy⁻¹(i, j, k, ibg, LX, LY, LZ)
     κ = h_diffusivity(i, index_left(j, LY), k, ibg, LX, flip(LY), LZ, closure, K, id, clock, fields)
-    ∇c = left_gradient(i, j, k, ibg, κ, Δ, bc, c, clock, fields)
+    ∇c = left_gradient(i, j, k, ibg, κ, Δ⁻¹, bc, c, clock, fields)
     return - κ * ∇c
 end
 
 @inline function _north_ib_flux(i, j, k, ibg, bc::VBCorGBC, (LX, LY, LZ), c, closure::ASD, K, id, clock, fields)
-    Δ = Δy(i, j, k, ibg, LX, LY, LZ)
+    Δ⁻¹ = Δy⁻¹(i, j, k, ibg, LX, LY, LZ)
     κ = h_diffusivity(i, index_right(j, LY), k, ibg, LX, flip(LY), LZ, closure, K, id, clock, fields)
-    ∇c = right_gradient(i, j, k, ibg, κ, Δ, bc, c, clock, fields)
+    ∇c = right_gradient(i, j, k, ibg, κ, Δ⁻¹, bc, c, clock, fields)
     return - κ * ∇c
 end
 
 @inline function _bottom_ib_flux(i, j, k, ibg, bc::VBCorGBC, (LX, LY, LZ), c, closure::ASD, K, id, clock, fields)
-    Δ = Δz(i, j, k, ibg, LX, LY, LZ)
+    Δ⁻¹ = Δz⁻¹(i, j, k, ibg, LX, LY, LZ)
     κ = z_diffusivity(i, j, index_left(k, LZ), ibg, LX, LY, flip(LZ), closure, K, id, clock, fields)
-    ∇c = left_gradient(i, j, k, ibg, κ, Δ, bc, c, clock, fields)
+    ∇c = left_gradient(i, j, k, ibg, κ, Δ⁻¹, bc, c, clock, fields)
     return - κ * ∇c
 end
 
 @inline function _top_ib_flux(i, j, k, ibg, bc::VBCorGBC, (LX, LY, LZ), c, closure::ASD, K, id, clock, fields)
-    Δ = Δz(i, j, k, ibg, LX, LY, LZ)
+    Δ⁻¹ = Δz⁻¹(i, j, k, ibg, LX, LY, LZ)
     κ = z_diffusivity(i, j, index_right(k, LZ), ibg, LX, LY, flip(LZ), closure, K, id, clock, fields)
-    ∇c = right_gradient(i, j, k, ibg, κ, Δ, bc, c, clock, fields)
+    ∇c = right_gradient(i, j, k, ibg, κ, Δ⁻¹, bc, c, clock, fields)
     return - κ * ∇c
 end
 
@@ -209,19 +208,20 @@ end
 ##### Flux conditions on the domain sides
 #####
 
-# Flux through the face `i`, `j` or `k` on a domain side, positive along the coordinate, zero away from that side
-for (side, boundary_face, plane) in ((:west,   :(i == 1),           (:j, :k)),
-                                     (:east,   :(i == grid.Nx + 1), (:j, :k)),
-                                     (:south,  :(j == 1),           (:i, :k)),
-                                     (:north,  :(j == grid.Ny + 1), (:i, :k)),
-                                     (:bottom, :(k == 1),           (:i, :j)),
-                                     (:top,    :(k == grid.Nz + 1), (:i, :j)))
+# Flux through the face `i`, `j` or `k` on a domain side, positive along the coordinate, zero away from that side.
+# A bottom or top flux may carry an implicit part; only its explicit part enters the tendency.
+for (side, boundary_face, flux) in ((:west,   :(i == 1),           :(getbc(bc, j, k, grid, args...))),
+                                    (:east,   :(i == grid.Nx + 1), :(getbc(bc, j, k, grid, args...))),
+                                    (:south,  :(j == 1),           :(getbc(bc, i, k, grid, args...))),
+                                    (:north,  :(j == grid.Ny + 1), :(getbc(bc, i, k, grid, args...))),
+                                    (:bottom, :(k == 1),           :(explicit_flux(bc, Bottom(), i, j, 1, grid, c, args...))),
+                                    (:top,    :(k == grid.Nz + 1), :(explicit_flux(bc, Top(), i, j, grid.Nz, grid, c, args...))))
 
     domain_flux = Symbol(side, :_domain_flux)
 
     @eval begin
-        @inline $domain_flux(i, j, k, grid, bc, args...)      = zero(grid)
-        @inline $domain_flux(i, j, k, grid, bc::FBC, args...) = ifelse($boundary_face, getbc(bc, $(plane...), grid, args...), zero(grid))
+        @inline $domain_flux(i, j, k, grid, bc, args...)         = zero(grid)
+        @inline $domain_flux(i, j, k, grid, bc::FBC, c, args...) = ifelse($boundary_face, $flux, zero(grid))
     end
 end
 
@@ -251,16 +251,16 @@ end
 
 @inline boundary_∂ⱼ_τ₁ⱼ(i, j, k, grid, u, u_bcs, closure, K, clock, fields, buoyancy) =
     immersed_flux_divergence(i, j, k, grid, u_bcs.immersed, (f, c, c), u, closure, K, nothing, clock, fields) +
-      domain_flux_divergence(i, j, k, grid, u_bcs, (f, c, c), clock, fields, closure, buoyancy)
+      domain_flux_divergence(i, j, k, grid, u_bcs, (f, c, c), u, clock, fields, closure, buoyancy)
 
 @inline boundary_∂ⱼ_τ₂ⱼ(i, j, k, grid, v, v_bcs, closure, K, clock, fields, buoyancy) =
     immersed_flux_divergence(i, j, k, grid, v_bcs.immersed, (c, f, c), v, closure, K, nothing, clock, fields) +
-      domain_flux_divergence(i, j, k, grid, v_bcs, (c, f, c), clock, fields, closure, buoyancy)
+      domain_flux_divergence(i, j, k, grid, v_bcs, (c, f, c), v, clock, fields, closure, buoyancy)
 
 @inline boundary_∂ⱼ_τ₃ⱼ(i, j, k, grid, w, w_bcs, closure, K, clock, fields, buoyancy) =
     immersed_flux_divergence(i, j, k, grid, w_bcs.immersed, (c, c, f), w, closure, K, nothing, clock, fields) +
-      domain_flux_divergence(i, j, k, grid, w_bcs, (c, c, f), clock, fields, closure, buoyancy)
+      domain_flux_divergence(i, j, k, grid, w_bcs, (c, c, f), w, clock, fields, closure, buoyancy)
 
 @inline boundary_∇_dot_qᶜ(i, j, k, grid, C, c_bcs, closure, K, id, clock, fields, buoyancy) =
     immersed_flux_divergence(i, j, k, grid, c_bcs.immersed, (c, c, c), C, closure, K, id, clock, fields) +
-      domain_flux_divergence(i, j, k, grid, c_bcs, (c, c, c), clock, fields, closure, buoyancy)
+      domain_flux_divergence(i, j, k, grid, c_bcs, (c, c, c), C, clock, fields, closure, buoyancy)

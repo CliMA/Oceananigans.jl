@@ -3,14 +3,10 @@ using Oceananigans: boundary_conditions
 # `update_boundary_conditions!` refreshes conditions from the model state; the other three advance, cache and initialize the
 # exterior states of open boundaries, which are prognostic and stepped by the time stepper.
 for (fields_function, condition_function, arguments, sides) in
-        ((:update_boundary_conditions!,     :update_boundary_condition!,     (:model,),
-          (:(Val(:west)), :(Val(:east)), :(Val(:south)), :(Val(:north)), :(Val(:bottom)), :(Val(:top)), :(Val(:immersed)))),
-         (:step_boundary_conditions!,       :step_boundary_condition!,       (:clock, :model_fields, :Δt),
-          (:(West()), :(East()), :(South()), :(North()), :(Bottom()), :(Top()), :(Val(:immersed)))),
-         (:cache_boundary_conditions!,      :cache_boundary_condition!,      (:clock, :model_fields),
-          (:(West()), :(East()), :(South()), :(North()), :(Bottom()), :(Top()), :(Val(:immersed)))),
-         (:initialize_boundary_conditions!, :initialize_boundary_condition!, (:clock, :model_fields),
-          (:(West()), :(East()), :(South()), :(North()), :(Bottom()), :(Top()), :(Val(:immersed)))))
+        ((:update_boundary_conditions!,     :update_boundary_condition!,     (:model,),                    (:(Val(:west)), :(Val(:east)), :(Val(:south)), :(Val(:north)), :(Val(:bottom)), :(Val(:top)), :(Val(:immersed)))),
+         (:step_boundary_conditions!,       :step_boundary_condition!,       (:clock, :model_fields, :Δt), (:(West()), :(East()), :(South()), :(North()), :(Bottom()), :(Top()), :(Val(:immersed)))),
+         (:cache_boundary_conditions!,      :cache_boundary_condition!,      (:clock, :model_fields),      (:(West()), :(East()), :(South()), :(North()), :(Bottom()), :(Top()), :(Val(:immersed)))),
+         (:initialize_boundary_conditions!, :initialize_boundary_condition!, (:clock, :model_fields),      (:(West()), :(East()), :(South()), :(North()), :(Bottom()), :(Top()), :(Val(:immersed)))))
 
     west, east, south, north, bottom, top, immersed = sides
 

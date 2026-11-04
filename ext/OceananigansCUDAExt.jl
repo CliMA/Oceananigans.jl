@@ -191,4 +191,7 @@ function fast_inv_cuda(a::Float32)
     return inv_a
 end
 
+# Other number types (e.g. BFloat16) have no approximate reciprocal instruction
+fast_inv_cuda(a) = inv(a)
+
 end # module OceananigansCUDAExt
