@@ -32,7 +32,7 @@ end
 global_size(f::DistributedField) = global_size(architecture(f), size(f))
 
 # Automatically partition under the hood if sizes are compatible
-Fields.set!(u::DistributedField, V::Union{Array, OffsetArray}) = _set!(u, V)
+Fields.set!(u::DistributedField, V::Union{Array, AbstractOffsetArray}) = _set!(u, V)
 
 function _set!(u::DistributedField, V::VT) where {VT}
     NV = size(V)

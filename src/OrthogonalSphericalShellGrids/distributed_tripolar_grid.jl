@@ -14,7 +14,7 @@ using Oceananigans.Fields: Field, validate_boundary_conditions, validate_field_d
 
 using Oceananigans.Grids: Bounded, Connected, DistributedFoldedTopology, FaceFoldConnected, FaceFolded,
                           PencilFoldedTopology, SlabFoldedTopology, TwoSided, topology
-using Oceananigans.Utils: Utils
+using Oceananigans.Utils: Utils, StaticStridesOffsetArray
 
 const DistributedTripolarGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} =
     OrthogonalSphericalShellGrid{FT, TX, TY, TZ, CZ, <:Tripolar, CC, FC, CF, FF, <:Distributed{<:Union{CPU, GPU}}}
@@ -196,14 +196,14 @@ end
 function partition_tripolar_metric(global_grid, metric_name, irange, jrange)
 
     metric = getproperty(global_grid, metric_name)
-    offsets = metric.offsets
+    offsets = OffsetArrays.offsets(metric)
     partitioned_metric = metric[irange, jrange]
 
-    if partitioned_metric isa OffsetArray
-        partitioned_metric = partitioned_metric.parent
+    if partitioned_metric isa AbstractOffsetArray
+        partitioned_metric = parent(partitioned_metric)
     end
 
-    return OffsetArray(partitioned_metric, offsets...)
+    return StaticStridesOffsetArray(partitioned_metric, offsets...)
 end
 
 #####

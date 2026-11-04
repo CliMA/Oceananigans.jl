@@ -17,8 +17,8 @@ function Grids.generate_coordinate(FT, topo::AbstractTopology, n, H, p::Partitio
     whole_F = regular_nodes(FT, Face(),   c₁, c₂, p.N, H, p.N + 2H + p.offset + TF)
     whole_C = regular_nodes(FT, Center(), c₁, c₂, p.N, H, p.N + 2H + p.offset + TF)
 
-    F = OffsetArray(on_architecture(arch, [whole_F[p.offset + i] for i in 1:TF]), -H)
-    C = OffsetArray(on_architecture(arch, [whole_C[p.offset + i] for i in 1:TC]), -H)
+    F = StaticStridesOffsetArray(on_architecture(arch, [whole_F[p.offset + i] for i in 1:TF]), -H)
+    C = StaticStridesOffsetArray(on_architecture(arch, [whole_C[p.offset + i] for i in 1:TC]), -H)
 
     if coordinate_name == :z
         return FT(n * Δ), StaticVerticalDiscretization(F, C, FT(Δ), FT(Δ))
@@ -32,8 +32,8 @@ const DistributedGrid{FT, TX, TY, TZ} = Union{
     AbstractGrid{FT, TX, TY, TZ, <:Distributed{<:GPU}},
 }
 
-const DistributedRectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY} =
-    RectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY, <:Distributed}
+const DistributedRectilinearGrid{FT, TX, TY, TZ, CZ, DXF, DXC, XF, XC, DYF, DYC, YF, YC} =
+    RectilinearGrid{FT, TX, TY, TZ, CZ, DXF, DXC, XF, XC, DYF, DYC, YF, YC, <:Distributed}
 
 const DistributedLatitudeLongitudeGrid{FT, TX, TY, TZ, Z,
                                        DXF, DXC, XF, XC,
