@@ -29,8 +29,8 @@ When testing documentation changes locally (especially without a GPU), make thes
    # "Simulation tips" => "simulation_tips.md",  # requires GPU
    ```
 
-4. **Optional speedups** in `makedocs`:
-   - `doctest = false` - Skip doctests entirely if not testing those
+4. **Optional speedups** in `makedocs` (doctests are not part of the docs build; they run in
+   `test/doctests/doctests.jl` in the GPU test job):
    - `linkcheck = false` - Skip link validation
    - `draft = true` - Skip many checks for fastest builds
 

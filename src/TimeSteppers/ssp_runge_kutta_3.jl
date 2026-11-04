@@ -65,7 +65,7 @@ Return the fractions `τᵐ` of `Δt` reached by the state after each stage of t
 """
 ssp_stage_fractions(coefficients) = accumulate((τ, (a, b)) -> b * (τ + 1), coefficients; init = 0)
 
-prognostic_state(::SSPRungeKutta3TimeStepper) = nothing
+Oceananigans.prognostic_state(::SSPRungeKutta3TimeStepper) = nothing
 
 Base.summary(::SSPRungeKutta3TimeStepper) = "SSPRungeKutta3TimeStepper"
 

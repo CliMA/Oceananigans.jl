@@ -231,7 +231,7 @@ SplitExplicitFreeSurfaces.maybe_extend_halos(TX, TY, grid::YinYangGridOfSomeKind
     throw(ArgumentError("The SplitExplicitFreeSurface on a YinYangGrid needs extend_halos = false."))
 
 ## Split explicit extension for complete halo filling
-function SplitExplicitFreeSurfaces.iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid::CubedSphereOrYinYangGrid, GUⁿ, GVⁿ, Δτᴮ, F, clock, weights, transport_weights, ::Val{Nsubsteps}) where Nsubsteps
+function SplitExplicitFreeSurfaces.iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid::CubedSphereOrYinYangGrid, GUⁿ, GVⁿ, Δτᴮ, F, clock, weights, transport_weights, ::Val{Nsubsteps}, start_time = clock.time) where Nsubsteps
     arch = architecture(grid)
 
     η           = free_surface.displacement
