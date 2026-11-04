@@ -14,7 +14,7 @@ datadep"cubed_sphere_32_grid"
 
 # Downloading the regression fields
 path = "https://github.com/simone-silvestri/OceananigansArtifacts.jl/raw/refs/heads/ss/new-data-for-regression-2/data_for_regression_tests/"
-lagrangian_les_path = "https://github.com/glwagner/OceananigansArtifacts.jl/raw/refs/heads/glw/lagrangian-les-regression-data/data_for_regression_tests/"
+lagrangian_les_path = "https://github.com/glwagner/OceananigansArtifacts.jl/raw/main/data_for_regression_tests/"
 
 # DataDeps caches by name and never re-downloads while the cache directory exists. CI agents keep a
 # persistent depot, so the version suffix must be bumped whenever the reference data is regenerated.
