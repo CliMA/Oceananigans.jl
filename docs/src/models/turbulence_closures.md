@@ -105,7 +105,7 @@ for large eddy simulation (LES).
 
 [`SmagorinskyLilly`](@ref) computes an eddy viscosity from the resolved strain rate
 with a buoyancy-based stability correction, following the classic work of
-[Smagorinsky1958](@citet), [Smagorinsky63](@citet), [Lilly62](@citet), and [Lilly66](@citet):
+[Smagorinsky1958](@citet), [Smagorinsky1963](@citet), [Lilly62](@citet), and [Lilly66](@citet):
 
 ```jldoctest
 julia> using Oceananigans
@@ -311,6 +311,7 @@ julia> IsopycnalSkewSymmetricDiffusivity(κ_skew=1e3, κ_symmetric=1e3)
 IsopycnalSkewSymmetricDiffusivity:
 ├── κ_skew: 1000.0
 ├── κ_symmetric: 1000.0
+├── skew_flux_formulation: Oceananigans.TurbulenceClosures.DiffusiveFormulation
 ├── isopycnal_tensor: Oceananigans.TurbulenceClosures.SmallSlopeIsopycnalTensor{Float64}
 └── slope_limiter: FluxTapering{Float64}
 ```

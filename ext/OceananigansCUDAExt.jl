@@ -16,6 +16,8 @@ else
     const cuFFT = CUDA.CUFFT
 end
 using GPUArraysCore: allowscalar
+using MPI: MPI
+using Base.Libc.Libdl: dllist, dlopen, dlsym
 using Oceananigans.Utils: linear_expand, __linear_ndrange, MappedCompilerMetadata
 
 import Oceananigans.Architectures as AC
@@ -67,6 +69,21 @@ end
 Base.summary(::CUDAGPU) = "CUDAGPU"
 AC.device!(::CUDAGPU, i) = CUDA.device!(i)
 
+function DC.gpu_configuration(::CUDAGPU)
+    device = CUDA.device()
+    domain = CUDA.attribute(device, CUDA.DEVICE_ATTRIBUTE_PCI_DOMAIN_ID)
+    bus = CUDA.attribute(device, CUDA.DEVICE_ATTRIBUTE_PCI_BUS_ID)
+    slot = CUDA.attribute(device, CUDA.DEVICE_ATTRIBUTE_PCI_DEVICE_ID)
+    pci_address = string(string(domain; base=16, pad=4), ':', string(bus; base=16, pad=2), ':', string(slot; base=16, pad=2), ".0")
+    # the vendor library also loads behind MPItrampoline, which does not forward MPIX extensions
+    libraries = filter(contains("libmpi"), dllist())
+    queries = filter(!isnothing, [dlsym(dlopen(library), :MPIX_Query_cuda_support; throw_error=false) for library in libraries])
+    cray_gpu_support = MPI.MPI_LIBRARY == "CrayMPICH" ? get(ENV, "MPICH_GPU_SUPPORT_ENABLED", "0") == "1" : nothing
+    gpu_aware_mpi = isempty(queries) ? cray_gpu_support : ccall(first(queries), Cint, ()) == 1
+    memory_pool = get(ENV, "JULIA_CUDA_MEMORY_POOL", "cuda") == "cuda"
+    return (; uuid = UInt128(CUDA.uuid(device)), pci_address, gpu_aware_mpi, memory_pool)
+end
+
 AC.architecture(::CuArray) = CUDAGPU()
 AC.architecture(::Type{CuArray}) = CUDAGPU()
 AC.architecture(::CuDeviceArray) = CUDAGPU()
@@ -114,7 +131,7 @@ BC.validate_boundary_condition_architecture(::CuArray, ::AC.GPU, bc, side) = not
 BC.validate_boundary_condition_architecture(::CuArray, ::AC.CPU, bc, side) =
     throw(ArgumentError("$side $bc must use `Array` rather than `CuArray` on CPU architectures!"))
 
-function SO.plan_forward_transform(A::CuArray, ::Union{GD.Bounded, GD.Periodic}, dims, planner_flag)
+function SO.plan_forward_transform(A::CuArray, ::Union{GD.BoundaryTopology, GD.Periodic}, dims, planner_flag)
     length(dims) == 0 && return nothing
     return cuFFT.plan_fft!(A, dims)
 end
@@ -123,7 +140,7 @@ FD.set!(v::FD.Field, a::CuArray) = FD.set_to_array!(v, a)
 FD.set!(v::DC.DistributedField, a::CuArray) = FD.set_to_array!(v, a)
 FD.set!(v::MR.MultiRegionField, a::CuArray) = apply_regionally!(FD.set!, v, a)
 
-function SO.plan_backward_transform(A::CuArray, ::Union{GD.Bounded, GD.Periodic}, dims, planner_flag)
+function SO.plan_backward_transform(A::CuArray, ::Union{GD.BoundaryTopology, GD.Periodic}, dims, planner_flag)
     length(dims) == 0 && return nothing
     return cuFFT.plan_ifft!(A, dims)
 end

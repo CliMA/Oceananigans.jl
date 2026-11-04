@@ -33,6 +33,9 @@ else
                        "unit/schedules", "unit/utils", "unit/weno_smoothness_reference", "unit/weno_smoothness")
             filter!(((name, _),) -> !startswith(name, prefix), testsuite)
         end
+    else
+        # Some doctests build grids on the GPU.
+        filter!(((name, _),) -> !startswith(name, "doctests/"), testsuite)
     end
 
     if filter_tests!(testsuite, args)
@@ -55,8 +58,9 @@ else
     args.list === nothing && any(needs_data, keys(testsuite)) && include(joinpath(SETUP, "data_dependencies.jl"))
 
     # Tests that mutate process-global state (loggers, Enzyme and Reactant flags, the active project,
-    # the default float type) get a throw-away worker.
-    dedicated_prefixes = ("enzyme/", "sharding/", "convergence/", "metal/", "oneapi/")
+    # the default float type) or need a cold inference cache get a throw-away worker.
+    dedicated_prefixes = ("enzyme/", "sharding/", "convergence/", "metal/", "oneapi/", "doctests/",
+                          "abstract_operations/indices_inference")
     function test_worker(name)
         color = get(stdout, :color, false)
         if any(prefix -> startswith(name, prefix), dedicated_prefixes)

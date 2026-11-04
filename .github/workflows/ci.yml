@@ -33,7 +33,7 @@ jobs:
             julia_version: '1.13'
             julia_arch: 'default'
             os: 'ubuntu-latest'
-            test_group: 'distributed/tripolar,distributed/output_combining'
+            test_group: 'distributed/tripolar,distributed/output_combining,distributed/configuration'
             check_bounds: 'yes'
           - label: 'Reactant and Makie'
             julia_version: '1.13'

@@ -1,11 +1,9 @@
 using Adapt
-using Oceananigans.Grids: AbstractGrid
-using Oceananigans.Grids: xnode, ynode, znode, λnode, φnode, rnode
 using Oceananigans.Fields: AbstractField, default_indices, location
-using Oceananigans.Operators: Δx, Δy, Δz, Δr, Ax, Δλ, Δφ, Ay, Az, volume
-using Oceananigans.Operators: Operators, XNode, YNode, ZNode, ΛNode, ΦNode, RNode
-
-import Oceananigans.Grids: xspacings, yspacings, zspacings, rspacings, λspacings, φspacings
+using Oceananigans.Grids: AbstractGrid, rnode, rspacings, xnode, xspacings, ynode, yspacings, znode, zspacings, λnode,
+                          λspacings, φnode, φspacings
+using Oceananigans.Operators: Operators, Ax, Ay, Az, RNode, XNode, YNode, ZNode, volume, Δr, Δx, Δy, Δz, Δλ, Δφ, ΛNode,
+                              ΦNode
 
 const GridMetric = Union{XNode, YNode, ZNode, ΛNode, ΦNode, RNode,
                          typeof(Δx),
@@ -100,53 +98,53 @@ end
 # src/Grids/vertical_discretization.jl so that @autodocs picks them up
 # from the Oceananigans.Grids module where these functions are exported.
 
-function xspacings(grid, ℓx, ℓy, ℓz)
+function Grids.xspacings(grid, ℓx, ℓy, ℓz)
     LX, LY, LZ = map(typeof, (ℓx, ℓy, ℓz))
     Δx_op = KernelFunctionOperation{LX, LY, LZ}(Δx, grid, ℓx, ℓy, ℓz)
     return Δx_op
 end
 
-function yspacings(grid, ℓx, ℓy, ℓz)
+function Grids.yspacings(grid, ℓx, ℓy, ℓz)
     LX, LY, LZ = map(typeof, (ℓx, ℓy, ℓz))
     Δy_op = KernelFunctionOperation{LX, LY, LZ}(Δy, grid, ℓx, ℓy, ℓz)
     return Δy_op
 end
 
-function zspacings(grid, ℓx, ℓy, ℓz)
+function Grids.zspacings(grid, ℓx, ℓy, ℓz)
     LX, LY, LZ = map(typeof, (ℓx, ℓy, ℓz))
     Δz_op = KernelFunctionOperation{LX, LY, LZ}(Δz, grid, ℓx, ℓy, ℓz)
     return Δz_op
 end
 
-function rspacings(grid, ℓx, ℓy, ℓz)
+function Grids.rspacings(grid, ℓx, ℓy, ℓz)
     LX, LY, LZ = map(typeof, (ℓx, ℓy, ℓz))
     Δr_op = KernelFunctionOperation{LX, LY, LZ}(Δr, grid, ℓx, ℓy, ℓz)
     return Δr_op
 end
 
-function λspacings(grid, ℓx, ℓy, ℓz)
+function Grids.λspacings(grid, ℓx, ℓy, ℓz)
     LX, LY, LZ = map(typeof, (ℓx, ℓy, ℓz))
     Δλ_op = KernelFunctionOperation{LX, LY, LZ}(Δλ, grid, ℓx, ℓy, ℓz)
     return Δλ_op
 end
 
-function φspacings(grid, ℓx, ℓy, ℓz)
+function Grids.φspacings(grid, ℓx, ℓy, ℓz)
     LX, LY, LZ = map(typeof, (ℓx, ℓy, ℓz))
     Δφ_op = KernelFunctionOperation{LX, LY, LZ}(Δφ, grid, ℓx, ℓy, ℓz)
     return Δφ_op
 end
 
-@inline xspacings(field::AbstractField) = xspacings(field.grid, location(field)...)
-@inline yspacings(field::AbstractField) = yspacings(field.grid, location(field)...)
-@inline zspacings(field::AbstractField) = zspacings(field.grid, location(field)...)
-@inline λspacings(field::AbstractField) = λspacings(field.grid, location(field)...)
-@inline φspacings(field::AbstractField) = φspacings(field.grid, location(field)...)
-@inline rspacings(field::AbstractField) = rspacings(field.grid, location(field)...)
+@inline Grids.xspacings(field::AbstractField) = xspacings(field.grid, location(field)...)
+@inline Grids.yspacings(field::AbstractField) = yspacings(field.grid, location(field)...)
+@inline Grids.zspacings(field::AbstractField) = zspacings(field.grid, location(field)...)
+@inline Grids.λspacings(field::AbstractField) = λspacings(field.grid, location(field)...)
+@inline Grids.φspacings(field::AbstractField) = φspacings(field.grid, location(field)...)
+@inline Grids.rspacings(field::AbstractField) = rspacings(field.grid, location(field)...)
 
 # Some defaults for e.g. easy CFL computations.
-@inline xspacings(grid::AbstractGrid) = xspacings(grid, Center(), Center(), Center())
-@inline yspacings(grid::AbstractGrid) = yspacings(grid, Center(), Center(), Center())
-@inline zspacings(grid::AbstractGrid) = zspacings(grid, Center(), Center(), Center())
-@inline λspacings(grid::AbstractGrid) = λspacings(grid, Center(), Center(), Center())
-@inline φspacings(grid::AbstractGrid) = φspacings(grid, Center(), Center(), Center())
-@inline rspacings(grid::AbstractGrid) = rspacings(grid, Center(), Center(), Center())
+@inline Grids.xspacings(grid::AbstractGrid) = xspacings(grid, Center(), Center(), Center())
+@inline Grids.yspacings(grid::AbstractGrid) = yspacings(grid, Center(), Center(), Center())
+@inline Grids.zspacings(grid::AbstractGrid) = zspacings(grid, Center(), Center(), Center())
+@inline Grids.λspacings(grid::AbstractGrid) = λspacings(grid, Center(), Center(), Center())
+@inline Grids.φspacings(grid::AbstractGrid) = φspacings(grid, Center(), Center(), Center())
+@inline Grids.rspacings(grid::AbstractGrid) = rspacings(grid, Center(), Center(), Center())
