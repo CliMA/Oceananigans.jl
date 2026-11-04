@@ -22,6 +22,11 @@ Lanczos filter weights [Duchon (1979)](@cite duchon1979lanczos) over `window`,
     w(τ) = sinc(2τ / cutoff) sinc(2τ / window),
 
 which pass periods longer than `cutoff` and remove shorter ones.
+
+References
+==========
+* Duchon, C. E. (1979). "Lanczos filtering in one and two dimensions." Journal of Applied
+  Meteorology, 18(8), 1016-1022.
 """
 struct LanczosKernel{FT} <: AbstractFilterKernel
     window :: FT
