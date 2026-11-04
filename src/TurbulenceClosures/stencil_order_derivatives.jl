@@ -1,10 +1,10 @@
 #####
 ##### Derivatives used by diffusive and viscous fluxes, selected by the closure's stencil order
 #####
-##### `ScalarDiffusivity(order=4)` computes fluxes with the fourth-order-accurate first derivatives
+##### `ScalarDiffusivity(stencil_order=4)` computes fluxes with the fourth-order-accurate first derivatives
 ##### `fourth_order_∂xᵣᶠᶜᶜ` etc. (see Operators/fourth_order_derivative_operators.jl), whose flux divergence
 ##### is the fourth-order five-point Laplacian and which fall back to second order next to walls and immersed
-##### boundaries. With `order = 2` the fluxes use the second-order derivatives `∂xᵣᶠᶜᶜ` etc., as always.
+##### boundaries. With `stencil_order = 2` the fluxes use the second-order derivatives `∂xᵣᶠᶜᶜ` etc., as always.
 #####
 
 using Oceananigans.Operators: ∂xᵣᶠᶜᶜ, ∂xᵣᶜᶜᶜ, ∂xᵣᶠᶠᶜ, ∂xᵣᶠᶜᶠ,

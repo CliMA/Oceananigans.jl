@@ -36,7 +36,7 @@ const L = 2π
 # Periodic: ∇²c for c = sin(x) cos(2y) sin(z)
 function periodic_tracer_laplacian_errors(arch, order)
     κ = 0.7
-    closure = ScalarDiffusivity(κ=κ, order=order)
+    closure = ScalarDiffusivity(κ=κ, stencil_order=order)
     c₀(x, y, z) = sin(x) * cos(2y) * sin(z)
     errors = map(Ns) do N
         grid = RectilinearGrid(arch; size=(N, N, N), extent=(L, L, L), halo=(3, 3, 3), topology=(Periodic, Periodic, Periodic))
@@ -52,7 +52,7 @@ end
 # so that ∇²uᵢ = - 2 uᵢ and ∂ⱼτᵢⱼ = - ν ∇²uᵢ = 2ν uᵢ.
 function periodic_viscous_errors(arch, order)
     ν = 0.3
-    closure = ScalarDiffusivity(ν=ν, order=order)
+    closure = ScalarDiffusivity(ν=ν, stencil_order=order)
     errors = map(Ns) do N
         grid = RectilinearGrid(arch; size=(N, N, N), extent=(L, L, L), halo=(3, 3, 3), topology=(Periodic, Periodic, Periodic))
         u, v, w = XFaceField(grid), YFaceField(grid), ZFaceField(grid)
@@ -68,7 +68,7 @@ end
 # Bounded (no-flux walls) in x and z: c = cos(x) cos(z) on [0, π]² satisfies ∂c/∂n = 0 on the walls.
 function bounded_tracer_laplacian_errors(arch, order)
     κ = 0.7
-    closure = ScalarDiffusivity(κ=κ, order=order)
+    closure = ScalarDiffusivity(κ=κ, stencil_order=order)
     errors = map(Ns) do N
         grid = RectilinearGrid(arch; size=(N, 4, N), x=(0, π), y=(0, 1), z=(0, π), halo=(3, 3, 3),
                                topology=(Bounded, Periodic, Bounded))
@@ -86,20 +86,20 @@ end
     @info "Testing fourth-order ScalarDiffusivity..."
 
     @testset "Construction" begin
-        closure = ScalarDiffusivity(ν=1, κ=2, order=4)
+        closure = ScalarDiffusivity(ν=1, κ=2, stencil_order=4)
         @test stencil_order(closure) === Val(4)
         @test stencil_order(ScalarDiffusivity(ν=1, κ=2)) === Val(2)
         @test required_halo_size_x(closure) == 2
         @test required_halo_size_y(closure) == 2
         @test required_halo_size_z(closure) == 2
         @test required_halo_size_x(ScalarDiffusivity(ν=1, κ=2)) == 1
-        @test summary(closure) == "ScalarDiffusivity{ExplicitTimeDiscretization}(ν=1.0, κ=2.0, order=4)"
+        @test summary(closure) == "ScalarDiffusivity{ExplicitTimeDiscretization}(ν=1.0, κ=2.0, stencil_order=4)"
         @test stencil_order(with_tracers((:c,), closure)) === Val(4)
-        @test stencil_order(VerticalScalarDiffusivity(κ=1, order=4)) === Val(4)
+        @test stencil_order(VerticalScalarDiffusivity(κ=1, stencil_order=4)) === Val(4)
 
-        @test_throws ArgumentError ScalarDiffusivity(ν=1, order=3)
-        @test_throws ArgumentError HorizontalScalarDiffusivity(ν=1, order=4)
-        @test_throws ArgumentError VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=1, order=4)
+        @test_throws ArgumentError ScalarDiffusivity(ν=1, stencil_order=3)
+        @test_throws ArgumentError HorizontalScalarDiffusivity(ν=1, stencil_order=4)
+        @test_throws ArgumentError VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=1, stencil_order=4)
 
         # The largest eigenvalue of the fourth-order Laplacian is 4/3 that of the second-order one
         grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
@@ -140,7 +140,7 @@ end
             # Conservation with no-flux walls
             grid = RectilinearGrid(arch; size=(16, 16, 16), extent=(1, 1, 1), halo=(3, 3, 3),
                                    topology=(Bounded, Bounded, Bounded))
-            model = NonhydrostaticModel(grid; closure=ScalarDiffusivity(ν=1e-2, κ=1e-2, order=4), tracers=:c)
+            model = NonhydrostaticModel(grid; closure=ScalarDiffusivity(ν=1e-2, κ=1e-2, stencil_order=4), tracers=:c)
             set!(model, c=(x, y, z) -> exp(-50 * ((x - 0.1)^2 + (y - 0.9)^2 + (z - 0.2)^2)),
                         u=(x, y, z) -> 1e-2 * randn(), v=(x, y, z) -> 1e-2 * randn())
             C₀ = sum(model.tracers.c)
@@ -160,7 +160,7 @@ end
                                         topology=(Periodic, Periodic, Bounded))
 
             c₀(x, y, z) = sin(2π * x) * cos(4π * z) + z^2
-            closure = ScalarDiffusivity(ν=0.1, κ=0.1, order=4)
+            closure = ScalarDiffusivity(ν=0.1, κ=0.1, stencil_order=4)
 
             cᴵ, cᵀ = CenterField(immersed), CenterField(truncated)
             set!(cᴵ, c₀); set!(cᵀ, c₀)
@@ -193,7 +193,7 @@ end
             function decay_error(N, order)
                 grid = RectilinearGrid(arch; size=N, x=(0, L), halo=3, topology=(Periodic, Flat, Flat))
                 κ, k, T = 1.0, 3, 0.1
-                model = NonhydrostaticModel(grid; closure=ScalarDiffusivity(κ=κ, order=order), tracers=:c)
+                model = NonhydrostaticModel(grid; closure=ScalarDiffusivity(κ=κ, stencil_order=order), tracers=:c)
                 set!(model, c=x -> sin(k * x))
                 simulation = Simulation(model; Δt=1e-5, stop_time=T, verbose=false)
                 run!(simulation)
