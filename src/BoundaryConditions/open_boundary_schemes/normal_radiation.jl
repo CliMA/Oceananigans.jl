@@ -17,8 +17,8 @@ where `cₙ = −(∂φ/∂t) / (∂φ/∂n)` is diagnosed from interior values,
 Inflow vs outflow is decided from the boundary-normal velocity: for `NormalFlow` fields the boundary
 value itself, for `Value` fields (tracers, tangential velocities) a `model_fields` velocity taken one
 cell into the interior, or at the boundary face when `use_boundary_velocity = true` (the interior value
-is a prognostic velocity, the boundary value is itself radiation-extrapolated; see Orlanski 1976 and the
-MITgcm `obcs` implementation). `τ = τ_in` and `cₙ = 0` on inflow, `τ = τ_out` on outflow.
+is a prognostic velocity, the boundary value is itself radiation-extrapolated; see
+[Orlanski (1976)](@cite Orlanksi1976) and the MITgcm `obcs` implementation). `τ = τ_in` and `cₙ = 0` on inflow, `τ = τ_out` on outflow.
 
 `use_boundary_velocity` only affects `Value` boundary conditions (tracers, tangential velocities). It is
 ignored for a `NormalFlowBoundaryCondition`, which radiates the normal velocity using its own boundary value.
