@@ -125,7 +125,7 @@ steps:
       JULIA_CPU_THREADS: "6"
     timeout_in_minutes: 150
     if_changed:
-      include: [*buildkite_paths, *code_paths, *project_paths, *test_paths]
+      include: [*buildkite_paths, *code_paths, *project_paths, *test_paths, "docs/src/**"] # docs/src for the doctests
       exclude: [*no_test_paths, "test/{enzyme,reactant}/**"]
     command: |
       # Add matrix-specific environment variables

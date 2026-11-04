@@ -231,12 +231,18 @@ const FTS0  = FlavorOfFTS{Nothing, Nothing, Nothing}
 @inline BoundaryConditions.getbc(f::XFTS, i::Int, ::Int, grid::AbstractGrid, clock, args...) = @inbounds f[i, 1, 1, Time(clock.time)]
 
 # West - east and top - bottom, this case is not really well defined since the indexes could be i and j or j and k
-# so we check which dimension of the grid is 1 and pick the corresponding index
+# so we check which dimension of the grid is 1 and pick the corresponding index. Regularized boundary conditions
+# do not reach this method: they wrap the series in an `XZReducedCondition` that knows its boundary.
 @inline function BoundaryConditions.getbc(f::YFTS, i1::Int, i2::Int, grid::AbstractGrid, clock, args...)
     Nx, _, Nz = size(grid)
     j = ifelse(Nz == 1, i1, i2)
     return @inbounds f[1, j, 1, Time(clock.time)]
 end
+
+@inline BoundaryConditions.xz_reduced_getbc(f::YFTS, j, grid, clock, args...) = @inbounds f[1, j, 1, Time(clock.time)]
+
+BoundaryConditions.regularize_boundary_condition(f::YFTS, grid, loc, dim, args...) =
+    BoundaryConditions.xz_reduced_condition(f, Val(dim))
 
 # West - east and south - north boundary conditions, only the last index is valid (the first one is either i or j)
 @inline BoundaryConditions.getbc(f::ZFTS, ::Int, k::Int, grid::AbstractGrid, clock, args...) = @inbounds f[1, 1, k, Time(clock.time)]
@@ -280,8 +286,8 @@ end
 
     ψ̃ = ψ₂ * ñ + ψ₁ * (1 - ñ)
 
-    # Don't interpolate if n₁ == n₂.
-    return ifelse(n₁ == n₂, ψ₁, ψ̃)
+    # Don't interpolate if n₁ == n₂. Both branches take the interpolated value's type.
+    return ifelse(n₁ == n₂, oftype(ψ̃, ψ₁), ψ̃)
 end
 
 #####
@@ -378,8 +384,8 @@ end
     ψ₂ = _interpolate(data, ix, iy, iz, m₂)
     ψ̃ = ψ₂ * ñ + ψ₁ * (1 - ñ)
 
-    # Don't interpolate if n₁ == n₂
-    return ifelse(n₁ == n₂, ψ₁, ψ̃)
+    # Don't interpolate if n₁ == n₂, with both branches of the interpolated value's type (see above)
+    return ifelse(n₁ == n₂, oftype(ψ̃, ψ₁), ψ̃)
 end
 
 function Fields.interpolate!(target_fts::FieldTimeSeries, source_fts::FieldTimeSeries)
@@ -442,6 +448,8 @@ update_field_time_series!(fts, n₁::Int, n₂=n₁) = nothing
 # Update the `fts` to contain the time `time_index.time`.
 # Linear extrapolation, simple version
 function update_field_time_series!(fts::PartlyInMemoryFTS, time_index::Time)
+    # A window holding every snapshot never moves, so the time need not be read (it may be traced)
+    fts.backend.start == 1 && length(fts.backend) == length(fts.times) && return nothing
     t = time_index.time
     indices = cpu_interpolating_time_indices(architecture(fts), fts.times, fts.time_indexing, t)
     n₁ = indices.first_index

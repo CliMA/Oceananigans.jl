@@ -4,7 +4,6 @@ using Oceananigans.Grids: inactive_node, peripheral_node
 
 # Fallback
 compute_eddy_velocities!(closure_fields, closure, model; parameters = :xyz) = nothing
-compute_eddy_velocities!(closure_fields, ::NoSkewAdvectionISSD, model; parameters = :xyz) = nothing
 
 function compute_eddy_velocities!(closure_fields, closure::SkewAdvectionISSD, model; parameters = :xyz)
     uₑ = closure_fields.u
@@ -70,6 +69,17 @@ end
     FT = eltype(grid)
     bz = max(bz, convert(FT, slope_model.minimum_bz))
     return ifelse(bz <= 0, zero(grid), -bh / bz) + ∂h_z
+end
+
+@inline function calc_tapering(bx, by, bz, ∂x_z, ∂y_z, grid, slope_model, slope_limiter)
+    FT = eltype(grid)
+    Sₘ = convert(FT, slope_limiter.max_slope)
+    bz = max(bz, convert(FT, slope_model.minimum_bz))
+
+    Sx = - bx / bz + ∂x_z
+    Sy = - by / bz + ∂y_z
+
+    return ifelse(bz <= 0, zero(grid), min(one(grid), Sₘ^2 / (Sx^2 + Sy^2)))
 end
 
 # Buoyancy gradients at (F, C, F), the location of the x-component of the eddy streamfunction
@@ -140,7 +150,6 @@ end
 
 # Single closure version
 @inline closure_auxiliary_velocity(clo, K, val_tracer_name) = nothing
-@inline closure_auxiliary_velocity(::NoSkewAdvectionISSD, K, val_tracer_name) = nothing
 @inline closure_auxiliary_velocity(::SkewAdvectionISSD, K, val_tracer_name) = (u = K.u, v = K.v, w = K.w)
 
 # 2-tuple closure
