@@ -65,7 +65,10 @@ end
 
 # Without this method, Reactant arrays reach the generic `u .= a` fallback, which indexes `a` with the
 # field's own indices and so misreads windowed fields such as the free surface displacement.
-function Oceananigans.Fields.set!(u::ReactantField, a::Union{AnyConcreteReactantArray, Reactant.AnyTracedRArray}, args...)
+# `TracedRArray` rather than `AnyTracedRArray`: the latter is `AbstractArray{<:TracedRNumber}`, which a
+# `Field` of traced data (or an `OffsetArray` of one) also satisfies, making `set!` ambiguous with the
+# generic `Field`-to-`Field` and array methods.
+function Oceananigans.Fields.set!(u::ReactantField, a::Union{AnyConcreteReactantArray, Reactant.TracedRArray}, args...)
     copyto!(interior(u), a)
     return u
 end
