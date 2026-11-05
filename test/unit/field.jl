@@ -998,6 +998,25 @@ end
         end
     end
 
+    @testset "index_binary_search matches the early-return search it replaces" begin
+        function early_return_search(vec, val, N)
+            low, high = 0, N - 1
+            while low + 1 < high
+                mid = Oceananigans.Fields.middle_point(low, high)
+                vec[mid + 1] == val && return (mid + 1, mid + 1)
+                vec[mid + 1] < val ? (low = mid) : (high = mid)
+            end
+            return (low + 1, high + 1)
+        end
+
+        Random.seed!(1234)
+        for N in 1:64, vec in (cumsum(rand(N)), collect(1.0:N), sort(rand(1:5, N) .* 1.0))
+            for val in vcat(vec, vec .+ 1e-3, vec .- 1e-3, [-1e9, 1e9, NaN])
+                @test Oceananigans.Fields.index_binary_search(vec, val, N) == early_return_search(vec, val, N)
+            end
+        end
+    end
+
     @testset "Unit interpolation" begin
         for arch in archs
             hu = (-1, 1)

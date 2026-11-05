@@ -139,6 +139,8 @@ filled with the top of the domain.
 """
 top_height_field(grid::IBG) = height_field(something(grid.immersed_boundary.top_height, last(z_domain(grid))), grid.underlying_grid)
 
+height_statistics(height::Number) = (height, height, height)
+
 function height_statistics(height)
     height_interior = bottom_height_interior(height)
     mean_height = sum(height_interior) / length(height_interior)
