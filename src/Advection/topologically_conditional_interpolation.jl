@@ -23,11 +23,11 @@ const AGZ = AG{<:Any, <:Any, <:Any, <:BT}
 @inline last_stencil_index(::Closed, ::Face, N)   = N + 1
 @inline last_stencil_index(::Open, ℓ, N)          = N + 1
 
-# Whether a stencil from `first_point` to `last_point` reads only what the sides of a direction let it read; only Closed and Open sides bound it
-@inline within_bounds(first_point, last_point, topology, ℓ, N) = true
-@inline within_bounds(first_point, last_point, ::Type{<:TwoSided{L, R}}, ℓ, N) where {L <: BoundarySide, R <: BoundarySide} = (first_point >= first_stencil_index(L(), ℓ)) & (last_point <= last_stencil_index(R(), ℓ, N))
-@inline within_bounds(first_point, last_point, ::Type{<:TwoSided{L}}, ℓ, N) where L <: BoundarySide         = first_point >= first_stencil_index(L(), ℓ)
-@inline within_bounds(first_point, last_point, ::Type{<:TwoSided{<:Any, R}}, ℓ, N) where R <: BoundarySide  = last_point  <= last_stencil_index(R(), ℓ, N)
+# Whether a stencil from `i + first_offset` to `i + last_offset` reads only what the sides of a direction let it read; only Closed and Open sides bound it
+@inline within_bounds(i, first_offset, last_offset, topology, ℓ, N) = true
+@inline within_bounds(i, first_offset, last_offset, ::Type{<:TwoSided{L, R}}, ℓ, N) where {L <: BoundarySide, R <: BoundarySide} = (i >= first_stencil_index(L(), ℓ) - first_offset) & (i <= last_stencil_index(R(), ℓ, N) - last_offset)
+@inline within_bounds(i, first_offset, last_offset, ::Type{<:TwoSided{L}}, ℓ, N) where L <: BoundarySide         = i >= first_stencil_index(L(), ℓ) - first_offset
+@inline within_bounds(i, first_offset, last_offset, ::Type{<:TwoSided{<:Any, R}}, ℓ, N) where R <: BoundarySide  = i <= last_stencil_index(R(), ℓ, N) - last_offset
 
 # A reconstruction at a Face reads Center points from i - B to i + B - 1 and one at a Center reads Face points from i - B + 1
 # to i + B, with B the buffer of the scheme; a left-biased stencil drops the last point and a right-biased one the first.
@@ -46,12 +46,12 @@ for (d, ξ) in enumerate((:x, :y, :z))
 
         @eval begin
             @inline $within_bounds_symmetric(i, grid, scheme) =
-                within_bounds(i + $first_offset, i + $last_offset, topology(grid, $d), $points, grid.$N)
+                within_bounds(i, $first_offset, $last_offset, topology(grid, $d), $points, grid.$N)
 
             @inline function $within_bounds_biased(i, grid, scheme, bias)
-                iᴸ = i + $first_offset + ifelse(bias == LeftBias, 0, 1)
-                iᴿ = i + $last_offset  - ifelse(bias == LeftBias, 1, 0)
-                return within_bounds(iᴸ, iᴿ, topology(grid, $d), $points, grid.$N)
+                first_shift = ifelse(bias == LeftBias, 0, 1)
+                last_shift = ifelse(bias == LeftBias, 1, 0)
+                return within_bounds(i, $first_offset + first_shift, $last_offset - last_shift, topology(grid, $d), $points, grid.$N)
             end
 
             @inline $near_boundary_symmetric(i, j, k, grid, scheme)     = !$within_bounds_symmetric($index, grid, scheme)
