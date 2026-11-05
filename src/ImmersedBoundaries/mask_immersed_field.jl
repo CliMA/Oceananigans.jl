@@ -167,4 +167,3 @@ const OnlyZReducedField = Field{<:CenterOrFace, <:CenterOrFace, Nothing}
 # Does not require a sweep; with an immersed top the column is swept like any `ReducedField`
 mask_immersed_field!(field::OnlyZReducedField, grid::BottomOnlyIBG, loc, value) =
     mask_immersed_field_xy!(field, grid, loc, value, size(grid, 3))
-
