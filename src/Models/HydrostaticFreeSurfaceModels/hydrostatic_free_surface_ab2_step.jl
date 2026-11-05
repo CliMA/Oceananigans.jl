@@ -1,8 +1,5 @@
-using Oceananigans.TimeSteppers: _ab2_step_field!
-using Oceananigans.Operators: σ⁻, σⁿ, ∂t_σ
-using Oceananigans.TurbulenceClosures: implicit_step!
-
-import Oceananigans.TimeSteppers: ab2_step!
+using Oceananigans.Operators: σ⁻, σ⁻¹ⁿ, σⁿ, ∂t_σ
+using Oceananigans.TimeSteppers: _ab2_step_field!, implicit_step!
 
 #####
 ##### Step everything
@@ -15,7 +12,7 @@ Advance `HydrostaticFreeSurfaceModel` by one Adams-Bashforth 2nd-order time step
 
 Dispatches to the appropriate method based on the free surface type (explicit or implicit).
 """
-ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, callbacks) =
+TimeSteppers.ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, callbacks) =
     hydrostatic_ab2_step!(model, model.free_surface, model.grid, Δt, callbacks)
 
 """
@@ -169,6 +166,7 @@ function ab2_step_velocities!(velocities, model, Δt, χ)
     implicit_ab2_step_velocity!(model, Δt, Val(:u))
     implicit_ab2_step_velocity!(model, Δt, Val(:v))
     add_barotropic_acceleration!(velocities, model.grid, model.free_surface, ηⁿ, -Δt)
+    step_boundary_conditions!(velocities, model.clock, fields(model), Δt)
 
     return nothing
 end
@@ -226,6 +224,7 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
     foreach_name(tracers) do val_tracer_index, val_tracer_name
         ab2_step_tracer!(model, Δt, χ, val_tracer_index, val_tracer_name)
     end
+    step_boundary_conditions!(tracers, model.clock, fields(model), Δt)
     return nothing
 end
 
@@ -272,11 +271,11 @@ end
     α = 3*one(FT)/2 + χ
     β = 1*one(FT)/2 + χ
 
-    σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
-    σᶜᶜ⁻ = σ⁻(i, j, k, grid, Center(), Center(), Center())
+    σ⁻¹ᶜᶜⁿ = σ⁻¹ⁿ(i, j, k, grid, Center(), Center(), Center())
+    σᶜᶜ⁻   =   σ⁻(i, j, k, grid, Center(), Center(), Center())
 
     @inbounds begin
         ∂t_σθ = α * Gⁿ[i, j, k] - β * G⁻[i, j, k]
-        θ[i, j, k] = (σᶜᶜ⁻ * θ[i, j, k] + Δt * ∂t_σθ) / σᶜᶜⁿ
+        θ[i, j, k] = (σᶜᶜ⁻ * θ[i, j, k] + Δt * ∂t_σθ) * σ⁻¹ᶜᶜⁿ
     end
 end

@@ -136,7 +136,7 @@ Return the new position of a particle at `x` in the Bounded interval `(xᴸ, x�
 with boundary conditions `left_bc` and `right_bc`, and whether the particle was absorbed.
 Absorbed particles are placed on the boundary they crossed.
 """
-@inline function enforce_boundary_conditions(::Bounded, x, xᴸ, xᴿ, left_bc, right_bc)
+@inline function enforce_boundary_conditions(left_bc, right_bc, ::Bounded, x, xᴸ, xᴿ)
     crossed_right = x > xᴿ
     crossed_left = x < xᴸ
 
@@ -154,7 +154,7 @@ $(TYPEDSIGNATURES)
 Return the new position of a particle at `x` in the Periodic interval `(xᴸ, xᴿ)`.
 Particles are never absorbed at periodic boundaries.
 """
-@inline function enforce_boundary_conditions(::Periodic, x, xᴸ, xᴿ, left_bc, right_bc)
+@inline function enforce_boundary_conditions(left_bc, right_bc, ::Periodic, x, xᴸ, xᴿ)
     x⁺ = ifelse(x > xᴿ, xᴸ + mod(x - xᴿ, xᴿ - xᴸ),
          ifelse(x < xᴸ, xᴿ - mod(xᴸ - x, xᴿ - xᴸ), x))
     return x⁺, false
@@ -165,4 +165,4 @@ $(TYPEDSIGNATURES)
 
 Do nothing on Flat dimensions.
 """
-@inline enforce_boundary_conditions(::Flat, x, xᴸ, xᴿ, left_bc, right_bc) = x, false
+@inline enforce_boundary_conditions(left_bc, right_bc, ::Flat, x, xᴸ, xᴿ) = x, false

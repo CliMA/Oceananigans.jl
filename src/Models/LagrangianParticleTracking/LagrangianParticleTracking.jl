@@ -3,28 +3,22 @@ module LagrangianParticleTracking
 export LagrangianParticles, DroguedParticleDynamics, CountingSort, ComparisonSort,
        ParticleBoundaryConditions, ReflectingBoundary, AbsorbingBoundary
 
-using Printf
-using Adapt
+using Adapt: Adapt, adapt
 using DocStringExtensions: TYPEDSIGNATURES
-using KernelAbstractions
-using KernelAbstractions: @atomic
-using StructArrays
-using StructArrays: components
+using KernelAbstractions: @atomic, @index, @kernel
+using Printf: @sprintf
+using StructArrays: StructArray, components
 
-using Oceananigans.Architectures: device, architecture
-using Oceananigans.Fields: interpolate, compute!, location
-using Oceananigans.Grids
-using Oceananigans.Grids: hack_cosd,
-                          XFlatGrid, YFlatGrid, ZFlatGrid,
-                          XYFlatGrid, YZFlatGrid, XZFlatGrid, XYZFlatGrid
-using Oceananigans.ImmersedBoundaries
-using Oceananigans.ImmersedBoundaries: immersed_cell
-using Oceananigans.TimeSteppers: AbstractLagrangianParticles
+using Oceananigans: Oceananigans, prognostic_state, restore_prognostic_state!
+using Oceananigans.Architectures: architecture, device
+using Oceananigans.Fields: compute!, interpolate, location
+using Oceananigans.Grids: Bounded, Center, Face, Flat, LatitudeLongitudeGrid, Periodic, RectilinearGrid,
+                          XFlatGrid, XYFlatGrid, XYZFlatGrid, XZFlatGrid, YFlatGrid, YZFlatGrid, ZFlatGrid, grid,
+                          hack_cosd, rnode, topology, ηnode, ξnode
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, immersed_cell
+using Oceananigans.OutputWriters: OutputWriters, serializeproperty!
+using Oceananigans.TimeSteppers: TimeSteppers, AbstractLagrangianParticles
 using Oceananigans.Utils: datatuple, launch!, prettysummary
-
-import Oceananigans: prognostic_state, restore_prognostic_state!
-import Oceananigans.TimeSteppers: step_lagrangian_particles!, update_lagrangian_particle_state!
-import Oceananigans.OutputWriters: serializeproperty!, fetch_output
 
 abstract type AbstractParticle end
 
@@ -222,7 +216,7 @@ include("lagrangian_particle_advection.jl")
 include("drogued_dynamics.jl")
 include("lagrangian_particle_sorting.jl")
 
-step_lagrangian_particles!(::Nothing, model, Δt) = nothing
+TimeSteppers.step_lagrangian_particles!(::Nothing, model, Δt) = nothing
 
 """
 $(TYPEDSIGNATURES)
@@ -232,7 +226,7 @@ Particles are sorted (if `particles.sorting` is not `nothing`), `particles.dynam
 the particles of all species are advected, and absorbed and flagged particles are removed or
 transferred between species; see [`transfer_particles!`](@ref).
 """
-function step_lagrangian_particles!(particles::LagrangianParticles, model, Δt)
+function TimeSteppers.step_lagrangian_particles!(particles::LagrangianParticles, model, Δt)
     properties = particles.properties
     resize_transfer_flags!(particles.transfers, properties)
     sort_lagrangian_particles!(particles, model.grid)
@@ -247,9 +241,9 @@ end
 #### Extend output writers to support LagrangianParticles
 ####
 
-serializeproperty!(file, address, p::LagrangianParticles) = serializeproperty!(file, address, p.properties)
+OutputWriters.serializeproperty!(file, address, p::LagrangianParticles) = serializeproperty!(file, address, p.properties)
 
-fetch_output(lagrangian_particles::LagrangianParticles, model) = fetch_particle_properties(lagrangian_particles.properties)
+OutputWriters.fetch_output(lagrangian_particles::LagrangianParticles, model) = fetch_particle_properties(lagrangian_particles.properties)
 
 # A `NamedTuple` of property arrays for a single species, and a `NamedTuple` of species for multiple species
 function fetch_particle_properties(properties::StructArray)
@@ -261,17 +255,17 @@ fetch_particle_properties(properties::NamedTuple) = map(fetch_particle_propertie
 
 # Checkpointing
 
-function prognostic_state(lagrangian_particles::LagrangianParticles)
+function Oceananigans.prognostic_state(lagrangian_particles::LagrangianParticles)
     return (; properties = prognostic_state(lagrangian_particles.properties))
 end
 
-function restore_prognostic_state!(restored::LagrangianParticles, from)
+function Oceananigans.restore_prognostic_state!(restored::LagrangianParticles, from)
     restore_particle_properties!(restored.properties, from.properties)
 
     return restored
 end
 
-restore_prognostic_state!(::LagrangianParticles, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::LagrangianParticles, ::Nothing) = nothing
 
 function restore_particle_properties!(properties::StructArray, from)
     # Particles may have been absorbed or transferred before the checkpoint was written

@@ -19,9 +19,9 @@ end
 tracked_property(species, name) = name in propertynames(species) ? getproperty(species, name) : nothing
 tracking_count(species, name) = name in propertynames(species) ? length(species) : 0
 
-update_lagrangian_particle_state!(particles, model) = nothing
+TimeSteppers.update_lagrangian_particle_state!(particles, model) = nothing
 
-function update_lagrangian_particle_state!(particles::LagrangianParticles, model)
+function TimeSteppers.update_lagrangian_particle_state!(particles::LagrangianParticles, model)
     grid = model.grid
     arch = architecture(grid)
     species = particle_species(particles)

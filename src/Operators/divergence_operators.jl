@@ -44,7 +44,7 @@ index_right(i, ::Center) = i + 1
 index_right(i, ::Face)   = i
 
 @inline Base.div(i, j, k, grid::AbstractGrid, loc, q_west, q_east, q_south, q_north, q_bottom, q_top) =
-    1 / volume(i, j, k, grid, loc...) * (δx_Ax_q(i, j, k, grid, loc, q_west, q_east) +
+    V⁻¹(i, j, k, grid, loc...) * (δx_Ax_q(i, j, k, grid, loc, q_west, q_east) +
                                          δy_Ay_q(i, j, k, grid, loc, q_south, q_north) +
                                          δz_Az_q(i, j, k, grid, loc, q_bottom, q_top))
 

@@ -30,9 +30,8 @@
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Architectures: on_architecture
-using Oceananigans.Grids: λnode, φnode, znode
+using Oceananigans.Grids: φnode, znode
 using Oceananigans.Operators: rotation_angle, ζ₃ᶠᶠᶜ, ℑxyᶜᶜᵃ
-using Oceananigans.MultiRegion: owned_weights
 using CUDA
 using Printf
 using CairoMakie
@@ -80,8 +79,10 @@ jet_model = HydrostaticFreeSurfaceModel(jet_grid; buoyancy=nothing, tracers=(),
 # \quad \text{for} \quad φ₀ < φ < φ₁ ,
 # ```
 #
-# and zero elsewhere, with ``u_{\max} = 80 \, \mathrm{m \, s^{-1}}``, ``φ₀ = π/7``,
-# ``φ₁ = π/2 - φ₀``, and ``e_n = \exp[-4 / (φ₁ - φ₀)^2]``, so that the jet peaks at 45°N.
+# and zero elsewhere. The above expression peaks at ``(φ₀ + φ₁)/2``. Choosing
+# ``u_{\max} = 80 \, \mathrm{m \, s^{-1}}``, ``φ₀ = π/7``, ``φ₁ = π/2 - φ₀``,
+# and ``e_n = \exp[-4 / (φ₁ - φ₀)^2]`` the jet peaks at 45°N with maximum
+# speed ``u_{\max}``.
 
 uₘₐₓ = 80
 φ₀ = π / 7
@@ -168,7 +169,7 @@ end
 
 add_callback!(jet_simulation, progress, IterationInterval(1000))
 
-# Every three hours, we save the vertical vorticity of each panel.
+# Every three hours, we save the vertical vorticity.
 
 @inline ζᶜᶜᶜ(i, j, k, grid, u, v) = ℑxyᶜᶜᵃ(i, j, k, grid, ζ₃ᶠᶠᶜ, u, v)
 
@@ -177,20 +178,10 @@ function vertical_vorticity(model)
     return Field(KernelFunctionOperation{Center, Center, Center}(ζᶜᶜᶜ, model.grid, u, v))
 end
 
-jet_ζ = vertical_vorticity(jet_model)
-
-jet_times = Float64[]
-vorticity = (yin = Matrix{Float64}[], yang = Matrix{Float64}[])
-
-function save_vorticity(sim)
-    compute!(jet_ζ)
-    push!(jet_times, time(sim))
-    push!(vorticity.yin, Array(interior(jet_ζ[1], :, :, 1)))
-    push!(vorticity.yang, Array(interior(jet_ζ[2], :, :, 1)))
-    return nothing
-end
-
-add_callback!(jet_simulation, save_vorticity, TimeInterval(3hours))
+jet_simulation.output_writers[:vorticity] = JLD2Writer(jet_model, (; ζ=vertical_vorticity(jet_model));
+                                                       filename = "yin_yang_barotropic_jet",
+                                                       schedule = TimeInterval(3hours),
+                                                       overwrite_files = true)
 
 # We also track the volume of the fluid. The ``z^\star`` coordinate stretches the cells with
 # the free surface, so the volume is the integral of one over the grid.
@@ -209,49 +200,10 @@ run!(jet_simulation)
 # ### Visualization
 #
 # We plot the vorticity on the sphere, seen from opposite sides, while the camera circles the
-# globe once. Both views show Yin and Yang together. Each cell is drawn as a quad of one
-# color between the corners of its panel, so the plot shows the solution as the panels hold
-# it. Yin draws the cells it owns, and Yang, just beneath, the cells in which it owns any
-# area, so that the overlap appears once.
-
-sphere_point(λ, φ, r) = Point3f(r * cosd(φ) * cosd(λ), r * cosd(φ) * sind(λ), r * sind(φ))
-
-function cell_quads(panel, drawn; radius=1)
-    Nz = size(panel, 3)
-    corner(i, j) = sphere_point(λnode(i, j, Nz, panel, Face(), Face(), Center()),
-                                φnode(i, j, Nz, panel, Face(), Face(), Center()), radius)
-    cells = findall(drawn)
-    vertices = [corner(c[1] + di, c[2] + dj) for c in cells for (di, dj) in ((0, 0), (1, 0), (1, 1), (0, 1))]
-    return vertices, cells
-end
-
-# CairoMakie orders the triangles of each plot by depth, but not the plots themselves.
-# We therefore draw both panels as one mesh, with two triangles per quad, and give the
-# four corners of each quad the value of its cell. Cells that `land` marks on a panel
-# get `NaN`, which Double Drake uses below to leave its continents gray.
-
-function panel_mesh(grid; land=nothing)
-    yin = on_architecture(CPU(), grid[1])
-    yang = on_architecture(CPU(), grid[2])
-    weights = owned_weights(grid)
-    yin_vertices, yin_cells = cell_quads(yin, Array(interior(weights[1], :, :, 1)) .≥ 1/2)
-    yang_vertices, yang_cells = cell_quads(yang, Array(interior(weights[2], :, :, 1)) .> 0; radius=0.995)
-
-    vertices = vcat(yin_vertices, yang_vertices)
-    quads = 1:length(vertices) ÷ 4
-    triangles = [[4q-3 for q in quads] [4q-2 for q in quads] [4q-1 for q in quads];
-                 [4q-3 for q in quads] [4q-1 for q in quads] [4q   for q in quads]]
-
-    cell_values(yin, yang) = vcat(yin[yin_cells], yang[yang_cells])
-    masked = isnothing(land) ? falses(length(yin_cells) + length(yang_cells)) : cell_values(land(yin), land(yang))
-    on_quads(yin, yang) = repeat(ifelse.(masked, NaN, cell_values(yin, yang)), inner=4)
-
-    return (; vertices, triangles, on_quads)
-end
-
-jet_mesh = panel_mesh(jet_grid)
-nothing #hide
-
+# globe once. On a `YinYangGrid`, `quadmesh!` draws both panels together, and each
+# cell as a quad of one color between the corners of its panel, so the plot shows the solution
+# as the panels hold it. The overlap of the panels is drawn once.
+#
 # The box of an `Axis3` with `viewmode=:fit` keeps its size as the camera moves. We fit
 # the box inside the sphere, so that the sphere fills the axis.
 
@@ -263,13 +215,16 @@ function globe!(position, azimuth, elevation; width=400)
     return ax
 end
 
+jet_ζ = FieldTimeSeries("yin_yang_barotropic_jet.jld2", "ζ")
+jet_times = jet_ζ.times
+
 jet_frame = Observable(1)
-ζₙ = @lift 1e5 * jet_mesh.on_quads(vorticity.yin[$jet_frame], vorticity.yang[$jet_frame])
+ζₙ = @lift jet_ζ[$jet_frame]
 azimuth = @lift 2π * ($jet_frame - 1) / length(jet_times)
 title = @lift "Vertical vorticity, t = " * prettytime(jet_times[$jet_frame])
 
 colormap = :balance
-colorrange = (-15, 15)
+colorrange = (-1.5e-4, 1.5e-4)
 
 jet_fig = Figure()
 Label(jet_fig[0, 1:2], title, fontsize=20, tellwidth=false)
@@ -280,10 +235,10 @@ sides = ((1, "One side", 0),
 for (column, name, offset) in sides
     Label(jet_fig[1, column], name, fontsize=16, tellwidth=false)
     ax = globe!(jet_fig[2, column], @lift($azimuth + offset), π/4; width=450)
-    mesh!(ax, jet_mesh.vertices, jet_mesh.triangles; color=ζₙ, colormap, colorrange, shading=NoShading)
+    quadmesh!(ax, ζₙ; colormap, colorrange)
 end
 
-Colorbar(jet_fig[3, 1:2]; colormap, colorrange, label="Vertical vorticity (10⁻⁵ s⁻¹)",
+Colorbar(jet_fig[3, 1:2]; colormap, colorrange, label="Vertical vorticity (s⁻¹)",
          vertical=false, width=500)
 
 resize_to_layout!(jet_fig)
@@ -531,26 +486,15 @@ add_conservation_fixer!(drake_simulation)
 
 add_callback!(drake_simulation, progress, IterationInterval(1000))
 
-# For plotting, we save the surface vorticity and temperature of each panel every three hours.
+# For plotting, we save the surface vorticity and temperature every three hours.
 
-drake_ζ = vertical_vorticity(drake_model)
+surface_outputs = (; ζ=vertical_vorticity(drake_model), T=drake_model.tracers.T)
 
-drake_times = Float64[]
-surface_ζ = (yin = Matrix{Float64}[], yang = Matrix{Float64}[])
-surface_T = (yin = Matrix{Float64}[], yang = Matrix{Float64}[])
-
-function save_surface_fields(sim)
-    compute!(drake_ζ)
-    T = sim.model.tracers.T
-    push!(drake_times, time(sim))
-    push!(surface_ζ.yin, Array(interior(drake_ζ[1], :, :, Nz)))
-    push!(surface_ζ.yang, Array(interior(drake_ζ[2], :, :, Nz)))
-    push!(surface_T.yin, Array(interior(T[1], :, :, Nz)))
-    push!(surface_T.yang, Array(interior(T[2], :, :, Nz)))
-    return nothing
-end
-
-add_callback!(drake_simulation, save_surface_fields, TimeInterval(3hours))
+drake_simulation.output_writers[:surface] = JLD2Writer(drake_model, surface_outputs;
+                                                       filename = "yin_yang_double_drake",
+                                                       schedule = TimeInterval(3hours),
+                                                       indices = (:, :, Nz),
+                                                       overwrite_files = true)
 
 # We also track the heat content, ``∫ T \, \mathrm{d}V``, which changes only through surface
 # restoring, since the conservation fixer removes the small errors of the interpolation between the panels.
@@ -570,13 +514,16 @@ run!(drake_simulation)
 # ### Visualization
 #
 # We plot the surface fields on the sphere, seen from the north and from the south, while
-# the camera circles the globe once, with the same mesh of quads as for the jet. Land is gray.
+# the camera circles the globe once. The saved fields live on the immersed grid, so `quadmesh!`
+# masks the continents, which `nan_color` paints gray.
 
-drake_mesh = panel_mesh(drake_grid; land = panel -> interior(bottom_height_field(panel), :, :, 1) .≥ 0)
+surface_ζ = FieldTimeSeries("yin_yang_double_drake.jld2", "ζ")
+surface_T = FieldTimeSeries("yin_yang_double_drake.jld2", "T")
+drake_times = surface_ζ.times
 
 drake_frame = Observable(1)
-ζₙ = @lift 1e5 * drake_mesh.on_quads(surface_ζ.yin[$drake_frame], surface_ζ.yang[$drake_frame])
-Tₙ = @lift drake_mesh.on_quads(surface_T.yin[$drake_frame], surface_T.yang[$drake_frame])
+ζₙ = @lift surface_ζ[$drake_frame]
+Tₙ = @lift surface_T[$drake_frame]
 azimuth = @lift π/4 + 2π * ($drake_frame - 1) / length(drake_times)
 title = @lift "Surface vorticity and temperature, t = " * prettytime(drake_times[$drake_frame])
 
@@ -590,13 +537,13 @@ for (column, name, elevation) in views
     Label(drake_fig[1, column], name, fontsize=16, tellwidth=false)
 end
 
-rows = ((ζₙ, :balance, (-10, 10), "Vertical vorticity (10⁻⁵ s⁻¹)"),
+rows = ((ζₙ, :balance, (-1e-4, 1e-4), "Vertical vorticity (s⁻¹)"),
         (Tₙ, :thermal, (0, 24), "Temperature (ᵒC)"))
 
 for (row, (values, colormap, colorrange, label)) in enumerate(rows)
     for (column, name, elevation) in views
         ax = globe!(drake_fig[row + 1, column], azimuth, elevation)
-        mesh!(ax, drake_mesh.vertices, drake_mesh.triangles; color=values, colormap, colorrange, nan_color=:gray70, shading=NoShading)
+        quadmesh!(ax, values; colormap, colorrange, nan_color=:gray70)
     end
     Colorbar(drake_fig[row + 1, 3]; colormap, colorrange, label)
 end

@@ -447,6 +447,13 @@ end
     @inbounds to_field[i, j, k] = interpolate(to_node, from_field, from_location, from_grid)
 end
 
+# Interpolation to a Flat dimension is supported only from a Flat dimension
+validate_flat_interpolation(to_topology, from_topology, dim) = nothing
+validate_flat_interpolation(::Type{Flat}, ::Type{Flat}, dim) = nothing
+validate_flat_interpolation(::Type{Flat}, from_topology, dim) =
+    throw(ArgumentError("Cannot interpolate! to a grid that is Flat in dimension $dim " *
+                        "from a grid that is $from_topology in dimension $dim."))
+
 """
 $(TYPEDSIGNATURES)
 
@@ -474,6 +481,8 @@ function interpolate!(to_field::Field, from_field::AbstractField, args...)
     # Make locations
     from_location = Tuple(L() for L in location(from_field))
     to_location   = Tuple(L() for L in location(to_field))
+
+    map(validate_flat_interpolation, topology(to_grid), topology(from_grid), (1, 2, 3))
 
     params = KernelParameters(interior_indices(to_field))
 

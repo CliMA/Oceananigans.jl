@@ -140,6 +140,31 @@ end
     @test total[1] > 0
 end
 
+@testset "Reactant Simulation: compiled run! with and without a peeled first step" begin
+    @info "Testing a compiled run! for Adams-Bashforth, which peels its first step, and for RK3, which does not..."
+    rectilinear_kw = (; size=(8, 8, 4), halo=(3, 3, 3), x=(0, 1), y=(0, 1), z=(0, 1))
+
+    for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
+        model_kw = (; free_surface=ExplicitFreeSurface(gravitational_acceleration=1), timestepper)
+        model = HydrostaticFreeSurfaceModel(RectilinearGrid(CPU(); rectilinear_kw...); model_kw...)
+        r_model = HydrostaticFreeSurfaceModel(RectilinearGrid(ReactantState(); rectilinear_kw...); model_kw...)
+
+        ui = randn(size(model.velocities.u)...)
+        set!(model, u=ui)
+        set!(r_model, u=ui)
+
+        Δt = 1e-3
+        simulation = Simulation(model; Δt, stop_iteration=5, verbose=false)
+        r_simulation = Simulation(r_model; Δt, stop_iteration=5, verbose=false)
+        run!(simulation)
+        compiled_run! = @compile run!(r_simulation)
+        compiled_run!(r_simulation)
+
+        @test iteration(r_simulation) == 5
+        @test Array(interior(r_model.velocities.u)) ≈ Array(interior(model.velocities.u))
+    end
+end
+
 @testset "Reactant Simulation: stop_time and TimeInterval" begin
     @info "Testing stop_time and TimeInterval conversion on a Reactant Simulation..."
     Nx, Ny, Nz = (10, 10, 10)
