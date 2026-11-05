@@ -237,7 +237,11 @@ Base.@nospecializeinfer function save_and_serialize_properties!(file, @nospecial
     return nothing
 end
 
-function initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, model)
+# Initialization runs once, so we specialize neither on the model nor on the outputs, which
+# can be large immutable structs (for example, fields of a `KernelFunctionOperation` whose
+# kernel function holds many fields).
+Base.@nospecializeinfer function initialize_jld2_file!(filepath, init, jld2_kw, including,
+                                                      @nospecialize(outputs), @nospecialize(model))
     # Output is appended to an existing file, which already holds the metadata
     isfile(filepath) && return nothing
 
@@ -280,8 +284,11 @@ function initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, mode
     end
 
     # Serialize the grid index, location, indices, and boundary conditions of each output.
+    # The file is opened without a `do` block: a closure would capture, and so specialize
+    # on, each output.
     for (name, field) in pairs(outputs)
-        jldopen(filepath, "a+"; jld2_kw...) do file
+        file = jldopen(filepath, "a+"; jld2_kw...)
+        try
             # Only write a grid index when we actually have multiple grids to choose from;
             # otherwise all outputs use the single grid at `serialized/grid`.
             if !single_grid && !isnothing(output_grids[string(name)])
@@ -298,6 +305,8 @@ function initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, mode
                 serializeproperty!(file, "timeseries/$name/serialized/boundary_conditions", boundary_conditions(field))
             catch
             end
+        finally
+            close(file)
         end
     end
 
