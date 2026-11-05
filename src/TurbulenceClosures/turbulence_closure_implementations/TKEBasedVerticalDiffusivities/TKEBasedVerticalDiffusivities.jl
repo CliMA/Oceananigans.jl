@@ -14,7 +14,7 @@ using Oceananigans.BoundaryConditions: BoundaryConditions, DefaultBoundaryCondit
                                        fill_halo_regions!
 using Oceananigans.BuoyancyFormulations: BuoyancyForce, BuoyancyTracer, SalinitySeawaterBuoyancy, SeawaterBuoyancy,
                                          TemperatureSeawaterBuoyancy, top_buoyancy_flux, ∂z_b
-using Oceananigans.Fields: CenterField, XFaceField, YFaceField, ZFaceField, ZeroField
+using Oceananigans.Fields: CenterField, Field, XFaceField, YFaceField, ZFaceField, ZeroField, set!
 using Oceananigans.Grids: Center, Face, inactive_cell, inactive_node, peripheral_node, static_column_depthᶜᶜᵃ
 using Oceananigans.Operators: Δzᶜᶜᶜ, Δzᶜᶠᶠ, Δzᶠᶜᶠ, Δz⁻¹ᶜᶜᶜ, Δz⁻¹ᶜᶠᶜ, Δz⁻¹ᶠᶜᶜ, ℑxᶜᵃᵃ, ℑxᶠᵃᵃ, ℑyᵃᶜᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶜ, ℑzᵃᵃᶠ,
                               ∂zᶜᶠᶠ, ∂zᶠᶜᶠ
@@ -144,6 +144,10 @@ get_top_tracer_bcs(::SeawaterBuoyancy, tracers) = (T = tracers.T.boundary_condit
                                                    S = tracers.S.boundary_conditions.top)
 get_top_tracer_bcs(::TemperatureSeawaterBuoyancy, tracers) = (; T = tracers.T.boundary_conditions.top)
 get_top_tracer_bcs(::SalinitySeawaterBuoyancy, tracers)    = (; S = tracers.S.boundary_conditions.top)
+
+# Prescribed velocities (e.g. a `TimeSeriesInterpolation`) have no `parent` to copy, so they are evaluated with `set!`
+store_previous_velocity!(u⁻, u::Field) = parent(u⁻) .= parent(u)
+store_previous_velocity!(u⁻, u) = set!(u⁻, u)
 
 include("tke_top_boundary_condition.jl")
 include("catke_vertical_diffusivity.jl")
