@@ -64,13 +64,13 @@ end
 #
 #     dE/dt = ½ (dU/dt)ᵀ D U + ½ Uᵀ D (dU/dt) = ½ Uᵀ (Aᵀ D + D A) U.
 #
-# Only the symmetric part of D A affects the energy. Substituting W = D^½ U gives
+# Since Dᵀ = D, only the symmetric part of D A affects the energy. Substituting W = D^½ U gives
 #
-#     E = ½ Wᵀ W,    dE/dt = Wᵀ [(S + Sᵀ) / 2] W,    S = D^½ A D^-½.
+#     E = ½ Wᵀ W,    dE/dt = Wᵀ [½(S + Sᵀ)] W,    S = D^½ A D^-½.
 #
 # So the largest relative rate (dE/dt) / E over all velocities is a Rayleigh quotient:
 #
-#     growth_rate = max over W of 2 Wᵀ [(S + Sᵀ) / 2] W / Wᵀ W = 2 λmax((S + Sᵀ) / 2).
+#     growth_rate = max over W of 2 Wᵀ [½(S + Sᵀ)] W / Wᵀ W = 2 λmax(½(S + Sᵀ)).
 #
 # A viscous operator should never add energy, so we need growth_rate ≤ 0. A positive value means some velocity field
 # gains energy from the viscosity. When A is self-adjoint in the volume-weighted inner product, S is symmetric.
