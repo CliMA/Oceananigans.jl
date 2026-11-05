@@ -16,7 +16,23 @@ function viscous_tendencies(grid, closure, u, v)
     return Gu, Gv
 end
 
-# The viscous operator as a matrix A, restricted to velocities off walls and land, and the volumes M at those velocities.
+# The horizontal viscous operator as a matrix A, and the cell volumes M at the velocity points.
+#
+# Stack the interior velocities into one vector U = [vec(u); vec(v)]. The viscosity ν is constant, so the
+# viscous tendencies are linear in U:
+#
+#     [vec(Gu); vec(Gv)] = A U,    Gu = -∂ⱼτ₁ⱼ,  Gv = -∂ⱼτ₂ⱼ,
+#
+# i.e., A is the discrete version of -ν ∇⁴ acting on (u, v). We build A one column at a time: column n is the
+# tendency produced by a velocity that is 1 at point n and 0 everywhere else. A contains only the viscous term
+# (no pressure, free surface, Coriolis, or advection).
+#
+# M holds the volumes Vᶠᶜᶜ (u points) and Vᶜᶠᶜ (v points), so the discrete kinetic energy is E = ½ Uᵀ diag(M) U.
+# A itself is not symmetric, because each row is divided by its own volume. The viscous operator is self-adjoint
+# when the product diag(M) A is symmetric.
+#
+# Both A and M are restricted to velocities off walls and land. Those velocities are always zero, so they would only
+# add zero eigenvalues.
 function viscous_operator_matrix(grid, closure)
     u, v = XFaceField(grid), YFaceField(grid)
     Nu, Nv = length(interior(u)), length(interior(v))
@@ -42,11 +58,30 @@ function viscous_operator_matrix(grid, closure)
     return A[a, a], M[a]
 end
 
-# Largest rate of change of ½ Σ V |u|² relative to ½ Σ V |u|² over all u (dissipative if ≤ 0), and the spectral radius
+# The largest energy growth rate and the spectral radius of the viscous operator.
+#
+# Growth rate: with dU/dt = A U and E = ½ Uᵀ D U, where D = diag(M), the energy changes at the rate
+#
+#     dE/dt = ½ (dU/dt)ᵀ D U + ½ Uᵀ D (dU/dt) = ½ Uᵀ (Aᵀ D + D A) U.
+#
+# Only the symmetric part of D A affects the energy. Substituting W = D^½ U gives
+#
+#     E = ½ Wᵀ W,    dE/dt = Wᵀ [(S + Sᵀ) / 2] W,    S = D^½ A D^-½.
+#
+# So the largest relative rate (dE/dt) / E over all velocities is a Rayleigh quotient:
+#
+#     growth_rate = max over W of 2 Wᵀ [(S + Sᵀ) / 2] W / Wᵀ W = 2 λmax((S + Sᵀ) / 2).
+#
+# A viscous operator should never add energy, so we need growth_rate ≤ 0. A positive value means some velocity field
+# gains energy from the viscosity. When A is self-adjoint in the volume-weighted inner product, S is symmetric.
+#
+# Spectral radius: max |λ| over the eigenvalues λ of A. S is similar to A, so they have the same eigenvalues. For an
+# explicit time stepper, Δt × (spectral radius) must stay within the stepper's stability region, so the largest stable
+# Δt scales as 1 / (spectral radius).
 function biharmonic_growth_rate_and_spectral_radius(grid, closure)
     A, M = viscous_operator_matrix(grid, closure)
     m = sqrt.(M)
-    S = Diagonal(m) * A * Diagonal(1 ./ m) # similar to A, and symmetric when A is self-adjoint in the volume-weighted norm
+    S = Diagonal(m) * A * Diagonal(1 ./ m)
     growth_rate = eigmax(Symmetric((S + S') / 2)) * 2
     return growth_rate, maximum(abs, eigvals(A))
 end
