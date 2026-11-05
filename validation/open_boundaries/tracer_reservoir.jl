@@ -28,7 +28,7 @@ u_prescribed(x, z, t) = U₀ * sin(ω * t)
 
 function tracer_reservoir_simulation(scheme, filename)
     grid = RectilinearGrid(size = (Nx, 4), x = (0, Lx), z = (-100.0, 0),
-                           halo = (5, 4), topology = (Bounded, Flat, Bounded))
+                           halo = (5, 4), topology = ((Closed, Open), Flat, Bounded))
 
     c_bcs = FieldBoundaryConditions(east = ValueBoundaryCondition(0; scheme))
 

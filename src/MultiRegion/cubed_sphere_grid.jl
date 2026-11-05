@@ -294,7 +294,7 @@ function BoundaryConditions.fill_halo_regions!(grid::ConformalCubedSphereGridOfS
             getregion(field, region).data .= getproperty(getregion(grid, region), name)
         end
 
-        if TX == Sides{Connected, Connected}
+        if TX == TwoSided{Connected, Connected}
             fill_halo_regions!(field)
         end
 
@@ -331,7 +331,7 @@ function BoundaryConditions.fill_halo_regions!(grid::ConformalCubedSphereGridOfS
             getregion(field₂, region).data .= getproperty(getregion(grid, region), name₂)
         end
 
-        if TX == Sides{Connected, Connected}
+        if TX == TwoSided{Connected, Connected}
             fill_halo_regions!((field₁, field₂); signed = false)
         end
 

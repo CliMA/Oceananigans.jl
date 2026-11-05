@@ -90,6 +90,11 @@ grid = YinYangGrid(size=(48, 16, 4), z=(-1000, 0))
 ├── Yang (region 2): (x, y, z) ↦ (-x, z, y), panel (λ′, φ′) = (0, 0) at (λ, φ) = (180, 0)
 └── z: Bounded  z ∈ [-1000.0, 0.0] regularly spaced with Δz=250.0
 ```
+
+References
+==========
+* Kageyama, A., & Sato, T. (2004). "'Yin-Yang grid': An overset grid in spherical geometry."
+  Geochemistry, Geophysics, Geosystems, 5(9), Q09005.
 """
 function YinYangGrid(arch::AbstractArchitecture = CPU(),
                      FT::DataType = Oceananigans.defaults.FloatType;
@@ -114,7 +119,7 @@ function YinYangGrid(arch::AbstractArchitecture = CPU(),
     connectivity = YinYangConnectivity(overlap, (Nλ, Nφ), stencil_width, masks, interpolation)
 
     λᶠ, φᶠ = panel_faces
-    topology = (Sides{Connected, Connected}, Sides{Connected, Connected}, Bounded)
+    topology = (TwoSided{Connected, Connected}, TwoSided{Connected, Connected}, Bounded)
     panel_size = (Nλ + 2overlap, Nφ + 2overlap, Nz)
     panel(longitude, north_pole) = RotatedLatitudeLongitudeGrid(arch, FT; size = panel_size, z, halo, radius, topology,
                                                                 latitude = (φᶠ[1], φᶠ[end]), longitude, north_pole)

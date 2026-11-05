@@ -1,13 +1,11 @@
+using Oceananigans
+using Test
 using JLD2
 using MPI
 using Oceananigans.DistributedComputations: reconstruct_global_field, reconstruct_global_grid
 using Oceananigans.Units
 using Oceananigans.TimeSteppers: first_time_step!
-
-
-include(joinpath(@__DIR__, "dependencies_for_runtests.jl"))
-
-using Oceananigans.BoundaryConditions: UPivot, TPivot, FPivot
+using Oceananigans.BoundaryConditions: fill_halo_regions!, UPivot, TPivot, FPivot
 
 if !@isdefined(_DISTRIBUTED_TESTS_UTILS_LOADED)
 const _DISTRIBUTED_TESTS_UTILS_LOADED = true
