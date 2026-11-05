@@ -5,7 +5,6 @@ using Oceananigans
 using Oceananigans.Units
 using GLMakie
 using Oceananigans.TurbulenceClosures: IsopycnalSkewSymmetricDiffusivity
-using Oceananigans.TurbulenceClosures: TriadIsopycnalSkewSymmetricDiffusivity
 using Oceananigans.TurbulenceClosures: FluxTapering
 
 gradient = "y"
@@ -31,20 +30,15 @@ grid = RectilinearGrid(architecture;
 coriolis = FPlane(latitude = -45)
 
 gerdes_koberle_willebrand_tapering = FluxTapering(1e-2)
-triad_closure = TriadIsopycnalSkewSymmetricDiffusivity(VerticallyImplicitTimeDiscretization(),
-                                                       κ_skew = 0,
-                                                       κ_symmetric = 1e3,
-                                                       slope_limiter = gerdes_koberle_willebrand_tapering)
-
-cox_closure = IsopycnalSkewSymmetricDiffusivity(VerticallyImplicitTimeDiscretization(),
-                                                κ_skew = 0,
-                                                κ_symmetric = 1e3,
-                                                slope_limiter = gerdes_koberle_willebrand_tapering)
+closure = IsopycnalSkewSymmetricDiffusivity(VerticallyImplicitTimeDiscretization(),
+                                            κ_skew = 0,
+                                            κ_symmetric = 1e3,
+                                            slope_limiter = gerdes_koberle_willebrand_tapering)
 
 @info "Building a model..."
 
 model = HydrostaticFreeSurfaceModel(grid; coriolis,
-                                    closure = triad_closure,
+                                    closure,
                                     buoyancy = BuoyancyTracer(),
                                     tracers = (:b, :c),
                                     momentum_advection = WENO(order=5),

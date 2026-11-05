@@ -2,20 +2,15 @@
 ##### PrescribedVelocityFields
 #####
 
-using Oceananigans: location
-using Oceananigans.Grids: Center, Face
-using Oceananigans.Fields: FunctionField, Field, field
-using Oceananigans.TimeSteppers: tick!, step_lagrangian_particles!, Clock
+using Oceananigans: location, prognostic_state, restore_prognostic_state!
 using Oceananigans.BoundaryConditions: BoundaryConditions, fill_halo_regions!
+using Oceananigans.Fields: Field, FunctionField, field
+using Oceananigans.Grids: Center, Face
+using Oceananigans.Models: extract_boundary_conditions
 using Oceananigans.OutputReaders: FieldTimeSeries, TimeSeriesInterpolation, update_field_time_series!
+using Oceananigans.TimeSteppers: Clock, step_lagrangian_particles!, tick!
 using Oceananigans.Units: Time
-
-import Oceananigans: prognostic_state, restore_prognostic_state!
-import Oceananigans.BoundaryConditions: fill_halo_regions!
-import Oceananigans.DistributedComputations: synchronize_communication!
-import Oceananigans.Models: extract_boundary_conditions
-import Oceananigans.Utils: datatuple, sum_of_velocities
-import Oceananigans.TimeSteppers: time_step!
+using Oceananigans.Utils: datatuple, sum_of_velocities
 
 struct PrescribedVelocityFields{F, U, V, W, P}
     formulation :: F
@@ -24,8 +19,6 @@ struct PrescribedVelocityFields{F, U, V, W, P}
     w :: W
     parameters :: P
 end
-
-const PVF = PrescribedVelocityFields
 
 @inline Base.getindex(U::PrescribedVelocityFields, i) = getindex((u=U.u, v=U.v, w=U.w), i)
 
@@ -102,7 +95,7 @@ julia> PrescribedVelocityFields(u = XFaceField(grid)).u
 ├── grid: 4×4×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
-└── data: 10×10×10 OffsetArray(::Array{Float64, 3}, -2:7, -2:7, -2:7) with eltype Float64 with indices -2:7×-2:7×-2:7
+└── data: 10×10×10 StaticStridesOffsetArray(::Array{Float64, 3}, -2:7, -2:7, -2:7) with eltype Float64 with indices -2:7×-2:7×-2:7
     └── max=0.0, min=0.0, mean=0.0
 ```
 
@@ -121,7 +114,7 @@ julia> PrescribedVelocityFields(u = u_fts).u
 ├── indices: (:, :, :)
 ├── time_indexing: Clamp()
 ├── backend: InMemory()
-└── data: 10×10×10×3 OffsetArray(::Array{Float64, 4}, -2:7, -2:7, -2:7, 1:3) with eltype Float64 with indices -2:7×-2:7×-2:7×1:3
+└── data: 10×10×10×3 StaticStridesOffsetArray(::Array{Float64, 4}, -2:7, -2:7, -2:7, 1:3) with eltype Float64 with indices -2:7×-2:7×-2:7×1:3
     └── max=0.0, min=0.0, mean=0.0
 ```
 
@@ -217,22 +210,23 @@ free_surface_names(::SplitExplicitFreeSurface, ::PrescribedVelocityFields, grid)
 @inline BoundaryConditions.fill_halo_regions!(::FunctionField, args...; kwargs...) = nothing
 @inline BoundaryConditions.fill_halo_regions!(::TimeSeriesInterpolation, args...; kwargs...) = nothing
 
-@inline datatuple(obj::PrescribedVelocityFields) = (; u = datatuple(obj.u), v = datatuple(obj.v), w = datatuple(obj.w))
+@inline Utils.datatuple(obj::PrescribedVelocityFields) = (; u = datatuple(obj.u), v = datatuple(obj.v), w = datatuple(obj.w))
 @inline velocities(obj::PrescribedVelocityFields) = (u = obj.u, v = obj.v, w = obj.w)
 @inline Base.merge(obj::PrescribedVelocityFields, others::NamedTuple) = merge(velocities(obj), others)
 
-# Extend sum_of_velocities for `PrescribedVelocityFields` (`PVF` alias)
-@inline sum_of_velocities(U1::PVF, U2) = sum_of_velocities(velocities(U1), U2)
-@inline sum_of_velocities(U1, U2::PVF) = sum_of_velocities(U1, velocities(U2))
-@inline sum_of_velocities(U1::PVF, U2::PVF) = sum_of_velocities(velocities(U1), velocities(U2))
+# Extend sum_of_velocities for `PrescribedVelocityFields`
+@inline Utils.sum_of_velocities(U1::PrescribedVelocityFields, U2) = sum_of_velocities(velocities(U1), U2)
+@inline Utils.sum_of_velocities(U1, U2::PrescribedVelocityFields) = sum_of_velocities(U1, velocities(U2))
 
-@inline sum_of_velocities(U1::PVF, U2, U3) = sum_of_velocities(velocities(U1), U2, U3)
-@inline sum_of_velocities(U1, U2::PVF, U3) = sum_of_velocities(U1, velocities(U2), U3)
-@inline sum_of_velocities(U1, U2, U3::PVF) = sum_of_velocities(U1, U2, velocities(U3))
-@inline sum_of_velocities(U1::PVF, U2::PVF, U3) = sum_of_velocities(velocities(U1), velocities(U2), U3)
-@inline sum_of_velocities(U1::PVF, U2, U3::PVF) = sum_of_velocities(velocities(U1), U2, velocities(U3))
-@inline sum_of_velocities(U1, U2::PVF, U3::PVF) = sum_of_velocities(U1, velocities(U2), velocities(U3))
-@inline sum_of_velocities(U1::PVF, U2::PVF, U3::PVF) = sum_of_velocities(velocities(U1), velocities(U2), velocities(U3))
+@inline Utils.sum_of_velocities(U1::PrescribedVelocityFields, U2, U3) = sum_of_velocities(velocities(U1), U2, U3)
+@inline Utils.sum_of_velocities(U1, U2::PrescribedVelocityFields, U3) = sum_of_velocities(U1, velocities(U2), U3)
+@inline Utils.sum_of_velocities(U1, U2, U3::PrescribedVelocityFields) = sum_of_velocities(U1, U2, velocities(U3))
+
+@inline Utils.sum_of_velocities(U1::PrescribedVelocityFields, U2::PrescribedVelocityFields) = sum_of_velocities(velocities(U1), velocities(U2))
+@inline Utils.sum_of_velocities(U1::PrescribedVelocityFields, U2::PrescribedVelocityFields, U3) = sum_of_velocities(velocities(U1), velocities(U2), U3)
+@inline Utils.sum_of_velocities(U1::PrescribedVelocityFields, U2, U3::PrescribedVelocityFields) = sum_of_velocities(velocities(U1), U2, velocities(U3))
+@inline Utils.sum_of_velocities(U1, U2::PrescribedVelocityFields, U3::PrescribedVelocityFields) = sum_of_velocities(U1, velocities(U2), velocities(U3))
+@inline Utils.sum_of_velocities(U1::PrescribedVelocityFields, U2::PrescribedVelocityFields, U3::PrescribedVelocityFields) = sum_of_velocities(velocities(U1), velocities(U2), velocities(U3))
 
 ab2_step_velocities!(::PrescribedVelocityFields, args...) = nothing
 rk_substep_velocities!(::PrescribedVelocityFields, args...) = nothing
@@ -252,15 +246,15 @@ mask_immersed_horizontal_velocities!(::PrescribedVelocityFields) = nothing
 transport_velocity_fields(velocities::PrescribedVelocityFields) = velocities
 
 validate_velocity_boundary_conditions(grid, ::PrescribedVelocityFields) = nothing
-extract_boundary_conditions(::PrescribedVelocityFields) = NamedTuple()
+Models.extract_boundary_conditions(::PrescribedVelocityFields) = NamedTuple()
 
 free_surface_displacement_field(::PrescribedVelocityFields, ::Nothing, grid) = nothing
 HorizontalVelocityFields(::PrescribedVelocityFields, grid) = nothing, nothing
 
-materialize_free_surface(::Nothing,                      ::PrescribedVelocityFields, grid, bcs) = nothing
-materialize_free_surface(::ExplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, grid, bcs) = nothing
-materialize_free_surface(::ImplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, grid, bcs) = nothing
-materialize_free_surface(::SplitExplicitFreeSurface,     ::PrescribedVelocityFields, grid, bcs) = nothing
+Models.materialize_free_surface(::Nothing,                      ::PrescribedVelocityFields, grid, bcs) = nothing
+Models.materialize_free_surface(::ExplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, grid, bcs) = nothing
+Models.materialize_free_surface(::ImplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, grid, bcs) = nothing
+Models.materialize_free_surface(::SplitExplicitFreeSurface,     ::PrescribedVelocityFields, grid, bcs) = nothing
 
 hydrostatic_prognostic_fields(::PrescribedVelocityFields, ::Nothing, tracers) = tracers
 previous_hydrostatic_state_fields(::SplitRungeKutta, ::PrescribedVelocityFields, ::Nothing, tracers) = (; Ψ⁻ = map(similar, tracers))
@@ -275,7 +269,7 @@ Adapt.adapt_structure(to, velocities::PrescribedVelocityFields) =
                              Adapt.adapt(to, velocities.w),
                              nothing) # Why are parameters not passed here? They probably should...
 
-on_architecture(to, velocities::PrescribedVelocityFields) =
+Architectures.on_architecture(to, velocities::PrescribedVelocityFields) =
     PrescribedVelocityFields(velocities.formulation,
                              on_architecture(to, velocities.u),
                              on_architecture(to, velocities.v),
@@ -286,18 +280,22 @@ on_architecture(to, velocities::PrescribedVelocityFields) =
 const OnlyParticleTrackingModel = HydrostaticFreeSurfaceModel{TS, E, A, S, G, T, V, B, R, F, P, U, W, C} where
                  {TS, E, A, S, G, T, V, B, R, F, P<:AbstractLagrangianParticles, U<:PrescribedVelocityFields, W<:PrescribedVelocityFields, C<:NamedTuple{(), Tuple{}}}
 
-function time_step!(model::OnlyParticleTrackingModel, Δt; callbacks = [], kwargs...)
+function TimeSteppers.time_step!(model::OnlyParticleTrackingModel, Δt; callbacks = [], kwargs...)
     tick!(model.clock, Δt)
     update_state!(model, callbacks)
     update_lagrangian_particle_state!(model)
     step_lagrangian_particles!(model, Δt)
 end
 
-update_state!(model::OnlyParticleTrackingModel, callbacks=[]) =
+TimeSteppers.update_state!(model::OnlyParticleTrackingModel, callbacks=[]) =
     [callback(model) for callback in callbacks if callback.callsite isa UpdateStateCallsite]
 
-prognostic_state(::PrescribedVelocityFields) = nothing
-restore_prognostic_state!(::PrescribedVelocityFields, ::Nothing) = nothing
+#####
+##### Checkpointing
+#####
+
+Oceananigans.prognostic_state(::PrescribedVelocityFields) = nothing
+Oceananigans.restore_prognostic_state!(::PrescribedVelocityFields, ::Nothing) = nothing
 
 #####
 ##### PrescribedFreeSurface
@@ -344,7 +342,7 @@ end
 # Fallback: if already a field, just return it
 materialize_prescribed_displacement(f, grid; kwargs...) = f
 
-function materialize_free_surface(free_surface::PrescribedFreeSurface, velocities, grid, bcs, clock)
+function Models.materialize_free_surface(free_surface::PrescribedFreeSurface, velocities, grid, bcs, clock)
     # Create a separate clock so that step_free_surface! can advance it to tⁿ⁺¹
     # before the grid update, matching prognostic free surfaces. The model clock
     # must not be modified because other operations (e.g. tracer tendency forcings)
@@ -358,7 +356,7 @@ function materialize_free_surface(free_surface::PrescribedFreeSurface, velocitie
 end
 
 # PrescribedFreeSurface is NOT nullified by PrescribedVelocityFields — delegate to its own method
-materialize_free_surface(fs::PrescribedFreeSurface, ::PrescribedVelocityFields, grid, bcs, clock) =
+Models.materialize_free_surface(fs::PrescribedFreeSurface, ::PrescribedVelocityFields, grid, bcs, clock) =
     materialize_free_surface(fs, nothing, grid, bcs, clock)
 
 #####
@@ -396,7 +394,7 @@ correct_barotropic_mode!(model, ::PrescribedFreeSurface, Δt; kwargs...) = nothi
 barotropic_velocities(::PrescribedFreeSurface) = (nothing, nothing)
 barotropic_transport(::PrescribedFreeSurface) = (nothing, nothing)
 
-synchronize_communication!(::PrescribedFreeSurface) = nothing
+DistributedComputations.synchronize_communication!(::PrescribedFreeSurface) = nothing
 
 transport_velocity_fields(velocities, ::PrescribedFreeSurface) = velocities
 transport_velocity_fields(velocities::PrescribedVelocityFields, ::PrescribedFreeSurface) = velocities
@@ -435,7 +433,7 @@ Adapt.adapt_structure(to, fs::PrescribedFreeSurface) =
                           fs.gravitational_acceleration,
                           nothing)
 
-on_architecture(to, fs::PrescribedFreeSurface) =
+Architectures.on_architecture(to, fs::PrescribedFreeSurface) =
     PrescribedFreeSurface(on_architecture(to, fs.displacement),
                           on_architecture(to, fs.gravitational_acceleration),
                           on_architecture(to, fs.parameters))
@@ -444,8 +442,8 @@ on_architecture(to, fs::PrescribedFreeSurface) =
 ##### PrescribedFreeSurface checkpointing
 #####
 
-prognostic_state(::PrescribedFreeSurface) = nothing
-restore_prognostic_state!(::PrescribedFreeSurface, ::Nothing) = nothing
+Oceananigans.prognostic_state(::PrescribedFreeSurface) = nothing
+Oceananigans.restore_prognostic_state!(::PrescribedFreeSurface, ::Nothing) = nothing
 
 #####
 ##### PrescribedFreeSurface + ZStarCoordinate: ∂t_σ from prescribed displacement
