@@ -1,9 +1,9 @@
-using ..Models: open_boundary_inflow_transport,
-                update_open_boundary_transport!,
-                apply_targeted_left_boundary_correction!,
+using ..Models: apply_targeted_left_boundary_correction!,
                 apply_targeted_right_boundary_correction!,
                 correct_left_boundary_transport!,
-                correct_right_boundary_transport!
+                correct_right_boundary_transport!,
+                open_boundary_inflow_transport,
+                update_open_boundary_transport!
 
 enforce_net_zero_transport!(velocities, ::Nothing) = nothing
 

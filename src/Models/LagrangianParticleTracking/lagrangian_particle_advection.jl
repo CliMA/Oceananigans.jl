@@ -1,6 +1,6 @@
-using Oceananigans.Utils: instantiate, KernelParameters
+using Oceananigans.Fields: FractionalIndices, interpolator
 using Oceananigans.Models: total_velocities
-using Oceananigans.Fields: interpolator, FractionalIndices
+using Oceananigans.Utils: KernelParameters, instantiate
 
 #####
 ##### Boundary conditions for Lagrangian particles

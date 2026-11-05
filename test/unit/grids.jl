@@ -1,7 +1,8 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 include(joinpath(@__DIR__, "..", "setup", "data_dependencies.jl"))
 
-using Oceananigans.Grids: total_extent, ColumnEnsembleSize,
+using Oceananigans: fully_supported_float_types
+using Oceananigans.Grids: total_extent, with_halo, ColumnEnsembleSize, inactive_cell,
                           xspacings, yspacings, zspacings,
                           xnode, ynode, znode, λnode, φnode,
                           λspacings, φspacings
@@ -430,10 +431,10 @@ function test_architecturally_correct_stretched_grid(FT, arch, zᵃᵃᶠ)
     grid = RectilinearGrid(arch, FT, size=(1, 1, length(zᵃᵃᶠ)-1), x=(0, 1), y=(0, 1), z=zᵃᵃᶠ)
 
     ArrayType = array_type(arch)
-    @test grid.z.cᵃᵃᶠ isa OffsetArray{FT, 1, <:ArrayType}
-    @test grid.z.cᵃᵃᶜ isa OffsetArray{FT, 1, <:ArrayType}
-    @test grid.z.Δᵃᵃᶠ isa OffsetArray{FT, 1, <:ArrayType}
-    @test grid.z.Δᵃᵃᶜ isa OffsetArray{FT, 1, <:ArrayType}
+    @test grid.z.cᵃᵃᶠ isa StaticStridesOffsetArray{FT, 1, <:Any, <:Any, <:ArrayType}
+    @test grid.z.cᵃᵃᶜ isa StaticStridesOffsetArray{FT, 1, <:Any, <:Any, <:ArrayType}
+    @test grid.z.Δᵃᵃᶠ isa StaticStridesOffsetArray{FT, 1, <:Any, <:Any, <:ArrayType}
+    @test grid.z.Δᵃᵃᶜ isa StaticStridesOffsetArray{FT, 1, <:Any, <:Any, <:ArrayType}
 
     return nothing
 end
@@ -788,14 +789,14 @@ function test_orthogonal_shell_grid_array_sizes_and_spacings(FT)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
     Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
 
-    @test grid.λᶜᶜᵃ isa OffsetArray{FT, 2, <:Array}
-    @test grid.λᶠᶜᵃ isa OffsetArray{FT, 2, <:Array}
-    @test grid.λᶜᶠᵃ isa OffsetArray{FT, 2, <:Array}
-    @test grid.λᶠᶠᵃ isa OffsetArray{FT, 2, <:Array}
-    @test grid.φᶜᶜᵃ isa OffsetArray{FT, 2, <:Array}
-    @test grid.φᶠᶜᵃ isa OffsetArray{FT, 2, <:Array}
-    @test grid.φᶜᶠᵃ isa OffsetArray{FT, 2, <:Array}
-    @test grid.φᶠᶠᵃ isa OffsetArray{FT, 2, <:Array}
+    @test grid.λᶜᶜᵃ isa StaticStridesOffsetArray{FT, 2, <:Any, <:Any, <:Array}
+    @test grid.λᶠᶜᵃ isa StaticStridesOffsetArray{FT, 2, <:Any, <:Any, <:Array}
+    @test grid.λᶜᶠᵃ isa StaticStridesOffsetArray{FT, 2, <:Any, <:Any, <:Array}
+    @test grid.λᶠᶠᵃ isa StaticStridesOffsetArray{FT, 2, <:Any, <:Any, <:Array}
+    @test grid.φᶜᶜᵃ isa StaticStridesOffsetArray{FT, 2, <:Any, <:Any, <:Array}
+    @test grid.φᶠᶜᵃ isa StaticStridesOffsetArray{FT, 2, <:Any, <:Any, <:Array}
+    @test grid.φᶜᶠᵃ isa StaticStridesOffsetArray{FT, 2, <:Any, <:Any, <:Array}
+    @test grid.φᶠᶠᵃ isa StaticStridesOffsetArray{FT, 2, <:Any, <:Any, <:Array}
 
     @test size(grid.λᶜᶜᵃ) == (Nx + 2Hx,     Ny + 2Hy    )
     @test size(grid.λᶠᶜᵃ) == (Nx + 2Hx + 1, Ny + 2Hy    )
@@ -889,6 +890,18 @@ end
             llgz = LatitudeLongitudeGrid(arch, size=(4, 4), longitude=(-10, 10), latitude=(30, 40),
                                          topology=(Bounded, Bounded, Flat))
             @test FI.fractional_z_index(12.3, ccc, llgz) == 0
+        end
+    end
+
+    @testset "Inactive cells beyond Closed sides" begin
+        for (x, inactive_west, inactive_east) in ((Bounded, true, true), (Open, false, false),
+                                                  ((Closed, Open), true, false), ((Open, Closed), false, true))
+            grid = RectilinearGrid(size=4, x=(0, 1), topology=(x, Flat, Flat))
+            Nx = size(grid, 1)
+            @test inactive_cell(0, 1, 1, grid) == inactive_west
+            @test inactive_cell(Nx + 1, 1, 1, grid) == inactive_east
+            @test !inactive_cell(1, 1, 1, grid)
+            @test !inactive_cell(Nx, 1, 1, grid)
         end
     end
 
@@ -1034,6 +1047,26 @@ end
             for FT in float_types
                 test_flat_size_regular_rectilinear_grid(FT)
             end
+        end
+
+        @testset "Regular coordinates with exact ends and halo-independent nodes [$(summary(arch)), $FT]" for arch in archs,
+                                                                                                         FT in filter(FT -> arch isa CPU || isbitstype(FT), fully_supported_float_types)
+            # No type is wider than BigFloat to hold the reference and step, so its ends are exact only to an ulp
+            same_ends = FT === BigFloat ? ((a, b) -> isapprox(a, b; rtol = eps(FT))) : (==)
+
+            Nx, Nz = 7, 6
+            grid = RectilinearGrid(arch, FT; size=(Nx, Nz), x=(-3.3, 7.1), z=(-10, 0), topology=(Bounded, Flat, Bounded))
+            wide = with_halo((5, 1, 5), grid)
+            @test same_ends(xnodes(grid, Face())[[1, Nx + 1]], [FT(-3.3), FT(7.1)])
+            @test same_ends(znodes(grid, Face())[[1, Nz + 1]], [FT(-10), FT(0)])
+            @test xnodes(wide, Face()) == xnodes(grid, Face())
+            @test znodes(wide, Center()) == znodes(grid, Center())
+
+            Nλ, Nφ = 4, 3
+            grid = LatitudeLongitudeGrid(arch, FT; size=(Nλ, Nφ, 1), longitude=(0, 10), latitude=(-10, 20), z=(-1, 0))
+            @test same_ends(λnodes(grid, Face())[[1, Nλ + 1]], [FT(0), FT(10)])
+            @test same_ends(φnodes(grid, Face())[[1, Nφ + 1]], [FT(-10), FT(20)])
+            @test φnodes(grid, Face())[2] == 0
         end
 
         @testset "Grid equality" begin
@@ -1232,6 +1265,14 @@ end
                 @test znodes(rectilinear_grid, Face()) == znodes(lat_lon_grid, Face())
             end
         end
+
+        @info "  Testing that the nodes of a latitude-longitude grid do not depend on its halo..."
+        longitude = (-76 + 2/12, -64 - 2/12)
+        grid = LatitudeLongitudeGrid(size = (140, 92, 2); longitude, latitude = (34 + 2/12, 42 - 2/12), z = (-10, 0), halo = (7, 7, 7))
+        wide = with_halo((27, 27, 7), grid)
+        @test λnodes(wide, Face()) == λnodes(grid, Face())
+        @test φnodes(wide, Center()) == φnodes(grid, Center())
+        @test λnodes(grid, Face())[[1, 141]] == collect(longitude)
     end
 
     @testset "Single column grids" begin

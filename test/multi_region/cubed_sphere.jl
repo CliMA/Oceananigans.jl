@@ -186,13 +186,13 @@ function same_longitude_at_poles!(grid_1::ConformalCubedSphereGrid, grid_2::Conf
 end
 
 """
-    zero_out_corner_halos!(array::OffsetArray, N, H)
+    zero_out_corner_halos!(array, N, H)
 
 Zero out the values at the corner halo regions of the two-dimensional `array`.
 It is expected that the interior of the offset `array` is `(Nx, Ny) = (N, N)` and
 the halo region is `H` in both dimensions.
 """
-function zero_out_corner_halos!(array::OffsetArray, N, H)
+function zero_out_corner_halos!(array, N, H)
     size(array) == (N+2H, N+2H)
 
     Nx = Ny = N

@@ -1,7 +1,7 @@
 using KernelAbstractions: @kernel, @index
 
 using Oceananigans.Architectures: architecture
-using Oceananigans.Operators: Δzᶜᶜᶜ
+using Oceananigans.Operators: Δzᶜᶜᶜ, Δz⁻¹ᶜᶜᶜ
 using Oceananigans.Grids: Flat, hack_sind, ξnode, ηnode
 using Oceananigans.Grids: constructor_arguments, halo_size, pop_flat_elements, reconstruction_faces,
                           cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z
@@ -288,7 +288,7 @@ end
                 target_field[i, j, k] += source_field[i_src, j_src, k₊_src] * (z₊ - zk₊_src)
             end
 
-            target_field[i, j, k] /= Δzᶜᶜᶜ(i, j, k, target_grid)
+            target_field[i, j, k] *= Δz⁻¹ᶜᶜᶜ(i, j, k, target_grid)
         end
     end
 end

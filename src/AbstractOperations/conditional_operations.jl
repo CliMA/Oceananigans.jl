@@ -1,8 +1,7 @@
-using Oceananigans.Fields: OneField
 using Base: @propagate_inbounds
+using Oceananigans.Fields: OneField, compute_at!, condition_operand, conditional_length, indices, set!
 
 using Oceananigans.Architectures: Architectures, architecture, on_architecture
-import Oceananigans.Fields: condition_operand, conditional_length, set!, compute_at!, indices
 
 # For conditional reductions such as mean(u * v, condition = u .> 0))
 struct ConditionalOperation{LX, LY, LZ, F, C, O, G, M, T} <: AbstractOperation{LX, LY, LZ, G, T}
@@ -65,7 +64,7 @@ Keyword arguments
 `condition_operand` is a convenience function used to construct a `ConditionalOperation`, e.g.,
 
 ```julia
-condition_operand(func::Function, operand::AbstractField, condition, mask) =
+Fields.condition_operand(func::Function, operand::AbstractField, condition, mask) =
     ConditionalOperation(operand; func, condition, mask)
 ```
 
@@ -162,18 +161,18 @@ end
 @inline evaluate_condition(::Nothing, i, j, k, grid, args...) = true
 @propagate_inbounds evaluate_condition(condition::AbstractArray, i, j, k, grid, args...) = @inbounds condition[i, j, k]
 
-@inline condition_operand(func, op, condition, mask) = ConditionalOperation(op; func, condition, mask)
+@inline Fields.condition_operand(func, op, condition, mask) = ConditionalOperation(op; func, condition, mask)
 
-@inline condition_operand(func, op::ConditionalOperation, ::Nothing, mask) = op
-@inline condition_operand(::typeof(identity), op::ConditionalOperation, ::Nothing, mask) = op
-@inline condition_operand(::Nothing, op::ConditionalOperation, ::Nothing, mask) = op
-@inline condition_operand(op::ConditionalOperation, ::Nothing, mask) = op
+@inline Fields.condition_operand(func, op::ConditionalOperation, ::Nothing, mask) = op
+@inline Fields.condition_operand(::typeof(identity), op::ConditionalOperation, ::Nothing, mask) = op
+@inline Fields.condition_operand(::Nothing, op::ConditionalOperation, ::Nothing, mask) = op
+@inline Fields.condition_operand(op::ConditionalOperation, ::Nothing, mask) = op
 
-@inline condition_operand(func, op::ConditionalOperation, condition, mask) = error("not supported")
-@inline condition_operand(func, op::ConditionalOperation, condition::AbstractArray, mask) = error("not supported")
-@inline condition_operand(op::ConditionalOperation, condition, mask) = error("not supported")
+@inline Fields.condition_operand(func, op::ConditionalOperation, condition, mask) = error("not supported")
+@inline Fields.condition_operand(func, op::ConditionalOperation, condition::AbstractArray, mask) = error("not supported")
+@inline Fields.condition_operand(op::ConditionalOperation, condition, mask) = error("not supported")
 
-@inline function condition_operand(func, operand::AbstractField, condition::AbstractArray, mask)
+@inline function Fields.condition_operand(func, operand::AbstractField, condition::AbstractArray, mask)
     condition = validate_condition(condition, operand)
     condition = on_architecture(architecture(operand.grid), condition)
     return ConditionalOperation(operand; func, condition, mask)
@@ -205,13 +204,13 @@ end
     return ConditionalOperation{LX, LY, LZ}(one_field, nothing, grid, c.condition, mask)
 end
 
-@inline conditional_length(c::ConditionalOperation) = sum(conditional_one(c, 0))
-@inline conditional_length(c::ConditionalOperation, ::Colon) = conditional_length(c)
-@inline conditional_length(c::ConditionalOperation, dims::Int) = sum(conditional_one(c, 0); dims)
-@inline conditional_length(c::ConditionalOperation, dims::Tuple) = sum(conditional_one(c, 0); dims)
+@inline Fields.conditional_length(c::ConditionalOperation) = sum(conditional_one(c, 0))
+@inline Fields.conditional_length(c::ConditionalOperation, ::Colon) = conditional_length(c)
+@inline Fields.conditional_length(c::ConditionalOperation, dims::Int) = sum(conditional_one(c, 0); dims)
+@inline Fields.conditional_length(c::ConditionalOperation, dims::Tuple) = sum(conditional_one(c, 0); dims)
 
-compute_at!(c::ConditionalOperation, time) = compute_at!(c.operand, time)
-indices(c::ConditionalOperation) = indices(c.operand)
+Fields.compute_at!(c::ConditionalOperation, time) = compute_at!(c.operand, time)
+Fields.indices(c::ConditionalOperation) = indices(c.operand)
 
 Adapt.adapt_structure(to, c::ConditionalOperation{LX, LY, LZ}) where {LX, LY, LZ} =
     ConditionalOperation{LX, LY, LZ}(adapt(to, c.operand),
