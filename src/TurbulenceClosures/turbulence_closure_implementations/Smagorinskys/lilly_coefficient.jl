@@ -84,10 +84,10 @@ Arguments
 Keyword arguments
 =================
 
-* `Cˢ`: Smagorinsky coefficient. Default value is 0.16 as obtained by Lilly (1966).
+* `Cˢ`: Smagorinsky coefficient. Default value is 0.16 as obtained by [Lilly (1966)](@cite Lilly66).
 
-* `Cb`: Buoyancy term multipler based on Lilly (1962) (`Cb = 0` turns it off, `Cb ≠ 0` turns it on.
-        Typically, and according to the original work by Lilly (1962), `Cb = 1 / Pr`.)
+* `Cb`: Buoyancy term multipler based on [Lilly (1962)](@cite Lilly62) (`Cb = 0` turns it off, `Cb ≠ 0` turns it on.
+        Typically, and according to the original work by [Lilly (1962)](@cite Lilly62), `Cb = 1 / Pr`.)
 
 * `Pr`: Turbulent Prandtl numbers for each tracer. Either a constant applied to every
         tracer, or a `NamedTuple` with fields for each tracer individually.

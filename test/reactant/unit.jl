@@ -1,6 +1,7 @@
 include(joinpath(@__DIR__, "..", "setup", "reactant_test_utils.jl"))
 
 using CUDA
+using KernelAbstractions: get_backend
 using Statistics: mean
 using Oceananigans.OutputReaders: cpu_interpolating_time_indices, Clamp, Cyclical, update_field_time_series!, InMemory,
                                   TimeSeriesInterpolation
@@ -117,7 +118,7 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
         for name in propertynames(llg)
             p = getproperty(llg, name)
             if !(name ∈ (:architecture, :z, :south_pole, :north_pole))
-                @test (p isa Number) || (p isa OffsetArray{FT, <:Any, <:Reactant.AbstractConcreteArray})
+                @test (p isa Number) || (p isa StaticStridesOffsetArray{FT, <:Any, <:Any, <:Any, <:Reactant.AbstractConcreteArray})
             end
         end
 
@@ -132,7 +133,7 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
         for name in propertynames(constant_llg)
             p = getproperty(constant_llg, name)
             if !(name ∈ (:architecture, :z, :south_pole, :north_pole))
-                @test (p isa Number) || (p isa OffsetArray{FT, <:Any, <:Array})
+                @test (p isa Number) || (p isa StaticStridesOffsetArray{FT, <:Any, <:Any, <:Any, <:Array})
             end
         end
 
@@ -164,7 +165,7 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
         for name in propertynames(rllg)
             p = getproperty(rllg, name)
             if !(name ∈ (:architecture, :z, :conformal_mapping))
-                @test (p isa Number) || (p isa OffsetArray{FT, <:Any, <:Reactant.AbstractConcreteArray})
+                @test (p isa Number) || (p isa StaticStridesOffsetArray{FT, <:Any, <:Any, <:Any, <:Reactant.AbstractConcreteArray})
             end
         end
 
@@ -182,7 +183,7 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
         for name in propertynames(constant_rllg)
             p = getproperty(constant_rllg, name)
             if !(name ∈ (:architecture, :z, :conformal_mapping))
-                @test (p isa Number) || (p isa OffsetArray{FT, <:Any, <:Array})
+                @test (p isa Number) || (p isa StaticStridesOffsetArray{FT, <:Any, <:Any, <:Any, <:Array})
             end
         end
 
@@ -302,6 +303,23 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
         compiled_set_column!(u, v)
 
         @test Array(interior(u)) == repeat(column, outer=(4, 4, 1))
+    end
+
+    @testset "LatitudeLongitudeGrid with a non-static vertical coordinate" begin
+        # `on_architecture(::ReactantState, ::LatitudeLongitudeGrid)` rebuilds the grid field by
+        # field. Vertical coordinates other than `StaticVerticalDiscretization` used to hit a
+        # MethodError there.
+        @info "  Testing LatitudeLongitudeGrid with MutableVerticalDiscretization..."
+        grid = LatitudeLongitudeGrid(arch; size = (4, 4, 4),
+                                     longitude = [0, 1, 2, 3, 4],
+                                     latitude = [0, 1, 2, 3, 4],
+                                     z = MutableVerticalDiscretization((0, 1)))
+
+        @test architecture(grid) isa ReactantState
+        @test grid.z isa MutableVerticalDiscretization
+        @test grid.z.cᵃᵃᶠ isa StaticStridesOffsetArray{Float64, 1, <:Any, <:Any, <:Reactant.AbstractConcreteArray}
+        @test architecture(grid.z.σᶜᶜⁿ) isa ReactantState
+        @test architecture(grid.z.ηⁿ) isa ReactantState
     end
 
     @testset "Computed fields on a grid with an array-valued vertical coordinate" begin
@@ -475,6 +493,20 @@ end
     end
 end
 
+# A field set from another one on a different grid is interpolated on the CPU, with the source's halos
+# filled: the cells next to a boundary read them
+@testset "set! between ReactantState fields on different grids" begin
+    function coarse_to_fine(arch)
+        coarse = CenterField(RectilinearGrid(arch; size = (2, 1, 1), x = (0, 1), y = (0, 1), z = (0, 1)))
+        fine = CenterField(RectilinearGrid(arch; size = (4, 1, 1), x = (0, 1), y = (0, 1), z = (0, 1)))
+        set!(coarse, (x, y, z) -> x)
+        set!(fine, coarse)
+        return Array(interior(fine))
+    end
+
+    @test coarse_to_fine(ReactantState()) ≈ coarse_to_fine(CPU())
+end
+
 # Host data with missing values (a NetCDF read) reaches ReactantState as a float array with NaN, plain, viewed or
 # reshaped, and reshaped host data keeps its shape
 @testset "on_architecture of host data with missing values and reshaped host data" begin
@@ -514,6 +546,32 @@ end
     refresh!(field, clock, t) = (clock.time = t; compute!(field); nothing)
     @jit raise = true refresh!(interpolated, clock, Reactant.ConcreteRNumber(5.0))
     @test all(Array(interior(interpolated)) .≈ 2)
+end
+
+@kernel function _bracket!(low, high, column, z, N)
+    n = @index(Global, Linear)
+    i₁, i₂ = Oceananigans.Fields.index_binary_search(column, z[n], N)
+    @inbounds low[n] = i₁
+    @inbounds high[n] = i₂
+end
+
+bracket!(low, high, column, z) = _bracket!(get_backend(low), 16)(low, high, column, z, length(column); ndrange=length(low))
+
+# A search with an early `return` inside its loop cannot be raised ("cannot raise op to stablehlo")
+@testset "index_binary_search inside a raised kernel" begin
+    column = Float32.(cumsum(1:16))
+    midpoints = (column[1:end-1] .+ column[2:end]) ./ 2
+    points = vcat(column, midpoints, column[1] - 1, column[end] + 1)
+
+    low = Reactant.to_rarray(zeros(Int, length(points)))
+    high = Reactant.to_rarray(zeros(Int, length(points)))
+    reactant_column, reactant_points = Reactant.to_rarray(column), Reactant.to_rarray(points)
+    raised_bracket! = @compile raise_first=true raise=true bracket!(low, high, reactant_column, reactant_points)
+    raised_bracket!(low, high, reactant_column, reactant_points)
+
+    expected = [Oceananigans.Fields.index_binary_search(column, z, length(column)) for z in points]
+    @test Array(low) == first.(expected)
+    @test Array(high) == last.(expected)
 end
 
 @kernel function _store_adaptive_Δt!(c, td)
