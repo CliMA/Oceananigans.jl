@@ -236,7 +236,7 @@ end
 # Fallbacks for uniform or Flat directions
 for val in [1, 2, 3]
     @eval begin
-        @inline reconstruction_coefficients(FT, coord::OffsetArray{<:Any, <:Any, <:AbstractRange}, arch, N, ::Val{$val}; order) = nothing
+        @inline reconstruction_coefficients(FT, coord::StaticStridesOffsetArray{<:Any, <:Any, <:Any, <:Any, <:AbstractRange}, arch, N, ::Val{$val}; order) = nothing
         @inline reconstruction_coefficients(FT, coord::AbstractRange, arch, N, ::Val{$val}; order)                              = nothing
         @inline reconstruction_coefficients(FT, coord::Nothing, arch, N, ::Val{$val}; order)                                    = nothing
         @inline reconstruction_coefficients(FT, coord::Number, arch, N, ::Val{$val}; order)                                     = nothing
@@ -281,5 +281,5 @@ end
             push!(stencil, stencil_coefficients(FT, i, r, cpu_coord, cpu_coord; order))
         end
     end
-    return OffsetArray(on_architecture(arch, stencil), -1)
+    return StaticStridesOffsetArray(on_architecture(arch, stencil), -1)
 end

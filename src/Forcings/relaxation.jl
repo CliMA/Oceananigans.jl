@@ -119,7 +119,7 @@ apply_transform(::Val{S}, field) where S =
   throw(ArgumentError("unknown transform :$S; supported: :horizontal_average"))
 
 # Note `F<:AbstractArray` (not `F<:AbstractField`): `Adapt.adapt_structure(to, ::Field) = adapt(to, f.data)`
-# unwraps Field to its underlying OffsetArray on GPU, so an `<:AbstractField` constraint here
+# unwraps Field to its underlying StaticStridesOffsetArray on GPU, so an `<:AbstractField` constraint here
 # would prevent kernel dispatch on the device and the compiler would emit a MethodError.
 @inline function (r::Relaxation{R, F})(i, j, k, grid, clock, model_fields) where {R, F<:AbstractArray}
     ϕ  = @inbounds r.relaxed[i, j, k]
