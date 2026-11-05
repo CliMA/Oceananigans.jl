@@ -1,6 +1,7 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
-using Oceananigans.TurbulenceClosures: ∇_dot_qᶜ, ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∂ⱼ_τ₃ⱼ, with_tracers, stencil_order,
+using Oceananigans.Operators: uniform_reconstruction_coefficients, ℑxᶠᵃᵃ, ∂xᵣᶠᶜᶜ, ∂xᵣᶜᶜᶜ, ∂zᶜᶜᶠ
+using Oceananigans.TurbulenceClosures: ∇_dot_qᶜ, ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∂ⱼ_τ₃ⱼ, with_tracers,
                                        required_halo_size_x, required_halo_size_y, required_halo_size_z,
                                        cell_diffusion_timescale
 
@@ -82,55 +83,165 @@ function bounded_tracer_laplacian_errors(arch, order)
     return first.(errors), last.(errors)
 end
 
-@testset "Fourth-order ScalarDiffusivity" begin
-    @info "Testing fourth-order ScalarDiffusivity..."
+# Computed separately: a difference inside one kernel contracts to an FMA on GPUs, which returns the product's rounding error
+derivative_at_order(∂, location, grid, order, φ) = Array(interior(Field(KernelFunctionOperation{location...}(∂, grid, Val(order), φ))))
+order_difference(∂, location, grid, high, low, φ) = derivative_at_order(∂, location, grid, high, φ) .- derivative_at_order(∂, location, grid, low, φ)
+
+@testset "High-order ScalarDiffusivity" begin
+    @testset "First derivative reconstruction coefficients" begin
+        for (buffer, exact) in ((1, (1,)), (2, (5//4, -1//12)), (3, (49//36, -5//36, 1//90)))
+            coefficients = uniform_reconstruction_coefficients(BigFloat, Val(:first_derivative), buffer)
+            @test all(coefficients[buffer + n] ≈ exact[n] for n in 1:buffer)
+            @test all(coefficients[buffer + n] ≈ -coefficients[buffer - n + 1] for n in 1:buffer)
+        end
+    end
 
     @testset "Construction" begin
         closure = ScalarDiffusivity(ν=1, κ=2, stencil_order=4)
-        @test stencil_order(closure) === Val(4)
-        @test stencil_order(ScalarDiffusivity(ν=1, κ=2)) === Val(2)
         @test required_halo_size_x(closure) == 2
         @test required_halo_size_y(closure) == 2
         @test required_halo_size_z(closure) == 2
         @test required_halo_size_x(ScalarDiffusivity(ν=1, κ=2)) == 1
+        @test required_halo_size_z(ScalarDiffusivity(ν=1, κ=2, stencil_order=6)) == 3
         @test summary(closure) == "ScalarDiffusivity{ExplicitTimeDiscretization}(ν=1.0, κ=2.0, stencil_order=4)"
-        @test stencil_order(with_tracers((:c,), closure)) === Val(4)
-        @test stencil_order(VerticalScalarDiffusivity(κ=1, stencil_order=4)) === Val(4)
+        @test summary(with_tracers((:c,), ScalarDiffusivity(κ=2, stencil_order=6))) ==
+              "ScalarDiffusivity{ExplicitTimeDiscretization}(ν=nothing, κ=(c=2.0,), stencil_order=6)"
+        @test summary(VerticalScalarDiffusivity(ν=1, κ=2, stencil_order=4)) == "VerticalScalarDiffusivity{ExplicitTimeDiscretization}(ν=1.0, κ=2.0, stencil_order=4)"
 
         @test_throws ArgumentError ScalarDiffusivity(ν=1, stencil_order=3)
+        @test_throws ArgumentError ScalarDiffusivity(ν=1, stencil_order=0)
         @test_throws ArgumentError HorizontalScalarDiffusivity(ν=1, stencil_order=4)
         @test_throws ArgumentError VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=1, stencil_order=4)
 
-        # The largest eigenvalue of the fourth-order Laplacian is 4/3 that of the second-order one
-        grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
+        # The largest eigenvalue of the Laplacian is 4/3 and 68/45 that of the second-order one at orders 4 and 6
+        grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1), halo=(3, 3, 3))
         model = NonhydrostaticModel(grid; closure, tracers=:c)
         @test cell_diffusion_timescale(model) ≈ 3/4 * (1/4)^2 / 2
+        model = NonhydrostaticModel(grid; closure=ScalarDiffusivity(ν=1, κ=2, stencil_order=6), tracers=:c)
+        @test cell_diffusion_timescale(model) ≈ 45/68 * (1/4)^2 / 2
     end
 
     for arch in archs
         @testset "Periodic convergence [$(typeof(arch))]" begin
-            e₂ = periodic_tracer_laplacian_errors(arch, 2)
-            e₄ = periodic_tracer_laplacian_errors(arch, 4)
-            r₂, r₄ = convergence_rate(e₂, Ns), convergence_rate(e₄, Ns)
-            @info "  Tracer Laplacian errors for N = $Ns: second order $e₂ (rate $r₂), fourth order $e₄ (rate $r₄)"
-            @test 1.9 < r₂ < 2.1
-            @test 3.9 < r₄ < 4.1
+            for order in (2, 4, 6)
+                @test isapprox(convergence_rate(periodic_tracer_laplacian_errors(arch, order), Ns), order, atol=0.2)
+                @test isapprox(convergence_rate(periodic_viscous_errors(arch, order), Ns), order, atol=0.2)
+            end
+        end
 
-            e₂ = periodic_viscous_errors(arch, 2)
-            e₄ = periodic_viscous_errors(arch, 4)
-            r₂, r₄ = convergence_rate(e₂, Ns), convergence_rate(e₄, Ns)
-            @info "  Viscous term errors for N = $Ns: second order $e₂ (rate $r₂), fourth order $e₄ (rate $r₄)"
-            @test 1.9 < r₂ < 2.1
-            @test 3.9 < r₄ < 4.1
+        @testset "Order decreases near boundaries [$(typeof(arch))]" begin
+            N = 16
+            grid = RectilinearGrid(arch; size=(N, 4, N), x=(0, 1), y=(0, 1), z=(0, 1), halo=(3, 3, 3), topology=(Bounded, Periodic, Bounded))
+            c = CenterField(grid)
+            set!(c, (x, y, z) -> exp(x) * cos(3z))
+            fill_halo_regions!(c)
+
+            # The stencil on x-faces reaches a halo at faces 1:2 and N:N+1 for order 4, and one face further for order 6
+            d = order_difference(∂xᵣᶠᶜᶜ, (Face, Center, Center), grid, 4, 2, c)
+            @test maximum(abs, d[1:2, :, :]) == 0
+            @test maximum(abs, d[N:N+1, :, :]) == 0
+            @test minimum(abs, d[3:N-1, :, :]) > 0
+
+            d = order_difference(∂xᵣᶠᶜᶜ, (Face, Center, Center), grid, 6, 4, c)
+            @test maximum(abs, d[1:3, :, :]) == 0
+            @test maximum(abs, d[N-1:N+1, :, :]) == 0
+            @test minimum(abs, d[4:N-2, :, :]) > 0
+
+            # The stencil at centers reads faces, and the boundary faces belong to the domain
+            u = XFaceField(grid)
+            set!(u, (x, y, z) -> sin(π * x) * cos(3z))
+            fill_halo_regions!(u)
+            d = order_difference(∂xᵣᶜᶜᶜ, (Center, Center, Center), grid, 4, 2, u)
+            @test maximum(abs, d[1, :, :]) == 0
+            @test maximum(abs, d[N, :, :]) == 0
+            @test minimum(abs, d[2:N-1, :, :]) > 0
+
+            ibg = ImmersedBoundaryGrid(grid, GridFittedBottom(0.5))
+            c = CenterField(ibg)
+            set!(c, (x, y, z) -> exp(x) * cos(3z))
+            fill_halo_regions!(c)
+            d = order_difference(∂zᶜᶜᶠ, (Center, Center, Face), ibg, 4, 2, c)
+            bottom = N ÷ 2 + 1
+            @test maximum(abs, d[:, :, bottom:bottom+1]) == 0
+            @test minimum(abs, d[:, :, bottom+2:N-1]) > 0
+        end
+
+        @testset "Open sides are not crossed [$(typeof(arch))]" begin
+            N, H = 16, 3
+            grid = RectilinearGrid(arch; size=(N, 4, 4), x=(0, 1), y=(0, 1), z=(0, 1), halo=(H, 3, 3), topology=(Open, Periodic, Bounded))
+            c = CenterField(grid)
+            fill!(parent(c), NaN)
+            set!(c, (x, y, z) -> exp(x))
+            view(parent(c), H, :, :) .= 1
+            view(parent(c), H + N + 1, :, :) .= 1
+
+            for order in (4, 6)
+                derivative = Field(KernelFunctionOperation{Face, Center, Center}(∂xᵣᶠᶜᶜ, grid, Val(order), c))
+                @test !any(isnan, Array(interior(derivative)))
+            end
+        end
+
+        @testset "Second order where the spacing is not regular [$(typeof(arch))]" begin
+            f(x, y, z) = exp(x / 10) * cos(y / 10 + z / 10)
+
+            function maximum_order_difference(∂, location, grid)
+                c = CenterField(grid)
+                set!(c, f)
+                fill_halo_regions!(c)
+                return maximum(abs, order_difference(∂, location, grid, 4, 2, c))
+            end
+
+            stretched = RectilinearGrid(arch; size=(8, 8, 8), x=(0, 8), y=(0, 8), z=(0:8) .^ 1.2, halo=(3, 3, 3))
+            latlon = LatitudeLongitudeGrid(arch; size=(8, 8, 8), longitude=(0, 8), latitude=(0, 8), z=(0, 8), halo=(3, 3, 3))
+            regular = RectilinearGrid(arch; size=(8, 8, 8), extent=(8, 8, 8), halo=(3, 3, 3))
+            partial = ImmersedBoundaryGrid(regular, PartialCellBottom(-7.5))
+
+            @test maximum_order_difference(∂zᶜᶜᶠ, (Center, Center, Face), stretched) == 0
+            @test maximum_order_difference(∂xᵣᶠᶜᶜ, (Face, Center, Center), stretched) > 0
+            @test maximum_order_difference(∂xᵣᶠᶜᶜ, (Face, Center, Center), latlon) == 0
+            @test maximum_order_difference(∂zᶜᶜᶠ, (Center, Center, Face), partial) == 0
+            @test maximum_order_difference(∂xᵣᶠᶜᶜ, (Face, Center, Center), partial) > 0
+
+            flat = RectilinearGrid(arch; size=(8, 8), y=(0, 8), z=(0, 8), halo=(3, 3), topology=(Flat, Periodic, Bounded))
+            c = CenterField(flat)
+            set!(c, (y, z) -> cos(y) * z)
+            fill_halo_regions!(c)
+            @test maximum(abs, Field(KernelFunctionOperation{Center, Center, Center}(∂xᵣᶠᶜᶜ, flat, Val(4), c))) == 0
+        end
+
+        @testset "Mirror symmetry over an immersed ridge [$(typeof(arch))]" begin
+            Nx, Ny, Nz = 32, 32, 12
+            underlying = RectilinearGrid(arch; size=(Nx, Ny, Nz), x=(0, 2π), y=(0, 2π), z=(-1, 0), halo=(3, 3, 3), topology=(Periodic, Periodic, Bounded))
+            grid = ImmersedBoundaryGrid(underlying, GridFittedBottom((x, y) -> -1 + 0.8 * exp(-(x - π)^2 - (y - π)^2)))
+            u, v, w = XFaceField(grid), YFaceField(grid), ZFaceField(grid)
+            set!(v, (x, y, z) -> sin(y - π) * cos(3x) * sin(3z))
+            τ₂ = Array(interior(viscous_stress_divergence(u, v, w, ScalarDiffusivity(ν=0.3, stencil_order=4))[2]))
+            mirrored_faces = [mod1(Ny + 2 - j, Ny) for j in 1:Ny]
+            @test maximum(abs, τ₂ .+ τ₂[:, mirrored_faces, :]) ≤ 1e-12 * maximum(abs, τ₂)
+        end
+
+        @testset "Single precision and constants [$(typeof(arch))]" begin
+            grid = RectilinearGrid(arch, Float32; size=(8, 8, 8), extent=(1, 1, 1), halo=(3, 3, 3))
+            c = CenterField(grid)
+            set!(c, 290)
+            fill_halo_regions!(c)
+            derivative = Field(KernelFunctionOperation{Face, Center, Center}(∂xᵣᶠᶜᶜ, grid, Val(4), c))
+            @test eltype(derivative) == Float32
+            @test maximum(abs, derivative) == 0
+        end
+
+        @testset "High-order interpolation [$(typeof(arch))]" begin
+            grid = RectilinearGrid(arch; size=(8, 8, 8), x=(0, 8), y=(0, 8), z=(0, 8), halo=(3, 3, 3), topology=(Periodic, Periodic, Bounded))
+            c, u = CenterField(grid), XFaceField(grid)
+            set!(c, (x, y, z) -> x)
+            set!(u, (x, y, z) -> x)
+            at_faces = Field(KernelFunctionOperation{Face, Center, Center}(ℑxᶠᵃᵃ, grid, Val(4), c))
+            @test Array(interior(at_faces, 3:6, :, :)) ≈ Array(interior(u, 3:6, :, :))
         end
 
         @testset "Bounded walls [$(typeof(arch))]" begin
             max₂, l1₂ = bounded_tracer_laplacian_errors(arch, 2)
             max₄, l1₄ = bounded_tracer_laplacian_errors(arch, 4)
-            @info "  Bounded Laplacian max errors: second order $max₂ (rate $(convergence_rate(max₂, Ns))), " *
-                  "fourth order $max₄ (rate $(convergence_rate(max₄, Ns)))"
-            @info "  Bounded Laplacian L1 errors: second order $l1₂ (rate $(convergence_rate(l1₂, Ns))), " *
-                  "fourth order $l1₄ (rate $(convergence_rate(l1₄, Ns)))"
             # The fallback next to walls is second order
             @test convergence_rate(max₄, Ns) > 1.9
             @test convergence_rate(l1₄, Ns) > 2.9
@@ -178,7 +289,7 @@ end
             @test maximum(abs, above(τᴵ[1]) .- interior(τᵀ[1])) ≤ 1e-12 * maximum(abs, τᵀ[1])
 
             # Time stepping conserves tracer and produces no NaN
-            model = NonhydrostaticModel(immersed; closure, tracers=:c)
+            model = @test_logs (:warn, r"^The FFT-based pressure_solver") NonhydrostaticModel(immersed; closure, tracers=:c)
             set!(model, c=c₀)
             C₀ = sum(model.tracers.c) # reductions on immersed grids exclude immersed cells
             for _ in 1:10
@@ -203,7 +314,6 @@ end
             end
             e₂ = [decay_error(N, 2) for N in (16, 32)]
             e₄ = [decay_error(N, 4) for N in (16, 32)]
-            @info "  Decay errors for N = (16, 32): second order $e₂, fourth order $e₄"
             @test 1.9 < log2(e₂[1] / e₂[2]) < 2.1
             @test 3.7 < log2(e₄[1] / e₄[2]) < 4.3
         end

@@ -71,18 +71,16 @@ value of keyword argument `discrete_form`, the constructor expects:
 * `parameters`: `NamedTuple` with parameters used by the functions
   that compute viscosity and/or diffusivity; default: `nothing`.
 
-* `stencil_order`: order of accuracy of the discrete Laplacian, either `2` (default) or `4`.
-  With `stencil_order = 4`, diffusive fluxes use the face derivative
-  `(15 (φᵢ - φᵢ₋₁) - (φᵢ₊₁ - φᵢ₋₂)) / 12Δ`, whose flux divergence is the fourth-order
-  five-point Laplacian. Fourth-order fluxes are used only in directions in which the grid is a
-  regularly-spaced `RectilinearGrid`, and fall back to second order next to `Bounded` walls and
-  immersed boundaries (where the four-point stencil would include inactive nodes), and in directions
-  with variable spacing. Viscous fluxes compute `∂ⱼuᵢ` at fourth order and the transpose term `∂ᵢuⱼ`
-  of the strain rate at second order, so that the viscous term reduces to the fourth-order Laplacian
-  `ν ∇²uᵢ` for constant `ν` and a velocity field that is discretely divergence-free.
-  Diffusivities stored in arrays or `Field`s are interpolated to faces at second order.
-  `stencil_order = 4` requires a halo size of at least 2 and is supported for `ThreeDimensionalFormulation`
-  and `VerticalFormulation` with `ExplicitTimeDiscretization`.
+* `stencil_order`: order of accuracy of the discrete Laplacian, a positive even integer; default: `2`.
+  Diffusive fluxes use the finite-volume reconstruction of the first derivative at faces, e.g.
+  `(15 (φᵢ - φᵢ₋₁) - (φᵢ₊₁ - φᵢ₋₂)) / 12Δ` for `stencil_order = 4`, whose flux divergence is the five-point
+  Laplacian. Higher-order fluxes are used only in directions in which the grid is a regularly-spaced
+  `RectilinearGrid`. Their order decreases where the stencil would reach an inactive node or cross an `Open` side,
+  and fluxes are second order in directions with variable spacing. Viscous fluxes compute `∂ⱼuᵢ` at `stencil_order` and the transpose
+  term `∂ᵢuⱼ` of the strain rate at second order, so that the viscous term reduces to the Laplacian `ν ∇²uᵢ` for
+  constant `ν` and a velocity field that is discretely divergence-free. Diffusivities stored in arrays or `Field`s
+  are interpolated to faces at second order. `stencil_order > 2` requires a halo size of at least `stencil_order ÷ 2`
+  and is supported for `ThreeDimensionalFormulation` and `VerticalFormulation` with `ExplicitTimeDiscretization`.
 
 Examples
 ========
@@ -148,16 +146,16 @@ function ScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(),
           `VerticalFormulation` or `ThreeDimensionalFormulation`"))
     end
 
-    stencil_order ∈ (2, 4) || throw(ArgumentError("ScalarDiffusivity stencil_order must be 2 or 4; got stencil_order = $stencil_order"))
+    stencil_order > 0 && iseven(stencil_order) || throw(ArgumentError("ScalarDiffusivity stencil_order must be positive and even; got stencil_order = $stencil_order"))
 
-    if stencil_order == 4
+    if stencil_order > 2
         formulation isa Union{ThreeDimensionalFormulation, VerticalFormulation} ||
-            throw(ArgumentError("stencil_order = 4 is only supported for ThreeDimensionalFormulation and VerticalFormulation"))
+            throw(ArgumentError("stencil_order > 2 is only supported for ThreeDimensionalFormulation and VerticalFormulation"))
 
         time_discretization isa ExplicitTimeDiscretization ||
-            throw(ArgumentError("stencil_order = 4 is only supported with ExplicitTimeDiscretization"))
+            throw(ArgumentError("stencil_order > 2 is only supported with ExplicitTimeDiscretization"))
 
-        required_halo_size = max(required_halo_size, 2)
+        required_halo_size = max(required_halo_size, stencil_order ÷ 2)
     end
 
     κ = convert_diffusivity(FT, κ; discrete_form, loc, parameters)
@@ -167,8 +165,7 @@ function ScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(),
     # This particular short-circuiting of the required_halo_size kwargs is necessary to perform parameter
     # estimation of the diffusivity coefficients using autodiff.
     if ν isa Number && κ isa Number
-      N = stencil_order == 4 ? 2 : 1
-      return ScalarDiffusivity{typeof(time_discretization), typeof(formulation), N}(ν, κ, Val(stencil_order))
+      return ScalarDiffusivity{typeof(time_discretization), typeof(formulation), stencil_order ÷ 2}(ν, κ, Val(stencil_order))
     end
 
     return ScalarDiffusivity{typeof(time_discretization), typeof(formulation), required_halo_size}(ν, κ, Val(stencil_order))
@@ -231,7 +228,7 @@ end
 
 compute_closure_fields!(closure_fields, ::ScalarDiffusivity, args...) = nothing
 
-function Base.summary(closure::ScalarDiffusivity)
+function Base.summary(closure::ScalarDiffusivity{<:Any, <:Any, <:Any, <:Any, <:Any, O}) where O
     TD = summary(TimeSteppers.time_discretization(closure))
     prefix = replace(summary(formulation(closure)), "Formulation" => "")
     prefix === "ThreeDimensional" && (prefix = "")
@@ -242,8 +239,8 @@ function Base.summary(closure::ScalarDiffusivity)
         summary_str = string(prefix, "ScalarDiffusivity{$TD}(ν=", prettysummary(closure.ν), ", κ=", prettysummary(closure.κ), ")")
     end
 
-    if stencil_order(closure) == Val(4)
-        summary_str = summary_str[1:end-1] * ", stencil_order=4)"
+    if O > 2
+        summary_str = summary_str[1:end-1] * ", stencil_order=$O)"
     end
 
     return summary_str

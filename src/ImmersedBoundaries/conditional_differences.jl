@@ -69,11 +69,19 @@ for (d, ξ) in enumerate((:x, :y, :z))
         end
 
         @eval begin
-            @inline Operators.$δξ(i, j, k, ibg::IBG, args...)              = $conditional_δξ($(other_locs[1]), $(other_locs[2]), i, j, k, ibg, $δξᵃ, args...)
+            @inline Operators.$δξ(i, j, k, ibg::IBG, ϕ)                    = $conditional_δξ($(other_locs[1]), $(other_locs[2]), i, j, k, ibg, $δξᵃ, ϕ)
             @inline Operators.$δξ(i, j, k, ibg::IBG, ϕ::Function, args...) = $conditional_δξ($(other_locs[1]), $(other_locs[2]), i, j, k, ibg, $δξᵃ, ϕ, args...)
        end
     end
 end
+
+for δ in (:δxᶠᵃᵃ, :δxᶜᵃᵃ, :δyᵃᶠᵃ, :δyᵃᶜᵃ, :δzᵃᵃᶠ, :δzᵃᵃᶜ)
+    @eval @inline Operators.$δ(i, j, k, ibg::IBG, order::Val, ψ) = Operators.$δ(i, j, k, ibg.underlying_grid, order, ψ)
+end
+
+# Partial cells make the vertical spacing irregular
+@inline Operators.δzᵃᵃᶠ(i, j, k, ibg::PCBIBG, ::Val, ψ) = Operators.δzᵃᵃᶠ(i, j, k, ibg.underlying_grid, ψ)
+@inline Operators.δzᵃᵃᶜ(i, j, k, ibg::PCBIBG, ::Val, ψ) = Operators.δzᵃᵃᶜ(i, j, k, ibg.underlying_grid, ψ)
 
 # Topology-aware immersed boundary operators
 #   * Velocities are `0` on `peripheral_node`s and

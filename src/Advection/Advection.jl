@@ -34,7 +34,8 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Operators: flux_div_xyᶜᶜᶜ, ∂t_σ, Ax_qᶠᶜᶜ, Axᶠᶜᶜ, Ay_qᶜᶠᶜ, Ayᶜᶠᶜ, Az_qᶜᶜᶠ,
                               Azᶜᶜᶜ, Azᶜᶜᶠ, Az⁻¹ᶜᶠᶜ, Az⁻¹ᶠᶜᶜ, V⁻¹ᶜᶜᶠ, V⁻¹ᶜᶠᶜ, V⁻¹ᶠᶜᶜ,
                               Δx_qᶜᶠᶜ, Δx⁻¹ᶠᶜᶜ, Δy_qᶠᶜᶜ, Δy⁻¹ᶜᶠᶜ,
-                              δxᶜᵃᵃ, δxᶠᵃᵃ, δyᵃᶜᵃ, δyᵃᶠᵃ, δzᵃᵃᶜ, ℑxᶜᵃᵃ, ℑxᶠᵃᵃ, ℑyᵃᶜᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶜ, ℑzᵃᵃᶠ
+                              δxᶜᵃᵃ, δxᶠᵃᵃ, δyᵃᶜᵃ, δyᵃᶠᵃ, δzᵃᵃᶜ, ℑxᶜᵃᵃ, ℑxᶠᵃᵃ, ℑyᵃᶜᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶜ, ℑzᵃᵃᶠ,
+                              FirstDerivative, Primitive, SecondDerivative, calc_reconstruction_stencil, stencil_coefficients
 
 abstract type AbstractAdvectionScheme{B, FT, TD} end
 abstract type AbstractCenteredAdvectionScheme{B, FT, TD} <: AbstractAdvectionScheme{B, FT, TD} end
