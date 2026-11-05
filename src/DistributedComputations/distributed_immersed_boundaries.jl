@@ -3,6 +3,7 @@ using Oceananigans.ImmersedBoundaries:
     GridFittedBoundary,
     GridFittedVerticalBoundaries,
     PartialCellVerticalBoundaries,
+    TopLoad,
     active_cells_maps,
     bottom_height_interior,
     compute_mask,
@@ -30,8 +31,8 @@ function reconstruct_global_grid(grid::ImmersedBoundaryGrid)
 end
 
 # The same immersed boundary with its heights mapped by `f`
-map_heights(f, ib::GridFittedVerticalBoundaries)  = GridFittedVerticalBoundaries(f(ib.bottom_height), f(ib.top_height), ib.immersed_condition)
-map_heights(f, ib::PartialCellVerticalBoundaries) = PartialCellVerticalBoundaries(f(ib.bottom_height), f(ib.top_height), ib.minimum_fractional_cell_height)
+map_heights(f, ib::GridFittedVerticalBoundaries)  = GridFittedVerticalBoundaries(f(ib.bottom_height), f(ib.top_height), ib.immersed_condition, f(ib.top_load))
+map_heights(f, ib::PartialCellVerticalBoundaries) = PartialCellVerticalBoundaries(f(ib.bottom_height), f(ib.top_height), ib.minimum_fractional_cell_height, f(ib.top_load))
 
 function reconstruct_global_immersed_boundary(ib::AbstractGridFittedBottom, arch, grid)
     Nx, Ny, _ = size(grid)
@@ -39,6 +40,7 @@ function reconstruct_global_immersed_boundary(ib::AbstractGridFittedBottom, arch
 end
 
 global_height_array(::Nothing, arch, global_size) = nothing
+global_height_array(load::TopLoad, arch, global_size) = load
 global_height_array(height, arch, global_size) = construct_global_array(bottom_height_interior(height), arch, global_size)
 
 function reconstruct_global_immersed_boundary(ib::GridFittedBoundary, arch, grid)
@@ -71,6 +73,7 @@ function scatter_local_grids(global_grid::ImmersedBoundaryGrid, arch::Distribute
 end
 
 local_height_array(::Nothing, arch, local_size) = nothing
+local_height_array(load::TopLoad, arch, local_size) = load
 local_height_array(height, arch, local_size) = partition(bottom_height_interior(height), arch, local_size)
 
 """
@@ -119,6 +122,7 @@ wrong_height_size(::Nothing, height_size) = false
 wrong_height_size(height, height_size) = any(size(height) .!= height_size)
 
 resize_height(::Nothing, grid) = nothing
+resize_height(load::TopLoad, grid) = load
 
 function resize_height(height, grid)
     Nx, Ny, _ = size(grid)
