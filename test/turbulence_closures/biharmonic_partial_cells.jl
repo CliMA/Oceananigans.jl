@@ -1,6 +1,6 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
-using LinearAlgebra: Diagonal, Symmetric, diag, eigmax, eigvals
+using LinearAlgebra: Diagonal, Symmetric, eigmax, eigvals
 using Random: Random
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Grids: peripheral_node
@@ -16,23 +16,9 @@ function viscous_tendencies(grid, closure, u, v)
     return Gu, Gv
 end
 
-# The horizontal viscous operator as a matrix A, and the cell volumes M at the velocity points.
-#
-# Stack the interior velocities into one vector U = [vec(u); vec(v)]. The viscosity ν is constant, so the
-# viscous tendencies are linear in U:
-#
-#     [vec(Gu); vec(Gv)] = A U,    Gu = -∂ⱼτ₁ⱼ,  Gv = -∂ⱼτ₂ⱼ,
-#
-# i.e., A is the discrete version of -ν ∇⁴ acting on (u, v). We build A one column at a time: column n is the
-# tendency produced by a velocity that is 1 at point n and 0 everywhere else. A contains only the viscous term
-# (no pressure, free surface, Coriolis, or advection).
-#
-# M holds the volumes Vᶠᶜᶜ (u points) and Vᶜᶠᶜ (v points), so the discrete kinetic energy is E = ½ Uᵀ diag(M) U.
-# A itself is not symmetric, because each row is divided by its own volume. The viscous operator is self-adjoint
-# when the product diag(M) A is symmetric.
-#
-# Both A and M are restricted to velocities off walls and land. Those velocities are always zero, so they would only
-# add zero eigenvalues.
+# The viscous operator A, with [vec(Gu); vec(Gv)] = A U and U = [vec(u); vec(v)], and the volumes M at the velocities, so that
+# E = ½ Uᵀ diag(M) U. Column n of A is the tendency of a velocity that is 1 at point n and 0 elsewhere. A and M exclude velocities
+# on walls and land, which are always zero.
 function viscous_operator_matrix(grid, closure)
     u, v = XFaceField(grid), YFaceField(grid)
     Nu, Nv = length(interior(u)), length(interior(v))
@@ -58,26 +44,9 @@ function viscous_operator_matrix(grid, closure)
     return A[a, a], M[a]
 end
 
-# The largest energy growth rate and the spectral radius of the viscous operator.
-#
-# Growth rate: with dU/dt = A U and E = ½ Uᵀ D U, where D = diag(M), the energy changes at the rate
-#
-#     dE/dt = ½ (dU/dt)ᵀ D U + ½ Uᵀ D (dU/dt) = ½ Uᵀ (Aᵀ D + D A) U.
-#
-# Only the symmetric part of D A affects the energy. Substituting W = D^½ U gives
-#
-#     E = ½ Wᵀ W,    dE/dt = Wᵀ [(S + Sᵀ) / 2] W,    S = D^½ A D^-½.
-#
-# So the largest relative rate (dE/dt) / E over all velocities is a Rayleigh quotient:
-#
-#     growth_rate = max over W of 2 Wᵀ [(S + Sᵀ) / 2] W / Wᵀ W = 2 λmax((S + Sᵀ) / 2).
-#
-# A viscous operator should never add energy, so we need growth_rate ≤ 0. A positive value means some velocity field
-# gains energy from the viscosity. When A is self-adjoint in the volume-weighted inner product, S is symmetric.
-#
-# Spectral radius: max |λ| over the eigenvalues λ of A. S is similar to A, so they have the same eigenvalues. For an
-# explicit time stepper, Δt × (spectral radius) must stay within the stepper's stability region, so the largest stable
-# Δt scales as 1 / (spectral radius).
+# With dU/dt = A U, D = diag(M) and S = D^½ A D^-½, the energy E = ½ Uᵀ D U changes at the rate dE/dt = ½ Uᵀ (Aᵀ D + D A) U. The largest
+# relative rate is the Rayleigh quotient growth_rate = max (dE/dt) / E = 2 λmax((S + Sᵀ) / 2), which is ≤ 0 for a dissipative operator.
+# The largest stable explicit Δt scales as 1 / (spectral radius), where the spectral radius is max |λ(A)|.
 function biharmonic_growth_rate_and_spectral_radius(grid, closure)
     A, M = viscous_operator_matrix(grid, closure)
     m = sqrt.(M)
@@ -120,17 +89,31 @@ end
 
     @testset "Dissipation and spectral radius with PartialCellBottom over random depths" begin
         for topology in ((Periodic, Periodic, Bounded), (Bounded, Bounded, Bounded)), land in (false, true)
-            @info "  Testing biharmonic dissipation with PartialCellBottom [$topology, land=$land]..."
             underlying_grid = RectilinearGrid(CPU(); size=(Nx, Ny, 1), x=(0, Nx*Δ), y=(0, Ny*Δ), z=(-H, 0),
                                               halo=(4, 4, 4), topology)
             grid = ImmersedBoundaryGrid(underlying_grid, partial_cell_bottom(Nx, Ny, H; land))
 
-            flat_growth_rate, flat_spectral_radius = biharmonic_growth_rate_and_spectral_radius(underlying_grid, closure)
+            _, flat_spectral_radius = biharmonic_growth_rate_and_spectral_radius(underlying_grid, closure)
             growth_rate, spectral_radius = biharmonic_growth_rate_and_spectral_radius(grid, closure)
 
             # Energy never grows, up to round-off,
             @test growth_rate ≤ 1e-12 * spectral_radius
             # and partial cells do not tighten the time-step limit of a flat bottom
+            @test spectral_radius ≤ flat_spectral_radius * (1 + 1e-12)
+        end
+    end
+
+    @testset "Dissipation and spectral radius with PartialCellBottom in Flat directions" begin
+        alternating_bottom(ξ) = isodd(floor(Int, ξ / Δ)) ? -5 : -H
+        x_varying_grid = RectilinearGrid(CPU(); size=(Nx, 1), x=(0, Nx*Δ), z=(-H, 0), halo=(4, 4), topology=(Periodic, Flat, Bounded))
+        y_varying_grid = RectilinearGrid(CPU(); size=(Ny, 1), y=(0, Ny*Δ), z=(-H, 0), halo=(4, 4), topology=(Flat, Periodic, Bounded))
+        column_grid = RectilinearGrid(CPU(); size=1, z=(-H, 0), halo=4, topology=(Flat, Flat, Bounded))
+
+        for (underlying_grid, bottom) in ((x_varying_grid, alternating_bottom), (y_varying_grid, alternating_bottom), (column_grid, -H/2))
+            grid = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(bottom; minimum_fractional_cell_height=1e-3))
+            _, flat_spectral_radius = biharmonic_growth_rate_and_spectral_radius(underlying_grid, closure)
+            growth_rate, spectral_radius = biharmonic_growth_rate_and_spectral_radius(grid, closure)
+            @test growth_rate ≤ 1e-12 * spectral_radius
             @test spectral_radius ≤ flat_spectral_radius * (1 + 1e-12)
         end
     end
@@ -157,12 +140,11 @@ end
 
     for arch in archs
         @testset "Random velocities stay bounded over random depths [$(typeof(arch))]" begin
-            @info "  Testing biharmonic damping with PartialCellBottom [$(typeof(arch))]..."
-            u₀, u_flat = biharmonic_damping_of_random_velocities(arch, nothing)
-            u₀, u_partial = biharmonic_damping_of_random_velocities(arch, partial_cell_bottom(16, 16, 4000))
-            @test u_flat < u₀
-            @test isfinite(u_partial)
-            @test u_partial < u₀
+            flat_initial_speed, flat_final_speed = biharmonic_damping_of_random_velocities(arch, nothing)
+            initial_speed, final_speed = biharmonic_damping_of_random_velocities(arch, partial_cell_bottom(16, 16, 4000))
+            @test flat_final_speed < flat_initial_speed
+            @test isfinite(final_speed)
+            @test final_speed < initial_speed
         end
     end
 end

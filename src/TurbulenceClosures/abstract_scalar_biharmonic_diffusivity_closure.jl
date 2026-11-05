@@ -1,7 +1,6 @@
 using Oceananigans.Grids: peripheral_node
-using Oceananigans.Advection: conditional_flux_ccc
-using Oceananigans.ImmersedBoundaries: PCBIBG
-using Oceananigans.Operators: div_xyᶜᶜᶜ, Δxᶠᶠᶜ, Δyᶠᶠᶜ, Δzᶜᶠᶜ, Δzᶠᶜᶜ, Δzᶠᶠᶜ
+using Oceananigans.ImmersedBoundaries: PCBIBG, XFlatPCBIBG, YFlatPCBIBG, XYFlatPCBIBG
+using Oceananigans.Operators: div_xyᶜᶜᶜ, Δzᶜᶠᶜ, Δzᶠᶜᶜ
 
 """
     abstract type AbstractScalarBiharmonicDiffusivity <: AbstractTurbulenceClosure end
@@ -140,65 +139,38 @@ using Oceananigans.OrthogonalSphericalShellGrids: ConformalCubedSpherePanelGridO
 end
 
 #####
-##### Horizontal biharmonic viscosity on grids with partial cells
-#####
-##### On a `PartialCellBottom` grid the cell thickness varies laterally. The outer divergence in `∂ⱼ_τ₁ⱼ` and `∂ⱼ_τ₂ⱼ`
-##### weights the stresses by the thickness at the stress location (`Ax = Δy Δzᶜᶜᶜ`, `Ay = Δx Δzᶠᶠᶜ`) and divides by
-##### the volume at the velocity location, `V = Az min(Δzᶜᶜᶜ)`. Applying it to the componentwise Laplacian `∇²h`
-##### (`δ★ᶜᶜᶜ`, `ζ★ᶠᶠᶜ` above) gives an operator that is neither symmetric nor bounded where a thin partial cell
-##### neighbours a thick one: the thick cell's stress is divided by the thin face's volume. Here the biharmonic operator is
-#####
-#####     ∇⁴u = L(L(u)),   L(u) = V⁻¹ [ ∇(Az Δz★ div u) - ẑ × ∇(Az Δzᶠᶠᶜ ζ u) ],
-#####
-##### the square of a thickness-weighted vector Laplacian whose stresses at cell centers are weighted by
-##### `Δz★ᶜᶜᶜ`, the thinnest of the four adjacent velocity faces. `L` is symmetric and negative semi-definite in the
-##### volume-weighted inner product, so the operator is dissipative for any distribution of Δz; with `Δz★ ≤ Δz` at the
-##### faces of every stress, its spectral radius is no larger than for a flat bottom, so the explicit time-step limit
-##### does not depend on the partial cells. With uniform Δz, `L` is the usual vector Laplacian.
+##### Horizontal biharmonic viscosity on partial cells
 #####
 
-@inline Δz★ᶜᶜᶜ(i, j, k, grid) = min(Δzᶠᶜᶜ(i, j, k, grid), Δzᶠᶜᶜ(i+1, j, k, grid),
-                                     Δzᶜᶠᶜ(i, j, k, grid), Δzᶜᶠᶜ(i, j+1, k, grid))
+# ∇⁴u = L(L(u)), with L(u) = V⁻¹ [ ∇(Az Δzᵐⁱⁿ δ) - ẑ × ∇(Az Δzᶠᶠᶜ ζ) ] and Δzᵐⁱⁿ the thinnest velocity face of a cell
+@inline Δzᵐⁱⁿᶜᶜᶜ(i, j, k, grid) = min(Δzᶠᶜᶜ(i, j, k, grid), Δzᶠᶜᶜ(i+1, j, k, grid), Δzᶜᶠᶜ(i, j, k, grid), Δzᶜᶠᶜ(i, j+1, k, grid))
+@inline Δzᵐⁱⁿᶜᶜᶜ(i, j, k, grid::XFlatPCBIBG) = min(Δzᶜᶠᶜ(i, j, k, grid), Δzᶜᶠᶜ(i, j+1, k, grid))
+@inline Δzᵐⁱⁿᶜᶜᶜ(i, j, k, grid::YFlatPCBIBG) = min(Δzᶠᶜᶜ(i, j, k, grid), Δzᶠᶜᶜ(i+1, j, k, grid))
+@inline Δzᵐⁱⁿᶜᶜᶜ(i, j, k, grid::XYFlatPCBIBG) = Δzᶜᶜᶜ(i, j, k, grid)
 
-# Horizontal divergence and vertical vorticity per unit thickness
-@inline div₂ᶜᶜᶜ(i, j, k, grid, u, v) = Az⁻¹ᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, u) + δyᵃᶜᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, v))
-@inline   ζ₂ᶠᶠᶜ(i, j, k, grid, u, v) = Az⁻¹ᶠᶠᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, Δy_qᶜᶠᶜ, v) - δyᵃᶠᵃ(i, j, k, grid, Δx_qᶠᶜᶜ, u))
+@inline Δzᵐⁱⁿδᶜᶜᶜ(i, j, k, grid, u, v) = Δzᵐⁱⁿᶜᶜᶜ(i, j, k, grid) * Az⁻¹ᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, u) + δyᵃᶜᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, v))
 
-# Thickness-weighted stresses of the vector Laplacian. Stresses at centers vanish in immersed cells, like the outer
-# stresses (see immersed_diffusive_fluxes.jl); vorticity stresses vanish on all peripheral corners (free slip),
-# also in `ζ★ᶠᶠᶜ` below, so that the operator stays symmetric next to walls and land.
-@inline masked_ζ_flux(i, j, k, grid, flux) = ifelse(peripheral_node(i, j, k, grid, Face(), Face(), Center()), zero(grid), flux)
+@inline function free_slip_vorticityᶠᶠᶜ(i, j, k, grid, u, v)
+    ζ = Az⁻¹ᶠᶠᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, Δy_qᶜᶠᶜ, v) - δyᵃᶠᵃ(i, j, k, grid, Δx_qᶠᶜᶜ, u))
+    return ifelse(peripheral_node(i, j, k, grid, Face(), Face(), Center()), zero(grid), ζ)
+end
 
-@inline Δy_Δz_divᶜᶜᶜ(i, j, k, grid, u, v) =
-    conditional_flux_ccc(i, j, k, grid, zero(grid), Δyᶜᶜᶜ(i, j, k, grid) * Δz★ᶜᶜᶜ(i, j, k, grid) * div₂ᶜᶜᶜ(i, j, k, grid, u, v))
+@inline ∇²★uᶠᶜᶜ(i, j, k, grid, u, v) = V⁻¹ᶠᶜᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, Δy_qᶜᶜᶜ, Δzᵐⁱⁿδᶜᶜᶜ, u, v) - δyᵃᶜᵃ(i, j, k, grid, Ay_qᶠᶠᶜ, free_slip_vorticityᶠᶠᶜ, u, v))
+@inline ∇²★vᶜᶠᶜ(i, j, k, grid, u, v) = V⁻¹ᶜᶠᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_qᶠᶠᶜ, free_slip_vorticityᶠᶠᶜ, u, v) + δyᵃᶠᵃ(i, j, k, grid, Δx_qᶜᶜᶜ, Δzᵐⁱⁿδᶜᶜᶜ, u, v))
 
-@inline Δx_Δz_ζᶠᶠᶜ(i, j, k, grid, u, v) =
-    masked_ζ_flux(i, j, k, grid, Δxᶠᶠᶜ(i, j, k, grid) * Δzᶠᶠᶜ(i, j, k, grid) * ζ₂ᶠᶠᶜ(i, j, k, grid, u, v))
+@inline Δy_∇²u(i, j, k, grid::PCBIBG, u, v) = Δy_qᶠᶜᶜ(i, j, k, grid, biharmonic_mask_x, ∇²★uᶠᶜᶜ, u, v)
+@inline Δx_∇²v(i, j, k, grid::PCBIBG, u, v) = Δx_qᶜᶠᶜ(i, j, k, grid, biharmonic_mask_y, ∇²★vᶜᶠᶜ, u, v)
+@inline Δy_∇²v(i, j, k, grid::PCBIBG, u, v) = Δy_qᶜᶠᶜ(i, j, k, grid, biharmonic_mask_y, ∇²★vᶜᶠᶜ, u, v)
+@inline Δx_∇²u(i, j, k, grid::PCBIBG, u, v) = Δx_qᶠᶜᶜ(i, j, k, grid, biharmonic_mask_x, ∇²★uᶠᶜᶜ, u, v)
 
-@inline Δy_Δz_ζᶠᶠᶜ(i, j, k, grid, u, v) =
-    masked_ζ_flux(i, j, k, grid, Δyᶠᶠᶜ(i, j, k, grid) * Δzᶠᶠᶜ(i, j, k, grid) * ζ₂ᶠᶠᶜ(i, j, k, grid, u, v))
-
-@inline Δx_Δz_divᶜᶜᶜ(i, j, k, grid, u, v) =
-    conditional_flux_ccc(i, j, k, grid, zero(grid), Δxᶜᶜᶜ(i, j, k, grid) * Δz★ᶜᶜᶜ(i, j, k, grid) * div₂ᶜᶜᶜ(i, j, k, grid, u, v))
-
-# Thickness-weighted vector Laplacian L(u)
-@inline ∇²★uᶠᶜᶜ(i, j, k, grid, u, v) = V⁻¹ᶠᶜᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, Δy_Δz_divᶜᶜᶜ, u, v) - δyᵃᶜᵃ(i, j, k, grid, Δx_Δz_ζᶠᶠᶜ, u, v))
-@inline ∇²★vᶜᶠᶜ(i, j, k, grid, u, v) = V⁻¹ᶜᶠᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Δy_Δz_ζᶠᶠᶜ, u, v) + δyᵃᶠᵃ(i, j, k, grid, Δx_Δz_divᶜᶜᶜ, u, v))
-
-@inline Δy_∇²★u(i, j, k, grid, u, v) = Δy_qᶠᶜᶜ(i, j, k, grid, biharmonic_mask_x, ∇²★uᶠᶜᶜ, u, v)
-@inline Δx_∇²★v(i, j, k, grid, u, v) = Δx_qᶜᶠᶜ(i, j, k, grid, biharmonic_mask_y, ∇²★vᶜᶠᶜ, u, v)
-@inline Δy_∇²★v(i, j, k, grid, u, v) = Δy_qᶜᶠᶜ(i, j, k, grid, biharmonic_mask_y, ∇²★vᶜᶠᶜ, u, v)
-@inline Δx_∇²★u(i, j, k, grid, u, v) = Δx_qᶠᶜᶜ(i, j, k, grid, biharmonic_mask_x, ∇²★uᶠᶜᶜ, u, v)
-
-# The outer divergence weights the stress at centers by Δzᶜᶜᶜ: rescale it to Δz★ᶜᶜᶜ
 @inline function δ★ᶜᶜᶜ(i, j, k, grid::PCBIBG, u, v)
-    δ★ = Az⁻¹ᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Δy_∇²★u, u, v) + δyᵃᶜᵃ(i, j, k, grid, Δx_∇²★v, u, v))
-    return Δz★ᶜᶜᶜ(i, j, k, grid) / Δzᶜᶜᶜ(i, j, k, grid) * δ★
+    δ★ = Az⁻¹ᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Δy_∇²u, u, v) + δyᵃᶜᵃ(i, j, k, grid, Δx_∇²v, u, v))
+    return Δzᵐⁱⁿᶜᶜᶜ(i, j, k, grid) * Δz⁻¹ᶜᶜᶜ(i, j, k, grid) * δ★
 end
 
 @inline function ζ★ᶠᶠᶜ(i, j, k, grid::PCBIBG, u, v)
-    ζ★ = Az⁻¹ᶠᶠᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, Δy_∇²★v, u, v) - δyᵃᶠᵃ(i, j, k, grid, Δx_∇²★u, u, v))
-    return masked_ζ_flux(i, j, k, grid, ζ★)
+    ζ★ = Az⁻¹ᶠᶠᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, Δy_∇²v, u, v) - δyᵃᶠᵃ(i, j, k, grid, Δx_∇²u, u, v))
+    return ifelse(peripheral_node(i, j, k, grid, Face(), Face(), Center()), zero(grid), ζ★)
 end
 
 #####
