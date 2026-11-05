@@ -250,9 +250,9 @@ end
 end
 
 # The known w[Nz+1], nonzero with a free surface or an open top, enters the right hand side of row Nz
-@inline function get_coefficient(i, j, k, grid, f::AbstractArray{<:Any, 3}, p, d::ZDirection, clo, K, id, ℓx, ℓy, ℓz::Face, args...)
+@inline function Solvers.get_coefficient(i, j, k, grid, f::AbstractArray{<:Any, 3}, p, d::ZDirection, clo, K, id, ℓx, ℓy, ℓz::Face, args...)
     Nz = size(grid, 3)
-    cᴺ = get_coefficient(i, j, Nz, grid, VerticallyImplicitDiffusionUpperDiagonal(), p, d, clo, K, id, ℓx, ℓy, ℓz, args...)
+    cᴺ = Solvers.get_coefficient(i, j, Nz, grid, VerticallyImplicitDiffusionUpperDiagonal(), p, d, clo, K, id, ℓx, ℓy, ℓz, args...)
     return @inbounds f[i, j, k] - masked_multiply(cᴺ * (k == Nz), f[i, j, Nz+1])
 end
 
