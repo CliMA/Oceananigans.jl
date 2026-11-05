@@ -203,6 +203,9 @@ See also [`DynamicSmagorinsky`](@ref).
 References
 ==========
 
+Bou-Zeid, Elie, Meneveau, Charles, and Parlange, Marc. (2005) A scale-dependent Lagrangian dynamic model for
+large eddy simulation of complex turbulent flows, Physics of Fluids, **17**, 025105.
+
 Chen, Bicheng, Yang, Di, Meneveau, Charles and Chamecki, Marcelo. (2016) Effects of swell on
 transport and dispersion of oil plumes within the ocean mixed layer, Journal of Geophysical
 Research: Oceans, 121(5), pp.3564-3578.
