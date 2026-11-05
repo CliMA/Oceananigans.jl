@@ -5,7 +5,7 @@
 @inline right_halo_faces(::Type{<:TwoSided{<:Any, <:Open}}) = 1
 @inline right_halo_faces(topology) = 0
 
-# Normal-flow boundary fill: set the boundary-face value, and extend it to the halo faces for Open topolgies
+# Normal-flow boundary fill: set the boundary-face value, and extend it to the halo faces for Open topologies
 @inline   _fill_west_halo!(j, k, grid, c, bc::NFBC, loc, args...) = @inbounds c[1 - left_halo_faces(topology(grid, 1)), j, k]            = c[1, j, k]           = getbc(bc, j, k, grid, args...)
 @inline   _fill_east_halo!(j, k, grid, c, bc::NFBC, loc, args...) = @inbounds c[grid.Nx + 1 + right_halo_faces(topology(grid, 1)), j, k] = c[grid.Nx + 1, j, k] = getbc(bc, j, k, grid, args...)
 @inline  _fill_south_halo!(i, k, grid, c, bc::NFBC, loc, args...) = @inbounds c[i, 1 - left_halo_faces(topology(grid, 2)), k]            = c[i, 1, k]           = getbc(bc, i, k, grid, args...)
