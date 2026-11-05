@@ -227,10 +227,7 @@ end
 #####
 
 # Number consecutive active groups, with 0 for inactive groups
-function group_columns(active)
-    column = 0
-    return map(a -> a ? (column += 1) : 0, active)
-end
+group_columns(active) = map((a, column) -> ifelse(a, column, 0), active, cumsum(active))
 
 transfer_particles!(particles, grid) = nothing
 
