@@ -18,14 +18,14 @@ using Oceananigans.Units
 # ## Grid
 
 # We create an `ImmersedBoundaryGrid` wrapped around an underlying two-dimensional `RectilinearGrid`
-# that is periodic in ``x`` and bounded in ``z``.
+# that is open in ``x`` and bounded in ``z``.
 
 Nx, Nz = 256, 128
 H, L = 2kilometers, 1000kilometers
 
 underlying_grid = RectilinearGrid(size = (Nx, Nz), halo = (4, 4),
                                   x = (-L, L), z = (-H, 0),
-                                  topology = (Periodic, Flat, Bounded))
+                                  topology = (Open, Flat, Bounded))
 
 # Now we can create the non-trivial bathymetry. We use `PartialCellBottom` that gets as input either
 # *(i)* a two-dimensional function whose arguments are the grid's native horizontal coordinates and
@@ -104,11 +104,38 @@ F₀ = U₂ * (ω₂^2 - f^2) / ω₂
 @inline tidal_forcing(x, z, t, p) = p.F₀ * sin(p.ω₂ * t)
 u_forcing = Forcing(tidal_forcing, parameters=(; F₀, ω₂))
 
+# ## Boundary conditions
+
+# The forcing drives the tidal flow ``u = -U_2 \cos(ω_2 t)`` and ``v = (f / ω_2) U_2 \sin(ω_2 t)``.
+# A Flather condition, [`GravityWaveRadiationBoundaryCondition`](@ref), on the depth-integrated
+# transport ``U`` lets the tidal flow pass through the lateral boundaries. The internal tide leaves
+# the domain through [`ObliqueRadiation`](@ref Oceananigans.BoundaryConditions.ObliqueRadiation)
+# conditions on ``u``, ``v`` and ``b``, whose exterior state is the tidal flow and a linear
+# stratification.
+
+using Oceananigans.BoundaryConditions: ObliqueRadiation
+
+Nᵢ² = 1e-4  # s⁻²
+parameters = (; U₂, ω₂, f, H, Nᵢ²)
+
+@inline uᵉˣᵗ(z, t, p) = - p.U₂ * cos(p.ω₂ * t)
+@inline vᵉˣᵗ(z, t, p) = p.f / p.ω₂ * p.U₂ * sin(p.ω₂ * t)
+@inline bᵉˣᵗ(z, t, p) = p.Nᵢ² * z
+@inline Uᵉˣᵗ(j, k, grid, clock, model_fields, p) = (- p.H * p.U₂ * cos(p.ω₂ * clock.time), zero(grid))
+
+scheme = ObliqueRadiation()
+lateral(bc) = FieldBoundaryConditions(west=bc, east=bc)
+
+boundary_conditions = (u = lateral(NormalFlowBoundaryCondition(uᵉˣᵗ; scheme, parameters)),
+                       v = lateral(ValueBoundaryCondition(vᵉˣᵗ; scheme, parameters)),
+                       b = lateral(ValueBoundaryCondition(bᵉˣᵗ; scheme, parameters)),
+                       U = lateral(GravityWaveRadiationBoundaryCondition(Uᵉˣᵗ; discrete_form=true, parameters)))
+
 # ## Model
 
 # We build a `HydrostaticFreeSurfaceModel`:
 
-model = HydrostaticFreeSurfaceModel(grid; coriolis,
+model = HydrostaticFreeSurfaceModel(grid; coriolis, boundary_conditions,
                                     buoyancy = BuoyancyTracer(),
                                     tracers = :b,
                                     momentum_advection = WENO(),
@@ -117,9 +144,8 @@ model = HydrostaticFreeSurfaceModel(grid; coriolis,
 
 # We initialize the model with the tidal flow and a linear stratification.
 
-Nᵢ² = 1e-4  # s⁻²
 bᵢ(x, z) = Nᵢ² * z
-set!(model, u=U₂, b=bᵢ)
+set!(model, u=-U₂, b=bᵢ)
 
 # Now let's build a `Simulation`.
 
