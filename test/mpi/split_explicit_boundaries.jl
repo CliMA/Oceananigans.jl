@@ -3,7 +3,8 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 using MPI
 MPI.Initialized() || MPI.Init(threadlevel=:multiple)
 
-using Oceananigans.DistributedComputations: child_architecture, cpu_architecture, partition, reconstruct_global_grid
+using Oceananigans.Architectures: cpu_architecture
+using Oceananigans.DistributedComputations: child_architecture, partition, reconstruct_global_grid
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, immersed_peripheral_node
 using Oceananigans.BoundaryConditions: NormalRadiation, GravityWaveRadiationBoundaryCondition
 using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: LocalHaloFilling, CompleteHaloFilling

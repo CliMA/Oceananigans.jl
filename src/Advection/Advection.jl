@@ -23,7 +23,7 @@ using Adapt: Adapt
 using Base: Callable
 using DocStringExtensions: TYPEDSIGNATURES
 using MuladdMacro: @muladd
-using OffsetArrays: OffsetArray
+using Oceananigans.Utils: StaticStridesOffsetArray
 
 using Oceananigans: Oceananigans, fully_supported_float_types
 using Oceananigans.Architectures: Architectures, architecture, on_architecture, CPU

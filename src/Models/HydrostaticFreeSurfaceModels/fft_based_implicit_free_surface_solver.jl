@@ -1,7 +1,6 @@
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Grids: XYZRegularRG, x_domain, y_domain
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Operators: Azᶜᶜᶠ, Az⁻¹ᶜᶜᶠ, Δx_qᶜᶠᶜ, Δy_qᶠᶜᶜ, δxᶜᶜᶜ, δyᶜᶜᶜ
-
 using Oceananigans.Solvers: Solvers, FFTBasedPoissonSolver, solve!
 
 struct FFTImplicitFreeSurfaceSolver{S, G3, G2, R}

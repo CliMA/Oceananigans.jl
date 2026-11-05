@@ -6,7 +6,8 @@ export
     HydrostaticFreeSurfaceModel, ZStarCoordinate, ZCoordinate,
     ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
     PrescribedVelocityFields, PressureField,
-    LagrangianParticles, DroguedParticleDynamics,
+    LagrangianParticles, DroguedParticleDynamics, CountingSort, ComparisonSort,
+    ParticleBoundaryConditions, ReflectingBoundary, AbsorbingBoundary,
     BoundaryConditionOperation, ForcingOperation,
     seawater_density,
     BulkDrag, BulkDragFunction, BulkDragBoundaryCondition,
@@ -19,25 +20,22 @@ using DocStringExtensions: TYPEDSIGNATURES
 using GPUArraysCore: GPUArraysCore
 using JLD2: JLD2, jldopen
 
-using Oceananigans: AbstractModel, fields, prognostic_fields
+using Oceananigans: Oceananigans, AbstractModel, fields, prognostic_fields
 using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Architectures: on_architecture
 using Oceananigans.DistributedComputations: DistributedComputations
 using Oceananigans.Advection: AbstractAdvectionScheme, Centered
-using Oceananigans.Fields: Field, TracerFields, ZeroField
-using Oceananigans.Grids: Grids, AbstractGrid, halo_size, inflate_halo_size
-using Oceananigans.OutputReaders: update_field_time_series!, extract_field_time_series
-using Oceananigans.TimeSteppers: Clock
+using Oceananigans.Architectures: Architectures
+using Oceananigans.BoundaryConditions: BoundaryConditions
+using Oceananigans.Diagnostics: Diagnostics, NaNChecker
+using Oceananigans.Fields: Fields, Field, TracerFields, ZeroField, set!
+using Oceananigans.Grids: Grids, AbstractGrid, grid, halo_size, inflate_halo_size
+using Oceananigans.OutputReaders: extract_field_time_series, update_field_time_series!
+using Oceananigans.OutputWriters: OutputWriters, checkpointer_address
+using Oceananigans.Solvers: Solvers
+using Oceananigans.TimeSteppers: TimeSteppers, Clock, reset!
 using Oceananigans.Units: Time
 using Oceananigans.Utils: @apply_regionally
-
-import Oceananigans: initialize!
-import Oceananigans.Architectures: architecture
-import Oceananigans.Grids: grid
-import Oceananigans.Fields: set!
-import Oceananigans.Solvers: iteration
-import Oceananigans.OutputWriters: default_included_properties
-import Oceananigans.TimeSteppers: reset!
 
 # A prototype interface for AbstractModel.
 #
@@ -46,12 +44,12 @@ import Oceananigans.TimeSteppers: reset!
 #
 # Models with grids should override `architecture` and `eltype`.
 
-iteration(model::AbstractModel) = model.clock.iteration
+Solvers.iteration(model::AbstractModel) = model.clock.iteration
 Base.time(model::AbstractModel) = model.clock.time
 Base.eltype(model::AbstractModel) = Float64
-grid(model::AbstractModel) = model.grid
-architecture(model::AbstractModel) = nothing
-initialize!(model::AbstractModel) = nothing
+Grids.grid(model::AbstractModel) = model.grid
+Architectures.architecture(model::AbstractModel) = nothing
+Oceananigans.initialize!(model::AbstractModel) = nothing
 total_velocities(model::AbstractModel) = nothing
 
 # Fallback for any abstract model that does not contain `FieldTimeSeries`es
@@ -141,7 +139,8 @@ using .HydrostaticFreeSurfaceModels:
     PrescribedVelocityFields, ZStarCoordinate, ZCoordinate
 
 using .ShallowWaterModels: ShallowWaterModel, ConservativeFormulation, VectorInvariantFormulation
-using .LagrangianParticleTracking: LagrangianParticles, DroguedParticleDynamics
+using .LagrangianParticleTracking: LagrangianParticles, DroguedParticleDynamics, CountingSort, ComparisonSort,
+                                   ParticleBoundaryConditions, ReflectingBoundary, AbsorbingBoundary
 
 # BulkDrag for quadratic drag boundary conditions
 include("BulkDragBoundaryConditions.jl")
@@ -155,9 +154,9 @@ const OceananigansModels = Union{HydrostaticFreeSurfaceModel,
 
 # OceananigansModels have grids, so we can use grid-based implementations
 Base.eltype(model::OceananigansModels) = eltype(model.grid)
-architecture(model::OceananigansModels) = model.grid.architecture
+Architectures.architecture(model::OceananigansModels) = model.grid.architecture
 
-set!(model::OceananigansModels, new_clock::Clock) = set!(model.clock, new_clock)
+Fields.set!(model::OceananigansModels, new_clock::Clock) = set!(model.clock, new_clock)
 
 """
 $(TYPEDSIGNATURES)
@@ -203,7 +202,7 @@ end
 zero_field!(field) = fill!(field, 0)
 zero_field!(::ZeroField) = nothing # eg the vertical velocity of single column models
 
-function reset!(model::OceananigansModels)
+function TimeSteppers.reset!(model::OceananigansModels)
 
     for field in fields(model)
         zero_field!(field)
@@ -222,11 +221,8 @@ function reset!(model::OceananigansModels)
     return nothing
 end
 
-using Oceananigans.Diagnostics: NaNChecker
-import Oceananigans.Diagnostics: default_nan_checker
-
 # Check for NaNs in the first prognostic field (generalizes to prescribed velocities).
-function default_nan_checker(model::OceananigansModels)
+function Diagnostics.default_nan_checker(model::OceananigansModels)
     model_fields = prognostic_fields(model)
 
     if isempty(model_fields)
@@ -243,21 +239,19 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: OnlyParticleTrackingMode
 
 # Particle tracking models with prescribed velocities (and no tracers)
 # have no prognostic fields and no chance to producing a NaN.
-default_nan_checker(::OnlyParticleTrackingModel) = nothing
+Diagnostics.default_nan_checker(::OnlyParticleTrackingModel) = nothing
 
 # Extend output writer functionality to custom Oceananigans.Models
-import Oceananigans.OutputWriters: default_included_properties,
-                                   checkpointer_address
 
-default_included_properties(::NonhydrostaticModel) = [:coriolis, :buoyancy, :closure]
-default_included_properties(::HydrostaticFreeSurfaceModel) = [:coriolis, :buoyancy, :closure]
-default_included_properties(::ShallowWaterModel) = [:coriolis, :closure]
+OutputWriters.default_included_properties(::NonhydrostaticModel) = [:coriolis, :buoyancy, :closure]
+OutputWriters.default_included_properties(::HydrostaticFreeSurfaceModel) = [:coriolis, :buoyancy, :closure]
+OutputWriters.default_included_properties(::ShallowWaterModel) = [:coriolis, :closure]
 
-checkpointer_address(::ShallowWaterModel) = "ShallowWaterModel"
-checkpointer_address(::NonhydrostaticModel) = "NonhydrostaticModel"
-checkpointer_address(::HydrostaticFreeSurfaceModel) = "HydrostaticFreeSurfaceModel"
+OutputWriters.checkpointer_address(::ShallowWaterModel) = "ShallowWaterModel"
+OutputWriters.checkpointer_address(::NonhydrostaticModel) = "NonhydrostaticModel"
+OutputWriters.checkpointer_address(::HydrostaticFreeSurfaceModel) = "HydrostaticFreeSurfaceModel"
 
-default_included_properties(::OceananigansModels) = Symbol[]
+OutputWriters.default_included_properties(::OceananigansModels) = Symbol[]
 
 # Specialized output attributes for velocity and tracer fields
 include("output_attributes.jl")
@@ -271,5 +265,7 @@ include("set_model.jl")
 
 # Implementation of the diagnostic for computing the dissipation rate
 include("VarianceDissipationComputations/VarianceDissipationComputations.jl")
+
+using .VarianceDissipationComputations: VarianceDissipationComputations
 
 end # module

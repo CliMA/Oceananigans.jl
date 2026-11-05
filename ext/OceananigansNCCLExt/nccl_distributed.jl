@@ -68,13 +68,13 @@ const NCCLDistributedField = Oceananigans.Fields.Field{<:Any, <:Any, <:Any, <:An
 #####
 
 function DC.NCCLDistributed(child_arch = GPU(); partition = nothing, kwargs...)
-    mpi_arch = Distributed(child_arch; partition, kwargs...)
+    mpi_arch = DC.distributed_architecture(child_arch; partition, kwargs...)
     nccl_comm = create_nccl_comm_from_mpi(mpi_arch.communicator)
     comm_stream = CUDA.CuStream(; flags=CUDA.STREAM_NON_BLOCKING)
     nccl_communicator = NCCLCommunicator(nccl_comm, mpi_arch.communicator, comm_stream)
 
     S = mpi_arch isa DC.SynchronizedDistributed
-    return Distributed{S}(mpi_arch.child_architecture,
+    arch = Distributed{S}(mpi_arch.child_architecture,
                           mpi_arch.partition,
                           mpi_arch.ranks,
                           mpi_arch.local_rank,
@@ -83,6 +83,10 @@ function DC.NCCLDistributed(child_arch = GPU(); partition = nothing, kwargs...)
                           nccl_communicator,
                           mpi_arch.field_count,
                           mpi_arch.devices)
+
+    DC.validate_distributed_configuration(arch)
+
+    return arch
 end
 
 #####

@@ -22,7 +22,8 @@ using MPI
 MPI.Init(threadlevel=:multiple)
 
 using Oceananigans.BoundaryConditions: fill_halo_regions!, DCBC
-using Oceananigans.DistributedComputations: Distributed, index2rank, cpu_architecture, child_architecture, reconstruct_global_grid,
+using Oceananigans.Architectures: cpu_architecture
+using Oceananigans.DistributedComputations: Distributed, index2rank, child_architecture, reconstruct_global_grid,
                                             synchronize_communication!
 using Oceananigans.Fields: AbstractField, interior, dot!
 using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary, bottom_height_interior
@@ -709,6 +710,10 @@ end
             # regardless of the local block size N.
             @test mean(c) == (1 + 2 + 3 + 4) / 4
 
+            # Partial reductions too must divide by the global point count along the reduced dims.
+            @test @allowscalar mean(c; dims=(1, 2))[1, 1, 1] == (1 + 2 + 3 + 4) / 4
+            @test @allowscalar Field(Average(c, dims=(1, 2)))[1, 1, 1] == (1 + 2 + 3 + 4) / 4
+
             # The in-place counterparts used by ConjugateGradientSolver also reduce across ranks
             r = zeros(grid, 1)
             @test Array(dot!(r, c, c))[1] == (1^2 + 2^2 + 3^2 + 4^2) * N
@@ -721,6 +726,10 @@ end
             gauge(c, d)
             @test all(Array(interior(c)) .== arch.local_rank + 1 - 5/2)
             @test all(Array(interior(d)) .== 2 * (arch.local_rank + 1) - 5)
+
+            cx = CenterField(grid)
+            set!(cx, (x, y, z) -> x)
+            @test Array(interior(mean(cx; dims=2))) ≈ Array(interior(cx))[:, 1:1, :]
         end
     end
 
