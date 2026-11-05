@@ -304,6 +304,23 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
         @test Array(interior(u)) == repeat(column, outer=(4, 4, 1))
     end
 
+    @testset "LatitudeLongitudeGrid with a non-static vertical coordinate" begin
+        # `on_architecture(::ReactantState, ::LatitudeLongitudeGrid)` rebuilds the grid field by
+        # field. Vertical coordinates other than `StaticVerticalDiscretization` used to hit a
+        # MethodError there.
+        @info "  Testing LatitudeLongitudeGrid with MutableVerticalDiscretization..."
+        grid = LatitudeLongitudeGrid(arch; size = (4, 4, 4),
+                                     longitude = [0, 1, 2, 3, 4],
+                                     latitude = [0, 1, 2, 3, 4],
+                                     z = MutableVerticalDiscretization((0, 1)))
+
+        @test architecture(grid) isa ReactantState
+        @test grid.z isa MutableVerticalDiscretization
+        @test grid.z.cᵃᵃᶠ isa StaticStridesOffsetArray{Float64, 1, <:Any, <:Any, <:Reactant.AbstractConcreteArray}
+        @test architecture(grid.z.σᶜᶜⁿ) isa ReactantState
+        @test architecture(grid.z.ηⁿ) isa ReactantState
+    end
+
     @testset "Computed fields on a grid with an array-valued vertical coordinate" begin
         Nz = 4
         z = collect(range(-1, 0, length = Nz + 1))
@@ -453,6 +470,20 @@ end
                               topology = (Periodic, Flat, Bounded))
     δρᵢ  = CenterField(grid_ad)
     @test maximum(δρᵢ) == maximum(Array(interior(δρᵢ)))
+end
+
+# A field set from another one on a different grid is interpolated on the CPU, with the source's halos
+# filled: the cells next to a boundary read them
+@testset "set! between ReactantState fields on different grids" begin
+    function coarse_to_fine(arch)
+        coarse = CenterField(RectilinearGrid(arch; size = (2, 1, 1), x = (0, 1), y = (0, 1), z = (0, 1)))
+        fine = CenterField(RectilinearGrid(arch; size = (4, 1, 1), x = (0, 1), y = (0, 1), z = (0, 1)))
+        set!(coarse, (x, y, z) -> x)
+        set!(fine, coarse)
+        return Array(interior(fine))
+    end
+
+    @test coarse_to_fine(ReactantState()) ≈ coarse_to_fine(CPU())
 end
 
 # Host data with missing values (a NetCDF read) reaches ReactantState as a float array with NaN, plain, viewed or
