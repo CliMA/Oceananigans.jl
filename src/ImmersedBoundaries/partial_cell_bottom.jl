@@ -300,8 +300,6 @@ end
     return rnode(i, j, kᵗ+1, ibg.underlying_grid, c, c, f) - (sᵗ - kᵗ) * Δrᶜᶜᶜ(i, j, kᵗ, ibg.underlying_grid)
 end
 
-@inline face_column_depth(i, j, i⁻, j⁻, ibg, ::PartialCellBottom) = min(static_column_depthᶜᶜᵃ(i⁻, j⁻, ibg), static_column_depthᶜᶜᵃ(i, j, ibg))
-
 @inline _immersed_cell(i, j, k, underlying_grid, ib::PartialCellWithTop) = (k < bottom_cell(i, j, underlying_grid, ib)) | (k > top_cell(i, j, underlying_grid, ib))
 
 # The open fractions φᵇ and φᵗ of cell k hold only where `at_the_bottom` and `at_the_top`
@@ -351,46 +349,11 @@ end
     return bottom_Δr - top_deficit
 end
 
-# The wet interval of cell k, in units of its spacing and measured from the face below it
-@inline function wet_interval(i, j, k, ib)
-    φᵇ, φᵗ, at_the_bottom, at_the_top = partial_fractions(i, j, k, ib)
-    lower = ifelse(at_the_bottom, 1 - φᵇ, zero(φᵇ))
-    upper = ifelse(at_the_top, φᵗ, one(φᵗ))
-    return lower, upper
-end
+# A face is a cell with the higher bottom and the lower top of its two columns,
+# i.e. the smaller of the two neighboring center spacings (exact reciprocal of Δr⁻¹ᶠᶜᶜ/Δr⁻¹ᶜᶠᶜ below)
+@inline Operators.Δrᶠᶜᶜ(i, j, k, ibg::PCBIBG) = min(Δrᶜᶜᶜ(i-1, j, k, ibg), Δrᶜᶜᶜ(i, j, k, ibg))
+@inline Operators.Δrᶜᶠᶜ(i, j, k, ibg::PCBIBG) = min(Δrᶜᶜᶜ(i, j-1, k, ibg), Δrᶜᶜᶜ(i, j, k, ibg))
 
-# Where a top cell faces a bottom cell their wet intervals are staggered, and overlap by less than either is wet
-@inline function staggered_overlap(i⁻, j⁻, i, j, k, ib)
-    l⁻, u⁻ = wet_interval(i⁻, j⁻, k, ib)
-    l,  u  = wet_interval(i,  j,  k, ib)
-    staggered = ((l⁻ < l) & (u⁻ < u)) | ((l < l⁻) & (u < u⁻))
-    overlap = min(u⁻, u) - max(l⁻, l)
-    open = (overlap > 0) & (overlap ≥ ib.minimum_fractional_cell_height)
-    return staggered, open, overlap
-end
-
-@inline function closed_face(i⁻, j⁻, i, j, k, ib::PartialCellWithTop)
-    staggered, open, _ = staggered_overlap(i⁻, j⁻, i, j, k, ib)
-    return staggered & !open
-end
-
-# Closed faces keep the smaller spacing, so that their (masked) velocities never divide by zero
-@inline function face_spacing(i⁻, j⁻, i, j, k, ibg, ib::PartialCellWithTop)
-    staggered, open, overlap = staggered_overlap(i⁻, j⁻, i, j, k, ib)
-    Δr = min(Δrᶜᶜᶜ(i⁻, j⁻, k, ibg), Δrᶜᶜᶜ(i, j, k, ibg))
-    return ifelse(staggered & open, overlap * Δrᶜᶜᶜ(i, j, k, ibg.underlying_grid), Δr)
-end
-
-@inline face_reciprocal_spacing(i⁻, j⁻, i, j, k, ibg, ib) = max(Δr⁻¹ᶜᶜᶜ(i⁻, j⁻, k, ibg), Δr⁻¹ᶜᶜᶜ(i, j, k, ibg))
-
-@inline function face_reciprocal_spacing(i⁻, j⁻, i, j, k, ibg, ib::PartialCellWithTop)
-    staggered, open, overlap = staggered_overlap(i⁻, j⁻, i, j, k, ib)
-    Δr⁻¹ = max(Δr⁻¹ᶜᶜᶜ(i⁻, j⁻, k, ibg), Δr⁻¹ᶜᶜᶜ(i, j, k, ibg))
-    return ifelse(staggered & open, Δr⁻¹ᶜᶜᶜ(i, j, k, ibg.underlying_grid) / overlap, Δr⁻¹)
-end
-
-@inline Operators.Δrᶠᶜᶜ(i, j, k, ibg::PCBIBG) = face_spacing(i-1, j, i, j, k, ibg, ibg.immersed_boundary)
-@inline Operators.Δrᶜᶠᶜ(i, j, k, ibg::PCBIBG) = face_spacing(i, j-1, i, j, k, ibg, ibg.immersed_boundary)
 @inline Operators.Δrᶠᶠᶜ(i, j, k, ibg::PCBIBG) = min(Δrᶠᶜᶜ(i, j-1, k, ibg), Δrᶠᶜᶜ(i, j, k, ibg))
 
 @inline Operators.Δrᶠᶜᶠ(i, j, k, ibg::PCBIBG) = min(Δrᶜᶜᶠ(i-1, j, k, ibg), Δrᶜᶜᶠ(i, j, k, ibg))
@@ -412,17 +375,12 @@ const XYFlatPCBIBG = ImmersedBoundaryGrid{<:Any, <:Flat, <:Flat, <:Any, <:Any, <
 @inline Operators.Δrᶠᶠᶜ(i, j, k, ibg::YFlatPCBIBG) = Δrᶠᶜᶜ(i, j, k, ibg)
 @inline Operators.Δrᶠᶠᶜ(i, j, k, ibg::XYFlatPCBIBG) = Δrᶜᶜᶜ(i, j, k, ibg)
 
-# Faces between active cells whose wet intervals do not overlap are closed like immersed faces
-@inline closed_xface(i, j, k, ibg) = closed_face(i-1, j, i, j, k, ibg.immersed_boundary)
-@inline closed_yface(i, j, k, ibg) = closed_face(i, j-1, i, j, k, ibg.immersed_boundary)
-@inline closed_xface(i, j, k, ibg::XFlatPCBIBG) = false
-@inline closed_yface(i, j, k, ibg::YFlatPCBIBG) = false
-
+# A face with no depth is a wall
 @inline peripheral_node(i, j, k, ibg::PCBTIBG, ::Face, ::Center, ::Center) =
-    inactive_cell(i, j, k, ibg) | inactive_cell(i-1, j, k, ibg) | closed_xface(i, j, k, ibg)
+    inactive_cell(i, j, k, ibg) | inactive_cell(i-1, j, k, ibg) | (static_column_depthᶠᶜᵃ(i, j, ibg) == 0)
 
 @inline peripheral_node(i, j, k, ibg::PCBTIBG, ::Center, ::Face, ::Center) =
-    inactive_cell(i, j, k, ibg) | inactive_cell(i, j-1, k, ibg) | closed_yface(i, j, k, ibg)
+    inactive_cell(i, j, k, ibg) | inactive_cell(i, j-1, k, ibg) | (static_column_depthᶜᶠᵃ(i, j, ibg) == 0)
 
 # Vertically-static, partial cell bottom, immersed boundary grid
 VSPCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:AbstractStaticGrid, <:PartialCellVerticalBoundaries}
@@ -460,8 +418,8 @@ end
 end
 
 # The reciprocal of the smallest spacing is the largest reciprocal
-@inline Operators.Δr⁻¹ᶠᶜᶜ(i, j, k, ibg::PCBIBG) = face_reciprocal_spacing(i-1, j, i, j, k, ibg, ibg.immersed_boundary)
-@inline Operators.Δr⁻¹ᶜᶠᶜ(i, j, k, ibg::PCBIBG) = face_reciprocal_spacing(i, j-1, i, j, k, ibg, ibg.immersed_boundary)
+@inline Operators.Δr⁻¹ᶠᶜᶜ(i, j, k, ibg::PCBIBG) = max(Δr⁻¹ᶜᶜᶜ(i-1, j, k, ibg), Δr⁻¹ᶜᶜᶜ(i, j, k, ibg))
+@inline Operators.Δr⁻¹ᶜᶠᶜ(i, j, k, ibg::PCBIBG) = max(Δr⁻¹ᶜᶜᶜ(i, j-1, k, ibg), Δr⁻¹ᶜᶜᶜ(i, j, k, ibg))
 @inline Operators.Δr⁻¹ᶠᶠᶜ(i, j, k, ibg::PCBIBG) = max(Δr⁻¹ᶠᶜᶜ(i, j-1, k, ibg), Δr⁻¹ᶠᶜᶜ(i, j, k, ibg))
 
 @inline Operators.Δr⁻¹ᶠᶜᶠ(i, j, k, ibg::PCBIBG) = max(Δr⁻¹ᶜᶜᶠ(i-1, j, k, ibg), Δr⁻¹ᶜᶜᶠ(i, j, k, ibg))

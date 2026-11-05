@@ -366,31 +366,16 @@ end
 #####
 
 @inline Grids.static_column_depthᶜᶜᵃ(i, j, ibg::AGFBIBG) = top_height(i, j, ibg) - bottom_height(i, j, ibg)
-@inline Grids.static_column_depthᶜᶠᵃ(i, j, ibg::AGFBIBG) = face_column_depth(i, j, i, j-1, ibg, ibg.immersed_boundary)
-@inline Grids.static_column_depthᶠᶜᵃ(i, j, ibg::AGFBIBG) = face_column_depth(i, j, i-1, j, ibg, ibg.immersed_boundary)
+@inline Grids.static_column_depthᶜᶠᵃ(i, j, ibg::AGFBIBG) = face_column_depth(i, j, i, j-1, ibg)
+@inline Grids.static_column_depthᶠᶜᵃ(i, j, ibg::AGFBIBG) = face_column_depth(i, j, i-1, j, ibg)
 @inline Grids.static_column_depthᶠᶠᵃ(i, j, ibg::AGFBIBG) = min(static_column_depthᶠᶜᵃ(i, j-1, ibg), static_column_depthᶠᶜᵃ(i, j, ibg))
 
-# Without a top, adjacent columns share their top, so the shallower column depth is the open depth of the face
-@inline face_column_depth(i, j, i⁻, j⁻, ibg, ::GridFittedBottom) = min(static_column_depthᶜᶜᵃ(i⁻, j⁻, ibg), static_column_depthᶜᶜᵃ(i, j, ibg))
-
-# The vertical spacing of the face between cells (i⁻, j⁻, k) and (i, j, k)
-@inline face_spacing(i⁻, j⁻, i, j, k, ibg, ib) = min(Δrᶜᶜᶜ(i⁻, j⁻, k, ibg), Δrᶜᶜᶜ(i, j, k, ibg))
-@inline closed_face(i⁻, j⁻, i, j, k, ib) = false
-
-# Beneath a top only the overlap of columns (i⁻, j⁻) and (i, j) is open.
-@inline function face_column_depth(i, j, i⁻, j⁻, ibg, ib)
-    ug = ibg.underlying_grid
-    k⁻ = max(bottom_cell(i⁻, j⁻, ug, ib), bottom_cell(i, j, ug, ib))
-    k⁺ = min(   top_cell(i⁻, j⁻, ug, ib),    top_cell(i, j, ug, ib))
-    H  = rnode(i, j, k⁺+1, ug, c, c, f) - rnode(i, j, k⁻, ug, c, c, f)
-
-    bottom_deficit = Δrᶜᶜᶜ(i, j, k⁻, ug) - face_spacing(i⁻, j⁻, i, j, k⁻, ibg, ib)
-    top_deficit    = Δrᶜᶜᶜ(i, j, k⁺, ug) - face_spacing(i⁻, j⁻, i, j, k⁺, ibg, ib)
-
-    # Only a face column of a single cell can be closed, where a top cell faces a bottom cell
-    closed = closed_face(i⁻, j⁻, i, j, k⁻, ib)
-
-    return ifelse(closed, zero(H), max(H - bottom_deficit - ifelse(k⁺ > k⁻, top_deficit, zero(H)), zero(H)))
+# A face is open over the overlap of its two columns' tops and bottoms; without a top,
+# every column shares the same top, so this reduces to the shallower of the two depths
+@inline function face_column_depth(i, j, i⁻, j⁻, ibg)
+    zᵇ = max(bottom_height(i⁻, j⁻, ibg), bottom_height(i, j, ibg))
+    zᵗ = min(top_height(i⁻, j⁻, ibg), top_height(i, j, ibg))
+    return max(zᵗ - zᵇ, zero(ibg))
 end
 
 # Make sure column_height works for horizontally-Flat topologies.
@@ -403,6 +388,11 @@ const XYFlatAGFIBG = ImmersedBoundaryGrid{<:Any, <:Flat, <:Flat, <:Any, <:Any, <
 @inline Grids.static_column_depthᶠᶠᵃ(i, j, ibg::XFlatAGFIBG) = static_column_depthᶜᶠᵃ(i, j, ibg)
 @inline Grids.static_column_depthᶠᶠᵃ(i, j, ibg::YFlatAGFIBG) = static_column_depthᶠᶜᵃ(i, j, ibg)
 @inline Grids.static_column_depthᶠᶠᵃ(i, j, ibg::XYFlatAGFIBG) = static_column_depthᶜᶜᵃ(i, j, ibg)
+
+# Flat directions have no halo, so their index collapses to 1 as in `immersed_cell`
+@inline Grids.static_column_depthᶜᶜᵃ(i, j, ibg::XFlatAGFIBG)  = top_height(1, j, ibg) - bottom_height(1, j, ibg)
+@inline Grids.static_column_depthᶜᶜᵃ(i, j, ibg::YFlatAGFIBG)  = top_height(i, 1, ibg) - bottom_height(i, 1, ibg)
+@inline Grids.static_column_depthᶜᶜᵃ(i, j, ibg::XYFlatAGFIBG) = top_height(1, 1, ibg) - bottom_height(1, 1, ibg)
 
 function Grids.constructor_arguments(grid::AGFBIBG)
     underlying_grid_args, underlying_grid_kwargs = constructor_arguments(grid.underlying_grid)
