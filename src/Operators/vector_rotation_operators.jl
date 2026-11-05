@@ -65,16 +65,16 @@ the grid's intrinsic coordinates in order to match the grid's extrinsic coordina
     φᶠᶠᵃ⁻⁺ = φnode(i,   j+1, 1, grid, Face(), Face(), Center())
     φᶠᶠᵃ⁻⁻ = φnode(i,   j,   1, grid, Face(), Face(), Center())
 
-    Δyᶠᶜᵃ⁺ = Δyᶠᶜᶜ(i+1, j,   1, grid)
-    Δyᶠᶜᵃ⁻ = Δyᶠᶜᶜ(i,   j,   1, grid)
-    Δxᶜᶠᵃ⁺ = Δxᶜᶠᶜ(i,   j+1, 1, grid)
-    Δxᶜᶠᵃ⁻ = Δxᶜᶠᶜ(i,   j,   1, grid)
+    Δy⁻¹ᶠᶜᵃ⁺ = Δy⁻¹ᶠᶜᶜ(i+1, j,   1, grid)
+    Δy⁻¹ᶠᶜᵃ⁻ = Δy⁻¹ᶠᶜᶜ(i,   j,   1, grid)
+    Δx⁻¹ᶜᶠᵃ⁺ = Δx⁻¹ᶜᶠᶜ(i,   j+1, 1, grid)
+    Δx⁻¹ᶜᶠᵃ⁻ = Δx⁻¹ᶜᶠᶜ(i,   j,   1, grid)
 
-    Rcosθ₁ = ifelse(Δyᶠᶜᵃ⁺ == 0, zero(grid), deg2rad(φᶠᶠᵃ⁺⁺ - φᶠᶠᵃ⁺⁻) / Δyᶠᶜᵃ⁺)
-    Rcosθ₂ = ifelse(Δyᶠᶜᵃ⁻ == 0, zero(grid), deg2rad(φᶠᶠᵃ⁻⁺ - φᶠᶠᵃ⁻⁻) / Δyᶠᶜᵃ⁻)
+    Rcosθ₁ = ifelse(isinf(Δy⁻¹ᶠᶜᵃ⁺), zero(grid), deg2rad(φᶠᶠᵃ⁺⁺ - φᶠᶠᵃ⁺⁻) * Δy⁻¹ᶠᶜᵃ⁺)
+    Rcosθ₂ = ifelse(isinf(Δy⁻¹ᶠᶜᵃ⁻), zero(grid), deg2rad(φᶠᶠᵃ⁻⁺ - φᶠᶠᵃ⁻⁻) * Δy⁻¹ᶠᶜᵃ⁻)
 
-    Rsinθ₁ = ifelse(Δxᶜᶠᵃ⁺ == 0, zero(grid), deg2rad(φᶠᶠᵃ⁺⁺ - φᶠᶠᵃ⁻⁺) / Δxᶜᶠᵃ⁺)
-    Rsinθ₂ = ifelse(Δxᶜᶠᵃ⁻ == 0, zero(grid), deg2rad(φᶠᶠᵃ⁺⁻ - φᶠᶠᵃ⁻⁻) / Δxᶜᶠᵃ⁻)
+    Rsinθ₁ = ifelse(isinf(Δx⁻¹ᶜᶠᵃ⁺), zero(grid), deg2rad(φᶠᶠᵃ⁺⁺ - φᶠᶠᵃ⁻⁺) * Δx⁻¹ᶜᶠᵃ⁺)
+    Rsinθ₂ = ifelse(isinf(Δx⁻¹ᶜᶠᵃ⁻), zero(grid), deg2rad(φᶠᶠᵃ⁺⁻ - φᶠᶠᵃ⁻⁻) * Δx⁻¹ᶜᶠᵃ⁻)
 
     # θ is the rotation angle between intrinsic and extrinsic reference frame
     Rcosθ =   (Rcosθ₁ + Rcosθ₂) / 2
@@ -138,7 +138,7 @@ end
 # 3D vectors
 @inline function extrinsic_vector(i, j, k, grid::OrthogonalSphericalShellGrid, uᵢ, vᵢ, wᵢ)
 
-    uₑ, vₑ = intrinsic_vector(i, j, k, grid, uᵢ, vᵢ)
+    uₑ, vₑ = extrinsic_vector(i, j, k, grid, uᵢ, vᵢ)
     wₑ = getvalue(wᵢ, i, j, k, grid)
 
     return uₑ, vₑ, wₑ

@@ -49,13 +49,13 @@ all_nodes = [(i, j) for j in 1-Hy:Ny+Hy for i in 1-Hx:Nx+Hx]
     δ = grid.connectivity.overlap
 
     @test eltype(grid) == FT
-    @test topology(grid) == (FullyConnected, FullyConnected, Bounded)
+    @test topology(grid) == (TwoSided{Connected, Connected}, TwoSided{Connected, Connected}, Bounded)
     @test δ == 3 # ⌈(2H + s) / 4⌉ for halo H = 3 and stencil width s = 4
     @test size(grid) == (48 + 2δ, 16 + 2δ, 2)
     @test typeof(grid[1]) == typeof(grid[2]) <: RotatedLatitudeLongitudeGrid
     @test CenterField(grid) isa YinYangField
     @test summary(grid) ==
-        "54×22×2 YinYangGrid{$FT, FullyConnected, FullyConnected, Bounded} on $(summary(arch)) with 3×3×3 halo"
+        "54×22×2 YinYangGrid{$FT, Connected, Connected, Bounded} on $(summary(arch)) with 3×3×3 halo"
     @test_throws ArgumentError YinYangGrid(arch, FT; size=(40, 16, 2), z=(-1, 0))
     @test_throws ArgumentError YinYangGrid(arch, FT; size=(48, 16, 2), z=(-1, 0), overlap=5)
 

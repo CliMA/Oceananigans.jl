@@ -1,8 +1,7 @@
 using Oceananigans.BoundaryConditions: fill_halo_regions!
+using Oceananigans.Fields: set!
 using Oceananigans.TimeSteppers: update_state!
 using Oceananigans.TurbulenceClosures: initialize_closure_fields!
-
-import Oceananigans.Fields: set!
 
 """
     set!(model::NonhydrostaticModel; enforce_incompressibility=true, kwargs...)
@@ -36,7 +35,7 @@ set!(model, u=u₀, v=v₀, T=T₀)
 model.tracers.T
 ```
 """
-function set!(model::NonhydrostaticModel; enforce_incompressibility=true, kwargs...)
+function Fields.set!(model::NonhydrostaticModel; enforce_incompressibility=true, kwargs...)
     velocity_names = propertynames(model.velocities)
     velocities_are_set = false
 

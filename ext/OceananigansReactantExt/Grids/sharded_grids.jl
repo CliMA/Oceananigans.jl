@@ -1,50 +1,37 @@
-using Oceananigans.Architectures: architecture
-using Oceananigans.Grids: AbstractGrid
+using Oceananigans.Architectures: architecture, child_architecture
+using Oceananigans.Grids: AbstractGrid, reciprocal_metric
 using Oceananigans.OrthogonalSphericalShellGrids
 using Oceananigans.Grids: validate_lat_lon_grid_args, generate_coordinate, with_precomputed_metrics, validate_rectilinear_grid_args
 using Oceananigans.Grids: default_indices, validate_indices, offset_data, instantiate, halo_size, topology
 
-import Oceananigans.Grids: zeros, StaticVerticalDiscretization, total_size
-import Oceananigans.Architectures: child_architecture
-
-import Oceananigans.DistributedComputations:
-    partition_coordinate,
-    assemble_coordinate,
-    inject_halo_communication_boundary_conditions,
-    concatenate_local_sizes,
-    barrier,
-    all_reduce,
-    all_reduce!,
-    reconstruct_global_topology
-
-child_architecture(grid::ShardedGrid) = child_architecture(architecture(grid))
+Oceananigans.Architectures.child_architecture(grid::ShardedGrid) = child_architecture(architecture(grid))
 
 # Coordinates do not need partitioning on a `Distributed{<:ReactantState}` (sharded) architecture
-partition_coordinate(c::Tuple,          n, ::ShardedDistributed, dim) = c
-partition_coordinate(c::AbstractVector, n, ::ShardedDistributed, dim) = c
+Oceananigans.DistributedComputations.partition_coordinate(c::Tuple,          n, ::ShardedDistributed, dim) = c
+Oceananigans.DistributedComputations.partition_coordinate(c::AbstractVector, n, ::ShardedDistributed, dim) = c
 
 # Same thing for assembling the coordinate, it is already represented as a global array
-assemble_coordinate(c::Tuple,          n, ::ShardedDistributed, dim) = c
-assemble_coordinate(c::AbstractVector, n, ::ShardedDistributed, dim) = c
+Oceananigans.DistributedComputations.assemble_coordinate(c::Tuple,          n, ::ShardedDistributed, dim) = c
+Oceananigans.DistributedComputations.assemble_coordinate(c::AbstractVector, n, ::ShardedDistributed, dim) = c
 
 # Boundary conditions should not need to change
-inject_halo_communication_boundary_conditions(field_bcs, loc, rank, ::Reactant.Sharding.Mesh, topology) = field_bcs
+Oceananigans.DistributedComputations.inject_halo_communication_boundary_conditions(field_bcs, loc, rank, ::Reactant.Sharding.Mesh, topology) = field_bcs
 
 # Local sizes are equal to global sizes for a sharded architecture
-concatenate_local_sizes(local_size, ::ShardedDistributed) = local_size
+Oceananigans.DistributedComputations.concatenate_local_sizes(local_size, ::ShardedDistributed) = local_size
 
 # We assume everything is already synchronized for a sharded architecture
-barrier(::ShardedDistributed) = nothing
+Oceananigans.DistributedComputations.barrier(::ShardedDistributed) = nothing
 
 # Reductions are handled by the Sharding framework
-all_reduce(op,  val, ::ShardedDistributed) = val
-all_reduce!(op, val, ::ShardedDistributed) = val
+Oceananigans.DistributedComputations.all_reduce(op,  val, ::ShardedDistributed) = val
+Oceananigans.DistributedComputations.all_reduce!(op, val, ::ShardedDistributed) = val
 
 # No need for partitioning and assembling of arrays supposedly
 partition(A::AbstractArray, ::ShardedDistributed, local_size) = A
 construct_global_array(A::AbstractArray, ::ShardedDistributed, local_size) = A
 
-reconstruct_global_topology(topo, R, r, r1, r2, ::ShardedDistributed) = topo
+Oceananigans.DistributedComputations.reconstruct_global_topology(topo, R, r, r1, r2, ::ShardedDistributed) = topo
 
 sharded_z_direction(::Nothing) = nothing
 
@@ -64,7 +51,10 @@ function sharded_z_direction(z::StaticVerticalDiscretization; sharding = Shardin
     Δᵃᵃᶠ = Reactant.to_rarray(z.Δᵃᵃᶠ; sharding)
     Δᵃᵃᶜ = Reactant.to_rarray(z.Δᵃᵃᶜ; sharding)
 
-    return StaticVerticalDiscretization(cᵃᵃᶠ, cᵃᵃᶜ, Δᵃᵃᶠ, Δᵃᵃᶜ)
+    Δ⁻¹ᵃᵃᶠ = Reactant.to_rarray(z.Δ⁻¹ᵃᵃᶠ; sharding)
+    Δ⁻¹ᵃᵃᶜ = Reactant.to_rarray(z.Δ⁻¹ᵃᵃᶜ; sharding)
+
+    return StaticVerticalDiscretization(cᵃᵃᶠ, cᵃᵃᶜ, Δᵃᵃᶠ, Δᵃᵃᶜ, Δ⁻¹ᵃᵃᶠ, Δ⁻¹ᵃᵃᶜ)
 end
 
 function Oceananigans.LatitudeLongitudeGrid(arch::ShardedDistributed,
@@ -139,6 +129,17 @@ function Oceananigans.LatitudeLongitudeGrid(arch::ShardedDistributed,
     Azᶜᶠᵃ = Reactant.to_rarray(grid.Azᶜᶠᵃ; sharding=xzmetric_sharding)
     Azᶠᶠᵃ = Reactant.to_rarray(grid.Azᶠᶠᵃ; sharding=xzmetric_sharding)
 
+    Δx⁻¹ᶜᶜᵃ = Reactant.to_rarray(grid.Δx⁻¹ᶜᶜᵃ; sharding=xzmetric_sharding)
+    Δx⁻¹ᶠᶜᵃ = Reactant.to_rarray(grid.Δx⁻¹ᶠᶜᵃ; sharding=xzmetric_sharding)
+    Δx⁻¹ᶜᶠᵃ = Reactant.to_rarray(grid.Δx⁻¹ᶜᶠᵃ; sharding=xzmetric_sharding)
+    Δx⁻¹ᶠᶠᵃ = Reactant.to_rarray(grid.Δx⁻¹ᶠᶠᵃ; sharding=xzmetric_sharding)
+    Δy⁻¹ᶠᶜᵃ = Reactant.to_rarray(grid.Δy⁻¹ᶠᶜᵃ; sharding=ysharding)
+    Δy⁻¹ᶜᶠᵃ = Reactant.to_rarray(grid.Δy⁻¹ᶜᶠᵃ; sharding=ysharding)
+    Az⁻¹ᶜᶜᵃ = Reactant.to_rarray(grid.Az⁻¹ᶜᶜᵃ; sharding=xzmetric_sharding)
+    Az⁻¹ᶠᶜᵃ = Reactant.to_rarray(grid.Az⁻¹ᶠᶜᵃ; sharding=xzmetric_sharding)
+    Az⁻¹ᶜᶠᵃ = Reactant.to_rarray(grid.Az⁻¹ᶜᶠᵃ; sharding=xzmetric_sharding)
+    Az⁻¹ᶠᶠᵃ = Reactant.to_rarray(grid.Az⁻¹ᶠᶠᵃ; sharding=xzmetric_sharding)
+
     if !precompute_metrics
         throw(ArgumentError("On-the-fly metric computation is not supported on sharded architectures."))
     end
@@ -153,18 +154,21 @@ function Oceananigans.LatitudeLongitudeGrid(arch::ShardedDistributed,
                                              Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
                                              Δyᶠᶜᵃ, Δyᶜᶠᵃ,
                                              Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ,
+                                             Δx⁻¹ᶜᶜᵃ, Δx⁻¹ᶠᶜᵃ, Δx⁻¹ᶜᶠᵃ, Δx⁻¹ᶠᶠᵃ,
+                                             Δy⁻¹ᶠᶜᵃ, Δy⁻¹ᶜᶠᵃ,
+                                             Az⁻¹ᶜᶜᵃ, Az⁻¹ᶠᶜᵃ, Az⁻¹ᶜᶠᵃ, Az⁻¹ᶠᶠᵃ,
                                              grid.radius)
 end
 
-function RectilinearGrid(arch::ShardedDistributed,
-                         FT::DataType = Oceananigans.defaults.FloatType;
-                         size,
-                         x = nothing,
-                         y = nothing,
-                         z = nothing,
-                         halo = nothing,
-                         extent = nothing,
-                         topology = (Periodic, Periodic, Bounded))
+function Oceananigans.Grids.RectilinearGrid(arch::ShardedDistributed,
+                                            FT::DataType = Oceananigans.defaults.FloatType;
+                                            size,
+                                            x = nothing,
+                                            y = nothing,
+                                            z = nothing,
+                                            halo = nothing,
+                                            extent = nothing,
+                                            topology = (Periodic, Periodic, Bounded))
 
     topology, size, halo, x, y, z = validate_rectilinear_grid_args(topology, size, halo, FT, extent, x, y, z)
 
@@ -182,6 +186,11 @@ function RectilinearGrid(arch::ShardedDistributed,
 
     xsharding = parent(xᶠᵃᵃ) isa StepRangeLen ? Sharding.NoSharding() : replicated
     ysharding = parent(yᵃᶠᵃ) isa StepRangeLen ? Sharding.NoSharding() : replicated
+
+    Δx⁻¹ᶠᵃᵃ = Reactant.to_rarray(reciprocal_metric(Δxᶠᵃᵃ), sharding=replicated)
+    Δx⁻¹ᶜᵃᵃ = Reactant.to_rarray(reciprocal_metric(Δxᶜᵃᵃ), sharding=replicated)
+    Δy⁻¹ᵃᶠᵃ = Reactant.to_rarray(reciprocal_metric(Δyᵃᶠᵃ), sharding=replicated)
+    Δy⁻¹ᵃᶜᵃ = Reactant.to_rarray(reciprocal_metric(Δyᵃᶜᵃ), sharding=replicated)
 
     Δxᶠᵃᵃ = Reactant.to_rarray(Δxᶠᵃᵃ, sharding=replicated)
     Δxᶜᵃᵃ = Reactant.to_rarray(Δxᶜᵃᵃ, sharding=replicated)
@@ -201,14 +210,14 @@ function RectilinearGrid(arch::ShardedDistributed,
                                        Lx, Ly, Lz,
                                        Δxᶠᵃᵃ, Δxᶜᵃᵃ, xᶠᵃᵃ, xᶜᵃᵃ,
                                        Δyᵃᶠᵃ, Δyᵃᶜᵃ, yᵃᶠᵃ, yᵃᶜᵃ,
-                                       z)
+                                       z, Δx⁻¹ᶠᵃᵃ, Δx⁻¹ᶜᵃᵃ, Δy⁻¹ᵃᶠᵃ, Δy⁻¹ᵃᶜᵃ)
 end
 
 # This mostly exists for future where we will assemble data from multiple workers
 # to construct the grid
-function TripolarGrid(arch::ShardedDistributed,
-                      FT::DataType=Float64;
-                      halo=(4, 4, 4), kwargs...)
+function Oceananigans.OrthogonalSphericalShellGrids.TripolarGrid(arch::ShardedDistributed,
+                                                                 FT::DataType=Float64;
+                                                                 halo=(4, 4, 4), kwargs...)
 
     # We build the global grid on a CPU architecture, in order to split it easily
     global_grid = TripolarGrid(CPU(), FT; halo, kwargs...)
@@ -226,7 +235,7 @@ function TripolarGrid(arch::ShardedDistributed,
     # ``1'' here is the maximum number of dimensions of the fields of ``z''
     replicate = Sharding.Replicated(arch.connectivity)
 
-    grid = OrthogonalSphericalShellGrid{Periodic, RightConnected, Bounded}(arch,
+    grid = OrthogonalSphericalShellGrid{Periodic, TwoSided{Closed, Connected}, Bounded}(arch,
         global_size...,
         halo...,
         convert(FT, global_grid.Lz),
@@ -251,6 +260,18 @@ function TripolarGrid(arch::ShardedDistributed,
         Reactant.to_rarray(global_grid.Azᶠᶜᵃ; sharding),
         Reactant.to_rarray(global_grid.Azᶜᶠᵃ; sharding),
         Reactant.to_rarray(global_grid.Azᶠᶠᵃ; sharding),
+        Reactant.to_rarray(global_grid.Δx⁻¹ᶜᶜᵃ; sharding),
+        Reactant.to_rarray(global_grid.Δx⁻¹ᶠᶜᵃ; sharding),
+        Reactant.to_rarray(global_grid.Δx⁻¹ᶜᶠᵃ; sharding),
+        Reactant.to_rarray(global_grid.Δx⁻¹ᶠᶠᵃ; sharding),
+        Reactant.to_rarray(global_grid.Δy⁻¹ᶜᶜᵃ; sharding),
+        Reactant.to_rarray(global_grid.Δy⁻¹ᶠᶜᵃ; sharding),
+        Reactant.to_rarray(global_grid.Δy⁻¹ᶜᶠᵃ; sharding),
+        Reactant.to_rarray(global_grid.Δy⁻¹ᶠᶠᵃ; sharding),
+        Reactant.to_rarray(global_grid.Az⁻¹ᶜᶜᵃ; sharding),
+        Reactant.to_rarray(global_grid.Az⁻¹ᶠᶜᵃ; sharding),
+        Reactant.to_rarray(global_grid.Az⁻¹ᶜᶠᵃ; sharding),
+        Reactant.to_rarray(global_grid.Az⁻¹ᶠᶠᵃ; sharding),
         convert(FT, global_grid.radius),
         global_grid.conformal_mapping)
 

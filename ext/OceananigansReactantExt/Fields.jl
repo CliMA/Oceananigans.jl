@@ -1,26 +1,21 @@
 module Fields
 
-using Reactant
-
+using ..Architectures: AnyConcreteReactantArray
+using ..Grids: ReactantGrid, ShardedGrid
+using ..OceananigansReactantExt: OceananigansReactantExt, deconcretize
 using Oceananigans: Oceananigans
 using Oceananigans.AbstractOperations: AbstractOperation
-using Oceananigans.Architectures: on_architecture, CPU
-using Oceananigans.Fields: Field, ReducedAbstractField, interior, interpolate!, copyable_fields
-
-import Oceananigans.DistributedComputations: reconstruct_global_field, synchronize_communication!
-import Oceananigans.Fields: set_to_field!, set_to_function!, set!
-
-import ..Architectures: AnyConcreteReactantArray
-import ..Grids: ReactantGrid, ShardedGrid
-import ..OceananigansReactantExt: deconcretize
+using Oceananigans.Architectures: CPU, on_architecture
+using Oceananigans.Fields: Field, ReducedAbstractField, copyable_fields, interior, interpolate!, set!
+using Reactant
 
 const ReactantField{LX, LY, LZ, O} = Field{LX, LY, LZ, O, <:ReactantGrid}
 const ShardedDistributedField{LX, LY, LZ, O} = Field{LX, LY, LZ, O, <:ShardedGrid}
 const ReactantOperation{LX, LY, LZ} = AbstractOperation{LX, LY, LZ, <:ReactantGrid}
 
-reconstruct_global_field(field::ShardedDistributedField) = field
+Oceananigans.DistributedComputations.reconstruct_global_field(field::ShardedDistributedField) = field
 
-deconcretize(field::Field{LX, LY, LZ}) where {LX, LY, LZ} =
+OceananigansReactantExt.deconcretize(field::Field{LX, LY, LZ}) where {LX, LY, LZ} =
     Field{LX, LY, LZ}(field.grid,
                       deconcretize(field.data),
                       field.boundary_conditions,
@@ -29,7 +24,8 @@ deconcretize(field::Field{LX, LY, LZ}) where {LX, LY, LZ} =
                       field.status,
                       field.communication_buffers)
 
-function set_to_function!(u::ReactantField, f)
+
+function Oceananigans.Fields.set_to_function!(u::ReactantField, f)
     # Supports serial and distributed
     arch = Oceananigans.Architectures.architecture(u)
     cpu_grid = on_architecture(CPU(), u.grid)
@@ -50,7 +46,7 @@ end
 # `copyable_fields` is Oceananigans' own copy-versus-interpolate policy; we differ from
 # `copy_to_field!` only in mechanism, copying interiors alone rather than attempting halos
 # through a `try`/`catch` that cannot be traced.
-function set_to_field!(u::ReactantField, v::ReactantField)
+function Oceananigans.Fields.set_to_field!(u::ReactantField, v::ReactantField)
     if copyable_fields(u, v)
         interior(u) .= interior(v)
     else
@@ -69,7 +65,7 @@ end
 
 # Without this method, Reactant arrays reach the generic `u .= a` fallback, which indexes `a` with the
 # field's own indices and so misreads windowed fields such as the free surface displacement.
-function set!(u::ReactantField, a::Union{AnyConcreteReactantArray, Reactant.AnyTracedRArray}, args...)
+function Oceananigans.Fields.set!(u::ReactantField, a::Union{AnyConcreteReactantArray, Reactant.AnyTracedRArray}, args...)
     copyto!(interior(u), a)
     return u
 end
@@ -96,6 +92,6 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
 end
 
 # No need to synchronize -> it should be implicit
-synchronize_communication!(::ShardedDistributedField) = nothing
+Oceananigans.DistributedComputations.synchronize_communication!(::ShardedDistributedField) = nothing
 
 end

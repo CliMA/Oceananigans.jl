@@ -17,9 +17,9 @@ using Oceananigans: Oceananigans, AbstractModel, initialize!
 using Oceananigans.Architectures: Architectures, CPU, GPU, architecture
 using Oceananigans.Fields: AbstractField, location, indices, interior
 using Oceananigans.Grids:
-    OrthogonalSphericalShellGrid, Center, Face, grid,
+    OrthogonalSphericalShellGrid, Center, Face, TwoSided, grid,
     constructor_arguments, generate_coordinate, grid,
-    AbstractVerticalCoordinate
+    validate_topology, AbstractVerticalCoordinate
 using Oceananigans.ImmersedBoundaries:
     ImmersedBoundaryGrid,
     GridFittedBoundary,

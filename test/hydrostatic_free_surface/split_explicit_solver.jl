@@ -2,11 +2,11 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Oceananigans.Fields: VelocityFields
 using Oceananigans.BoundaryConditions: UPivot, TPivot, FPivot, regularize_field_boundary_conditions
+using Oceananigans.Models: materialize_free_surface
 using Oceananigans.Models.HydrostaticFreeSurfaceModels
 using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: calculate_substeps,
                                                                                   calculate_adaptive_settings,
                                                                                   constant_averaging_kernel,
-                                                                                  materialize_free_surface,
                                                                                   SplitExplicitFreeSurface,
                                                                                   iterate_split_explicit!
 
@@ -330,7 +330,7 @@ end
     Lz = 1 / Oceananigans.defaults.gravitational_acceleration
     bottom_height(λ, φ) = max(cosine_of_pole_distance(λ, φ, 70), cosine_of_pole_distance(λ, φ, 250)) > cosd(3) ? 0 : -Lz
 
-    for arch in archs, (fold_topology, pivot) in ((RightCenterFolded, UPivot), (RightCenterFolded, TPivot), (RightFaceFolded, FPivot))
+    for arch in archs, (fold_topology, pivot) in ((CenterFolded, UPivot), (CenterFolded, TPivot), (FaceFolded, FPivot))
         underlying_grid = TripolarGrid(arch; size = (16, 10, 1), z = (-Lz, 0), north_poles_latitude = 55, first_pole_longitude = 70,
                                        fold_topology, pivot)
         grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height))
