@@ -1,19 +1,21 @@
-using Oceananigans.Grids: default_indices, new_data, validate_indices
-using Oceananigans.Utils: getregion
+using KernelAbstractions: @index, @kernel
+using Oceananigans.Architectures: architecture
+using Oceananigans.Grids: _node, default_indices, interior_z_indices, new_data, topology, validate_indices
+using Oceananigans.Utils: KernelParameters, getregion, interpolator, launch!, _interpolate
 
 #####
 ##### Fields remapped onto another grid: a `remapping` precomputed once interpolates a source field, or the
 ##### components of a horizontal vector, onto the nodes of a destination field with `remap!`. Grids extend
 ##### `remapping` and `remap!` with their own weights and kernels; by default the nodes of the destination are
-##### interpolated pointwise, with `interpolate!`.
+##### interpolated pointwise, in the horizontal, at the vertical index that the grids share.
 #####
 
 """
     PointwiseInterpolation()
 
-The remapping that evaluates the source field at each node of the destination with [`interpolate!`](@ref),
-which needs no precomputation. It is the remapping between grids whose coordinates coincide, like two
-`RectilinearGrid`s or two `LatitudeLongitudeGrid`s.
+The remapping that interpolates the source field horizontally onto each node of the destination, at the
+vertical index that the source and destination share, which needs no precomputation. It is the remapping
+between grids whose coordinates coincide, like two `RectilinearGrid`s or two `LatitudeLongitudeGrid`s.
 """
 struct PointwiseInterpolation end
 
@@ -58,8 +60,41 @@ function remap!(geographic::Tuple{AbstractField, AbstractField}, components::Tup
 end
 
 # The scalar remapping (`component::Nothing`), or the eastward (`Val(1)`) or northward (`Val(2)`)
-# component of a vector; extended by grids with their own remappings
-remap!(destination, source, ::PointwiseInterpolation, ::Nothing) = interpolate!(destination, source)
+# component of a vector; extended by grids with their own remappings. The pointwise remapping interpolates
+# the source horizontally at the vertical index of each destination node, rather than with `interpolate!`,
+# whose vertical stencil reaches beyond the window of a source windowed in the vertical.
+function remap!(destination, source, ::PointwiseInterpolation, ::Nothing)
+    destination_grid = destination.grid
+    source_grid = source.grid
+    map(validate_flat_interpolation, topology(destination_grid)[1:2], topology(source_grid)[1:2], (1, 2))
+
+    Base.size(destination_grid, 3) == Base.size(source_grid, 3) ||
+        throw(ArgumentError("The destination and source grids have different vertical sizes."))
+    ks = interior_z_indices(destination)
+    ks ⊆ interior_z_indices(source) ||
+        throw(ArgumentError("The vertical indices $ks of the destination are not held by the source."))
+
+    params = KernelParameters(interior_indices(destination))
+    launch!(architecture(destination), destination_grid, params, _interpolate_horizontally!,
+            destination, destination_grid, instantiated_location(destination),
+            source, source_grid, instantiated_location(source))
+
+    return nothing
+end
+
+@kernel function _interpolate_horizontally!(destination, destination_grid, destination_location,
+                                            source, source_grid, source_location)
+    i, j, k = @index(Global, NTuple)
+
+    # The horizontal node of the destination, omitting its `Nothing` and `Flat` directions like `_interpolate!`
+    horizontal_node = _node(i, j, k, destination_grid, destination_location[1], destination_location[2], nothing)
+    horizontal_node = flatten_node(horizontal_node...)
+
+    fidx = FractionalIndices(horizontal_node, source_grid, source_location[1], source_location[2], nothing)
+    ix = interpolator(fidx.i)
+    iy = interpolator(fidx.j)
+    @inbounds destination[i, j, k] = _interpolate(source, ix, iy, (k, k, 0))
+end
 
 #####
 ##### Remapped fields
@@ -116,7 +151,7 @@ using Oceananigans
 
 grid = YinYangGrid(size=(48, 16, 1), z=(-1, 0))
 c = CenterField(grid)
-set!(c, (λ, φ, z) -> sind(φ))
+set!(c, (λ, φ, z) -> cosd(φ))
 
 cᵍ = remapped_field(c, LatitudeLongitudeGrid(size=(64, 32, 1), longitude=(-180, 180), latitude=(-90, 90), z=(-1, 0)))
 
@@ -126,8 +161,8 @@ cᵍ = remapped_field(c, LatitudeLongitudeGrid(size=(64, 32, 1), longitude=(-180
 ├── boundary conditions: Nothing
 ├── operand: Remap of 54×22×1 Field{Center, Center, Center} on YinYangGrid on CPU with YinYangRemapping
 ├── status: time=0.0
-└── data: 70×38×3 OffsetArray(::Array{Float64, 3}, -2:67, -2:35, 0:2) with eltype Float64 with indices -2:67×-2:35×0:2
-    └── max=0.998793, min=-0.998793, mean=-1.56125e-17
+└── data: 70×38×3 StaticStridesOffsetArray(::Array{Float64, 3}, -2:67, -2:35, 0:2) with eltype Float64 with indices -2:67×-2:35×0:2
+    └── max=0.998795, min=0.0585736, mean=0.63742
 ```
 """
 function remapped_field(source::AbstractField, destination_grid; indices = default_indices(3))
