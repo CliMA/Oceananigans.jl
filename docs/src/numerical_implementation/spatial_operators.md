@@ -156,28 +156,29 @@ An isotropic diffusion operator acting on a tracer ``c``, on the other hand, is 
 
 ## Vertical integrals
 Vertical integrals are converted into sums along each column. For example, the hydrostatic pressure
-anomaly is
+anomaly ``p_{hy}``, defined by ``\partial_z p_{hy} = b``, is
 ```math
-    p_{HY}^\prime = \int_{-L_z}^0 b^\prime \, \mathrm{d} z \, ,
+    p_{hy}(z) = - \int_z^0 b \, \mathrm{d} z^\prime \, ,
 ```
-where ``b^\prime`` is the buoyancy perturbation. Converting it into a sum that we compute from
+where ``b`` is the buoyancy. Converting it into a sum that we compute from
 the top downwards we get
 ```math
     \begin{equation}
-    p_{HY}^\prime(k) =
+    p_{hy}(k) =
         \begin{cases}
-            - \overline{b_{N_z}^\prime}^{aaf} \Delta z^F_{N_z},               & \quad k = N_z \, , \\
-            p_{HY}^\prime(k+1) - \overline{b_{k+1}^\prime}^{aaf} \Delta z^F_k, & \quad 1 \le k \le N_z - 1 \, ,
+            - \frac{1}{2} b_{N_z} \Delta z^{ccc}_{N_z},                            & \quad k = N_z \, , \\
+            p_{hy}(k+1) - \overline{b_{k+1}}^{aaf} \Delta z^{ccf}_{k+1}, & \quad 1 \le k \le N_z - 1 \, ,
         \end{cases}
     \end{equation}
 ```
-where we converted the sum into a recursive definition for ``p_{HY}^\prime(k)`` in terms of
-``p_{HY}^\prime(k+1)`` so that the integral may be computed with ``\mathcal{O}(N_z)`` operations
-by a single thread.
+where we converted the sum into a recursive definition for ``p_{hy}(k)`` in terms of
+``p_{hy}(k+1)`` so that the integral may be computed with ``\mathcal{O}(N_z)`` operations
+by a single thread. The sum starts half a cell below the top of the domain, where
+``p_{hy} = 0``, so the top term uses half of the thickness of the uppermost cell.
 
 The vertical velocity ``w`` may be computed from ``u`` and ``v`` via the continuity equation
 ```math
-    w = - \int_{-L_z}^0 (\partial_x u + \partial_y v) \, \mathrm{d} z \, ,
+    w(z) = - \int_{-L_z}^z (\partial_x u + \partial_y v) \, \mathrm{d} z^\prime \, ,
 ```
 to satisfy the incompressibility condition ``\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{v} = 0``
 to numerical precision. This also involves computing a vertical integral, in this case evaluated
@@ -187,7 +188,7 @@ from the bottom up
     w_k =
         \begin{cases}
             0, & \quad k = 1 \, , \\
-            w_{k-1} - \left( \partial_x^{caa} u + \partial_y^{aca} v \right) \Delta z^C_k, & \quad 2 \le k \le N_z \, .
+            w_{k-1} - \left( \partial_x^{caa} u + \partial_y^{aca} v \right)_{k-1} \Delta z^{ccc}_{k-1}, & \quad 2 \le k \le N_z + 1 \, .
         \end{cases}
     \end{equation}
 ```
