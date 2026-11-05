@@ -203,9 +203,12 @@ for filename in ("truth_hourly_month01.jld2", "truth_hourly_month02.jld2", "trut
     isfile(path) || (mkpath(truth_directory); download(joinpath(artifact_url, filename), path))
 end
 
+truth_grid = RectilinearGrid(CPU(), Float32; size=(Nx, Nx), x=(0, Lx), y=(0, Lx), halo=(3, 3),
+                             topology=(Bounded, Bounded, Flat))
+
 training_truth, validation_truth = map(("truth_hourly_month01.jld2", "truth_hourly_month02.jld2")) do filename
     path = joinpath(truth_directory, filename)
-    (u = FieldTimeSeries(path, "u"), v = FieldTimeSeries(path, "v"))
+    (u = FieldTimeSeries(path, "u"; grid=truth_grid), v = FieldTimeSeries(path, "v"; grid=truth_grid))
 end
 
 # The loss compares the model's vorticity with the truth's on the interior cell corners, computed with the
