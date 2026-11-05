@@ -41,7 +41,7 @@ struct LagrangianParticles{P, B, T, D, Π, S, R, M} <: AbstractLagrangianParticl
              parameters :: Π
                 sorting :: S
                 removal :: R
-          stage_storage :: M
+          tendencies :: M
 end
 
 @inline no_dynamics(args...) = nothing
@@ -126,10 +126,10 @@ function LagrangianParticles(particles::StructArray;
     removal = materialize_removal(boundary_conditions, particles)
     validate_reordering(dynamics, sorting, removal)
 
-    stage_storage = nothing # materialized by the model constructor; see `materialize_lagrangian_particles`
+    tendencies = nothing # materialized by the model constructor; see `materialize_lagrangian_particles`
 
     return LagrangianParticles(particles, boundary_conditions, tracked_fields, dynamics, parameters,
-                               sorting, removal, stage_storage)
+                               sorting, removal, tendencies)
 end
 
 Base.size(lagrangian_particles::LagrangianParticles) = size(lagrangian_particles.properties)
@@ -187,7 +187,7 @@ end
 
 function Oceananigans.prognostic_state(lagrangian_particles::LagrangianParticles)
     return (; properties = prognostic_state(lagrangian_particles.properties),
-              stage_storage = prognostic_state(lagrangian_particles.stage_storage))
+              tendencies = prognostic_state(lagrangian_particles.tendencies))
 end
 
 function Oceananigans.restore_prognostic_state!(restored::LagrangianParticles, from)
@@ -195,8 +195,8 @@ function Oceananigans.restore_prognostic_state!(restored::LagrangianParticles, f
     resize!(restored.properties, length(from.properties.x))
     restore_prognostic_state!(restored.properties, from.properties)
 
-    if hasproperty(from, :stage_storage)
-        restore_prognostic_state!(restored.stage_storage, from.stage_storage)
+    if hasproperty(from, :tendencies)
+        restore_prognostic_state!(restored.tendencies, from.tendencies)
     end
 
     return restored

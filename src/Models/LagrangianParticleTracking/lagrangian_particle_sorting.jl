@@ -289,7 +289,7 @@ function sort_lagrangian_particles!(particles::LagrangianParticles, grid)
             grid, sorting.permutation, sorting.cell_indices, sorting.cell_offsets, sorting.algorithm)
 
     permute_properties!(properties, sorting, grid, Np)
-    permute_stage_storage!(particles.stage_storage, sorting.permutation, grid, Np)
+    permute_particle_tendencies!(particles.tendencies, sorting.permutation, grid, Np)
 
     return nothing
 end

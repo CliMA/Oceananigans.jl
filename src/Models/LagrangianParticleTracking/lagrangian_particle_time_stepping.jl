@@ -14,19 +14,21 @@ using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3Tim
 #####      `advance_particle_position`, and boundary conditions are applied.
 #####   3. At the end of the last stage, absorbed particles are removed.
 #####
-##### Per-particle storage for the scheme (`particles.stage_storage`) is permuted when particles
-##### are sorted and compacted when absorbed particles are removed, so it stays aligned with the particles.
+##### Per-particle tendencies from previous stages (`particles.tendencies`) are permuted when particles
+##### are sorted and compacted when absorbed particles are removed, so they stay aligned with the particles.
 #####
 
 #####
-##### Per-particle storage
+##### Per-particle tendencies
 #####
 
 """
-    ParticleStageStorage{S, B}
+    ParticleTendencies{S, B}
 
-The `stage_storage` property of `LagrangianParticles` that belong to a model whose time-stepping
-scheme needs per-particle storage, such as the velocity of each particle at the previous stage.
+The `tendencies` property of `LagrangianParticles` that belong to a model whose time-stepping
+scheme needs tendencies from previous stages: the velocity of each particle at the previous stage
+(`RungeKutta3TimeStepper`, `QuasiAdamsBashforth2TimeStepper`), or its displacement since the
+beginning of the time step, i.e. the tendency integrated over the stage (`SplitRungeKuttaTimeStepper`).
 
 - `state`: a `NamedTuple` of vectors, each with one element per particle.
 - `buffers`: scratch vectors used to reorder `state`.
@@ -35,23 +37,23 @@ scheme needs per-particle storage, such as the velocity of each particle at the 
 absorbed particles are removed, so that `state[name][p]` always belongs to particle `p`.
 `state` is checkpointed.
 """
-struct ParticleStageStorage{S, B}
+struct ParticleTendencies{S, B}
       state :: S
     buffers :: B
 end
 
-function ParticleStageStorage(state::NamedTuple)
+function ParticleTendencies(state::NamedTuple)
     buffers = map(array -> similar(array, 0), state)
-    return ParticleStageStorage(state, buffers)
+    return ParticleTendencies(state, buffers)
 end
 
-particle_stage_storage(::Nothing) = nothing
-particle_stage_storage(state::NamedTuple) = ParticleStageStorage(state)
+particle_tendencies(::Nothing) = nothing
+particle_tendencies(state::NamedTuple) = ParticleTendencies(state)
 
-stage_storage_state(::Nothing) = nothing
-stage_storage_state(storage::ParticleStageStorage) = storage.state
+particle_tendencies_state(::Nothing) = nothing
+particle_tendencies_state(storage::ParticleTendencies) = storage.state
 
-Base.summary(storage::ParticleStageStorage) = string("ParticleStageStorage with state ", keys(storage.state))
+Base.summary(storage::ParticleTendencies) = string("ParticleTendencies with state ", keys(storage.state))
 
 """
     particle_time_stepper_state(timestepper, x)
@@ -102,13 +104,13 @@ function TimeSteppers.materialize_lagrangian_particles(particles::LagrangianPart
                                particles.parameters,
                                particles.sorting,
                                particles.removal,
-                               particle_stage_storage(state))
+                               particle_tendencies(state))
 end
 
 # Returns `true` if the storage was resized, so that it holds no history from the previous time step.
-resize_stage_storage!(::Nothing, Np) = false
+resize_particle_tendencies!(::Nothing, Np) = false
 
-function resize_stage_storage!(storage::ParticleStageStorage, Np)
+function resize_particle_tendencies!(storage::ParticleTendencies, Np)
     resized = false
     for array in storage.state
         if length(array) != Np
@@ -119,11 +121,11 @@ function resize_stage_storage!(storage::ParticleStageStorage, Np)
     return resized
 end
 
-# Reorder the stage storage with the kernels that reorder particle properties;
+# Reorder the particle tendencies with the kernels that reorder particle properties;
 # see `permute_properties!` and `remove_absorbed_particles!`.
-permute_stage_storage!(::Nothing, permutation, grid, Np) = nothing
+permute_particle_tendencies!(::Nothing, permutation, grid, Np) = nothing
 
-function permute_stage_storage!(storage::ParticleStageStorage, permutation, grid, Np)
+function permute_particle_tendencies!(storage::ParticleTendencies, permutation, grid, Np)
     arch = architecture(grid)
     for (array, buffer) in zip(storage.state, storage.buffers)
         resize!(buffer, Np)
@@ -133,9 +135,9 @@ function permute_stage_storage!(storage::ParticleStageStorage, permutation, grid
     return nothing
 end
 
-compact_stage_storage!(::Nothing, removal, grid, Np, Nkept) = nothing
+compact_particle_tendencies!(::Nothing, removal, grid, Np, Nkept) = nothing
 
-function compact_stage_storage!(storage::ParticleStageStorage, removal, grid, Np, Nkept)
+function compact_particle_tendencies!(storage::ParticleTendencies, removal, grid, Np, Nkept)
     arch = architecture(grid)
     for (array, buffer) in zip(storage.state, storage.buffers)
         resize!(buffer, Np)
@@ -146,9 +148,9 @@ function compact_stage_storage!(storage::ParticleStageStorage, removal, grid, Np
     return nothing
 end
 
-Oceananigans.prognostic_state(storage::ParticleStageStorage) = storage.state
+Oceananigans.prognostic_state(storage::ParticleTendencies) = storage.state
 
-function Oceananigans.restore_prognostic_state!(restored::ParticleStageStorage, from)
+function Oceananigans.restore_prognostic_state!(restored::ParticleTendencies, from)
     for name in keys(restored.state)
         array = restored.state[name]
         data = from[name]
@@ -158,7 +160,7 @@ function Oceananigans.restore_prognostic_state!(restored::ParticleStageStorage, 
     return restored
 end
 
-Oceananigans.restore_prognostic_state!(::ParticleStageStorage, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::ParticleTendencies, ::Nothing) = nothing
 
 #####
 ##### Stages
@@ -330,13 +332,13 @@ call `particles.dynamics` with the full time step `Δt`, and reset the flags of 
 Return `true` if the per-particle storage was resized, so that it holds no history from the previous time step.
 """
 function begin_lagrangian_particle_step!(particles::LagrangianParticles, model, Δt)
-    resized = resize_stage_storage!(particles.stage_storage, length(particles))
+    resized = resize_particle_tendencies!(particles.tendencies, length(particles))
     sort_lagrangian_particles!(particles, model.grid)
     particles.dynamics(particles, model, Δt)
 
     # `dynamics` may add or remove particles
     Np = length(particles)
-    resized = resize_stage_storage!(particles.stage_storage, Np) | resized
+    resized = resize_particle_tendencies!(particles.tendencies, Np) | resized
     reset_absorption!(particles.removal, Np)
 
     return resized

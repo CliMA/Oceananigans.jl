@@ -232,7 +232,7 @@ remove_absorbed_particles!(particles, grid) = nothing
 $(TYPEDSIGNATURES)
 
 Remove the `particles` that were absorbed at an [`AbsorbingBoundary`](@ref) during the current
-time step. The remaining particles keep their order, and per-particle stage storage is compacted with them.
+time step. The remaining particles keep their order, and per-particle tendencies is compacted with them.
 """
 function remove_absorbed_particles!(particles::LagrangianParticles, grid)
     removal = particles.removal
@@ -258,7 +258,7 @@ function remove_absorbed_particles!(particles::LagrangianParticles, grid)
     end
 
     resize!(properties, Nkept)
-    compact_stage_storage!(particles.stage_storage, removal, grid, Np, Nkept)
+    compact_particle_tendencies!(particles.tendencies, removal, grid, Np, Nkept)
 
     return nothing
 end

@@ -2,7 +2,7 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using StructArrays
 using Oceananigans.Architectures: on_architecture
-using Oceananigans.Models.LagrangianParticleTracking: ParticleStageStorage
+using Oceananigans.Models.LagrangianParticleTracking: ParticleTendencies
 
 #####
 ##### Convergence of particle trajectories
@@ -66,7 +66,7 @@ convergence_rate(errors) = log2(errors[end-1] / errors[end])
 end
 
 #####
-##### Per-particle stage storage stays aligned with the particles
+##### Per-particle tendencies stays aligned with the particles
 #####
 
 function labeled_particles(arch, Np; seed=1234)
@@ -114,8 +114,8 @@ end
     particles = LagrangianParticles(labeled_particles(arch, Np); sorting=CountingSort(), boundary_conditions)
     model = shear_flow_model(arch, timestepper, particles)
 
-    @test model.particles.stage_storage isa ParticleStageStorage
-    @test isnothing(particles.stage_storage) # the stage storage is materialized by the model
+    @test model.particles.tendencies isa ParticleTendencies
+    @test isnothing(particles.tendencies) # the particle tendencies is materialized by the model
 
     Np_history = Int[]
 
@@ -123,7 +123,7 @@ end
         time_step!(reference_model, Δt)
         time_step!(model, Δt)
         push!(Np_history, length(model.particles))
-        @test all(array -> length(array) == length(model.particles), model.particles.stage_storage.state)
+        @test all(array -> length(array) == length(model.particles), model.particles.tendencies.state)
     end
 
     # Particles are removed at several different time steps
@@ -141,10 +141,10 @@ end
 end
 
 #####
-##### Checkpointing stage storage
+##### Checkpointing particle tendencies
 #####
 
-@testset "Checkpointing Lagrangian particle stage storage [$(typeof(arch))]" for arch in archs
+@testset "Checkpointing Lagrangian particle particle tendencies [$(typeof(arch))]" for arch in archs
     Np = 100
     Δt = 0.05
     boundary_conditions = ParticleBoundaryConditions(bottom=AbsorbingBoundary())
@@ -158,7 +158,7 @@ end
     run!(reference_simulation)
 
     dir = mktempdir()
-    prefix = "particle_stage_storage_$(typeof(arch))"
+    prefix = "particle_tendencies_$(typeof(arch))"
 
     model = make_model()
     simulation = Simulation(model; Δt, stop_iteration=5, verbose=false)
@@ -170,15 +170,15 @@ end
     @test Np_checkpoint < Np
 
     state = Oceananigans.prognostic_state(model.particles)
-    @test keys(state.stage_storage) == (:u⁻, :v⁻, :w⁻)
-    @test all(array -> length(array) == Np_checkpoint, state.stage_storage)
+    @test keys(state.tendencies) == (:u⁻, :v⁻, :w⁻)
+    @test all(array -> length(array) == Np_checkpoint, state.tendencies)
 
     # Round trip through prognostic_state / restore_prognostic_state!
     new_model = make_model()
     Oceananigans.restore_prognostic_state!(new_model.particles, on_architecture(CPU(), state))
     @test length(new_model.particles) == Np_checkpoint
-    for name in keys(state.stage_storage)
-        @test Array(new_model.particles.stage_storage.state[name]) == Array(state.stage_storage[name])
+    for name in keys(state.tendencies)
+        @test Array(new_model.particles.tendencies.state[name]) == Array(state.tendencies[name])
     end
 
     # Restarting from the checkpoint reproduces the reference run

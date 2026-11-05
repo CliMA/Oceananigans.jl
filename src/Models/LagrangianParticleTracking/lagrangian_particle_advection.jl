@@ -223,7 +223,7 @@ function advect_lagrangian_particles!(particles, model, Δt, stage)
 
     launch!(arch, grid, KernelParameters(1:Np),
             _advect_particles!,
-            particles.properties, stage_storage_state(particles.stage_storage), stage,
+            particles.properties, particle_tendencies_state(particles.tendencies), stage,
             particles.boundary_conditions, absorbed_flags(particles.removal),
             grid, Δt, total_velocities(model), drogue_depths(particles.dynamics))
 
