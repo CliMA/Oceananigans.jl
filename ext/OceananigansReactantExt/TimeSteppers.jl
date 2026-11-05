@@ -6,27 +6,30 @@ using ..Grids: ShardedGrid, ReactantGrid
 using Reactant
 using Oceananigans
 
-using Oceananigans: AbstractModel, Distributed
+using Oceananigans: AbstractModel, Distributed, initialize!
 using Oceananigans.Grids: architecture
+using Oceananigans.BoundaryConditions: cache_boundary_conditions!, initialize_boundary_conditions!
 using Oceananigans.TimeSteppers:
+    TimeSteppers as OceananigansTimeSteppers,
     update_state!,
     tick!,
     tick_stage!,
     step_lagrangian_particles!,
+    step_closure_prognostics!,
     QuasiAdamsBashforth2TimeStepper,
-    cache_previous_tendencies!
-
-import Oceananigans.TimeSteppers: Clock, first_time_step!, time_step!,
-                                  ab2_step!, maybe_prepare_first_time_step!,
-                                  materialize_clock!, convert_time
-import Oceananigans: initialize!
+    RungeKutta3TimeStepper,
+    SplitRungeKuttaTimeStepper,
+    cache_previous_tendencies!,
+    Clock,
+    time_step!,
+    ab2_step!
 
 const ReactantModel{TS} = Union{
     AbstractModel{TS, <:ReactantState},
     AbstractModel{TS, <:Distributed{<:ReactantState}}
 }
 
-function Clock(grid::ReactantGrid)
+function Oceananigans.TimeSteppers.Clock(grid::ReactantGrid)
     FT = eltype(grid)
     arch = architecture(grid)
 
@@ -45,12 +48,16 @@ function Clock(grid::ReactantGrid)
     return Clock(; time=t, iteration=iter, stage, last_Δt, last_stage_Δt, kernel_time_type=FT)
 end
 
-Base.convert(::Type{T}, x::Reactant.TracedRNumber) where {T<:Reactant.ReactantPrimitive} =
-      Reactant.promote_to(Reactant.TracedRNumber{T}, x)
+# Extend `Oceananigans.TimeSteppers.clock_convert` not to commit type piracy on
+# `Base.convert`.  For Reactant's traced numbers we actually don't want to
+# `convert` them to the "destination" type `T` (which is in contrast with the
+# semantic of `Base.convert`).
+OceananigansTimeSteppers.clock_convert(::Type{T}, x::Reactant.TracedRNumber) where {T<:Reactant.ReactantPrimitive} =
+    Reactant.promote_to(Reactant.TracedRNumber{T}, x)
 
-Base.convert(::Type{T}, x::Reactant.ConcreteRNumber{T}) where {T<:AbstractFloat} = x
-Base.convert(::Type{T}, x::Reactant.ConcreteRNumber) where {T<:AbstractFloat} =
-      Reactant.ConcreteRNumber(convert(T, Reactant.to_number(x)); x.sharding)
+OceananigansTimeSteppers.clock_convert(::Type{T}, x::Reactant.ConcreteRNumber{T}) where {T<:AbstractFloat} = x
+OceananigansTimeSteppers.clock_convert(::Type{T}, x::Reactant.ConcreteRNumber) where {T<:AbstractFloat} =
+    Reactant.ConcreteRNumber(convert(T, Reactant.to_number(x)); x.sharding)
 
 innertype(::ConcreteRNumber{T}) where T = T
 
@@ -63,7 +70,7 @@ const TracedReactantClock = Oceananigans.TimeSteppers.Clock{<:Reactant.TracedRNu
 # which fails. Explicitly constructing Clock{TracedRNumber{FT}} avoids this: the field
 # type matches the value type so new() succeeds, and EnsureReturnType is not triggered
 # for a composite type parameter.
-function convert_time(grid, clock::TracedReactantClock)
+function Oceananigans.TimeSteppers.convert_time(grid, clock::TracedReactantClock)
     FT  = eltype(grid)
     new_time = convert(FT, clock.time)   # promote_to(TracedRNumber{FT}, clock.time)
     return Clock(; time          = new_time,
@@ -90,7 +97,9 @@ function Base.setproperty!(clock::ConcreteReactantClock, prop::Symbol, value)
 end
 
 # Reactant handles initialization via first_time_step!, so this is a no-op.
-maybe_prepare_first_time_step!(::ReactantModel, callbacks) = nothing
+Oceananigans.TimeSteppers.maybe_prepare_first_time_step!(::ReactantModel, Δt, callbacks) = nothing
+Oceananigans.TimeSteppers.maybe_prepare_first_time_step!(::ReactantModel{<:RungeKutta3TimeStepper}, Δt, callbacks) = nothing
+Oceananigans.TimeSteppers.maybe_prepare_first_time_step!(::ReactantModel{<:SplitRungeKuttaTimeStepper}, Δt, callbacks) = nothing
 
 # For QAB2, last_Δt and last_stage_Δt are always the same value after tick!.
 # Alias them so Reactant's tracer sees one buffer, avoiding XLA buffer donation errors.
@@ -98,7 +107,7 @@ maybe_prepare_first_time_step!(::ReactantModel, callbacks) = nothing
 # convert through Float64 and create a new ConcreteRNumber (breaking the alias).
 const ConcreteClock = Clock{<:Reactant.ConcreteRNumber}
 
-function materialize_clock!(clock::ConcreteClock, ::QuasiAdamsBashforth2TimeStepper)
+function Oceananigans.TimeSteppers.materialize_clock!(clock::ConcreteClock, ::QuasiAdamsBashforth2TimeStepper)
     setfield!(clock, :last_stage_Δt, getfield(clock, :last_Δt))
     return nothing
 end
@@ -114,7 +123,7 @@ end
 
 const QAB2TS{FT} = QuasiAdamsBashforth2TimeStepper{FT}
 
-function time_step!(model::ReactantModel{<:QAB2TS{FT}}, Δt; callbacks=[], euler=false) where FT
+function Oceananigans.TimeSteppers.time_step!(model::ReactantModel{<:QAB2TS{FT}}, Δt; callbacks=[], euler=false) where FT
     # If euler, then set χ = -0.5
     minus_point_five = convert(FT, -0.5)
     ab2_timestepper = model.timestepper
@@ -122,11 +131,13 @@ function time_step!(model::ReactantModel{<:QAB2TS{FT}}, Δt; callbacks=[], euler
     χ₀ = ab2_timestepper.χ # Save initial value
     ab2_timestepper.χ = χ
 
+    cache_boundary_conditions!(model)
     ab2_step!(model, Δt, callbacks)
     cache_previous_tendencies!(model)
 
     tick!(model.clock, Δt)
 
+    step_closure_prognostics!(model, Δt)
     update_state!(model, callbacks)
     step_lagrangian_particles!(model, Δt)
 
@@ -140,15 +151,17 @@ end
 ##### first_time_step! for Reactant
 #####
 
-function first_time_step!(model::ReactantModel, Δt)
+function Oceananigans.TimeSteppers.first_time_step!(model::ReactantModel, Δt)
     initialize!(model)
+    initialize_boundary_conditions!(model)
     update_state!(model)
     time_step!(model, Δt)
     return nothing
 end
 
-function first_time_step!(model::ReactantModel{<:Oceananigans.TimeSteppers.QuasiAdamsBashforth2TimeStepper}, Δt)
+function Oceananigans.TimeSteppers.first_time_step!(model::ReactantModel{<:Oceananigans.TimeSteppers.QuasiAdamsBashforth2TimeStepper}, Δt)
     initialize!(model)
+    initialize_boundary_conditions!(model)
     update_state!(model)
     time_step!(model, Δt, euler=true)
     return nothing

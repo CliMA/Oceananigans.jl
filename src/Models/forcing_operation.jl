@@ -1,4 +1,4 @@
-using Adapt
+using Adapt: Adapt
 
 using Oceananigans.Utils: Utils
 
@@ -19,7 +19,7 @@ const ForcingOperation{LX, LY, LZ} =
     KernelFunctionOperation{LX, LY, LZ, <:Any, <:ForcingKernelFunction} where {LX, LY, LZ}
 
 """
-    ForcingOperation(name::Symbol, model::AbstractModel)
+$(TYPEDSIGNATURES)
 
 Create a `KernelFunctionOperation` that evaluates the `model.forcing` for
 prognostic variable `name`.
@@ -60,7 +60,7 @@ c_forcing_field = ForcingField(:c, model)
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
 ├── operand: KernelFunctionOperation at (Center, Center, Center)
 ├── status: time=0.0
-└── data: 22×22×22 OffsetArray(::Array{Float64, 3}, -2:19, -2:19, -2:19) with eltype Float64 with indices -2:19×-2:19×-2:19
+└── data: 22×22×22 StaticStridesOffsetArray(::Array{Float64, 3}, -2:19, -2:19, -2:19) with eltype Float64 with indices -2:19×-2:19×-2:19
     └── max=-0.0166667, min=-0.0166667, mean=-0.0166667
 ```
 """

@@ -1,0 +1,884 @@
+include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
+
+using Oceananigans: write_output!
+using Oceananigans.Fields: FunctionField, ZeroField, OneField, ConstantField
+
+#####
+##### JLD2Writer tests
+#####
+
+function test_jld2_constant_field_output(arch)
+    grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
+    model = NonhydrostaticModel(grid)
+    simulation = Simulation(model; Δt=1, stop_iteration=1, verbose=false)
+    outputs = (z = ZeroField(), o = OneField(), c = ConstantField(10))
+
+    dir = mktempdir()
+    filepath = joinpath(dir, "test_constants.jld2")
+    simulation.output_writers[:constants] = JLD2Writer(model, outputs;
+                                                       dir,
+                                                       schedule = TimeInterval(1),
+                                                       filename = "test_constants.jld2",
+                                                       overwrite_files = true)
+    run!(simulation)
+
+    jldopen(filepath) do file
+        @test file["timeseries/z/0"] == 0
+        @test file["timeseries/o/0"] == 1
+        @test file["timeseries/c/0"] == 10
+    end
+
+    rm(dir; recursive=true)
+
+    return nothing
+end
+
+# A kernel function that holds many fields, so that a field of its operation is large
+struct ManyFieldsKernelFunction{F}
+    fields :: F
+end
+
+@inline (kernel::ManyFieldsKernelFunction)(i, j, k, grid) = @inbounds kernel.fields[1][i, j, k]
+Adapt.adapt_structure(to, kernel::ManyFieldsKernelFunction) = ManyFieldsKernelFunction(Adapt.adapt(to, kernel.fields))
+
+function test_jld2_large_outputs(arch)
+    grid = RectilinearGrid(arch, size=(2, 2, 8), extent=(1, 1, 1))
+    model = NonhydrostaticModel(grid)
+
+    names = ntuple(n -> Symbol(:c, n), 45)
+    kernel = ManyFieldsKernelFunction(NamedTuple{names}(ntuple(n -> CenterField(grid), 45)))
+    operation = KernelFunctionOperation{Center, Center, Center}(kernel, grid)
+    outputs = (; slice = Field(operation; indices=(:, :, 1)),
+                 column = Field(Integral(operation, dims=3)))
+
+    # Initializing and writing the outputs must not need stack in proportion to their
+    # size, so run the simulation on a task with a 1 MiB stack.
+    mktempdir() do dir
+        simulation = Simulation(model; Δt=1, stop_iteration=1, verbose=false)
+        simulation.output_writers[:large] = JLD2Writer(model, outputs;
+                                                       dir,
+                                                       filename = "large_outputs.jld2",
+                                                       schedule = IterationInterval(1),
+                                                       overwrite_files = true)
+
+        task = Task(() -> run!(simulation), 2^20)
+        schedule(task)
+        outcome = try
+            wait(task)
+            :completed
+        catch err
+            err.task.exception
+        end
+        @test outcome === :completed
+
+        jldopen(joinpath(dir, "large_outputs.jld2")) do file
+            @test file["timeseries/slice/serialized/indices"] == (:, :, 1:1)
+            @test haskey(file, "timeseries/column/1")
+        end
+    end
+
+    return nothing
+end
+
+function jld2_sliced_field_output(model, outputs=model.velocities)
+
+    model.clock.iteration = 0
+    model.clock.time = 0.0
+
+    set!(model, u = (x, y, z) -> rand(),
+                v = (x, y, z) -> rand(),
+                w = (x, y, z) -> rand())
+
+    simulation = Simulation(model; Δt=1, stop_iteration=1, verbose=false)
+
+    simulation.output_writers[:velocities] = JLD2Writer(model, outputs,
+                                                        schedule = TimeInterval(1),
+                                                        indices = (1:2, 1:4, :),
+                                                        with_halos = false,
+                                                        dir = ".",
+                                                        filename = "test.jld2",
+                                                        overwrite_files = true)
+
+    run!(simulation)
+
+    file = jldopen("test.jld2")
+
+    u₁ = file["timeseries/u/0"]
+    v₁ = file["timeseries/v/0"]
+    w₁ = file["timeseries/w/0"]
+
+    close(file)
+
+    rm("test.jld2")
+
+    return size(u₁) == (2, 2, 4) && size(v₁) == (2, 2, 4) && size(w₁) == (2, 2, 5)
+end
+
+function test_jld2_size_file_splitting(arch, compress)
+    Nx = 16
+    grid = RectilinearGrid(arch, size=(Nx, Nx, Nx), extent=(1, 1, 1), halo=(1, 1, 1))
+    model = NonhydrostaticModel(grid; buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+
+    # Random velocities do not compress, so the same threshold splits the output
+    # into several parts whether or not the file is compressed
+    set!(model; u=(x, y, z) -> 1e-3 * rand())
+    simulation = Simulation(model; Δt=1, stop_iteration=20, verbose=false)
+
+    function fake_bc_init(file, model)
+        file["boundary_conditions/fake"] = π
+    end
+
+    threshold = 200KiB
+
+    mktempdir() do dir
+
+        simulation.output_writers[:ow1] = JLD2Writer(model, (; u=model.velocities.u);
+                                                     dir,
+                                                     filename = "test.jld2",
+                                                     schedule = IterationInterval(1),
+                                                     init = fake_bc_init,
+                                                     including = [:grid],
+                                                     array_type = Array{Float64},
+                                                     with_halos = true,
+                                                     file_splitting = FileSizeLimit(threshold),
+                                                     compress,
+                                                     overwrite_files = true)
+
+        @test_logs min_level=Logging.Warn run!(simulation)
+
+        part_filename(n) = joinpath(dir, "test_part$n.jld2")
+
+        # Test that files have been split according to size as expected: every part but
+        # the last one exceeds the threshold, and the parts are numbered consecutively.
+        number_of_parts = count(n -> isfile(part_filename(n)), 1:100)
+        @test number_of_parts ≥ 3
+        @test all(filesize(part_filename(n)) > threshold for n in 1:number_of_parts-1)
+        @test filesize(part_filename(number_of_parts)) < threshold
+        @test !isfile(part_filename(number_of_parts + 1))
+
+        for n in 1:number_of_parts
+            jldopen(part_filename(n), "r") do file
+                # Test to make sure all files contain structs from `including`.
+                @test file["grid/Nx"] == Nx
+                @test file["serialized/grid"] isa RectilinearGrid
+
+                # Test to make sure all files contain info from `init` function.
+                @test file["boundary_conditions/fake"] == π
+            end
+        end
+
+        return nothing
+    end
+end
+
+function test_jld2_async_io_matches_sync(arch)
+    # Verify that async output is byte-identical to synchronous output for the same simulation.
+    function build_sim(asynchronous, filename)
+        grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+        model = NonhydrostaticModel(grid; tracers=:c)
+        set!(model,
+             u = (x, y, z) -> sin(2π * x) * cos(2π * y),
+             v = (x, y, z) -> cos(2π * x) * sin(2π * y),
+             w = (x, y, z) -> 0.0,
+             c = (x, y, z) -> z)
+
+        sim = Simulation(model, Δt=0.001, stop_iteration=5)
+        sim.output_writers[:fields] = JLD2Writer(model,
+                                                 merge(model.velocities, (; c=model.tracers.c));
+                                                 dir = ".",
+                                                 filename = filename,
+                                                 schedule = IterationInterval(1),
+                                                 overwrite_files = true,
+                                                 asynchronous = asynchronous)
+        return sim
+    end
+
+    function read_timeseries_data(filepath)
+        return jldopen(filepath, "r") do f
+            ts = f["timeseries"]
+            result = Dict{String, Dict{String, Any}}()
+            for name in keys(ts)
+                result[name] = Dict{String, Any}()
+                for key in keys(ts[name])
+                    key == "serialized" && continue
+                    result[name][key] = f["timeseries/$name/$key"]
+                end
+            end
+            return result
+        end
+    end
+
+    sync_file = "test_async_io_sync.jld2"
+    async_file = "test_async_io_async.jld2"
+    isfile(sync_file) && rm(sync_file)
+    isfile(async_file) && rm(async_file)
+
+    sim_sync = build_sim(false, sync_file)
+    sim_async = build_sim(true, async_file)
+
+    # Type-parameter dispatch: both are JLD2Writer; only the async one matches AsyncOutputWriter.
+    @test sim_sync.output_writers[:fields] isa JLD2Writer
+    @test sim_async.output_writers[:fields] isa JLD2Writer
+    @test sim_sync.output_writers[:fields] isa SyncOutputWriter
+    @test sim_async.output_writers[:fields] isa AsyncOutputWriter
+    @test !is_asynchronous(sim_sync.output_writers[:fields])
+    @test  is_asynchronous(sim_async.output_writers[:fields])
+
+    run!(sim_sync)
+    run!(sim_async)
+
+    # `run!` should have flushed pending async writes.
+    @test isfile(sync_file)
+    @test isfile(async_file)
+
+    sync_data = read_timeseries_data(sync_file)
+    async_data = read_timeseries_data(async_file)
+
+    @test sort(collect(keys(sync_data))) == sort(collect(keys(async_data)))
+    for name in keys(sync_data)
+        @test sort(collect(keys(sync_data[name]))) == sort(collect(keys(async_data[name])))
+        for it in keys(sync_data[name])
+            @test sync_data[name][it] == async_data[name][it]
+        end
+    end
+
+    # Calling `wait_for_async_writes!` after a run is a no-op (no pending tasks).
+    wait_for_async_writes!(sim_async)
+    wait_for_async_writes!(sim_async)
+
+    rm(sync_file)
+    rm(async_file)
+
+    return nothing
+end
+
+function test_jld2_async_overlap(arch)
+    # Prove the main thread does not block on the disk write. With a known
+    # `commit_delay` injected into `commit_async_write!`, an async `write_output!`
+    # should return ~immediately while the spawned task is still running, and the
+    # subsequent `wait_for_async_writes!` should block for roughly `commit_delay`.
+    grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 1, 1),
+                           topology=(Periodic, Periodic, Periodic))
+    model = NonhydrostaticModel(grid; tracers=:c)
+
+    filepath = "test_jld2_async_overlap.jld2"
+    isfile(filepath) && rm(filepath)
+
+    writer = JLD2Writer(model, model.velocities;
+                        filename = filepath,
+                        schedule = IterationInterval(1),
+                        overwrite_files = true,
+                        asynchronous = true)
+
+    # Warm up so the timed write doesn't pay first-call compilation cost.
+    write_output!(writer, model)
+    wait_for_async_writes!(writer)
+
+    # An iteration already in the file is skipped, so advance the clock before
+    # the timed write.
+    model.clock.iteration += 1
+
+    commit_delay = 0.5
+    writer.commit_delay = commit_delay
+
+    t_return = @elapsed write_output!(writer, model)
+    @test t_return < commit_delay / 5
+    @test writer.task isa Task
+    @test !istaskdone(writer.task)
+
+    t_wait = @elapsed wait_for_async_writes!(writer)
+    @test t_wait > commit_delay * 3 / 5
+    @test writer.task === nothing
+
+    isfile(filepath) && rm(filepath)
+    return nothing
+end
+
+function test_jld2_async_exception_propagation(arch)
+    # Prove that an exception thrown by `commit_async_write!` on the worker task
+    # surfaces on the main thread at the next synchronization point — either an
+    # explicit `wait_for_async_writes!` or the implicit wait at the start of the
+    # next `write_output!`. The writer's task field must also be cleared so the
+    # writer is usable after the error is observed.
+    grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 1, 1),
+                           topology=(Periodic, Periodic, Periodic))
+    model = NonhydrostaticModel(grid; tracers=:c)
+
+    filepath = "test_jld2_async_throws.jld2"
+    isfile(filepath) && rm(filepath)
+
+    writer = JLD2Writer(model, model.velocities;
+                        filename = filepath,
+                        schedule = IterationInterval(1),
+                        overwrite_files = true,
+                        asynchronous = true)
+
+    # Path 1: explicit wait surfaces the error.
+    # `_async_commit!` also logs `@error "Async output writer failed"` from the
+    # worker task. That log is emitted asynchronously and isn't caught by
+    # `@test_logs`, so the test stays noisy but still asserts the right things.
+    writer.commit_throws = ErrorException("synthetic commit failure")
+    write_output!(writer, model)
+    @test writer.task isa Task
+    @test_throws TaskFailedException wait_for_async_writes!(writer)
+    @test writer.task === nothing
+
+    # Path 2: implicit wait at the start of the next write surfaces the error.
+    write_output!(writer, model)
+    @test writer.task isa Task
+    @test_throws TaskFailedException write_output!(writer, model)
+    @test writer.task === nothing
+
+    # With the knob cleared, subsequent writes succeed and the file is on disk.
+    writer.commit_throws = nothing
+    write_output!(writer, model)
+    wait_for_async_writes!(writer)
+    @test isfile(filepath)
+
+    rm(filepath)
+    return nothing
+end
+
+function test_jld2_async_cpu_aliasing_error(arch)
+    # On CPU, `fetch_and_convert_output` returns the live field array without copying
+    # when the field's eltype matches `eltype(array_type)`. Async writes from that
+    # array would race with the next `time_step!`. Construction must refuse.
+    grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1),
+                           topology=(Periodic, Periodic, Periodic))
+    model = NonhydrostaticModel(grid; tracers=:c)  # default Float64
+
+    # Float64 model + Array{Float32} (default): eltypes differ → conversion copies → OK.
+    @test JLD2Writer(model, model.velocities;
+                     filename = "ok_default", schedule = IterationInterval(1),
+                     overwrite_files = true, asynchronous = true) isa AsyncOutputWriter
+    isfile("ok_default.jld2") && rm("ok_default.jld2")
+
+    # Float64 model + Array{Float64}: eltypes match → would alias → error (on CPU).
+    if arch isa GPU
+        # GPU writes always copy in convert_output, so the check is a no-op.
+        @test JLD2Writer(model, model.velocities;
+                         filename = "ok_f64_gpu", schedule = IterationInterval(1),
+                         overwrite_files = true, array_type = Array{Float64},
+                         asynchronous = true) isa AsyncOutputWriter
+        isfile("ok_f64_gpu.jld2") && rm("ok_f64_gpu.jld2")
+    else
+        @test_throws ArgumentError JLD2Writer(model, model.velocities;
+            filename = "bad_f64", schedule = IterationInterval(1),
+            overwrite_files = true, array_type = Array{Float64},
+            asynchronous = true)
+        # Sync writers are unaffected by the check.
+        @test JLD2Writer(model, model.velocities;
+                         filename = "ok_f64_sync", schedule = IterationInterval(1),
+                         overwrite_files = true, array_type = Array{Float64},
+                         asynchronous = false) isa SyncOutputWriter
+        isfile("ok_f64_sync.jld2") && rm("ok_f64_sync.jld2")
+    end
+
+    return nothing
+end
+
+function test_jld2_time_file_splitting(arch)
+    grid = RectilinearGrid(arch, size=(16, 16, 16), extent=(1, 1, 1), halo=(1, 1, 1))
+    model = NonhydrostaticModel(grid; buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+    simulation = Simulation(model; Δt=1, stop_iteration=10, verbose=false)
+
+    function fake_bc_init(file, model)
+        file["boundary_conditions/fake"] = π
+    end
+
+    simulation.output_writers[:ow1] = JLD2Writer(model, (; u=model.velocities.u);
+                                                 dir = ".",
+                                                 filename = "test",
+                                                 schedule = IterationInterval(1),
+                                                 init = fake_bc_init,
+                                                 including = [:grid],
+                                                 array_type = Array{Float64},
+                                                 with_halos = true,
+                                                 file_splitting = TimeInterval(3seconds),
+                                                 overwrite_files = true)
+
+    @test_logs min_level=Logging.Warn run!(simulation)
+
+    for n in string.(1:3)
+        filename = "test_part$n.jld2"
+        jldopen(filename, "r") do file
+            # Test to make sure all files contain structs from `including`.
+            @test file["grid/Nx"] == 16
+            @test file["serialized/grid"] isa RectilinearGrid
+
+            # Test to make sure all files contain the same number of snapshots.
+            dimlength = length(file["timeseries/t"])
+            @test dimlength == 3
+
+            # Test to make sure all files contain info from `init` function.
+            @test file["boundary_conditions/fake"] == π
+        end
+
+        # Leave test directory clean.
+        rm(filename)
+    end
+    rm("test_part4.jld2")
+
+    return nothing
+end
+
+function test_jld2_file_splitting_overhead_error(arch)
+    grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+    model = NonhydrostaticModel(grid)
+
+    writer(dir, file_splitting) = JLD2Writer(model, model.velocities;
+                                             dir,
+                                             filename = "file_splitting_overhead_test.jld2",
+                                             schedule = IterationInterval(1),
+                                             file_splitting,
+                                             overwrite_files = true)
+
+    mktempdir() do dir
+        # The metadata written at initialization alone exceeds this limit,
+        # and the error is thrown at construction, before any time step.
+        @test_throws ArgumentError writer(dir, FileSizeLimit(1KiB))
+    end
+
+    mktempdir() do dir
+        @test writer(dir, FileSizeLimit(10MiB)) isa JLD2Writer
+    end
+end
+
+function test_jld2_compression(arch)
+    grid = RectilinearGrid(arch, size=(16, 16, 16), extent=(1, 1, 1))
+    model = NonhydrostaticModel(grid; tracers=:c)
+
+    compressors = ("none" => false,
+                   "deflate" => true,
+                   "zstd" => ZstdFilter(),
+                   "shuffle-zstd" => [Shuffle(), ZstdFilter(1)])
+    file_sizes = Dict{String, Int}()
+
+    mktempdir() do dir
+        for (label, compress) in compressors
+            model.clock.iteration = 0
+            model.clock.time = 0.0
+            set!(model, c=(x, y, z) -> exp(z))
+
+            simulation = Simulation(model; Δt=1, stop_iteration=1, verbose=false)
+
+            filename = joinpath(dir, "compression_test_$label.jld2")
+            simulation.output_writers[:tracers] = JLD2Writer(model, model.tracers;
+                                                             filename,
+                                                             schedule = IterationInterval(1),
+                                                             compress,
+                                                             overwrite_files = true)
+
+            run!(simulation)
+
+            file_sizes[label] = filesize(filename)
+        end
+
+        c_uncompressed = FieldTimeSeries(joinpath(dir, "compression_test_none.jld2"), "c")
+
+        for label in ("deflate", "zstd", "shuffle-zstd")
+            c_compressed = FieldTimeSeries(joinpath(dir, "compression_test_$label.jld2"), "c")
+            @test parent(c_compressed) == parent(c_uncompressed)
+            @test file_sizes[label] < file_sizes["none"]
+        end
+    end
+    return nothing
+end
+
+function test_jld2_compress_keyword_precedence(arch)
+    grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+    model = NonhydrostaticModel(grid)
+
+    writer(; kwargs...) = JLD2Writer(model, model.velocities;
+                                     filename = "compress_keyword_test.jld2",
+                                     schedule = IterationInterval(1),
+                                     kwargs...)
+
+    @test writer().jld2_kw[:compress] == [Shuffle(), ZstdFilter(1)]
+    @test writer(compress=false).jld2_kw[:compress] == false
+    @test writer(compress=true).jld2_kw[:compress] == true
+    @test writer(jld2_kw=Dict{Symbol, Any}(:compress => true)).jld2_kw[:compress] == true
+
+    # An explicit :compress entry in jld2_kw takes precedence over the compress keyword
+    @test writer(compress=true, jld2_kw=Dict{Symbol, Any}(:compress => false)).jld2_kw[:compress] == false
+
+    # Other jld2_kw entries are preserved alongside compress
+    jld2_kw = Dict{Symbol, Any}(:iotype => IOStream)
+    @test writer(compress=true, jld2_kw=jld2_kw).jld2_kw == Dict{Symbol, Any}(:iotype => IOStream, :compress => true)
+
+    # The user-provided jld2_kw is not mutated
+    @test jld2_kw == Dict{Symbol, Any}(:iotype => IOStream)
+
+    return nothing
+end
+
+function test_jld2_time_averaging_of_horizontal_averages(model)
+
+    model.clock.iteration = 0
+    model.clock.time = 0.0
+
+    u, v, w = model.velocities
+    T = model.tracers.T
+
+    u .= 1
+    v .= 2
+    w .= 0
+    T .= 4
+
+    Δt = 0.1
+    simulation = Simulation(model; Δt=Δt, stop_iteration=5, verbose=false)
+
+    average_fluxes = (wu = Field(Average(w * u, dims=(1, 2))),
+                      uv = Field(Average(u * v, dims=(1, 2))),
+                      wT = Field(Average(w * T, dims=(1, 2))))
+
+    simulation.output_writers[:fluxes] = JLD2Writer(model, average_fluxes,
+                                                    schedule = AveragedTimeInterval(4Δt, window=2Δt),
+                                                    dir = ".",
+                                                    with_halos = false,
+                                                    filename = "jld2_time_averaging_test.jld2",
+                                                    overwrite_files = true)
+
+    run!(simulation)
+
+    test_file_name = "jld2_time_averaging_test.jld2"
+    file = jldopen(test_file_name)
+
+    # Data is saved without halos, and with singleton dimensions dropped
+    wu = file["timeseries/wu/4"][3]
+    uv = file["timeseries/uv/4"][3]
+    wT = file["timeseries/wT/4"][3]
+
+    close(file)
+
+    rm(test_file_name)
+
+    FT = eltype(model.grid)
+
+    # Note: w is not identically 0 because T = 4 introduces a buoyancy term that is
+    # subsequently cancelled by a large scale pressure field.
+    @test abs(wu) < eps(FT)
+    @test abs(wT) < eps(FT)
+    @test uv == FT(2)
+
+    return nothing
+end
+
+function test_jld2_time_averaging(arch)
+    # Test for both "nice" floating point number and one that is more susceptible
+    # to rounding errors
+    for Δt in (1/64, 0.01)
+        # Results should be very close (rtol < 1e-5) for stride = 1.
+        # stride > 2 is currently not robust and can give inconsistent
+        # results due to floating number errors that can result in vanishingly
+        # small timesteps, which essentially decouples the clock time from
+        # the iteration number.
+        # Can add stride > 1 cases to the following line to test them.
+        for (stride, rtol) in zip((1), (1.e-5))
+            @info "  Testing time-averaging of NetCDF outputs [$(typeof(arch))] with stride of $(stride) and relative tolerance of $(rtol)"
+            topo = (Periodic, Periodic, Periodic)
+            domain = (x=(0, 1), y=(0, 1), z=(0, 1))
+            grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 4); domain...)
+
+            λ1(x, y, z) = x + (1 - y)^2 + tanh(z)
+            λ2(x, y, z) = x + (1 - y)^2 + tanh(4z)
+
+            Fc1(x, y, z, t, c1) = - λ1(x, y, z) * c1
+            Fc2(x, y, z, t, c2) = - λ2(x, y, z) * c2
+
+            c1_forcing = Forcing(Fc1, field_dependencies=:c1)
+            c2_forcing = Forcing(Fc2, field_dependencies=:c2)
+
+            model = NonhydrostaticModel(grid;
+                                        tracers = (:c1, :c2),
+                                        forcing = (c1=c1_forcing, c2=c2_forcing))
+
+            set!(model, c1=1, c2=1)
+
+            Δt = 0.01 # Floating point number chosen conservatively to flag rounding errors
+            simulation = Simulation(model; Δt=Δt, stop_time=50Δt, verbose=false)
+
+            ∫c1_dxdy = Field(Average(model.tracers.c1, dims=(1, 2)))
+            ∫c2_dxdy = Field(Average(model.tracers.c2, dims=(1, 2)))
+
+            jld2_outputs = Dict("c1" => ∫c1_dxdy, "c2" => ∫c2_dxdy)
+            horizontal_average_jld2_filepath = "decay_averaged_field_test.jld2"
+
+            simulation.output_writers[:horizontal_average] = JLD2Writer(model,
+                                                                        jld2_outputs,
+                                                                        schedule = TimeInterval(10Δt),
+                                                                        dir = ".",
+                                                                        with_halos = false,
+                                                                        filename = horizontal_average_jld2_filepath,
+                                                                        overwrite_files = true)
+
+            multiple_time_average_jld2_filepath = "decay_windowed_time_average_test.jld2"
+            single_time_average_jld2_filepath = "single_decay_windowed_time_average_test.jld2"
+            window = 6Δt
+
+            single_jld2_output = Dict("c1" => ∫c1_dxdy)
+
+            simulation.output_writers[:single_output_time_average] = JLD2Writer(model,
+                                                                                single_jld2_output,
+                                                                                schedule = AveragedTimeInterval(10Δt, window = window, stride = stride),
+                                                                                dir = ".",
+                                                                                with_halos = false,
+                                                                                filename = single_time_average_jld2_filepath,
+                                                                                overwrite_files = true)
+
+            simulation.output_writers[:multiple_output_time_average] = JLD2Writer(model,
+                                                                                  jld2_outputs,
+                                                                                  schedule = AveragedTimeInterval(10Δt, window = window, stride = stride),
+                                                                                  dir = ".",
+                                                                                  with_halos = false,
+                                                                                  filename = multiple_time_average_jld2_filepath,
+                                                                                  overwrite_files = true)
+
+            run!(simulation)
+
+            ##### For each λ, horizontal average should evaluate to
+            #####
+            #####     c̄(z, t) = ∫₀¹ ∫₀¹ exp{- λ(x, y, z) * t} dx dy
+            #####             = 1 / (Nx*Ny) * Σᵢ₌₁ᴺˣ Σⱼ₌₁ᴺʸ exp{- λ(i, j, k) * t}
+            #####
+            ##### which we can compute analytically.
+
+            c1 = FieldTimeSeries(horizontal_average_jld2_filepath, "c1")
+            c2 = FieldTimeSeries(horizontal_average_jld2_filepath, "c2")
+
+            Nx, Ny, Nz = size(c1.grid)
+            xs, ys, zs = c1.grid.xᶜᵃᵃ[1:Nx], c1.grid.yᵃᶜᵃ[1:Ny], c1.grid.z.cᵃᵃᶜ[1:Nz]
+
+            c̄1(z, t) = 1 / (Nx * Ny) * sum(exp(-λ1(x, y, z) * t) for x in xs for y in ys)
+            c̄2(z, t) = 1 / (Nx * Ny) * sum(exp(-λ2(x, y, z) * t) for x in xs for y in ys)
+
+            for (n, t) in enumerate(c1.times)
+                @test all(isapprox.(c1[1, 1, :, n], c̄1.(zs, t), rtol=rtol))
+                @test all(isapprox.(c2[1, 1, :, n], c̄2.(zs, t), rtol=rtol))
+            end
+
+            # Compute time averages...
+            c̄1(ts) = 1/length(ts) * sum(c̄1.(zs, t) for t in ts)
+            c̄2(ts) = 1/length(ts) * sum(c̄2.(zs, t) for t in ts)
+
+            #####
+            ##### Test strided windowed time average against analytic solution
+            ##### for *single* JLD2 output
+            #####
+            c1_single = FieldTimeSeries(single_time_average_jld2_filepath, "c1")
+
+            window_size = Int(window/Δt)
+
+            @info "    Testing time-averaging of a single JLD2 output [$(typeof(arch))]..."
+
+            for (n, t) in enumerate(c1_single.times[2:end])
+                averaging_times = [t - n*Δt for n in 0:stride:window_size-1 if t - n*Δt >= 0]
+                @test all(isapprox.(c1_single[1, 1, :, n+1], c̄1(averaging_times), rtol=rtol, atol=rtol))
+            end
+
+            #####
+            ##### Test strided windowed time average against analytic solution
+            ##### for *multiple* JLD2 outputs
+            #####
+
+            c2_multiple = FieldTimeSeries(multiple_time_average_jld2_filepath, "c2")
+
+            @info "    Testing time-averaging of multiple JLD2 outputs [$(typeof(arch))]..."
+
+            for (n, t) in enumerate(c2_multiple.times[2:end])
+                averaging_times = [t - n*Δt for n in 0:stride:window_size-1 if t - n*Δt >= 0]
+                @test all(isapprox.(c2_multiple[1, 1, :, n+1], c̄2(averaging_times), rtol=rtol))
+            end
+
+            rm(horizontal_average_jld2_filepath)
+            rm(single_time_average_jld2_filepath)
+            rm(multiple_time_average_jld2_filepath)
+        end
+    end
+    return nothing
+end
+
+for arch in archs
+    # Some tests can reuse this same grid and model.
+    topo =(Periodic, Periodic, Bounded)
+    grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 4), extent=(1, 1, 1))
+    background_u = BackgroundField((x, y, z, t) -> 0)
+    model = NonhydrostaticModel(grid; buoyancy=SeawaterBuoyancy(), tracers=(:T, :S), background_fields=(u=background_u,))
+
+    @testset "JLD2 output writer [$(typeof(arch))]" begin
+        @info "  Testing JLD2 output writer [$(typeof(arch))]..."
+
+        set!(model, u = (x, y, z) -> rand(),
+                    v = (x, y, z) -> rand(),
+                    w = (x, y, z) -> rand())
+
+        simulation = Simulation(model; Δt=1.0, stop_iteration=1, verbose=false)
+
+        # Flavors of output: functions, AbstractOperations, FunctionFields
+        clock = model.clock
+        α = 0.12
+        test_function_field = FunctionField{Center, Center, Center}((x, y, z, t, α) -> α * t, grid; clock, parameters=α)
+        function_and_background_fields = (; αt = test_function_field, background_u = model.background_fields.velocities.u)
+
+        u, v, w = model.velocities
+        operation_outputs= (u_op = 1 * u, v_op = 1 * v, w_op = 1 * w)
+
+        vanilla_outputs = merge(model.velocities, function_and_background_fields, operation_outputs)
+
+        simulation.output_writers[:velocities] = JLD2Writer(model, vanilla_outputs,
+                                                            schedule = IterationInterval(1),
+                                                            dir = ".",
+                                                            filename = "vanilla_jld2_test",
+                                                            indices = (:, :, :),
+                                                            with_halos = false,
+                                                            overwrite_files = true)
+
+        simulation.output_writers[:sliced] = JLD2Writer(model, model.velocities,
+                                                        schedule = TimeInterval(1),
+                                                        indices = (1:2, 1:4, :),
+                                                        with_halos = false,
+                                                        dir = ".",
+                                                        filename = "sliced_jld2_test",
+                                                        overwrite_files = true)
+
+        func_outputs = (u = model -> u, v = model -> v, w = model -> w)
+
+        simulation.output_writers[:sliced_funcs] = JLD2Writer(model, func_outputs,
+                                                              schedule = TimeInterval(1),
+                                                              indices = (1:2, 1:4, :),
+                                                              with_halos = false,
+                                                              dir = ".",
+                                                              filename = "sliced_funcs_jld2_test",
+                                                              overwrite_files = true)
+
+
+        simulation.output_writers[:sliced_func_fields] = JLD2Writer(model, function_and_background_fields,
+                                                                    schedule = TimeInterval(1),
+                                                                    indices = (1:2, 1:4, :),
+                                                                    with_halos = false,
+                                                                    dir = ".",
+                                                                    filename = "sliced_func_fields_jld2_test",
+                                                                    overwrite_files = true)
+
+
+
+        u₀ = @allowscalar model.velocities.u[3, 3, 3]
+        v₀ = @allowscalar model.velocities.v[3, 3, 3]
+        w₀ = @allowscalar model.velocities.w[3, 3, 3]
+
+        run!(simulation)
+
+        #####
+        ##### Stuff was outputted
+        #####
+
+        file = jldopen("vanilla_jld2_test.jld2")
+
+        # Data is saved without halos by default
+        u₁ = file["timeseries/u/0"][3, 3, 3]
+        v₁ = file["timeseries/v/0"][3, 3, 3]
+        w₁ = file["timeseries/w/0"][3, 3, 3]
+
+        # Operations
+        u₁_op = file["timeseries/u_op/0"][3, 3, 3]
+        v₁_op = file["timeseries/v_op/0"][3, 3, 3]
+        w₁_op = file["timeseries/w_op/0"][3, 3, 3]
+
+        # FunctionField
+        αt₀ = file["timeseries/αt/0"][3, 3, 3]
+        αt₁ = file["timeseries/αt/1"][3, 3, 3]
+        t₀ = file["timeseries/t/0"]
+        t₁ = file["timeseries/t/1"]
+
+        close(file)
+
+        rm("vanilla_jld2_test.jld2")
+
+        FT = typeof(u₁)
+
+        @test FT(u₀) == u₁
+        @test FT(v₀) == v₁
+        @test FT(w₀) == w₁
+
+        @test FT(u₀) == u₁_op
+        @test FT(v₀) == v₁_op
+        @test FT(w₀) == w₁_op
+
+        @test FT(αt₀) == FT(α * t₀)
+        @test FT(αt₁) == FT(α * t₁)
+
+        #####
+        ##### Field slicing
+        #####
+
+        function test_field_slicing(test_file_name, variables, sizes...)
+            file = jldopen(test_file_name)
+
+            for (i, variable) in enumerate(variables)
+                var₁ = file["timeseries/$variable/0"]
+                @test size(var₁) == sizes[i]
+            end
+
+            close(file)
+            rm(test_file_name)
+        end
+
+        test_field_slicing("sliced_jld2_test.jld2", ("u", "v", "w"), (2, 4, 4), (2, 4, 4), (2, 4, 5))
+        test_field_slicing("sliced_funcs_jld2_test.jld2", ("u", "v", "w"), (4, 4, 4), (4, 4, 4), (4, 4, 5))
+        test_field_slicing("sliced_func_fields_jld2_test.jld2", ("αt", "background_u"), (2, 4, 4), (2, 4, 4))
+
+        ####
+        #### File splitting
+        ####
+
+        test_jld2_size_file_splitting(arch, false)
+        test_jld2_time_file_splitting(arch)
+        test_jld2_file_splitting_overhead_error(arch)
+
+        #####
+        ##### Compression
+        #####
+
+        test_jld2_compression(arch)
+        test_jld2_compress_keyword_precedence(arch)
+        test_jld2_size_file_splitting(arch, true)
+
+        #####
+        ##### Async I/O
+        #####
+
+        test_jld2_async_io_matches_sync(arch)
+        test_jld2_async_overlap(arch)
+        test_jld2_async_exception_propagation(arch)
+        test_jld2_async_cpu_aliasing_error(arch)
+
+        #####
+        ##### Time-averaging
+        #####
+
+        test_jld2_time_averaging_of_horizontal_averages(model)
+
+        #####
+        ##### Time-averaging (same test as in NetCDFWriter)
+        #####
+        test_jld2_time_averaging(arch)
+
+        # Test that free surface can be output
+        grid = RectilinearGrid(arch, size=(4, 4, 4), x=(0, 1), y=(0, 1), z=(0, 1))
+        free_surface = SplitExplicitFreeSurface(substeps=10)
+        model = HydrostaticFreeSurfaceModel(grid; free_surface)
+        simulation = Simulation(model; Δt=1, stop_iteration=2, verbose=false)
+        filename = "test_free_surface_output.jld2"
+        ow = JLD2Writer(model, (; η=model.free_surface.displacement); filename,
+                        schedule = IterationInterval(1),
+                        with_halos = false,
+                        overwrite_files = true)
+        simulation.output_writers[:free_surface] = ow
+        run!(simulation)
+        ηt = FieldTimeSeries(filename, "η")
+        @test size(parent(ηt[1])) == (4, 4, 1)
+
+        test_jld2_constant_field_output(arch)
+        test_jld2_large_outputs(arch)
+    end
+end

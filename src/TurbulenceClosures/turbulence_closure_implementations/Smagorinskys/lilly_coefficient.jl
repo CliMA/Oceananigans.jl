@@ -6,7 +6,7 @@ struct LillyCoefficient{FT}
 end
 
 """
-    LillyCoefficient([FT=Float64;] smagorinsky=0.16, reduction_factor=1)
+    LillyCoefficient([FT=Oceananigans.defaults.FloatType;] smagorinsky=0.16, reduction_factor=1)
 
 When used with `Smagorinsky`, it calculates the Smagorinsky coefficient according to closure
 proposed by [Lilly (1962)](@cite Lilly62), and [Lilly (1966)](@cite Lilly66), which has an
@@ -50,7 +50,7 @@ LillyCoefficient(FT=Oceananigans.defaults.FloatType; smagorinsky=0.16, reduction
 const SmagorinskyLilly = Smagorinsky{<:Any, <:LillyCoefficient}
 
 """
-    SmagorinskyLilly([time_discretization::TD = ExplicitTimeDiscretization(), FT=Float64;] C=0.16, Cb=1.0, Pr=1.0)
+    SmagorinskyLilly([time_discretization::TD = ExplicitTimeDiscretization(), FT=Oceananigans.defaults.FloatType;] C=0.16, Cb=1.0, Pr=1.0)
 
 Return a `SmagorinskyLilly` type associated with the turbulence closure proposed by
 [Lilly62](@citet), [Smagorinsky1958](@citet), [Smagorinsky1963](@citet), and [Lilly66](@citet),
@@ -84,10 +84,10 @@ Arguments
 Keyword arguments
 =================
 
-* `Cˢ`: Smagorinsky coefficient. Default value is 0.16 as obtained by Lilly (1966).
+* `Cˢ`: Smagorinsky coefficient. Default value is 0.16 as obtained by [Lilly (1966)](@cite Lilly66).
 
-* `Cb`: Buoyancy term multipler based on Lilly (1962) (`Cb = 0` turns it off, `Cb ≠ 0` turns it on.
-        Typically, and according to the original work by Lilly (1962), `Cb = 1 / Pr`.)
+* `Cb`: Buoyancy term multipler based on [Lilly (1962)](@cite Lilly62) (`Cb = 0` turns it off, `Cb ≠ 0` turns it on.
+        Typically, and according to the original work by [Lilly (1962)](@cite Lilly62), `Cb = 1 / Pr`.)
 
 * `Pr`: Turbulent Prandtl numbers for each tracer. Either a constant applied to every
         tracer, or a `NamedTuple` with fields for each tracer individually.
@@ -116,7 +116,7 @@ end
 SmagorinskyLilly(FT::DataType; kwargs...) = SmagorinskyLilly(ExplicitTimeDiscretization(), FT; kwargs...)
 
 """
-    stability(N², Σ², Cb)
+$(TYPEDSIGNATURES)
 
 Return the stability function
 

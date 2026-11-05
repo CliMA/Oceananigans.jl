@@ -1,26 +1,32 @@
 #####
-##### ZarrWriter struct definition
-#####
 ##### ZarrWriter functionality is implemented in ext/OceananigansZarrExt
 #####
 
-mutable struct ZarrWriter{Mode, O, T, S, A, FS, C, CH, G} <: AbstractOutputWriter{Mode}
+#####
+##### ZarrWriter struct definition
+#####
+mutable struct ZarrWriter{Mode, O, T, S, A, FS, C, CH, G, DN, DT} <: AbstractOutputWriter{Mode}
     filepath :: String
     store :: S
-    grids :: G                  # Tuple of unique grids across all outputs
-    output_grid_map :: Dict     # name (String) -> grid index in `grids` (Int) or Nothing
+    grids :: G
+    output_grid_map :: Dict{String, Union{Int, Nothing}}
     outputs :: O
     schedule :: T
     array_type :: A
     indices :: Tuple
+    global_attributes :: Dict{String, Any}
+    output_attributes :: Dict{String, Any}
+    dimensions :: Dict{String, Any}
     with_halos :: Bool
-    overwrite_existing :: Bool
+    include_grid_metrics :: Bool
+    overwrite_files :: Bool
     verbose :: Bool
     part :: Int
     file_splitting :: FS
     compressor :: C
     chunks :: CH
-    dimensions :: Dict
+    dimension_name_generator :: DN
+    dimension_type :: DT
     initialized :: Bool
     task :: Union{Task, Nothing}  # in-flight async write task; `nothing` for `Synchronous`
     commit_delay :: Float64       # test-only: artificial sleep inside commit_async_write!
@@ -31,13 +37,17 @@ end
 # `ZarrWriter{Synchronous}(...)` or `ZarrWriter{Asynchronous}(...)` and have
 # Julia infer the remaining type parameters from the arguments.
 function ZarrWriter{Mode}(filepath, store::S, grids::G, output_grid_map::Dict, outputs::O,
-                          schedule::T, array_type::A, indices::Tuple, with_halos::Bool,
-                          overwrite_existing::Bool, verbose::Bool, part::Int, file_splitting::FS,
-                          compressor::C, chunks::CH, dimensions::Dict, initialized::Bool) where {Mode, O, T, S, A, FS, C, CH, G}
-    return ZarrWriter{Mode, O, T, S, A, FS, C, CH, G}(
+                          schedule::T, array_type::A, indices::Tuple,
+                          global_attributes::Dict, output_attributes::Dict, dimensions::Dict,
+                          with_halos::Bool, include_grid_metrics::Bool, overwrite_files::Bool,
+                          verbose::Bool, part::Int, file_splitting::FS, compressor::C, chunks::CH,
+                          dimension_name_generator::DN, dimension_type::DT,
+                          initialized::Bool) where {Mode, O, T, S, A, FS, C, CH, G, DN, DT}
+    return ZarrWriter{Mode, O, T, S, A, FS, C, CH, G, DN, DT}(
         filepath, store, grids, output_grid_map, outputs, schedule, array_type, indices,
-        with_halos, overwrite_existing, verbose, part, file_splitting, compressor, chunks,
-        dimensions, initialized, nothing, 0.0, nothing)
+        global_attributes, output_attributes, dimensions, with_halos, include_grid_metrics,
+        overwrite_files, verbose, part, file_splitting, compressor, chunks,
+        dimension_name_generator, dimension_type, initialized, nothing, 0.0, nothing)
 end
 
 # method in OceananigansZarrExt
@@ -45,10 +55,16 @@ end
     ZarrWriter(model, outputs; filename, schedule,
                dir = ".",
                indices = (:, :, :),
-               with_halos = true,
+               global_attributes = Dict(),
+               output_attributes = Dict(),
+               dimensions = Dict(),
+               with_halos = false,
+               include_grid_metrics = true,
                array_type = Array{Float32},
                file_splitting = NoFileSplitting(),
-               overwrite_existing = false,
+               dimension_name_generator = trilocation_dim_name,
+               dimension_type = Float64,
+               overwrite_files = false,
                verbose = false,
                part = 1,
                store = nothing,
@@ -64,8 +80,8 @@ Construct a `ZarrWriter` for an Oceananigans `model` that writes `label, output`
 
 The argument `outputs` may be a `Dict` or `NamedTuple`. The keys of `outputs` are symbols
 or strings that name output data. The values of `outputs` are `AbstractField`s,
-`AbstractOperation`s, `Reduction`s, `WindowedTimeAverage`s, or functions that take a
-`model` and return data.
+`AbstractOperation`s, `Reduction`s, `WindowedTimeAverage`s, `TimeDerivative`s, or functions
+that take a `model` and return data.
 
 Each output is stored as a chunked Zarr array of shape `(field_dims..., time)`, growing
 along the time axis. A top-level `time` array tracks simulation time at each step. Grid
@@ -97,7 +113,13 @@ Keyword arguments
 - `indices`: Tuple of `Colon`, `UnitRange`, or `Int` specifying the slice of each field to
              write. Default: `(:, :, :)`.
 
-- `with_halos`: Whether to include halo regions. Default: `true`.
+- `with_halos`: Whether to include halo regions. Default: `false`.
+
+- `global_attributes`: Metadata to store on the root Zarr group.
+
+- `output_attributes`: Attributes to add to individual output arrays.
+
+- `dimensions`: Dimension names for non-field outputs.
 
 - `array_type`: The array type. Only `eltype(array_type)` is used — it sets the Zarr
                 array's on-disk `dtype`, which is fixed for the array's lifetime. Default:
@@ -120,15 +142,27 @@ Keyword arguments
                     include `NoFileSplitting()` (default), `FileSizeLimit(sz)`,
                     `TimeInterval(Δt)`.
 
-- `overwrite_existing`: Remove an existing store before writing. Default: `false`. When
-                        `false` and the store already exists, the writer appends new
-                        timesteps to the existing time axis.
+- `overwrite_files`: Remove an existing store before writing. Default: `false`. When
+                     `false` and the store already exists, the writer appends new
+                     timesteps to the existing time axis.
 
 ## Miscellaneous
 
 - `verbose`: Log compute/write times and sizes. Default: `false`.
 
 - `part`: Starting part number for file splitting. Default: `1`.
+
+- `include_grid_metrics`: Include grid metrics such as grid spacings, areas, and volumes as
+                          additional variables. Default: `true`. Note that even with
+                          `include_grid_metrics = false`, core grid coordinates are still saved.
+
+- `dimension_type`: Element type for coordinate and time arrays. Default: `Float64`.
+
+- `dimension_name_generator`: A function with signature `(var_name, grid, LX, LY, LZ, dim)` where `dim` is
+                              either `Val(:x)`, `Val(:y)`, or `Val(:z)` that returns a string corresponding
+                              to the name of the dimension `var_name` on `grid` with location `(LX, LY, LZ)`
+                              along `dim`. This advanced option can be used to rename dimensions and variables
+                              to satisfy certain naming conventions. Default: `trilocation_dim_name`.
 
 - `asynchronous`: If `true`, wrap the writer in an [`AsyncOutputWriter`](@ref) so that the
                   disk-write phase runs on a background task. The synchronous GPU→CPU copy
@@ -145,19 +179,12 @@ Reading output back
 A serial reader works on any `ZarrWriter` output, including output produced by a
 distributed-MPI run:
 
-```julia
-using Oceananigans, Zarr
-
-fts = FieldTimeSeries("output.zarr", "u")
-```
+Load `Oceananigans` and `Zarr`, then construct a `FieldTimeSeries` from the store path
+and output name.
 
 Convert a `DirectoryStore` to a single zip file at the end of a run:
 
-```julia
-open("output.zip", "w") do io
-    Zarr.writezip(io, writer.store)
-end
-```
+Use `Zarr.writezip` to convert a completed `DirectoryStore` to a zip archive.
 """
 function ZarrWriter(model, outputs; kw...)
     error("""
@@ -173,7 +200,7 @@ function ZarrWriter(model, outputs; kw...)
     """)
 end
 
-# Hooks for the extension to fill in.
+# Hooks implemented by OceananigansZarrExt.
 function initialize_zarr_store! end
 function write_zarr_grid_reconstruction! end
 function reconstruct_zarr_grid end

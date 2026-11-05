@@ -68,7 +68,7 @@ simulation.output_writers[:fields] = JLD2Writer(
     model, output_fields,
     schedule = TimeInterval(10cell_diffusion_time_scale),
     filename = output_prefix,
-    overwrite_existing = true
+    overwrite_files = true
 )
 
 run!(simulation)

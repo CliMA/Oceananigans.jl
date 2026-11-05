@@ -1,8 +1,5 @@
 using Base.Threads: @spawn
 
-using Oceananigans.Architectures: GPU, architecture
-using Oceananigans.Fields: AbstractField
-
 #####
 ##### Async I/O for output writers
 #####
@@ -121,7 +118,17 @@ data (GPU→CPU) via `prepare_async_write` and spawn a background task that
 calls `commit_async_write!`. The `::AbstractModel` constraint disambiguates
 from the `::Simulation` pass-through defined in `Simulations/simulation.jl`.
 """
-function write_output!(writer::AsyncOutputWriter, model::AbstractModel)
+Oceananigans.write_output!(writer::AsyncOutputWriter, model::AbstractModel) = spawn_async_write!(writer, model)
+
+"""
+    spawn_async_write!(writer, model_or_simulation)
+
+Shared body of the asynchronous `write_output!`: wait for the prior write, run
+`prepare_async_write` inline, and spawn `commit_async_write!` on a background task.
+Writers whose `write_output!` takes something other than an `AbstractModel`
+(the `Checkpointer`, which needs the `Simulation`) call this directly.
+"""
+function spawn_async_write!(writer, model)
     # Make sure the previous async write has finished. This both avoids
     # unbounded task accumulation and re-throws any exception from the prior
     # write at the next synchronization point on the main thread.

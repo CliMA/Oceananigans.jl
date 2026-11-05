@@ -3,7 +3,7 @@ using Oceananigans.Grids: interior_x_indices, interior_y_indices, interior_z_ind
 indices(obj, i=default_indices(3)) = i
 indices(f::Field, i=default_indices(3)) = f.indices
 indices(a::SubArray, i=default_indices(ndims(a))) = a.indices
-indices(a::OffsetArray, i=default_indices(ndims(a))) = indices(parent(a), i)
+indices(a::AbstractOffsetArray, i=default_indices(ndims(a))) = indices(parent(a), i)
 
 function Grids.interior_x_indices(f::Field)
     loc = instantiated_location(f)
@@ -77,7 +77,7 @@ validate_shifted_index(shifted_idx) = first(shifted_idx) > last(shifted_idx) &&
     throw(ArgumentError("Cannot compute index intersection!"))
 
 """
-    restrict_index_on_location(from_idx, from_loc, to_loc)
+$(TYPEDSIGNATURES)
 
 Return a "restricted" index range for the result of interpolating from
 `from_loc` to `to_loc`, over the index range `from_idx`:

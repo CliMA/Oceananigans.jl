@@ -11,24 +11,30 @@ export
     seawater_density,
     BulkDrag, BulkDragFunction, BulkDragBoundaryCondition,
     XDirectionBulkDragFunction, YDirectionBulkDragFunction, ZDirectionBulkDragFunction,
-    LinearFormulation, QuadraticFormulation
+    LinearFormulation, QuadraticFormulation,
+    BoundaryAdjacentMean, boundary_total_area
 
-using Oceananigans: AbstractModel, fields, prognostic_fields
+using Adapt: Adapt, adapt
+using DocStringExtensions: TYPEDSIGNATURES
+using GPUArraysCore: GPUArraysCore
+using JLD2: JLD2, jldopen
+
+using Oceananigans: Oceananigans, AbstractModel, fields, prognostic_fields
 using Oceananigans.AbstractOperations: AbstractOperation
+using Oceananigans.Architectures: on_architecture
+using Oceananigans.DistributedComputations: DistributedComputations
 using Oceananigans.Advection: AbstractAdvectionScheme, Centered
-using Oceananigans.Fields: Field, flattened_unique_values
-using Oceananigans.Grids: halo_size, inflate_halo_size
-using Oceananigans.OutputReaders: update_field_time_series!, extract_field_time_series
-using Oceananigans.TimeSteppers: Clock
+using Oceananigans.Architectures: Architectures
+using Oceananigans.BoundaryConditions: BoundaryConditions
+using Oceananigans.Diagnostics: Diagnostics, NaNChecker
+using Oceananigans.Fields: Fields, Field, TracerFields, ZeroField, set!
+using Oceananigans.Grids: Grids, AbstractGrid, grid, halo_size, inflate_halo_size
+using Oceananigans.OutputReaders: extract_field_time_series, update_field_time_series!
+using Oceananigans.OutputWriters: OutputWriters, checkpointer_address
+using Oceananigans.Solvers: Solvers
+using Oceananigans.TimeSteppers: TimeSteppers, Clock, reset!
 using Oceananigans.Units: Time
-
-import Oceananigans: initialize!
-import Oceananigans.Architectures: architecture
-import Oceananigans.Grids: grid
-import Oceananigans.Fields: set!
-import Oceananigans.Solvers: iteration
-import Oceananigans.OutputWriters: default_included_properties
-import Oceananigans.TimeSteppers: reset!
+using Oceananigans.Utils: @apply_regionally
 
 # A prototype interface for AbstractModel.
 #
@@ -37,27 +43,25 @@ import Oceananigans.TimeSteppers: reset!
 #
 # Models with grids should override `architecture` and `eltype`.
 
-iteration(model::AbstractModel) = model.clock.iteration
+Solvers.iteration(model::AbstractModel) = model.clock.iteration
 Base.time(model::AbstractModel) = model.clock.time
 Base.eltype(model::AbstractModel) = Float64
-grid(model::AbstractModel) = model.grid
-architecture(model::AbstractModel) = nothing
-initialize!(model::AbstractModel) = nothing
+Grids.grid(model::AbstractModel) = model.grid
+Architectures.architecture(model::AbstractModel) = nothing
+Oceananigans.initialize!(model::AbstractModel) = nothing
 total_velocities(model::AbstractModel) = nothing
 
 # Fallback for any abstract model that does not contain `FieldTimeSeries`es
 update_model_field_time_series!(model::AbstractModel, clock::Clock) = nothing
+update_model_field_time_series!(model::AbstractModel, first_time::Time, last_time::Time) = nothing
 
 #####
 ##### Model-building utilities
 #####
 
-function validate_model_halo(grid, momentum_advection, tracer_advection, closure)
+function validate_model_halo(grid, tendency_terms...)
     user_halo = halo_size(grid)
-    required_halo = inflate_halo_size(1, 1, 1, grid,
-                                      momentum_advection,
-                                      tracer_advection,
-                                      closure)
+    required_halo = inflate_halo_size(1, 1, 1, grid, tendency_terms...)
 
     any(user_halo .< required_halo) &&
         throw(ArgumentError("The grid halo $user_halo must be at least equal to $required_halo. \n \
@@ -90,8 +94,17 @@ validate_tracer_advection(tracer_advection_tuple::NamedTuple, grid) = Centered()
 validate_tracer_advection(tracer_advection::AbstractAdvectionScheme, grid) = tracer_advection, NamedTuple()
 validate_tracer_advection(tracer_advection::Nothing, grid) = nothing, NamedTuple()
 
+# Tracer names are passed separately so that they are compile-time constants
+materialize_tracers(tracers::NamedTuple, tracer_names, grid, boundary_conditions) = TracerFields(tracers, grid, boundary_conditions)
+materialize_tracers(tracers, tracer_names, grid, boundary_conditions) = TracerFields(tracer_names, grid, boundary_conditions)
+
+timestepper_name(timestepper::Symbol) = Val(timestepper)
+timestepper_name(timestepper) = timestepper
+
 # Used in both NonhydrostaticModels and HydrostaticFreeSurfaceModels
 function materialize_free_surface end
+
+default_free_surface_boundary_conditions(free_surface, user_boundary_conditions) = NamedTuple()
 
 # Communication - Computation overlap in distributed models
 include("interleave_communication_and_computation.jl")
@@ -102,6 +115,11 @@ include("interleave_communication_and_computation.jl")
 # solvability condition; external anelastic models can compose their own
 # variant for density-weighted momentum (ρu, ρv, ρw).
 include("boundary_transport.jl")
+
+# Boundary mean / area utilities used by model submodules. Must come after
+# `boundary_transport.jl` because `boundary_total_area` dispatches to the
+# `get_*_area` helpers defined there.
+include("boundary_mean.jl")
 
 #####
 ##### All the code
@@ -134,12 +152,12 @@ const OceananigansModels = Union{HydrostaticFreeSurfaceModel,
 
 # OceananigansModels have grids, so we can use grid-based implementations
 Base.eltype(model::OceananigansModels) = eltype(model.grid)
-architecture(model::OceananigansModels) = model.grid.architecture
+Architectures.architecture(model::OceananigansModels) = model.grid.architecture
 
-set!(model::OceananigansModels, new_clock::Clock) = set!(model.clock, new_clock)
+Fields.set!(model::OceananigansModels, new_clock::Clock) = set!(model.clock, new_clock)
 
 """
-    possible_field_time_series(model::OceananigansModels)
+$(TYPEDSIGNATURES)
 
 Return a `Tuple` containing properties of and `OceananigansModel` that could contain `FieldTimeSeries`.
 """
@@ -151,16 +169,14 @@ function possible_field_time_series(model::OceananigansModels)
     return tuple(model_fields, forcing)
 end
 
-# Update _all_ `FieldTimeSeries`es in an `OceananigansModel`.
-# Extract `FieldTimeSeries` from all property names that might contain a `FieldTimeSeries`
-# Flatten the resulting tuple by extracting unique values and set! them to the
-# correct time range by looping over them
+# Update _all_ `FieldTimeSeries`es in an `OceananigansModel` to the correct time range.
+# `extract_field_time_series` already returns a flat, type-stable tuple of every FieldTimeSeries;
+# a series reachable through more than one path is updated more than once, which is a harmless no-op.
 function update_model_field_time_series!(model::OceananigansModels, clock::Clock)
     time = Time(clock.time)
 
     possible_fts = possible_field_time_series(model)
     time_series_tuple = extract_field_time_series(possible_fts)
-    time_series_tuple = flattened_unique_values(time_series_tuple)
 
     for fts in time_series_tuple
         update_field_time_series!(fts, time)
@@ -169,28 +185,42 @@ function update_model_field_time_series!(model::OceananigansModels, clock::Clock
     return nothing
 end
 
-function reset!(model::OceananigansModels)
+# Update every `FieldTimeSeries` to hold all times between `first_time` and `last_time`, e.g. the barotropic substeps
+function update_model_field_time_series!(model::OceananigansModels, first_time::Time, last_time::Time)
+    possible_fts = possible_field_time_series(model)
+    time_series_tuple = extract_field_time_series(possible_fts)
 
-    for field in fields(model)
-        fill!(field, 0)
-    end
-
-    for field in model.timestepper.G⁻
-        fill!(field, 0)
-    end
-
-    for field in model.timestepper.Gⁿ
-        fill!(field, 0)
+    for fts in time_series_tuple
+        update_field_time_series!(fts, first_time, last_time)
     end
 
     return nothing
 end
 
-using Oceananigans.Diagnostics: NaNChecker
-import Oceananigans.Diagnostics: default_nan_checker
+zero_field!(field) = fill!(field, 0)
+zero_field!(::ZeroField) = nothing # eg the vertical velocity of single column models
+
+function TimeSteppers.reset!(model::OceananigansModels)
+
+    for field in fields(model)
+        zero_field!(field)
+    end
+
+    for field in model.timestepper.G⁻
+        zero_field!(field)
+    end
+
+    for field in model.timestepper.Gⁿ
+        zero_field!(field)
+    end
+
+    reset!(model.closure_fields, model.closure)
+
+    return nothing
+end
 
 # Check for NaNs in the first prognostic field (generalizes to prescribed velocities).
-function default_nan_checker(model::OceananigansModels)
+function Diagnostics.default_nan_checker(model::OceananigansModels)
     model_fields = prognostic_fields(model)
 
     if isempty(model_fields)
@@ -207,21 +237,19 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: OnlyParticleTrackingMode
 
 # Particle tracking models with prescribed velocities (and no tracers)
 # have no prognostic fields and no chance to producing a NaN.
-default_nan_checker(::OnlyParticleTrackingModel) = nothing
+Diagnostics.default_nan_checker(::OnlyParticleTrackingModel) = nothing
 
 # Extend output writer functionality to custom Oceananigans.Models
-import Oceananigans.OutputWriters: default_included_properties,
-                                   checkpointer_address
 
-default_included_properties(::NonhydrostaticModel) = [:coriolis, :buoyancy, :closure]
-default_included_properties(::HydrostaticFreeSurfaceModel) = [:coriolis, :buoyancy, :closure]
-default_included_properties(::ShallowWaterModel) = [:coriolis, :closure]
+OutputWriters.default_included_properties(::NonhydrostaticModel) = [:coriolis, :buoyancy, :closure]
+OutputWriters.default_included_properties(::HydrostaticFreeSurfaceModel) = [:coriolis, :buoyancy, :closure]
+OutputWriters.default_included_properties(::ShallowWaterModel) = [:coriolis, :closure]
 
-checkpointer_address(::ShallowWaterModel) = "ShallowWaterModel"
-checkpointer_address(::NonhydrostaticModel) = "NonhydrostaticModel"
-checkpointer_address(::HydrostaticFreeSurfaceModel) = "HydrostaticFreeSurfaceModel"
+OutputWriters.checkpointer_address(::ShallowWaterModel) = "ShallowWaterModel"
+OutputWriters.checkpointer_address(::NonhydrostaticModel) = "NonhydrostaticModel"
+OutputWriters.checkpointer_address(::HydrostaticFreeSurfaceModel) = "HydrostaticFreeSurfaceModel"
 
-default_included_properties(::OceananigansModels) = Symbol[]
+OutputWriters.default_included_properties(::OceananigansModels) = Symbol[]
 
 # Specialized output attributes for velocity and tracer fields
 include("output_attributes.jl")
@@ -229,7 +257,6 @@ include("output_attributes.jl")
 # Implementation of diagnostics applicable to both `NonhydrostaticModel` and `HydrostaticFreeSurfaceModel`
 include("seawater_density.jl")
 include("buoyancy_operation.jl")
-include("boundary_mean.jl")
 include("boundary_condition_operation.jl")
 include("forcing_operation.jl")
 include("set_model.jl")
@@ -237,6 +264,6 @@ include("set_model.jl")
 # Implementation of the diagnostic for computing the dissipation rate
 include("VarianceDissipationComputations/VarianceDissipationComputations.jl")
 
-using .VarianceDissipationComputations
+using .VarianceDissipationComputations: VarianceDissipationComputations
 
 end # module

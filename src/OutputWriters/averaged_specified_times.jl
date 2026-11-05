@@ -1,9 +1,8 @@
-using Oceananigans.Utils: AbstractSchedule, prettytime
-using Oceananigans.TimeSteppers: Clock
 using Dates: Period, Second, value, DateTime
 
-import Oceananigans: initialize!, prognostic_state, restore_prognostic_state!
-import Oceananigans.Utils: TimeInterval, SpecifiedTimes
+using Oceananigans: prognostic_state, restore_prognostic_state!
+using Oceananigans.TimeSteppers: Clock
+using Oceananigans.Utils: Utils, AbstractSchedule, prettytime, TimeInterval, SpecifiedTimes
 
 """
     mutable struct AveragedSpecifiedTimes <: AbstractSchedule
@@ -78,7 +77,7 @@ function AveragedSpecifiedTimes(times, window::Vector; kw...)
 end
 
 """
-    AveragedSpecifiedTimes(times; window, stride=1)
+    AveragedSpecifiedTimes(times, window; stride=1)
     AveragedSpecifiedTimes(specified_times::SpecifiedTimes; window, stride=1)
 
 Returns a `schedule` that specifies time-averaging of output at specified times.
@@ -222,7 +221,7 @@ function (schedule::AveragedSpecifiedTimes)(model)
 end
 
 """
-    validate_schedule_runtime(schedule::AveragedSpecifiedTimes, clock)
+$(TYPEDSIGNATURES)
 
 Validate that the first averaging window does not extend before the simulation start time.
 This validation can only be performed at runtime when the model clock is available.
@@ -250,7 +249,7 @@ function validate_schedule_runtime(schedule::AveragedSpecifiedTimes, clock)
     return nothing
 end
 
-initialize!(sch::AveragedSpecifiedTimes, model) = validate_schedule_runtime(sch, model.clock)
+Oceananigans.initialize!(sch::AveragedSpecifiedTimes, model) = validate_schedule_runtime(sch, model.clock)
 
 function outside_window(schedule::AveragedSpecifiedTimes, clock)
     next = schedule.specified_times.previous_actuation + 1
@@ -267,20 +266,20 @@ function end_of_window(schedule::AveragedSpecifiedTimes, clock)
     return clock.time >= next_time
 end
 
-function prognostic_state(schedule::AveragedSpecifiedTimes)
+function Oceananigans.prognostic_state(schedule::AveragedSpecifiedTimes)
     return (specified_times = prognostic_state(schedule.specified_times),
             collecting = schedule.collecting)
 end
 
-function restore_prognostic_state!(schedule::AveragedSpecifiedTimes, state)
+function Oceananigans.restore_prognostic_state!(schedule::AveragedSpecifiedTimes, state)
     restore_prognostic_state!(schedule.specified_times, state.specified_times)
     schedule.collecting = state.collecting
     return schedule
 end
 
-restore_prognostic_state!(::AveragedSpecifiedTimes, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::AveragedSpecifiedTimes, ::Nothing) = nothing
 
-TimeInterval(sch::AveragedSpecifiedTimes) = TimeInterval(sch.specified_times.times)
+Utils.TimeInterval(sch::AveragedSpecifiedTimes) = TimeInterval(sch.specified_times.times)
 Base.copy(sch::AveragedSpecifiedTimes) = AveragedSpecifiedTimes(copy(sch.specified_times); window=sch.window, stride=sch.stride)
 
 next_actuation_time(sch::AveragedSpecifiedTimes) = Oceananigans.Utils.next_actuation_time(sch.specified_times)

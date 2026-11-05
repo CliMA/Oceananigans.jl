@@ -65,7 +65,7 @@ colors = ("xkcd:royal blue", "xkcd:light red", "xkcd:green")
 for scheme in advection_schemes
 
     t_scheme = typeof(scheme)
-    name = string(t_scheme.name.wrapper) * "$(boundary_buffer(scheme))"
+    name = string(nameof(t_scheme)) * "$(boundary_buffer(scheme))"
 
     @testset "$name" begin
 

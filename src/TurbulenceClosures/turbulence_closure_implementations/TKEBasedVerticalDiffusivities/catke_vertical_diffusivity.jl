@@ -144,7 +144,7 @@ function CATKEVerticalDiffusivity(time_discretization::TD = VerticallyImplicitTi
                                         tke_time_step)
 end
 
-function Utils.with_tracers(tracer_names, closure::FlavorOfCATKE)
+Base.@constprop :aggressive function Utils.with_tracers(tracer_names, closure::FlavorOfCATKE)
     :e ∈ tracer_names ||
         throw(ArgumentError("Tracers must contain :e to represent turbulent kinetic energy " *
                             "for `CATKEVerticalDiffusivity`."))
@@ -153,7 +153,7 @@ function Utils.with_tracers(tracer_names, closure::FlavorOfCATKE)
 end
 
 # Required tracer names for CATKE
-closure_required_tracers(::FlavorOfCATKE) = tuple(:e)
+TurbulenceClosures.closure_required_tracers(::FlavorOfCATKE) = tuple(:e)
 
 # For tuples of closures, we need to know _which_ closure is CATKE.
 # Here we take a "simple" approach that sorts the tuple so CATKE is first.
@@ -161,7 +161,7 @@ closure_required_tracers(::FlavorOfCATKE) = tuple(:e)
 # The two other possibilities are:
 # 1. Recursion to find which closure is CATKE in a compiler-inferrable way
 # 2. Store the "CATKE index" inside CATKE via validate_closure.
-validate_closure(closure_tuple::Tuple) = Tuple(sort(collect(closure_tuple), lt=catke_first))
+TurbulenceClosures.validate_closure(closure_tuple::Tuple) = Tuple(sort(collect(closure_tuple), lt=catke_first))
 
 catke_first(closure1, catke::FlavorOfCATKE) = false
 catke_first(catke::FlavorOfCATKE, closure2) = true
@@ -200,7 +200,7 @@ function BoundaryConditions.fill_halo_regions!(catke_closure_fields::CATKEClosur
     return fill_halo_regions!(κ, args...; kw...)
 end
 
-function build_closure_fields(grid, clock, tracer_names, bcs, closure::FlavorOfCATKE)
+Base.@constprop :aggressive function TurbulenceClosures.build_closure_fields(grid, clock, tracer_names, bcs, closure::FlavorOfCATKE)
 
     default_diffusivity_bcs = (κu = FieldBoundaryConditions(grid, (Center(), Center(), Face())),
                                κc = FieldBoundaryConditions(grid, (Center(), Center(), Face())),
@@ -221,8 +221,15 @@ function build_closure_fields(grid, clock, tracer_names, bcs, closure::FlavorOfC
     previous_velocities = (; u=u⁻, v=v⁻)
 
     # Secret tuple for getting tracer diffusivities with tuple[tracer_index]
-    _tupled_tracer_diffusivities         = NamedTuple(name => name === :e ? κe : κc          for name in tracer_names)
-    _tupled_implicit_linear_coefficients = NamedTuple(name => name === :e ? Le : ZeroField() for name in tracer_names)
+    _tupled_tracer_diffusivities = named_tuple(tracer_names) do name
+        Base.@constprop :aggressive
+        name === :e ? κe : κc
+    end
+
+    _tupled_implicit_linear_coefficients = named_tuple(tracer_names) do name
+        Base.@constprop :aggressive
+        name === :e ? Le : ZeroField()
+    end
 
     return CATKEClosureFields(κu, κc, κe, Le, Jᵇ,
                                   previous_velocities,
@@ -230,10 +237,21 @@ function build_closure_fields(grid, clock, tracer_names, bcs, closure::FlavorOfC
                                   _tupled_implicit_linear_coefficients)
 end
 
-@inline viscosity_location(::FlavorOfCATKE) = (c, c, f)
-@inline diffusivity_location(::FlavorOfCATKE) = (c, c, f)
+@inline TurbulenceClosures.viscosity_location(::FlavorOfCATKE) = (c, c, f)
+@inline TurbulenceClosures.diffusivity_location(::FlavorOfCATKE) = (c, c, f)
 
-function step_closure_prognostics!(closure_fields, closure::FlavorOfCATKE, model, Δt)
+function TimeSteppers.reset!(closure_fields, ::FlavorOfCATKE)
+    fields = (closure_fields.κu, closure_fields.κc, closure_fields.κe, closure_fields.Jᵇ,
+              closure_fields.previous_velocities...)
+
+    for field in fields
+        fill!(field, 0)
+    end
+
+    return nothing
+end
+
+function TurbulenceClosures.step_closure_prognostics!(closure_fields, closure::FlavorOfCATKE, model, Δt)
     arch = model.architecture
     grid = model.grid
     velocities = model.velocities
@@ -251,17 +269,15 @@ function step_closure_prognostics!(closure_fields, closure::FlavorOfCATKE, model
     parent(u⁻) .= parent(u)
     parent(v⁻) .= parent(v)
 
-    active_cells_map = get_active_cells_map(grid, Val(:xy))
 
     launch!(arch, grid, :xy,
             compute_average_surface_buoyancy_flux!,
-            closure_fields.Jᵇ, grid, closure, velocities, tracers, buoyancy, top_tracer_bcs, clock, Δt;
-            active_cells_map)
+            closure_fields.Jᵇ, grid, closure, velocities, tracers, buoyancy, top_tracer_bcs, clock, Δt)
 
     return nothing
 end
 
-function compute_closure_fields!(closure_fields, closure::FlavorOfCATKE, model; parameters = :xyz)
+function TurbulenceClosures.compute_closure_fields!(closure_fields, closure::FlavorOfCATKE, model; parameters = :xyz)
     arch = model.architecture
     grid = model.grid
     velocities = model.velocities
@@ -289,7 +305,7 @@ end
     Jᵇᵋ = closure.minimum_convective_buoyancy_flux
     Jᵇᵢⱼ = @inbounds Jᵇ[i, j, 1]
     Jᵇ⁺ = max(Jᵇᵋ, Jᵇᵢⱼ, Jᵇ★) # selects fastest (dominant) time-scale
-    t★ = cbrt(ℓᴰ^2 / Jᵇ⁺)
+    t★ = f32_safe_cbrt(ℓᴰ^2 / Jᵇ⁺)
     ϵ = Δt / t★
 
     @inbounds Jᵇ[i, j, 1] = (Jᵇᵢⱼ + ϵ * Jᵇ★) / (1 + ϵ)
@@ -349,15 +365,15 @@ end
     return FT(κe★)
 end
 
-@inline viscosity(::FlavorOfCATKE, closure_fields) = closure_fields.κu
-@inline diffusivity(::FlavorOfCATKE, closure_fields, ::Val{id}) where id = closure_fields._tupled_tracer_diffusivities[id]
+@inline TurbulenceClosures.viscosity(::FlavorOfCATKE, closure_fields) = closure_fields.κu
+@inline TurbulenceClosures.diffusivity(::FlavorOfCATKE, closure_fields, ::Val{id}) where id = closure_fields._tupled_tracer_diffusivities[id]
 
 #####
 ##### Show
 #####
 
 function Base.summary(closure::CATKEVD)
-    TD = nameof(typeof(time_discretization(closure)))
+    TD = nameof(typeof(TimeSteppers.time_discretization(closure)))
     return string("CATKEVerticalDiffusivity{$TD}")
 end
 
@@ -406,7 +422,7 @@ end
 ##### Checkpointing
 #####
 
-function prognostic_state(cf::CATKEClosureFields)
+function Oceananigans.prognostic_state(cf::CATKEClosureFields)
     return (previous_velocities = prognostic_state(cf.previous_velocities),
             Jᵇ = prognostic_state(cf.Jᵇ),
             κu = prognostic_state(cf.κu),
@@ -414,7 +430,7 @@ function prognostic_state(cf::CATKEClosureFields)
             κe = prognostic_state(cf.κe))
 end
 
-function restore_prognostic_state!(restored::CATKEClosureFields, from)
+function Oceananigans.restore_prognostic_state!(restored::CATKEClosureFields, from)
     restore_prognostic_state!(restored.previous_velocities, from.previous_velocities)
     restore_prognostic_state!(restored.Jᵇ, from.Jᵇ)
     restore_prognostic_state!(restored.κu, from.κu)
@@ -423,4 +439,4 @@ function restore_prognostic_state!(restored::CATKEClosureFields, from)
     return restored
 end
 
-restore_prognostic_state!(::CATKEClosureFields, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::CATKEClosureFields, ::Nothing) = nothing

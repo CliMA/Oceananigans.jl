@@ -12,6 +12,11 @@ Enstrophy-conserving Coriolis scheme with the wet-point correction
 of [Jamart and Ozer (1986)](@cite JamartOzer1986).
 Near immersed boundaries, the interpolation weights are divided by the number
 of active (non-masked) nodes to compensate for missing neighbors.
+
+References
+==========
+* Jamart, B. M., & Ozer, J. (1986). "Numerical boundary layers and spurious residual flows."
+  Journal of Geophysical Research: Oceans, 91(C9), 10621-10631.
 """
 struct ActiveWeightedEnstrophyConserving end
 
@@ -22,6 +27,11 @@ Energy-conserving Coriolis scheme with the wet-point correction
 of [Jamart and Ozer (1986)](@cite JamartOzer1986).
 Near immersed boundaries, the interpolation weights are divided by the number
 of active (non-masked) nodes to compensate for missing neighbors.
+
+References
+==========
+* Jamart, B. M., & Ozer, J. (1986). "Numerical boundary layers and spurious residual flows."
+  Journal of Geophysical Research: Oceans, 91(C9), 10621-10631.
 """
 struct ActiveWeightedEnergyConserving end
 
@@ -32,6 +42,11 @@ Energy- and enstrophy-conserving Coriolis scheme based on the triad formulation
 of [Arakawa and Lamb (1981)](@cite ArakawaLamb1981).
 Each triad at a tracer point sums three of the four surrounding vorticity
 values, paired with transports at diagonally adjacent velocity points.
+
+References
+==========
+* Arakawa, A., & Lamb, V. R. (1981). "A potential enstrophy and energy conserving scheme for the
+  shallow water equations." Monthly Weather Review, 109(1), 18-36.
 """
 struct TriadScheme end
 
@@ -138,9 +153,9 @@ const TS = AbstractRotation{<:TriadScheme}
     @inbounds begin
         return - Ay⁻¹ᶠᶜᶜ(i, j, k, grid) / 12 * (
             𝒯⁺⁺(i-1, j, k, grid, coriolis) * masked_Ay_qᶜᶠᶜ(i-1, j+1, k, grid, U[2]) +
-            𝒯⁻⁺(i,   j, k, grid, coriolis) * masked_Ay_qᶜᶠᶜ(i,   j,   k, grid, U[2]) +
+            𝒯⁻⁻(i,   j, k, grid, coriolis) * masked_Ay_qᶜᶠᶜ(i,   j,   k, grid, U[2]) +
             𝒯⁺⁻(i-1, j, k, grid, coriolis) * masked_Ay_qᶜᶠᶜ(i-1, j,   k, grid, U[2]) +
-            𝒯⁻⁻(i,   j, k, grid, coriolis) * masked_Ay_qᶜᶠᶜ(i,   j+1, k, grid, U[2]))
+            𝒯⁻⁺(i,   j, k, grid, coriolis) * masked_Ay_qᶜᶠᶜ(i,   j+1, k, grid, U[2]))
     end
 end
 

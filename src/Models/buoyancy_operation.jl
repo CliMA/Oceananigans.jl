@@ -1,14 +1,10 @@
 using Oceananigans.AbstractOperations: KernelFunctionOperation
+using Oceananigans.BuoyancyFormulations: AbstractBuoyancyFormulation, BuoyancyForce, BuoyancyTracer,
+                                         buoyancy_perturbationᶜᶜᶜ, ∂z_b
 using Oceananigans.Fields: Field, ZeroField
-using Oceananigans.BuoyancyFormulations:
-    BuoyancyForce,
-    BuoyancyTracer,
-    AbstractBuoyancyFormulation,
-    ∂z_b,
-    buoyancy_perturbationᶜᶜᶜ
 
 """
-    buoyancy_operation(model)
+$(TYPEDSIGNATURES)
 
 Return a `KernelFunctionOperation` that computes the buoyancy perturbation,
 `Field` corresponding to the buoyancy perturbation directly, or `ZeroField` if buoyancy is `nothing`.
@@ -23,14 +19,14 @@ buoyancy_operation(bm::AbstractBuoyancyFormulation, grid, tracers) =
     KernelFunctionOperation{Center, Center, Center}(buoyancy_perturbationᶜᶜᶜ, grid, bm, tracers)
 
 """
-    buoyancy_field(model)
+$(TYPEDSIGNATURES)
 
 Return a `Field` that can `compute!` and store the buoyancy perturbation.
 """
 buoyancy_field(model) = Field(buoyancy_operation(model))
 
 """
-    buoyancy_frequency(model)
+$(TYPEDSIGNATURES)
 
 Returns a `KernelFunctionOperation` that computes the vertical derivative of buoyancy,
 which is also known as the square of the buoyancy frequency.
