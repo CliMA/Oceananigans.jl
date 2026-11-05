@@ -238,11 +238,7 @@ end
 ##### Boundary-face shifts
 #####
 
-# Shift the boundary-normal component on a boundary plane by `-δ`. Faces on an immersed boundary are
-# skipped: they are walls, `mask_immersed_field!` keeps them at zero, and the transport integrals and
-# areas above exclude them, so a shift that touched them would both leave a spurious normal velocity
-# on the immersed boundary and (for a solver that treats every cell of the underlying grid as active)
-# break the solvability condition it was meant to restore.
+# Shift the boundary-normal component on a boundary plane by `-δ`. Faces on an immersed boundary are skipped
 @kernel function _shift_x_boundary_faces!(u, grid, i, δ)
     j, k = @index(Global, NTuple)
     active = !immersed_peripheral_node(i, j, k, grid, Face(), Center(), Center())
