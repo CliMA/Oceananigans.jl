@@ -16,7 +16,7 @@ barrier(arch::Distributed) = barrier(arch.communicator)
 $(TYPEDSIGNATURES)
 
 Return a 3-Tuple of vectors, where each vector contains the value of
-`local_size[d]` for every rank in dimension `d` of `arch`.
+`local_size[d]` for every rank in dimension `d` of `arch` that shares the other indices of the local rank.
 """
 concatenate_local_sizes(local_size, arch::Distributed) =
     Tuple(concatenate_local_sizes(local_size, arch, d) for d in 1:length(local_size))
@@ -24,19 +24,18 @@ concatenate_local_sizes(local_size, arch::Distributed) =
 concatenate_local_sizes(sz, arch, dim) = concatenate_local_sizes(sz[dim], arch, dim)
 
 function concatenate_local_sizes(n::Number, arch::Distributed, dim)
-    R = arch.ranks[dim]
-    r = arch.local_index[dim]
-    N = zeros(Int, R)
+    sizes = zeros(Int, arch.ranks...)
+    sizes[arch.local_index...] = n
+    MPI.Allreduce!(sizes, +, arch.communicator)
 
-    r1, r2 = arch.local_index[[1, 2, 3] .!= dim]
-
-    if r1 == 1 && r2 == 1
-        N[r] = n
+    i, j, k = arch.local_index
+    if dim == 1
+        return sizes[:, j, k]
+    elseif dim == 2
+        return sizes[i, :, k]
+    else
+        return sizes[i, j, :]
     end
-
-    MPI.Allreduce!(N, +, arch.communicator)
-
-    return N
 end
 
 """

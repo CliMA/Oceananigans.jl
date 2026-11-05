@@ -1,7 +1,7 @@
 using Oceananigans.AbstractOperations: AbstractOperation, compute_computed_field!
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions, NoFluxBoundaryCondition, default_auxiliary_bc, regularize_field_boundary_conditions
 using Oceananigans.Diagnostics: Diagnostics, hasnan
-using Oceananigans.DistributedComputations: reconstruct_global_field, CommunicationBuffers
+using Oceananigans.DistributedComputations: reconstruct_global_field
 using Oceananigans.Fields: FunctionField, AbstractField, ZeroField, Scan, compute!, compute_at!, data_summary
 using Oceananigans.Fields: Fields, indices, instantiated_location, interior, set!, validate_indices
 using Oceananigans.Grids: xnodes, ynodes
@@ -152,8 +152,24 @@ end
 Fields.validate_indices(indices, loc, mrg::MultiRegionGrids) =
     construct_regionally(validate_indices, indices, loc, mrg.region_grids)
 
-Fields.communication_buffers(grid::MultiRegionGrid, data, bcs) =
-    construct_regionally(CommunicationBuffers, grid, data, bcs)
+Fields.communication_buffers(grid::MultiRegionGrid, data, bcs) = construct_regionally(regional_buffers, grid, data, bcs)
+
+# A region exchanges one whole halo strip on every side that communicates with another region
+function regional_buffers(grid, data, bcs)
+    arch = architecture(grid)
+    Hx, Hy, _ = halo_size(grid)
+    Tx, Ty, Tz = size(parent(data))
+    FT = eltype(data)
+
+    strip_buffers(bc, nx, ny) = bc isa MCBC ? (send = zeros(arch, FT, nx, ny, Tz), recv = zeros(arch, FT, nx, ny, Tz)) : nothing
+
+    west  = strip_buffers(bcs.west,  Hx, Ty)
+    east  = strip_buffers(bcs.east,  Hx, Ty)
+    south = strip_buffers(bcs.south, Tx, Hy)
+    north = strip_buffers(bcs.north, Tx, Hy)
+
+    return (; west, east, south, north)
+end
 
 Fields.communication_buffers(grid::MultiRegionGrid, data, ::Nothing) = nothing
 Fields.communication_buffers(grid::MultiRegionGrid, data, ::Missing) = nothing

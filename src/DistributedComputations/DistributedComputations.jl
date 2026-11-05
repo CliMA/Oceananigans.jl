@@ -7,7 +7,7 @@ export
     DistributedFFTBasedPoissonSolver, TransposableField, mpi_initialized, mpi_rank,
     mpi_size, global_barrier, global_communicator, sanitize_environ!,
     @root, @onrank, @distribute, @handshake,
-    SimplifiedGeneralizedBlockDistribution, create_cost_map, create_balanced_partition
+    SimplifiedGeneralizedBlockDistribution, JaggedBlockDistribution, create_cost_map, create_balanced_partition
 
 using DocStringExtensions: TYPEDSIGNATURES
 using GPUArraysCore: GPUArraysCore
@@ -19,8 +19,7 @@ using Statistics: Statistics
 using Oceananigans: Oceananigans
 using Oceananigans.Architectures: Architectures, AbstractArchitecture, AbstractSerialArchitecture, CPU,
                                   GPU, ndevices
-using Oceananigans.BoundaryConditions: BoundaryConditions, Bottom, BottomAndTop, East, North, South,
-                                       SouthAndNorth, Top, West, WestAndEast
+using Oceananigans.BoundaryConditions: BoundaryConditions
 using Oceananigans.Fields: Fields, AbstractField, CenterField, data, field
 using Oceananigans.Grids: Grids, BoundaryTopology, Bounded, Center, CenterFoldConnected, CenterFolded, Closed,
                           Connected, Face, FaceFoldConnected, FaceFolded, Flat, Open, OrthogonalSphericalShellGrid,
@@ -29,7 +28,7 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaries, ImmersedBoundaryGrid,
                                        materialize_immersed_boundary
 using Oceananigans.Solvers: Solvers, GridWithFourierTridiagonalSolver, compute_preconditioner_rhs!,
                             fft_poisson_solver
-using Oceananigans.Utils: Utils, StaticStridesOffsetArray
+using Oceananigans.Utils: Utils, StaticStridesOffsetArray, launch!
 
 
 include("distributed_macros.jl")
@@ -44,6 +43,7 @@ include("distributed_kernel_launching.jl")
 include("events.jl")
 include("halo_communication_bcs.jl")
 include("communication_state.jl")
+include("halo_overlaps.jl")
 include("communication_buffers.jl")
 include("progress_worker.jl")
 include("distributed_fields.jl")

@@ -239,7 +239,7 @@ run_large_pencil_distributed_grid(fold_topology, pivot) = """
 
 @testset "Test distributed TripolarGrid simulations $fold_topology..." for (fold_topology, pivot) in fold_topologies
     # Run the serial computation
-    grid  = TripolarGrid(size = (40, 40, 1), z = (-1000, 0), halo = (5, 5, 5); fold_topology, pivot)
+    grid  = TripolarGrid(size = (88, 88, 1), z = (-1000, 0), halo = (5, 5, 5); fold_topology, pivot)
     grid  = analytical_immersed_tripolar_grid(grid)
     model = run_distributed_simulation(grid)
 
