@@ -58,6 +58,64 @@ end
 @inline getregion(nt::NamedTuple, i)  = NamedTuple{keys(nt)}(_getregion(Tuple(nt), i))
 @inline _getregion(nt::NamedTuple, i) = NamedTuple{keys(nt)}(getregion(Tuple(nt), i))
 
+# Resolve the struct named by `T` (a `Symbol` or a dotted path like `Module.T`) in `mod`
+function regional_type(mod, T)
+    T isa Symbol && return getfield(mod, T)
+    T isa Expr && T.head === :. && return getfield(regional_type(mod, T.args[1]), T.args[2].value)
+    throw(ArgumentError("@regional expects the name of a struct but got `$T`"))
+end
+
+"""
+    @regional T
+
+Define `getregion` and `_getregion` methods for the struct `T` that rebuild it from the regions
+of its fields, so that a `T` holding objects on a `MultiRegionGrid` can be passed to
+[`@apply_regionally`](@ref).
+
+`T` must be defined when the macro is expanded and must have a positional constructor
+that takes all of its fields in order and deduces its type parameters from them
+(the default constructor does for a struct whose parameters all appear in its fields).
+Containers that skip fields, fix some type parameters, or are rebuilt through another
+constructor need hand-written methods instead.
+
+Example
+=======
+
+```jldoctest
+using Oceananigans.Utils: @regional, getregion, MultiRegionObject
+
+struct Pair2{A, B}
+    a :: A
+    b :: B
+end
+
+@regional Pair2
+
+p = Pair2(MultiRegionObject((1, 2)), 3)
+
+getregion(p, 2)
+
+# output
+Pair2{Int64, Int64}(2, 3)
+```
+"""
+macro regional(T)
+    fields = fieldnames(regional_type(__module__, T))
+    outer = GlobalRef(@__MODULE__, :getregion)
+    inner = GlobalRef(@__MODULE__, :_getregion)
+
+    # The two methods alternate as above, to keep the recursion through nested containers inferable
+    outer_args = [:($inner(getfield(x, $(QuoteNode(f))), r)) for f in fields]
+    inner_args = [:($outer(getfield(x, $(QuoteNode(f))), r)) for f in fields]
+    T = esc(T)
+
+    return quote
+        @inline $outer(x::$T, r) = $T($(outer_args...))
+        @inline $inner(x::$T, r) = $T($(inner_args...))
+        nothing
+    end
+end
+
 @inline isregional(a)                   = false
 @inline isregional(::MultiRegionObject) = true
 

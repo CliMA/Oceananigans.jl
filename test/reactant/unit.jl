@@ -304,6 +304,24 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
         @test Array(interior(u)) == repeat(column, outer=(4, 4, 1))
     end
 
+    @testset "set! between same-shaped fields copies halos" begin
+        grid = RectilinearGrid(arch; size=(4, 4, 4), halo=(2, 2, 2), x=(0, 1), y=(0, 1), z=(0, 1),
+                               topology=(Periodic, Periodic, Bounded))
+        u = CenterField(grid)
+        v = CenterField(grid)
+        set!(v, (x, y, z) -> x + 2y + 3z)
+        fill_halo_regions!(v)
+
+        set!(u, v)
+        @test Array(parent(u)) == Array(parent(v))
+
+        fill!(parent(u), 0)
+        set_field!(u, v) = (set!(u, v); nothing)
+        compiled_set_field! = @compile sync=true set_field!(u, v)
+        compiled_set_field!(u, v)
+        @test Array(parent(u)) == Array(parent(v))
+    end
+
     @testset "Computed fields on a grid with an array-valued vertical coordinate" begin
         Nz = 4
         z = collect(range(-1, 0, length = Nz + 1))

@@ -38,18 +38,14 @@ Fields.scan_grid(::AbstractAccumulating, grid::MultiRegionGrids, dims) = spans_p
 Fields.scan_indices(type::AbstractReducing, indices::MultiRegionObject, dims) = scan_indices(type, getregion(indices, 1), dims)
 Fields.scan_indices(type::AbstractAccumulating, indices::MultiRegionObject, dims) = scan_indices(type, getregion(indices, 1), dims)
 
-# Scans and immersed conditions wrap operands and conditions that may be regional
+# Scans and immersed conditions wrap operands and conditions that may be regional.
+# A `Scan` only regionalizes its `type` and `operand`, so its methods are written by hand.
 @inline Utils.getregion(s::Scan, r)  = Scan(_getregion(s.type, r), s.scan!, _getregion(s.operand, r), s.dims)
 @inline Utils._getregion(s::Scan, r) = Scan(getregion(s.type, r), s.scan!, getregion(s.operand, r), s.dims)
 
-@inline Utils.getregion(a::Averaging, r)  = Averaging(_getregion(a.volume, r))
-@inline Utils._getregion(a::Averaging, r) = Averaging(getregion(a.volume, r))
-
-@inline Utils.getregion(ni::NotImmersed, r)  = NotImmersed(_getregion(ni.condition, r))
-@inline Utils._getregion(ni::NotImmersed, r) = NotImmersed(getregion(ni.condition, r))
-
-@inline Utils.getregion(nic::NotImmersedColumn, r)  = NotImmersedColumn(_getregion(nic.immersed_column, r), _getregion(nic.condition, r))
-@inline Utils._getregion(nic::NotImmersedColumn, r) = NotImmersedColumn(getregion(nic.immersed_column, r), getregion(nic.condition, r))
+@regional Averaging
+@regional NotImmersed
+@regional NotImmersedColumn
 
 #####
 ##### Reductions

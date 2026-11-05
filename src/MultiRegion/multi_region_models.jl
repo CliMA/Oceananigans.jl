@@ -37,40 +37,25 @@ function Advection.materialize_advection(advection::MultiRegionObject, grid::Mul
     return new_advection
 end
 
-# Utility to generate the inputs to complex `getregion`s
-function getregionalproperties(type, inner=true)
-    names = fieldnames(type)
-    args  = Vector(undef, length(names))
-    for (n, name) in enumerate(names)
-        args[n] = inner ? :(_getregion(t.$name, r)) : :(getregion(t.$name, r))
-    end
-    return args
-end
+# Containers rebuilt from the regions of their fields by their positional constructor
+@regional HydrostaticFreeSurfaceModel
+@regional ImplicitFreeSurface
+@regional ExplicitFreeSurface
+@regional QuasiAdamsBashforth2TimeStepper
+@regional SplitRungeKuttaTimeStepper
+@regional PrescribedVelocityFields
+@regional ConjugateGradientSolver
+@regional CrossAndSelfUpwinding
+@regional OnlySelfUpwinding
+@regional GridFittedBoundary
+@regional GridFittedVerticalBoundaries
+@regional PartialCellVerticalBoundaries
+@regional BoundsPreservation
+@regional CATKEClosureFields
+@regional TKEDissipationClosureFields
 
-Types = (HydrostaticFreeSurfaceModel,
-         ImplicitFreeSurface,
-         ExplicitFreeSurface,
-         QuasiAdamsBashforth2TimeStepper,
-         SplitRungeKuttaTimeStepper,
-         PrescribedVelocityFields,
-         ConjugateGradientSolver,
-         CrossAndSelfUpwinding,
-         OnlySelfUpwinding,
-         GridFittedBoundary,
-         GridFittedVerticalBoundaries,
-         PartialCellVerticalBoundaries,
-         BoundsPreservation,
-         CATKEClosureFields,
-         TKEDissipationClosureFields)
-
-for T in Types
-    @eval begin
-        # This assumes a constructor of the form T(arg1, arg2, ...) exists,
-        # which is not the case for all types.
-        @inline  Utils.getregion(t::$T, r) = $T($(getregionalproperties(T, true)...))
-        @inline Utils._getregion(t::$T, r) = $T($(getregionalproperties(T, false)...))
-    end
-end
+# `SplitExplicitFreeSurface{E}`, `VectorInvariant{N, FT, TD, M}` and `WENO{N, FT, WCT}` below fix
+# type parameters that are not deducible from their fields, so their methods are written by hand.
 
 @inline Utils._getregion(fs::SplitExplicitFreeSurface{E}, r) where {E} =
     SplitExplicitFreeSurface{E}(getregion(fs.displacement, r),

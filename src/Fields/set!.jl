@@ -2,6 +2,7 @@ using KernelAbstractions: @kernel, @index
 
 using Oceananigans.Grids: node_names
 using Oceananigans.Architectures: cpu_architecture, GPU, CPU, ReactantState
+using Oceananigans.Utils: apply_regionally!
 
 #####
 ##### Utilities
@@ -175,7 +176,7 @@ end
 
 function set_to_field!(u, v, args...)
     if copyable_fields(u, v)
-        copy_to_field!(u, v)
+        copyto!(u, v)
     else
         fill_halo_regions!(v, args...)
         # Avoid reconstructing immersed grids when architectures already match.
@@ -229,54 +230,36 @@ end
 @inline equivalent_index(::Colon, r::AbstractUnitRange, N) = first(r) == 1 && last(r) == N
 @inline equivalent_index(r::AbstractUnitRange, ::Colon, N) = first(r) == 1 && last(r) == N
 
-function copy_to_field!(u, v)
-    # We implement some niceities in here that attempt to copy halo data,
-    # and revert to copying just interior points if that fails.
-
-    if size(u) != size(v)
-        # `v` is reduced along at least one dimension (see `expandable_source_dimension`)
-        # and stretches across `u`. Only interior points participate: `v` spans a single
-        # point along a stretched dimension, so it has no halo data to lend there.
-        if child_architecture(u) === child_architecture(v)
-            interior(u) .= interior(v)
-        else
-            v_data = on_architecture(child_architecture(u), v.data)
-            interior(u) .= interior(v_data, location(v), v.grid, v.indices)
-        end
-
-        return u
-    end
-
-    if child_architecture(u) === child_architecture(v)
-        # Note: we could try to copy first halo point even when halo
-        # regions are a different size. That's a bit more complicated than
-        # the below so we leave it for the future.
-
-        try # to copy halo regions along with interior data
-            parent(u) .= parent(v)
-        catch # this could fail if the halo regions are different sizes?
-            # copy just the interior data
-            interior(u) .= interior(v)
-        end
-    else
-        v_data = on_architecture(child_architecture(u), v.data)
-
-        # As above, we permit ourselves a little ambition and try to copy halo data:
-        try
-            parent(u) .= parent(v_data)
-        catch
-            interior(u) .= interior(v_data, location(v), v.grid, v.indices)
-        end
-    end
-
-    return u
-end
-
 Base.copyto!(f::Field, src::Base.Broadcast.Broadcasted{<:Base.Broadcast.DefaultArrayStyle}) = copyto!(interior(f), src)
 Base.copyto!(f::Field, src::Base.Broadcast.Broadcasted{Base.Broadcast.DefaultArrayStyle{0}}) = copyto!(interior(f), src)
 Base.copyto!(f::Field, src::AbstractArray) = copyto!(interior(f), src)
 Base.copyto!(f::Field, src::AbstractOffsetArray) = copyto!(interior(f), parent(src))
-Base.copyto!(f::Field, src::Field) = copyto!(parent(f), parent(src))
+
+"""
+$(TYPEDSIGNATURES)
+
+Copy `src` into `dst` and return `dst`. When the two fields have the same location, indices,
+and parent size, the whole parent array is copied, halo regions included. Otherwise only the
+interior points are copied, with `src` broadcast across `dst`: a reduced `src` stretches
+along the dimensions where it has no nodes. Data on another architecture is moved to that
+of `dst` first. Fields on a `MultiRegionGrid` are copied region by region.
+"""
+function Base.copyto!(dst::Field, src::Field)
+    apply_regionally!(copy_regional_field!, dst, src)
+    return dst
+end
+
+function copy_regional_field!(dst, src)
+    dst_architecture = child_architecture(dst)
+    data = dst_architecture === child_architecture(src) ? src.data : on_architecture(dst_architecture, src.data)
+
+    if location(dst) === location(src) && dst.indices == src.indices && size(parent(dst)) == size(parent(data))
+        copyto!(parent(dst), parent(data))
+    else
+        interior(dst) .= interior(data, location(src), src.grid, src.indices)
+    end
+    return nothing
+end
 
 # Disambiguation with SparseArrays.CHOLMOD
 Base.copyto!(f::Field, src::CHOLMOD.Dense) = copyto!(interior(f), src)

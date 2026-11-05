@@ -21,7 +21,7 @@ using Oceananigans.Grids: Grids, AbstractGrid, AbstractUnderlyingGrid, BoundaryS
     Flat, OrthogonalSphericalShellGrid, Periodic, TwoSided, on_architecture
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Utils: KernelParameters, Iterate, MultiRegionObject, Reference, StaticStridesOffsetArray, Utils,
-    @apply_regionally, apply_regionally!, construct_regionally, isregional, getregion, _getregion, regions, prettysummary
+    @apply_regionally, @regional, apply_regionally!, construct_regionally, isregional, getregion, _getregion, regions, prettysummary
 
 abstract type AbstractMultiRegionGrid{FT, TX, TY, TZ, Arch, SZ} <: AbstractGrid{FT, TX, TY, TZ, Arch, SZ} end
 

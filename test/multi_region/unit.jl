@@ -2,7 +2,7 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Oceananigans.Diagnostics: hasnan
 using Oceananigans.Fields: dot!
-using Oceananigans.Utils: getregion
+using Oceananigans.Utils: @regional, getregion, regions
 
 # To be extended as we find new use cases
 @testset "Test @apply_regionally macro" begin
@@ -183,4 +183,83 @@ end
     @test !hasnan(c)
     set!(getregion(c, 2), NaN)
     @test hasnan(c)
+end
+
+# Containers for the `@regional` tests below: `Nested` holds a `Container`, and `Inner.Bare`
+# is declared through a qualified name
+struct Container{F, S}
+    field :: F
+    scale :: S
+end
+
+struct Nested{C, N}
+    container :: C
+    name :: N
+end
+
+module Inner
+    struct Bare{A}
+        a :: A
+    end
+end
+
+@regional Container
+@regional Nested
+@regional Inner.Bare
+
+@testset "Containers declared with @regional [$(summary(arch))]" for arch in archs
+    grid = RectilinearGrid(arch; size=(8, 8, 4), extent=(1, 1, 1))
+    mrg = MultiRegionGrid(grid; partition=XPartition(2))
+
+    c = CenterField(mrg)
+    set!(c, (x, y, z) -> x)
+    nested = Nested(Container(c, 2), "nested")
+
+    for r in 1:2
+        regional = getregion(nested, r)
+        @test regional isa Nested
+        @test parent(regional.container.field) === parent(getregion(c, r))
+        @test regional.container.field.grid === getregion(mrg, r)
+        @test regional.container.scale == 2
+        @test regional.name == "nested"
+    end
+
+    @test parent(getregion(Inner.Bare(c), 2).a) === parent(getregion(c, 2))
+
+    # A function of the container applied region by region, alongside the regional grid
+    function scaled_sum(nested, grid)
+        @test nested.container.field.grid === grid
+        return nested.container.scale * sum(interior(nested.container.field))
+    end
+    @apply_regionally sums = scaled_sum(nested, mrg)
+    @test sums isa MultiRegionObject
+    @test sums.regional_objects[1] < sums.regional_objects[2]
+    @test sum(sums.regional_objects) ≈ 2 * sum(sum(interior(getregion(c, r))) for r in 1:2)
+
+    @test_throws ArgumentError @macroexpand @regional 1 + 1
+end
+
+@testset "copyto! between multi-region fields [$(summary(arch))]" for arch in archs
+    grid = RectilinearGrid(arch; size=(8, 8, 4), extent=(1, 1, 1))
+    yin_yang = YinYangGrid(arch; size=(48, 16, 2), z=(-1, 0))
+
+    for mrg in (MultiRegionGrid(grid; partition=XPartition(2)), yin_yang)
+        src = CenterField(mrg)
+        dst = CenterField(mrg)
+        set!(src, (x, y, z) -> x + y)
+        fill_halo_regions!(src)
+
+        @test copyto!(dst, src) === dst
+
+        for r in regions(mrg)
+            @test parent(getregion(dst, r)) == parent(getregion(src, r))
+        end
+
+        # A field with a different location only shares its interior
+        other = XFaceField(mrg)
+        @test copyto!(other, src) === other
+        for r in regions(mrg)
+            @test interior(getregion(other, r)) == interior(getregion(src, r))
+        end
+    end
 end
