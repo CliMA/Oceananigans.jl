@@ -101,7 +101,7 @@ $(TYPEDSIGNATURES)
 Initialize boundary transports for boundaries with `NormalFlowBoundaryCondition`s,
 returning a `NamedTuple` of boundary transports and areas, or `nothing` when no
 boundary requires correction. The result is the `boundary_transport` argument of
-[`enforce_net_zero_transport!`](@ref).
+`enforce_net_zero_transport!`.
 
 The `velocities` argument is a `NamedTuple` of three face-normal fields.
 Destructuring is positional, so any 3-field `NamedTuple` works:
@@ -109,7 +109,7 @@ Destructuring is positional, so any 3-field `NamedTuple` works:
 or `(; ρu, ρv, ρw)` for anelastic / mass-flux models, whose transports are then mass fluxes.
 
 A boundary requires correction when its `NormalFlowBoundaryCondition` has a radiation `scheme`
-or was built with `rebalance=true`. An imposed `NormalFlowBoundaryCondition` without either is
+or `BalancedTransport()`. An imposed `NormalFlowBoundaryCondition` without either is
 never adjusted: a fixed value contributes its transport to the balance, and a zero (impenetrable)
 one contributes nothing. On an `ImmersedBoundaryGrid` the transports and areas count only the
 faces that are not on the immersed boundary.
@@ -309,7 +309,7 @@ function correct_right_boundary_transport!(u, bc::NFBC, side::RightSide, A⁻¹_
     return shift_boundary_faces!(u, side, -A⁻¹_∮udA)
 end
 
-# Imposed boundaries without `rebalance=true`, and closed boundaries, keep their values.
+# Imposed boundaries without `BalancedTransport()`, and closed boundaries, keep their values.
 correct_left_boundary_transport!(u, ::INFBC, ::LeftSide, A⁻¹_∮udA) = nothing
 correct_right_boundary_transport!(u, ::INFBC, ::RightSide, A⁻¹_∮udA) = nothing
 correct_left_boundary_transport!(u, bc, side, A⁻¹_∮udA) = nothing
@@ -352,35 +352,6 @@ apply_targeted_right_boundary_correction!(velocity, bc, side::RightSide, boundar
 
 enforce_net_zero_transport!(velocities, ::Nothing) = nothing
 
-"""
-$(TYPEDSIGNATURES)
-
-Correct the boundary values of `velocities` so that the combined net transport through every
-boundary that participates in the correction vanishes — the solvability condition of a pressure
-Poisson problem with Neumann conditions, such as the incompressible-pressure problem of
-`NonhydrostaticModel` without a free surface or the anelastic problem of a mass-flux model.
-
-`velocities` is a `NamedTuple` of three face-normal fields, `(; u, v, w)` or `(; ρu, ρv, ρw)`.
-`boundary_transport` is the container returned by [`initialize_boundary_transport`](@ref) for the
-same fields, or `nothing` when no boundary requires correction (in which case this is a no-op).
-
-Participating boundaries are the `NormalFlowBoundaryCondition`s with a radiation `scheme` and
-the imposed ones built with `NormalFlowBoundaryCondition(value; rebalance=true)`. Boundaries whose
-scheme carries a `target_transport` are corrected first by a per-boundary shift so that their net
-transport matches the target exactly; the remaining net imbalance is then distributed uniformly
-over the pool boundaries (those without a `target_transport`). Faces on an immersed boundary are
-left at zero.
-
-The shift is uniform in the given field over each boundary's active area, so for momentum fields
-it is uniform in mass flux, and the velocity increment scales as `1/ρ`.
-
-The correction is a function of the boundary data alone, and applying it to already-balanced
-data is a fixed point, so it may be repeated freely. It must, however, follow every halo fill that
-writes the boundary-normal faces (`fill_halo_regions!` with `fill_normal_flow_bcs=true`, the
-default), because such a fill rewrites imposed boundaries from their prescribed values and
-reverts an earlier correction. `NonhydrostaticModel` calls it once per stage in
-`compute_pressure_correction!`, immediately after its only normal-flow fill.
-"""
 function enforce_net_zero_transport!(velocities, boundary_transport)
     u, v, w = velocities
 

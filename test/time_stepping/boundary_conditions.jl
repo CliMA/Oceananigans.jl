@@ -405,16 +405,15 @@ function test_net_zero_transport_skips_immersed_faces(arch, FT; N = 8)
     @test all(u_cpu[1, j, k] == 0 for (j, k) in immersed)
 end
 
-function test_rebalanced_imposed_boundaries(arch, FT; N = 8)
-    # Imposed values never rebalance by default
+function test_balanced_transport_boundaries(arch, FT; N = 8)
+    # Imposed values are never adjusted by default
     @test !needs_transport_correction(NormalFlowBoundaryCondition(FT(1)))
-    @test needs_transport_correction(NormalFlowBoundaryCondition(FT(1); rebalance=true))
-    @test_throws ArgumentError NormalFlowBoundaryCondition(FT(1); rebalance=true, scheme=PerturbationAdvection())
+    @test needs_transport_correction(NormalFlowBoundaryCondition(FT(1); scheme=BalancedTransport()))
 
     # Unequal imposed inflow and outflow: fixed, they would force a net inflow of 1/2 with no solution
-    # of the pressure Poisson problem. Rebalanced, the imbalance is split evenly between them.
-    u_bcs = FieldBoundaryConditions(west = NormalFlowBoundaryCondition(FT(1); rebalance=true),
-                                    east = NormalFlowBoundaryCondition(FT(1/2); rebalance=true))
+    # of the pressure Poisson problem. With BalancedTransport, the imbalance is split evenly between them.
+    u_bcs = FieldBoundaryConditions(west = NormalFlowBoundaryCondition(FT(1); scheme=BalancedTransport()),
+                                    east = NormalFlowBoundaryCondition(FT(1/2); scheme=BalancedTransport()))
 
     # Allowed on `Closed` sides too, like any imposed normal flow
     bounded_grid = RectilinearGrid(arch, FT, size=(N, N, N), extent=(1, 1, 1), topology=(Bounded, Bounded, Bounded))
@@ -455,8 +454,8 @@ function test_net_zero_transport_for_momentum(arch, FT; N = 4)
     # increment scales as 1/ρ and the mass-flux integral closes exactly for any ρ(z).
     grid = RectilinearGrid(arch, FT, size=(N, N, N), x=(0, 1), y=(0, 1), z=(-1, 0), topology=(Open, Bounded, Bounded))
     bcs = FieldBoundaryConditions(grid, (Face(), Center(), Center()),
-                                  west = NormalFlowBoundaryCondition(0; rebalance=true),
-                                  east = NormalFlowBoundaryCondition(0; rebalance=true))
+                                  west = NormalFlowBoundaryCondition(0; scheme=BalancedTransport()),
+                                  east = NormalFlowBoundaryCondition(0; scheme=BalancedTransport()))
     ρu = XFaceField(grid; boundary_conditions=bcs)
     ρv = YFaceField(grid)
     ρw = ZFaceField(grid)
@@ -973,7 +972,7 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
         test_zero_inflow_open_boundary_conserves_mass(arch, FT)
         test_fixed_imposed_velocity_open_boundary_conserves_mass(arch, FT)
         test_net_zero_transport_skips_immersed_faces(arch, FT)
-        test_rebalanced_imposed_boundaries(arch, FT)
+        test_balanced_transport_boundaries(arch, FT)
         test_net_zero_transport_for_momentum(arch, FT)
     end
 

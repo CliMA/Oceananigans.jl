@@ -101,15 +101,12 @@ end
 NormalFlow() = NormalFlow(nothing)
 
 """
-    struct Rebalanced
+    struct BalancedTransport
 
-The `scheme` of an imposed [`NormalFlow`](@ref) boundary condition that participates in the
-net-zero transport correction, built by `NormalFlowBoundaryCondition(value; rebalance=true)`.
-The prescribed value is written onto the boundary faces at every halo fill, as for any imposed
-normal flow; the correction then shifts the faces uniformly, together with every other
-rebalanced or radiating boundary, so that their combined net transport vanishes.
+A [`NormalFlow`](@ref) `scheme` that imposes the given value and lets the net-zero transport
+correction adjust it, for prescribed inflow and outflow that need not balance exactly.
 """
-struct Rebalanced end
+struct BalancedTransport end
 
 (normal_flow::NormalFlow)() = normal_flow
 
