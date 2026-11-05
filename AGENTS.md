@@ -159,6 +159,7 @@ Rules in `.claude/rules/` load automatically when you touch matching files:
 - `docs-rules.md` — documentation building and style (docs/)
 - `examples-rules.md` — Literate.jl example conventions (examples/)
 - `style-rules.md` — naming, notation, and comment style (src/, test/, validation/, examples/)
+- `restriction-rules.md` — small diffs, no scaffolding, scarce comments, and a self-review checklist (src/, test/, validation/, examples/)
 - `julia-repl-rules.md` — prefer an MCP Julia REPL over Bash when available (always)
 
 ### Skills (slash commands)
