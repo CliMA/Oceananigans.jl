@@ -72,15 +72,8 @@ value of keyword argument `discrete_form`, the constructor expects:
   that compute viscosity and/or diffusivity; default: `nothing`.
 
 * `stencil_order`: order of accuracy of the discrete Laplacian, a positive even integer; default: `2`.
-  Diffusive fluxes use the finite-volume reconstruction of the first derivative at faces, e.g.
-  `(15 (φᵢ - φᵢ₋₁) - (φᵢ₊₁ - φᵢ₋₂)) / 12Δ` for `stencil_order = 4`, whose flux divergence is the five-point
-  Laplacian. Higher-order fluxes are used only in directions in which the grid is a regularly-spaced
-  `RectilinearGrid`. Their order decreases where the stencil would reach an inactive node or cross an `Open` side,
-  and fluxes are second order in directions with variable spacing. Viscous fluxes compute `∂ⱼuᵢ` at `stencil_order` and the transpose
-  term `∂ᵢuⱼ` of the strain rate at second order, so that the viscous term reduces to the Laplacian `ν ∇²uᵢ` for
-  constant `ν` and a velocity field that is discretely divergence-free. Diffusivities stored in arrays or `Field`s
-  are interpolated to faces at second order. `stencil_order > 2` requires a halo size of at least `stencil_order ÷ 2`
-  and is supported for `ThreeDimensionalFormulation` and `VerticalFormulation` with `ExplicitTimeDiscretization`.
+  Orders above 2 apply in regularly spaced `RectilinearGrid` directions and decrease near boundaries. They require
+  `ThreeDimensionalFormulation` or `VerticalFormulation` with `ExplicitTimeDiscretization`.
 
 Examples
 ========
