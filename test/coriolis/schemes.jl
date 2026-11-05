@@ -13,13 +13,13 @@ using Random: Random
 ##### Helpers
 #####
 
-function make_velocity_fields(grid, FT; u_val=FT(0), v_val=FT(0))
+function make_velocity_fields(grid; u_val=0, v_val=0)
     u = Field{Face, Center, Center}(grid)
     v = Field{Center, Face, Center}(grid)
     w = Field{Center, Center, Face}(grid)
     fill!(u, u_val)
     fill!(v, v_val)
-    fill!(w, FT(0))
+    fill!(w, 0)
     fill_halo_regions!((u, v, w))
     return (u=u, v=v, w=w)
 end
@@ -41,7 +41,7 @@ function test_enstrophy_conserving_uniform_v(FT)
                                  z = (0, 1))
 
     coriolis = HydrostaticSphericalCoriolis(FT, scheme=EnstrophyConserving())
-    U = make_velocity_fields(grid, FT; v_val=FT(1))
+    U = make_velocity_fields(grid; v_val=1)
 
     i, j, k = 3, 3, 1
     result = x_f_cross_U(i, j, k, grid, coriolis, U)
@@ -60,7 +60,7 @@ function test_enstrophy_conserving_uniform_u(FT)
                                  longitude = (0, 8),
                                  z = (0, 1))
     coriolis = HydrostaticSphericalCoriolis(FT, scheme=EnstrophyConserving())
-    U = make_velocity_fields(grid, FT; u_val=FT(1))
+    U = make_velocity_fields(grid; u_val=1)
 
     i, j, k = 3, 3, 1
     result = y_f_cross_U(i, j, k, grid, coriolis, U)
@@ -87,7 +87,7 @@ function test_active_weighted_equals_plain_flat_bottom(FT)
     cor_ene    = HydrostaticSphericalCoriolis(FT, scheme=EnergyConserving())
     cor_aw_ene = HydrostaticSphericalCoriolis(FT, scheme=ActiveWeightedEnergyConserving())
 
-    U = make_velocity_fields(grid, FT; v_val=FT(1), u_val=FT(0.5))
+    U = make_velocity_fields(grid; v_val=1, u_val=0.5)
 
     i, j, k = 4, 4, 1
 
@@ -168,8 +168,8 @@ function test_coriolis_antisymmetry(FT, scheme)
 
     i, j, k = 4, 4, 1
 
-    U_v = make_velocity_fields(grid, FT; v_val=FT(1))
-    U_u = make_velocity_fields(grid, FT; u_val=FT(1))
+    U_v = make_velocity_fields(grid; v_val=1)
+    U_u = make_velocity_fields(grid; u_val=1)
 
     fx = x_f_cross_U(i, j, k, grid, coriolis, U_v)
     fy = y_f_cross_U(i, j, k, grid, coriolis, U_u)
@@ -203,7 +203,7 @@ function test_jamart_correction_near_topography(FT)
     cor_plain = HydrostaticSphericalCoriolis(FT, scheme=EnstrophyConserving())
     cor_aw    = HydrostaticSphericalCoriolis(FT, scheme=ActiveWeightedEnstrophyConserving())
 
-    U = make_velocity_fields(ib_grid, FT; v_val=FT(1))
+    U = make_velocity_fields(ib_grid; v_val=1)
 
     # (a) Deep interior: all neighbors active → schemes agree
     i_ocean, j_ocean, k = 4, 7, 1
@@ -422,8 +422,9 @@ end
 ##### With a single level over a PartialCellBottom, Δz varies by orders of magnitude between neighbors.
 #####
 
-function partial_cell_grid(FT, underlying_grid; seed=1234)
+function partial_cell_grid(underlying_grid; seed=1234)
     Nx, Ny, _ = size(underlying_grid)
+    FT = eltype(underlying_grid)
     H = FT(4000)
     Random.seed!(seed)
     depths = H .* (FT(0.002) .+ FT(0.998) .* rand(FT, Nx, Ny))
@@ -431,9 +432,10 @@ function partial_cell_grid(FT, underlying_grid; seed=1234)
     return ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(-depths; minimum_fractional_cell_height=FT(1e-3)))
 end
 
-function random_masked_velocities(grid, FT; seed=42)
+function random_masked_velocities(grid; seed=42)
     Random.seed!(seed)
-    U = make_velocity_fields(grid, FT)
+    FT = eltype(grid)
+    U = make_velocity_fields(grid)
     Nx, Ny, Nz = size(grid)
     u_data = [peripheral_node(i, j, 1, grid, Face(), Center(), Center()) ? zero(FT) : randn(FT) for i in 1:Nx, j in 1:Ny, k in 1:Nz]
     v_data = [peripheral_node(i, j, 1, grid, Center(), Face(), Center()) ? zero(FT) : randn(FT) for i in 1:Nx, j in 1:Ny, k in 1:Nz]
@@ -465,8 +467,8 @@ function test_coriolis_work_with_partial_cells(FT)
 
     for (underlying_grid, coriolis) in ((rectilinear, scheme -> FPlane(FT; f=1e-4, scheme)),
                                         (latlon, scheme -> HydrostaticSphericalCoriolis(FT; scheme)))
-        grid = partial_cell_grid(FT, underlying_grid)
-        U = random_masked_velocities(grid, FT)
+        grid = partial_cell_grid(underlying_grid)
+        U = random_masked_velocities(grid)
 
         # Exact up to roundoff for the thickness-weighted scheme
         @test relative_coriolis_work(grid, coriolis(ThicknessWeightedEnergyConserving()), U) < 100 * eps(FT)
@@ -482,7 +484,7 @@ end
 
 function test_thickness_weighted_equals_energy_conserving_uniform_Δz(FT)
     grid = LatitudeLongitudeGrid(CPU(), FT; size=(8, 8, 1), latitude=(30, 60), longitude=(0, 30), z=(-100, 0))
-    U = random_masked_velocities(grid, FT)
+    U = random_masked_velocities(grid)
     cor_ene = HydrostaticSphericalCoriolis(FT, scheme=EnergyConserving())
     cor_twe = HydrostaticSphericalCoriolis(FT, scheme=ThicknessWeightedEnergyConserving())
 
@@ -515,7 +517,7 @@ function energy_growth_with_partial_cells(scheme; N=24, steps=500)
     underlying_grid = RectilinearGrid(CPU(); size=(N, N, 1), halo=(3, 3, 3), x=(0, 1e6), y=(0, 1e6), z=(-4000, 0),
                                       topology=(Periodic, Periodic, Bounded))
 
-    grid = partial_cell_grid(Float64, underlying_grid)
+    grid = partial_cell_grid(underlying_grid)
 
     model = HydrostaticFreeSurfaceModel(grid; coriolis = FPlane(; f=1e-4, scheme),
                                         free_surface = ExplicitFreeSurface(gravitational_acceleration=0.01),
