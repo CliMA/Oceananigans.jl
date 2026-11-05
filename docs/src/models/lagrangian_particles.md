@@ -30,8 +30,9 @@ lagrangian_particles = LagrangianParticles(x=x₀, y=y₀, z=z₀)
 # output
 10 LagrangianParticles with eltype Particle:
 ├── 3 properties: (:x, :y, :z)
-├── particle-wall restitution coefficient: 1.0
+├── boundary conditions: ParticleBoundaryConditions(ReflectingBoundary(1.0))
 ├── 0 tracked fields: ()
+├── sorting: nothing
 └── dynamics: no_dynamics
 ```
 
@@ -96,8 +97,9 @@ lagrangian_particles = LagrangianParticles(particles)
 # output
 3 LagrangianParticles with eltype LagrangianMicrobe:
 ├── 5 properties: (:x, :y, :z, :species, :dna)
-├── particle-wall restitution coefficient: 1.0
+├── boundary conditions: ParticleBoundaryConditions(ReflectingBoundary(1.0))
 ├── 0 tracked fields: ()
+├── sorting: nothing
 └── dynamics: no_dynamics
 ```
 
@@ -105,6 +107,61 @@ lagrangian_particles = LagrangianParticles(particles)
     Not all data types can be passed to GPU kernels. If you intend to advect particles on the GPU make sure
     particle properties consist of only simple data types. The symbols and strings in this example won't
     work on the GPU.
+
+## Boundary conditions
+
+By default, particles reflect off the boundaries of `Bounded` directions and off immersed boundaries.
+Use `ParticleBoundaryConditions` to specify the behavior of particles at each boundary.
+`ReflectingBoundary(restitution)` reflects particles with a coefficient of restitution, and
+`AbsorbingBoundary()` removes particles that cross the boundary:
+
+```jldoctest particles
+boundary_conditions = ParticleBoundaryConditions(ReflectingBoundary(0.5); bottom=AbsorbingBoundary())
+lagrangian_particles = LagrangianParticles(x=x₀, y=y₀, z=z₀; boundary_conditions)
+
+# output
+3 LagrangianParticles with eltype Particle:
+├── 3 properties: (:x, :y, :z)
+├── boundary conditions: ParticleBoundaryConditions(ReflectingBoundary(0.5); bottom=AbsorbingBoundary())
+├── 0 tracked fields: ()
+├── sorting: nothing
+└── dynamics: no_dynamics
+```
+
+Absorbed particles are removed after they are advected, so the number of particles may decrease
+as the simulation runs. The remaining particles keep their order.
+
+## Sorting particles by grid cell
+
+Particle interactions (for example, collisions) and particle-to-grid operations are efficient
+when particles are stored in order of the grid cell they occupy. Pass a `sorting` algorithm to
+`LagrangianParticles` to sort particles by cell at the beginning of every particle step:
+
+```jldoctest particles
+lagrangian_particles = LagrangianParticles(x=x₀, y=y₀, z=z₀, sorting=CountingSort())
+
+# output
+3 LagrangianParticles with eltype Particle:
+├── 3 properties: (:x, :y, :z)
+├── boundary conditions: ParticleBoundaryConditions(ReflectingBoundary(1.0))
+├── 0 tracked fields: ()
+├── sorting: CellSorting(CountingSort())
+└── dynamics: no_dynamics
+```
+
+Two algorithms are available, and both produce the same order:
+
+- `CountingSort()` counts and scatters particles into cells with atomic operations, and its cost
+  is linear in the number of particles and cells.
+- `ComparisonSort()` uses the general-purpose `sort!` for the particle array type.
+
+After sorting, the particles in cell `(i, j, k)` are indexed by
+`cell_particle_indices(i, j, k, grid, lagrangian_particles.sorting)`, which can be used in custom
+`dynamics`. Within each cell, particles keep the order they had before sorting.
+
+!!! warn "Sorting changes particle indices"
+    Sorting reorders particle properties, so a particle's index may change from one time step
+    to the next. To follow individual particles, add an identifying property to a custom particle type.
 
 ## Writing particle properties to disk
 

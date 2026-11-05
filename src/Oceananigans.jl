@@ -64,7 +64,7 @@ export
     LinearEquationOfState,
 
     # Surface wave Stokes drift via Craik-Leibovich equations
-    UniformStokesDrift, StokesDrift,
+    UniformStokesDrift, StokesDrift, FieldStokesDrift,
 
     # Turbulence closures
     VerticalScalarDiffusivity,
@@ -86,7 +86,8 @@ export
     viscosity, diffusivity,
 
     # Lagrangian particle tracking
-    LagrangianParticles, DroguedParticleDynamics,
+    LagrangianParticles, DroguedParticleDynamics, CountingSort, ComparisonSort,
+    ParticleBoundaryConditions, ReflectingBoundary, AbsorbingBoundary,
 
     # Models
     NonhydrostaticModel, HydrostaticFreeSurfaceModel, ShallowWaterModel,

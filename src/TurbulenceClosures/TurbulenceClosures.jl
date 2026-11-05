@@ -58,8 +58,8 @@ using Oceananigans.Operators: Operators, Ax_qᶜᶜᶜ, Ax_qᶠᶜᶜ, Ax_qᶠ�
                               Δy_qᶜᶠᶜ, Δy_qᶠᶜᶜ, Δy_qᶠᶜᶠ, Δyᶜᶜᶜ, Δy⁻¹ᶜᶜᶜ, Δzᶜᶜᶜ, Δz⁻¹ᶜᶜᶜ, Δz⁻¹ᶜᶠᶜ, Δz⁻¹ᶠᶜᶜ, δxᶜᵃᵃ, δxᶜᶜᶜ,
                               δxᶜᶠᶜ, δxᶠᵃᵃ, δxᶠᶜᶜ, δxᶠᶠᶜ, δyᵃᶜᵃ, δyᵃᶠᵃ, δyᶜᶜᶜ, δyᶜᶠᶜ, δyᶠᶜᶜ, δzᵃᵃᶜ, δzᵃᵃᶠ, ζ₃ᶠᶠᶜ,
                               ℑxyzᶠᶠᶜ, ℑxyᶜᶜᵃ, ℑxyᶜᶠᵃ, ℑxyᶠᶜᵃ, ℑxzᶜᵃᶜ, ℑxzᶜᵃᶠ, ℑxzᶠᵃᶜ, ℑxᶜᵃᵃ, ℑxᶠᵃᵃ, ℑyzᵃᶜᶜ, ℑyzᵃᶜᶠ,
-                              ℑyzᵃᶠᶜ, ℑyᵃᶜᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶠ, ∂x_zᶜᶜᶠ, ∂x_zᶜᶠᶜ, ∂x_zᶜᶠᶠ, ∂x_zᶠᶜᶜ, ∂x_zᶠᶜᶠ, ∂xᵣᶜᶜᶜ, ∂xᵣᶜᶠᶜ,
-                              ∂xᵣᶠᶜᶜ, ∂xᵣᶠᶜᶠ, ∂xᵣᶠᶠᶜ, ∂y_zᶜᶜᶠ, ∂y_zᶜᶠᶜ, ∂y_zᶜᶠᶠ, ∂y_zᶠᶜᶜ, ∂y_zᶠᶜᶠ, ∂yᵣᶜᶜᶜ, ∂yᵣᶜᶠᶜ,
+                              ℑyzᵃᶠᶜ, ℑyᵃᶜᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶠ, ∂x_zᶜᶜᶠ, ∂x_zᶜᶠᶠ, ∂x_zᶠᶜᶜ, ∂x_zᶠᶜᶠ, ∂xᵣᶜᶜᶜ, ∂xᵣᶜᶠᶜ,
+                              ∂xᵣᶠᶜᶜ, ∂xᵣᶠᶜᶠ, ∂xᵣᶠᶠᶜ, ∂y_zᶜᶜᶠ, ∂y_zᶜᶠᶜ, ∂y_zᶜᶠᶠ, ∂y_zᶠᶜᶠ, ∂yᵣᶜᶜᶜ, ∂yᵣᶜᶠᶜ,
                               ∂yᵣᶜᶠᶠ, ∂yᵣᶠᶜᶜ, ∂yᵣᶠᶠᶜ, ∂zᶜᶜᶜ, ∂zᶜᶜᶠ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ, ∂²zᶜᶜᶠ, ∂²zᶜᶠᶜ, ∂²zᶠᶜᶜ, ∂³zᶜᶜᶠ,
                               ∇²hᶜᶜᶜ, ∇²hᶜᶠᶜ, ∇²hᶠᶜᶜ, ∇²ᶜᶜᶜ, ∇²ᶜᶜᶠ, ∇²ᶜᶠᶜ, ∇²ᶠᶜᶜ
 using Oceananigans.TimeSteppers: TimeSteppers,
@@ -216,6 +216,7 @@ include("turbulence_closure_utils.jl")
 include("closure_kernel_operators.jl")
 include("velocity_tracer_gradients.jl")
 include("abstract_scalar_diffusivity_closure.jl")
+include("stencil_order_derivatives.jl")
 include("abstract_scalar_biharmonic_diffusivity_closure.jl")
 include("closure_tuples.jl")
 include("isopycnal_rotation_tensor_components.jl")
@@ -249,7 +250,6 @@ include("turbulence_closure_implementations/ri_based_vertical_diffusivity.jl")
 # Special non-abstracted diffusivities:
 # TODO: introduce abstract typing for these
 include("turbulence_closure_implementations/isopycnal_skew_symmetric_diffusivity.jl")
-include("turbulence_closure_implementations/isopycnal_skew_symmetric_diffusivity_with_triads.jl")
 include("turbulence_closure_implementations/advective_skew_diffusion.jl")
 include("turbulence_closure_implementations/leith_enstrophy_diffusivity.jl")
 
