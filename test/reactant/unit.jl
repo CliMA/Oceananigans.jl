@@ -305,6 +305,33 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
         @test Array(interior(u)) == repeat(column, outer=(4, 4, 1))
     end
 
+    @testset "Indexing fields with a traced element type" begin
+        grid = RectilinearGrid(arch; size = (4, 4, 4), extent = (1, 1, 1))
+        u = CenterField(grid)
+        values = reshape(collect(1.0:64.0), 4, 4, 4)
+        set!(u, values)
+
+        # Fields allocated inside a compiled function have a traced element type. Indexing them must not
+        # be ambiguous with Reactant's methods for arrays of traced numbers, and must drop the index along
+        # reduced dimensions.
+        function index_traced_fields!(u)
+            full = CenterField(u.grid)
+            interior(full) .= interior(u)
+            column = Field{Nothing, Nothing, Center}(u.grid)
+            interior(column) .= 3
+            @allowscalar begin
+                column[1, 1, 2] = 2 * column[3, 4, 2]
+                u[1, 1, 1] = full[2, 2, 1] + column[2, 3, 2]
+            end
+            return nothing
+        end
+
+        compiled_index_traced_fields! = @compile sync=true index_traced_fields!(u)
+        compiled_index_traced_fields!(u)
+
+        @test Array(interior(u))[1, 1, 1] ≈ values[2, 2, 1] + 6
+    end
+
     @testset "LatitudeLongitudeGrid with a non-static vertical coordinate" begin
         # `on_architecture(::ReactantState, ::LatitudeLongitudeGrid)` rebuilds the grid field by
         # field. Vertical coordinates other than `StaticVerticalDiscretization` used to hit a
