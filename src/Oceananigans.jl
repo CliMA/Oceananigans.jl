@@ -43,7 +43,7 @@ export
     BoundaryCondition,
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, NormalFlowBoundaryCondition, GravityWaveRadiationBoundaryCondition,
     IMEXFluxTimeDiscretization, IMEXFluxBoundaryCondition,
-    PerturbationAdvection, GravityWaveRadiation, NormalRadiation, SurfaceWaveRadiation,
+    PerturbationAdvection, BalancedTransport, GravityWaveRadiation, NormalRadiation, SurfaceWaveRadiation,
     TidalHarmonics, tidal_forcing, tidal_boundary_conditions, tidal_atlas_constants,
     FieldBoundaryConditions,
 
@@ -64,7 +64,7 @@ export
     LinearEquationOfState,
 
     # Surface wave Stokes drift via Craik-Leibovich equations
-    UniformStokesDrift, StokesDrift,
+    UniformStokesDrift, StokesDrift, FieldStokesDrift,
 
     # Turbulence closures
     VerticalScalarDiffusivity,
@@ -86,7 +86,8 @@ export
     viscosity, diffusivity,
 
     # Lagrangian particle tracking
-    LagrangianParticles, DroguedParticleDynamics,
+    LagrangianParticles, DroguedParticleDynamics, CountingSort, ComparisonSort,
+    ParticleBoundaryConditions, ReflectingBoundary, AbsorbingBoundary,
 
     # Models
     NonhydrostaticModel, HydrostaticFreeSurfaceModel, ShallowWaterModel,
