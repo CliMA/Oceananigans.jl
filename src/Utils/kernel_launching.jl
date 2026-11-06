@@ -133,8 +133,11 @@ the GPU heuristic uses regardless of the dimensions the kernel spans.
 # so a workgroup spanning the first dimension of `launch_size` yields a single contiguous inner loop.
 @inline workgroup_layout(::KA.CPU, grid_size, launch_size) = cpu_workgroup(launch_size...)
 
-@inline cpu_workgroup(W1::Int) = W1
-@inline cpu_workgroup(W1::Int, W2::Int, Wz...) = W1 == 1 ? (1, W2) : (W1, 1)
+# PoCL's maximum work-group size
+const maximum_cpu_workgroup_size = 4096
+
+@inline cpu_workgroup(W1::Int) = min(W1, maximum_cpu_workgroup_size)
+@inline cpu_workgroup(W1::Int, W2::Int, Wz...) = W1 == 1 ? (1, min(W2, maximum_cpu_workgroup_size)) : (min(W1, maximum_cpu_workgroup_size), 1)
 
 # To be extended in the `Grids` modules for non-trivial peripheries,
 # for all other cases, `periphery_offset` is zero.
