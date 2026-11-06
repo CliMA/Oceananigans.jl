@@ -9,7 +9,7 @@ using .TKEClosures: convective_buoyancy_production, convective_layer_depth, effe
 
 # Beer's law in two bands: a surface radiative buoyancy flux (≤ 0, positive upward), a fraction ϵ of which is absorbed over
 # 1 / κ₁ and the rest over 1 / κ₂
-struct TwoBandRadiation{FT}
+struct TwoBandRadiation{FT} <: Forcings.AbstractRadiativeForcing
     surface_buoyancy_flux :: FT
     first_band_fraction :: FT
     first_absorption_coefficient :: FT
@@ -18,8 +18,7 @@ end
 
 SingleBandRadiation(Jʳ, κ) = TwoBandRadiation(Jʳ, 1.0, κ, κ)
 
-Forcings.penetrative_radiation(R::TwoBandRadiation) = R
-Forcings.surface_radiative_buoyancy_flux(i, j, grid, R::TwoBandRadiation, buoyancy, fields) = R.surface_buoyancy_flux
+Forcings.surface_radiative_flux(i, j, grid, R::TwoBandRadiation) = R.surface_buoyancy_flux
 
 function Forcings.transmitted_fraction(i, j, grid, R::TwoBandRadiation, d)
     ϵ, κ₁, κ₂ = R.first_band_fraction, R.first_absorption_coefficient, R.second_absorption_coefficient
@@ -35,14 +34,6 @@ function Forcings.transmitted_thickness(i, j, grid, R::TwoBandRadiation, h)
     ϵ, κ₁, κ₂ = R.first_band_fraction, R.first_absorption_coefficient, R.second_absorption_coefficient
     return - ϵ * expm1(-κ₁ * h) / κ₁ - (1 - ϵ) * expm1(-κ₂ * h) / κ₂
 end
-
-# The radiation heats the column as the divergence of the radiative flux through each cell
-@inline function radiative_flux(i, j, k, grid, R)
-    d = - znode(i, j, k, grid, Center(), Center(), Face())
-    return R.surface_buoyancy_flux * Forcings.transmitted_fraction(i, j, grid, R, d)
-end
-
-@inline (R::TwoBandRadiation)(i, j, k, grid, clock, fields) = - ∂zᶜᶜᶜ(i, j, k, grid, radiative_flux, R)
 
 # Root of w★³ = W(h) + h Jᵇᵋ, by bisection to round-off
 function bisected_convective_layer_depth(grid, radiation, w★³, Jᵇ, Jʳ, Jᵇᵋ)
@@ -94,6 +85,14 @@ end
         stock_without_radiation = convective_layer_depth(1, 1, grid, nothing, 1e-6, Jᵇᴮᶜ, 0.0, Jᵇᵋ)
         @test convective_layer_depth(1, 1, grid, opaque, 1e-6, Jᵇ, Jʳ, Jᵇᵋ) ≈ stock_with_total_flux rtol = 1e-6
         @test convective_layer_depth(1, 1, grid, transparent, 1e-6, Jᵇ, Jʳ, Jᵇᵋ) ≈ stock_without_radiation rtol = 1e-6
+    end
+
+    @testset "The column absorbs the whole surface radiative flux" begin
+        for κ in (1 / 10, 1 / 1000)
+            R = SingleBandRadiation(Jʳ, κ)
+            absorbed = sum(R(1, 1, k, grid, nothing, nothing) * Δzᶜᶜᶜ(1, 1, k, grid) for k in 1:size(grid, 3))
+            @test absorbed ≈ - Jʳ
+        end
     end
 
     @testset "Convective layer depth" begin

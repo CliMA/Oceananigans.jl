@@ -6,7 +6,11 @@ using Adapt: Adapt, adapt
 using DocStringExtensions: TYPEDSIGNATURES
 
 using Oceananigans: Oceananigans
+using Oceananigans.BuoyancyFormulations: BuoyancyForce, BuoyancyTracerFormulation, SeawaterBuoyancy,
+                                         get_temperature_and_salinity, thermal_expansionᶜᶜᶠ
 using Oceananigans.Fields: field, location
+using Oceananigans.Grids: Center, Face, inactive_cell, znode
+using Oceananigans.Operators: ∂zᶜᶜᶜ
 using Oceananigans.OutputReaders: FlavorOfFTS
 using Oceananigans.Units: Time
 using Oceananigans.Utils: named_tuple
