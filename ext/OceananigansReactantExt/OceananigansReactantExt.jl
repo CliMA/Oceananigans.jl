@@ -111,7 +111,7 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
     @nospecialize(sharding),
     @nospecialize(runtime)
 )
-    LX, LY, LZ, G, _, K, D = OA.parameters
+    LX, LY, LZ, G, T, K, D = OA.parameters
     LX2 = Reactant.traced_type_inner(LX, seen, mode, track_numbers, sharding, runtime)
     LY2 = Reactant.traced_type_inner(LY, seen, mode, track_numbers, sharding, runtime)
     LZ2 = Reactant.traced_type_inner(LZ, seen, mode, track_numbers, sharding, runtime)
