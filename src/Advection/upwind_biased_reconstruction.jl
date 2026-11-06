@@ -14,15 +14,25 @@ end
 function UpwindBiased(FT::DataType = Oceananigans.defaults.FloatType;
                       order = 3,
                       time_discretization = ExplicitTimeDiscretization(),
-                      buffer_scheme = DecreasingOrderAdvectionScheme())
+                      buffer_scheme = DecreasingOrderAdvectionScheme(),
+                      minimum_buffer_upwind_order = 1)
 
     mod(order, 2) == 0 && throw(ArgumentError("UpwindBiased reconstruction scheme is defined only for odd orders"))
 
     N = Int((order + 1) ÷ 2)
     advecting_velocity_scheme = Centered(FT; order = 2)
 
-    if buffer_scheme isa DecreasingOrderAdvectionScheme
-        buffer_scheme = N > 1 ? UpwindBiased(FT; order=order-2, buffer_scheme) : buffer_scheme.boundary_scheme
+    if N > 1
+        if buffer_scheme isa DecreasingOrderAdvectionScheme
+            if order ≤ minimum_buffer_upwind_order
+                # At minimum order, switch to Centered scheme
+                buffer_scheme = Centered(FT; order=2)
+            else
+                buffer_scheme = UpwindBiased(FT; order = order - 2, minimum_buffer_upwind_order)
+            end
+        end
+    else
+        buffer_scheme  = nothing
     end
 
     return UpwindBiased{N, FT}(buffer_scheme, advecting_velocity_scheme, time_discretization)

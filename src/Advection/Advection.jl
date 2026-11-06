@@ -11,7 +11,7 @@ export
     advective_tracer_flux_y,
     advective_tracer_flux_z,
 
-    Centered, UpwindBiased, WENO, DecreasingOrderAdvectionScheme,
+    Centered, UpwindBiased, WENO,
     VectorInvariant, WENOVectorInvariant,
     FluxFormAdvection,
     AdaptiveImplicitVerticalAdvection,
@@ -56,17 +56,7 @@ const advection_buffers = [1, 2, 3, 4, 5, 6]
 @inline Grids.required_halo_size_y(::AbstractAdvectionScheme{B}) where B = B
 @inline Grids.required_halo_size_z(::AbstractAdvectionScheme{B}) where B = B
 
-"""
-    DecreasingOrderAdvectionScheme(; boundary_scheme = nothing)
-
-The default `buffer_scheme` of an advection scheme: the same scheme two orders lower, stepping down until the lowest order
-of its family, and then `boundary_scheme`, the reconstruction used in a cell whose stencil fits no scheme of the chain.
-"""
-struct DecreasingOrderAdvectionScheme{B}
-    boundary_scheme :: B
-end
-
-DecreasingOrderAdvectionScheme(; boundary_scheme = nothing) = DecreasingOrderAdvectionScheme(boundary_scheme)
+struct DecreasingOrderAdvectionScheme end
 
 include("time_discretization.jl")
 include("centered_advective_fluxes.jl")

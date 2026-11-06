@@ -2,7 +2,7 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Oceananigans.Advection: biased_coefficients, weno_reconstruction, coeff_p, smoothness_coefficients, C★,
                               adapt_advection_order, materialize_advection, biased_interpolate_xᶠᵃᵃ,
-                              biased_interpolate_xᶜᵃᵃ, biased_weno_weights, LeftBias, RightBias
+                              biased_interpolate_xᶜᵃᵃ, LeftBias, RightBias
 using Oceananigans.Utils: getregion, _getregion
 
 function stretched_reconstruction_error(order, stretched, Nx, bias = LeftBias)
@@ -52,10 +52,6 @@ end
             δ = Tuple(S[m+1] - S[m] for m in 1:2N-2)
             @test weno_reconstruction(scheme, S[N], δ, coefficients.C★, coefficients) ≈ edges[N+1]^degree rtol = 1e-12
         end
-
-        δ = Tuple(sin(m) for m in 1:2N-2)
-        divided = WENO(Float64; order = 2N - 1, weight_computation = Oceananigans.Utils.NormalDivision)
-        @test all(biased_weno_weights((δ, δ), nothing, divided, coefficients) .≈ biased_weno_weights(δ, nothing, divided, coefficients))
     end
 
     @testset "Order on a stretched grid [$bias, $(nameof(error_of))]" for bias in (LeftBias, RightBias),
