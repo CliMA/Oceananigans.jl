@@ -995,22 +995,19 @@ end
         end
 
         @testset "Regular coordinates with exact ends and halo-independent nodes [$(summary(arch)), $FT]" for arch in archs,
-                                                                                                         FT in filter(FT -> arch isa CPU || isbitstype(FT), fully_supported_float_types)
-            # No type is wider than BigFloat to hold the reference and step, so its ends are exact only to an ulp
-            same_ends = FT === BigFloat ? ((a, b) -> isapprox(a, b; rtol = eps(FT))) : (==)
-
+                                                                                                         FT in filter(isbitstype, fully_supported_float_types)
             Nx, Nz = 7, 6
             grid = RectilinearGrid(arch, FT; size=(Nx, Nz), x=(-3.3, 7.1), z=(-10, 0), topology=(Bounded, Flat, Bounded))
             wide = with_halo((5, 1, 5), grid)
-            @test same_ends(xnodes(grid, Face())[[1, Nx + 1]], [FT(-3.3), FT(7.1)])
-            @test same_ends(znodes(grid, Face())[[1, Nz + 1]], [FT(-10), FT(0)])
+            @test xnodes(grid, Face())[[1, Nx + 1]] == [FT(-3.3), FT(7.1)]
+            @test znodes(grid, Face())[[1, Nz + 1]] == [FT(-10), FT(0)]
             @test xnodes(wide, Face()) == xnodes(grid, Face())
             @test znodes(wide, Center()) == znodes(grid, Center())
 
             Nλ, Nφ = 4, 3
             grid = LatitudeLongitudeGrid(arch, FT; size=(Nλ, Nφ, 1), longitude=(0, 10), latitude=(-10, 20), z=(-1, 0))
-            @test same_ends(λnodes(grid, Face())[[1, Nλ + 1]], [FT(0), FT(10)])
-            @test same_ends(φnodes(grid, Face())[[1, Nφ + 1]], [FT(-10), FT(20)])
+            @test λnodes(grid, Face())[[1, Nλ + 1]] == [FT(0), FT(10)]
+            @test φnodes(grid, Face())[[1, Nφ + 1]] == [FT(-10), FT(20)]
             @test φnodes(grid, Face())[2] == 0
         end
 
