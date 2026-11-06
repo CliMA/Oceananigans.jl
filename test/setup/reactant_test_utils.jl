@@ -198,3 +198,17 @@ end
     i, j, k = @index(Global, NTuple)
     @inbounds f[i, j, k] += 1
 end
+
+double(i, j, k, grid, c) = @inbounds 2 * c[i, j, k]
+
+# Builds the operation inside the traced function and passes it to the kernel within a NamedTuple
+function compute_doubled!(out, c)
+    operations = (; doubled = KernelFunctionOperation{Center, Center, Center}(double, c.grid, c))
+    launch!(architecture(out), out.grid, :xyz, _compute_doubled!, out, operations)
+    return out
+end
+
+@kernel function _compute_doubled!(out, operations)
+    i, j, k = @index(Global, NTuple)
+    @inbounds out[i, j, k] = operations.doubled[i, j, k]
+end

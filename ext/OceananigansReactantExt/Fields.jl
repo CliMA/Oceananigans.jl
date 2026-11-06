@@ -15,6 +15,40 @@ const ReactantOperation{LX, LY, LZ} = AbstractOperation{LX, LY, LZ, <:ReactantGr
 
 Oceananigans.DistributedComputations.reconstruct_global_field(field::ShardedDistributedField) = field
 
+#####
+##### Indexing fields whose element type is traced
+#####
+
+# A field allocated inside a compiled function has a `TracedRNumber` element type. Indexing it is then
+# ambiguous between the methods in `src/Fields/field.jl`, which specialize on the field's location
+# (dropping the index along each reduced, `Nothing`, dimension) but take untyped indices, and Reactant's
+# methods for arrays of traced numbers, which take `Int` or traced `Int` indices. We define one method
+# for every combination of reduced dimensions, each more specific than both.
+
+const TracedIndex = Union{Int, Reactant.TracedRNumber{Int}}
+
+@inline reduced_index(::Type{Nothing}, i) = 1
+@inline reduced_index(loc, i) = i
+
+for LX in (:Nothing, :Any), LY in (:Nothing, :Any), LZ in (:Nothing, :Any)
+    X = LX === :Nothing ? :Nothing : :(<:Any)
+    Y = LY === :Nothing ? :Nothing : :(<:Any)
+    Z = LZ === :Nothing ? :Nothing : :(<:Any)
+    TracedField = :(Field{$X, $Y, $Z, <:Any, <:Any, <:Any, <:Any, <:Reactant.TracedRNumber})
+
+    @eval begin
+        @inline function Base.getindex(f::$TracedField, i::TracedIndex, j::TracedIndex, k::TracedIndex)
+            LX, LY, LZ = Oceananigans.location(f)
+            return getindex(f.data, reduced_index(LX, i), reduced_index(LY, j), reduced_index(LZ, k))
+        end
+
+        @inline function Base.setindex!(f::$TracedField, v, i::TracedIndex, j::TracedIndex, k::TracedIndex)
+            LX, LY, LZ = Oceananigans.location(f)
+            return setindex!(f.data, v, reduced_index(LX, i), reduced_index(LY, j), reduced_index(LZ, k))
+        end
+    end
+end
+
 OceananigansReactantExt.deconcretize(field::Field{LX, LY, LZ}) where {LX, LY, LZ} =
     Field{LX, LY, LZ}(field.grid,
                       deconcretize(field.data),
