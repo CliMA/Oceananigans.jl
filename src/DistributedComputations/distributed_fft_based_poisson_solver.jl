@@ -93,14 +93,15 @@ function DistributedFFTBasedPoissonSolver(global_grid, local_grid, planner_flag=
     validate_poisson_solver_configuration(global_grid, local_grid)
 
     FT = Complex{eltype(local_grid)}
+    topo = (TX, TY, TZ) = topology(global_grid)
 
-    storage = TransposableField(CenterField(local_grid), FT)
+    real_transposes = all(T <: Union{BoundaryTopology, Flat} for T in topo)
+    storage = TransposableField(CenterField(local_grid), FT; buffer_eltype = real_transposes ? real(FT) : FT)
 
     arch = architecture(storage.xfield.grid)
     child_arch = child_architecture(arch)
 
     # Build _global_ eigenvalues
-    topo = (TX, TY, TZ) = topology(global_grid)
     λx = dropdims(poisson_eigenvalues(global_grid, global_grid.Nx, global_grid.Lx, 1, TX()), dims=(2, 3))
     λy = dropdims(poisson_eigenvalues(global_grid, global_grid.Ny, global_grid.Ly, 2, TY()), dims=(1, 3))
     λz = dropdims(poisson_eigenvalues(global_grid, global_grid.Nz, global_grid.Lz, 3, TZ()), dims=(1, 2))

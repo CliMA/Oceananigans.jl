@@ -172,9 +172,10 @@ function DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid, pla
     T = Complex{eltype(local_grid)}
     child_arch = child_architecture(local_grid)
     storage_field = CenterField(local_grid)
-    storage = TransposableField(storage_field, T)
+    topo = TX, TY, TZ = topology(global_grid)
+    real_transposes = all(topo[d] <: Union{BoundaryTopology, Flat} for d in 1:3 if d != tridiagonal_dim)
+    storage = TransposableField(storage_field, T; buffer_eltype = real_transposes ? real(T) : T)
 
-    TX, TY, TZ = topology(global_grid)
     tx, ty, tz = TX(), TY(), TZ()
     λx = dropdims(poisson_eigenvalues(global_grid, global_grid.Nx, global_grid.Lx, 1, tx), dims=(2, 3))
     λy = dropdims(poisson_eigenvalues(global_grid, global_grid.Ny, global_grid.Ly, 2, ty), dims=(1, 3))

@@ -36,30 +36,33 @@ transpose_y_to_x!(::SlabXFields) = nothing
 # On the other hand, for the y-configuration there are two ways to pack a buffer and two ways to unpack it
 # depending on whether the y-configuration is going (or coming from) a x- or a z-configuration
 
+@inline packed(::AbstractArray{<:Real}, x) = real(x)
+@inline packed(::AbstractArray, x) = x
+
 @kernel function _pack_buffer_z_to_y!(yzbuff, zfield, N)
     i, j, k = @index(Global, NTuple)
     Nx, Ny, _ = N
-    @inbounds yzbuff.send[j + Ny * (i-1 + Nx * (k-1))] = zfield[i, j, k]
+    @inbounds yzbuff.send[j + Ny * (i-1 + Nx * (k-1))] = packed(yzbuff.send, zfield[i, j, k])
 end
 
 @kernel function _pack_buffer_x_to_y!(xybuff, xfield, N)
     i, j, k = @index(Global, NTuple)
     _, Ny, Nz = N
-    @inbounds xybuff.send[j + Ny * (k-1 + Nz * (i-1))] = xfield[i, j, k]
+    @inbounds xybuff.send[j + Ny * (k-1 + Nz * (i-1))] = packed(xybuff.send, xfield[i, j, k])
 end
 
 # packing a y buffer for communication with a x-local direction (y -> x communication)
 @kernel function _pack_buffer_y_to_x!(xybuff, yfield, N)
     i, j, k = @index(Global, NTuple)
     Nx, _, Nz = N
-    @inbounds xybuff.send[i + Nx * (k-1 + Nz * (j-1))] = yfield[i, j, k]
+    @inbounds xybuff.send[i + Nx * (k-1 + Nz * (j-1))] = packed(xybuff.send, yfield[i, j, k])
 end
 
 # packing a y buffer for communication with a z-local direction (y -> z communication)
 @kernel function _pack_buffer_y_to_z!(xybuff, yfield, N)
     i, j, k = @index(Global, NTuple)
     Nx, _, Nz = N
-    @inbounds xybuff.send[k + Nz * (i-1 + Nx * (j-1))] = yfield[i, j, k]
+    @inbounds xybuff.send[k + Nz * (i-1 + Nx * (j-1))] = packed(xybuff.send, yfield[i, j, k])
 end
 
 @kernel function _unpack_buffer_x_from_y!(xybuff, xfield, N, n)

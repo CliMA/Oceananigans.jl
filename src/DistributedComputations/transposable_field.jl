@@ -16,7 +16,7 @@ const SlabYFields = TransposableField{<:Any, <:Any, <:Any, <:Nothing} # Y-direct
 const SlabXFields = TransposableField{<:Any, <:Any, <:Any, <:Any, <:Nothing} # X-direction is free
 
 """
-    TransposableField(field_in, FT = eltype(field_in); with_halos = false)
+    TransposableField(field_in, FT = eltype(field_in); with_halos = false, buffer_eltype = FT)
 
 Construct a TransposableField object that containes the allocated memory and the ruleset required
 for distributed transpositions. This includes:
@@ -45,8 +45,9 @@ For more information on the transposition algorithm, see the docstring for the `
 - `field_in`: The input field. It needs to be in a _z-free_ configuration (i.e. ranks[3] == 1).
 - `FT`: The element type of the field. Defaults to the element type of `field_in`.
 - `with_halos`: A boolean indicating whether to include halos in the field. Defaults to `false`.
+- `buffer_eltype`: The element type of the communication buffers. Defaults to `FT`.
 """
-function TransposableField(field_in, FT = eltype(field_in); with_halos = false)
+function TransposableField(field_in, FT = eltype(field_in); with_halos = false, buffer_eltype = FT)
 
     zgrid = field_in.grid # We support only a 2D partition in X and Y
     ygrid = twin_grid(zgrid; local_direction = :y)
@@ -73,10 +74,10 @@ function TransposableField(field_in, FT = eltype(field_in); with_halos = false)
     end
 
     # One dimensional buffers to "pack" three-dimensional data in for communication
-    yzbuffer = Ry == 1 ? nothing : (send = communication_buffer_array(zarch, FT, prod(yN)),
-                                    recv = communication_buffer_array(zarch, FT, prod(zN)))
-    xybuffer = Rx == 1 ? nothing : (send = communication_buffer_array(zarch, FT, prod(xN)),
-                                    recv = communication_buffer_array(zarch, FT, prod(yN)))
+    yzbuffer = Ry == 1 ? nothing : (send = communication_buffer_array(zarch, buffer_eltype, prod(yN)),
+                                    recv = communication_buffer_array(zarch, buffer_eltype, prod(zN)))
+    xybuffer = Rx == 1 ? nothing : (send = communication_buffer_array(zarch, buffer_eltype, prod(xN)),
+                                    recv = communication_buffer_array(zarch, buffer_eltype, prod(yN)))
 
     # Split the architecture's own communicator: a grid may live on a subset of MPI.COMM_WORLD.
     yzcomm = MPI.Comm_split(mpi_communicator(zarch.communicator), zarch.local_index[1], zarch.local_index[1])
