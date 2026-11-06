@@ -1,7 +1,7 @@
 module BoundaryConditions
 
 export
-    Flux, Gradient, Value, NormalFlow,
+    Flux, Gradient, Value, NormalFlow, BalancedTransport,
     BoundaryCondition, getbc,
     PeriodicBoundaryCondition, NormalFlowBoundaryCondition, NoFluxBoundaryCondition, MultiRegionCommunicationBoundaryCondition,
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, DistributedCommunicationBoundaryCondition,
@@ -30,7 +30,7 @@ using Oceananigans.Grids: Grids, AbstractGrid, Center, CenterFolded, CenterFoldC
                           FaceFoldConnected, Flat, LatitudeLongitudeGrid, Open, TwoSided,
                           connected_range, halo_size, node, λnode, φnode, λnodes, φnodes, topology
 using Oceananigans.Operators: Ax, Ay, Az, V⁻¹, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
-using Oceananigans.Utils: AbstractTimeDiscretization, ExplicitTimeDiscretization, launch!, named_tuple
+using Oceananigans.Utils: AbstractTimeDiscretization, ExplicitTimeDiscretization, StaticStridesOffsetArray, launch!, named_tuple
 
 # All possible fill_halo! kernels
 struct WestAndEast end

@@ -208,7 +208,7 @@ function Oceananigans.Architectures.on_architecture(arch, ibg::ImmersedRegionalG
 end
 
 # On a multi-region grid the stored bottom height is a `MultiRegionObject` of per-region halo-inclusive
-# `OffsetArray`s; strip each region's halos before copying (the bare-`OffsetArray` method does this per region).
+# `StaticStridesOffsetArray`s; strip each region's halos before copying (the bare-`AbstractOffsetArray` method does this per region).
 Oceananigans.ImmersedBoundaries.set_bottom_height!(bottom_field, bottom_height::MultiRegionObject) =
     @apply_regionally set_bottom_height!(bottom_field, bottom_height)
 

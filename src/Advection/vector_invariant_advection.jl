@@ -14,9 +14,16 @@ TimeSteppers.time_discretization(::EnstrophyConserving) = ExplicitTimeDiscretiza
     EnergyConservingUpwinding(scheme)
 
 Vorticity scheme for `VectorInvariant` that reconstructs vorticity with the upwind-biased `scheme` and pairs
-the reconstructed values symmetrically between the `u` and `v` equations, as in the TRiSK scheme of Ringler et al. (2010).
+the reconstructed values symmetrically between the `u` and `v` equations, as in the TRiSK scheme
+of [Ringler et al. (2010)](@cite Ringler2010).
 The horizontal vorticity flux does no work on the flow for any reconstructed vorticity, so the upwinding
 dissipates enstrophy while conserving kinetic energy.
+
+References
+==========
+* Ringler, T. D., Thuburn, J., Klemp, J. B., & Skamarock, W. C. (2010). "A unified approach to energy
+  conservation and potential vorticity dynamics for arbitrarily-structured C-grids." Journal of
+  Computational Physics, 229(9), 3065-3090.
 """
 struct EnergyConservingUpwinding{N, FT, TD, S} <: AbstractAdvectionScheme{N, FT, TD}
     scheme :: S

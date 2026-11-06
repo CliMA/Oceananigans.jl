@@ -29,7 +29,7 @@ using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: TKEBasedVer
 using Oceananigans.Utils: Utils, @apply_regionally, foreach_name, launch!
 
 # The only grid type that can support an FFT implicit free-surface solver
-const XYRegularStaticRG = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:StaticVerticalDiscretization, <:Number, <:Number}
+const XYRegularStaticRG = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:StaticVerticalDiscretization, <:Number, <:Any, <:Any, <:Any, <:Number}
 
 abstract type AbstractFreeSurface{E, G} end
 

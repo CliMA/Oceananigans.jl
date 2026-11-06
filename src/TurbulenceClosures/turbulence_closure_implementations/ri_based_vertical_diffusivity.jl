@@ -342,8 +342,9 @@ end
     # Set to zero on periphery and NaN within inactive region
     on_periphery = peripheral_node(i, j, k, grid, c, c, f)
     within_inactive = inactive_node(i, j, k, grid, c, c, f)
-    κc⁺ = ifelse(on_periphery, zero(grid), ifelse(within_inactive, NaN, κc⁺))
-    κu⁺ = ifelse(on_periphery, zero(grid), ifelse(within_inactive, NaN, κu⁺))
+    nan = convert(eltype(grid), NaN)
+    κc⁺ = ifelse(on_periphery, zero(grid), ifelse(within_inactive, nan, κc⁺))
+    κu⁺ = ifelse(on_periphery, zero(grid), ifelse(within_inactive, nan, κu⁺))
 
     # Update by averaging in time
     @inbounds κc[i, j, k] = (Cᵃᵛ * κc[i, j, k] + κc⁺) / (1 + Cᵃᵛ)

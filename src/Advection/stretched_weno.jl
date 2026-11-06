@@ -46,7 +46,7 @@ function coefficient_table(FT, N, nodes, arch)
         right = biased_coefficients(FT, N, [-nodes[q] for q in p+N:-1:p-N+1]) # mirrored
         (; left, right)
     end
-    return OffsetArray(on_architecture(arch, entries), firstindex(nodes) - 1)
+    return StaticStridesOffsetArray(on_architecture(arch, entries), firstindex(nodes) - 1)
 end
 
 materialize_coefficients(coefficients, scheme, grid) = coefficients

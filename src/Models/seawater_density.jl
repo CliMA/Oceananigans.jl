@@ -111,12 +111,17 @@ julia> density_field = Field(density_operation)
 │   └── west: Nothing, east: Nothing, south: Nothing, north: Nothing, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
 ├── operand: KernelFunctionOperation at (Center, Center, Center)
 ├── status: time=0.0
-└── data: 1×1×106 OffsetArray(::Array{Float64, 3}, 1:1, 1:1, -2:103) with eltype Float64 with indices 1:1×1:1×-2:103
+└── data: 1×1×106 StaticStridesOffsetArray(::Array{Float64, 3}, 1:1, 1:1, -2:103) with eltype Float64 with indices 1:1×1:1×-2:103
     └── max=1032.38, min=1027.73, mean=1030.06
 ```
 
 Values for `temperature`, `salinity` and `geopotential_height` can be passed to
 `seawater_density` to override the defaults that are obtained from the `model`.
+
+References
+==========
+* Roquet, F., Madec, G., McDougall, T. J., & Barker, P. M. (2015). "Accurate polynomial expressions
+  for the density and specific volume of seawater using the TEOS-10 standard." Ocean Modelling, 90, 29-43.
 """
 function seawater_density(model::ModelsWithBuoyancy;
                           temperature = model_temperature(model.buoyancy.formulation, model),

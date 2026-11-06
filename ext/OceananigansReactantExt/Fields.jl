@@ -5,6 +5,7 @@ using ..OceananigansReactantExt: OceananigansReactantExt, deconcretize
 using Oceananigans: Oceananigans
 using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Architectures: CPU, on_architecture
+using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields: Field, ReducedAbstractField, copyable_fields, interior, interpolate!, set!
 using Reactant
 
@@ -49,13 +50,16 @@ function Oceananigans.Fields.set_to_field!(u::ReactantField, v::ReactantField)
     if copyable_fields(u, v)
         interior(u) .= interior(v)
     else
+        # As the generic method does, fill `v`'s halos with its own boundary conditions before interpolating
+        fill_halo_regions!(v)
         cpu_grid_u = on_architecture(CPU(), u.grid)
         cpu_grid_v = on_architecture(CPU(), v.grid)
         cpu_u = Field(Oceananigans.Fields.instantiated_location(u), cpu_grid_u;
                       indices=Oceananigans.Fields.indices(u))
         cpu_v = Field(Oceananigans.Fields.instantiated_location(v), cpu_grid_v;
                       indices=Oceananigans.Fields.indices(v))
-        copyto!(interior(cpu_v), interior(v))
+        # The whole parent, halos included: copying a view of a device array into a host array fails
+        copyto!(parent(cpu_v), Array(parent(v)))
         interpolate!(cpu_u, cpu_v)
         copyto!(interior(u), interior(cpu_u))
     end
