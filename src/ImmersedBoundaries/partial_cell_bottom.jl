@@ -1,6 +1,5 @@
 using Oceananigans.Fields: Field, fill_halo_regions!, set!
 using Oceananigans.Grids: Grids, AbstractStaticGrid, constructor_arguments
-import Oceananigans.Grids: peripheral_node
 
 using Oceananigans.Utils: KernelParameters, prettysummary
 
@@ -400,10 +399,10 @@ const XYFlatPCBIBG = ImmersedBoundaryGrid{<:Any, <:Flat, <:Flat, <:Any, <:Any, <
 @inline Operators.Δrᶠᶠᶜ(i, j, k, ibg::XYFlatPCBIBG) = Δrᶜᶜᶜ(i, j, k, ibg)
 
 # A face with no depth is a wall
-@inline peripheral_node(i, j, k, ibg::PCBTIBG, ::Face, ::Center, ::Center) =
+@inline Grids.peripheral_node(i, j, k, ibg::PCBTIBG, ::Face, ::Center, ::Center) =
     inactive_cell(i, j, k, ibg) | inactive_cell(i-1, j, k, ibg) | (static_column_depthᶠᶜᵃ(i, j, ibg) == 0)
 
-@inline peripheral_node(i, j, k, ibg::PCBTIBG, ::Center, ::Face, ::Center) =
+@inline Grids.peripheral_node(i, j, k, ibg::PCBTIBG, ::Center, ::Face, ::Center) =
     inactive_cell(i, j, k, ibg) | inactive_cell(i, j-1, k, ibg) | (static_column_depthᶜᶠᵃ(i, j, ibg) == 0)
 
 # Vertically-static, partial cell bottom, immersed boundary grid
