@@ -133,7 +133,8 @@ errors; see [Hu et al. (1996)](@cite Hu19996lowdissipation).
 
 A tuple of low-storage coefficients `(β₁, β₂, ..., βₙ)` where `βᵢ = cₙ₋ᵢ / cₙ₋ᵢ₊₁` for `i < n` and `βₙ = 1`.
 
-# References
+References
+==========
 * Hu, F. Q., Hussaini, M. Y., & Manthey, J. L. (1996). Low-dissipation and low-dispersion Runge–Kutta
     schemes for computational acoustics. Journal of Computational Physics, 124(1), 177-191.
 """
@@ -269,8 +270,8 @@ end
 #####
 
 # SplitRungeKuttaTimeStepper is self-starting!
-prognostic_state(ts::SplitRungeKuttaTimeStepper) = nothing
-restore_prognostic_state!(restored::SplitRungeKuttaTimeStepper, ::Nothing) = restored
+Oceananigans.prognostic_state(ts::SplitRungeKuttaTimeStepper) = nothing
+Oceananigans.restore_prognostic_state!(restored::SplitRungeKuttaTimeStepper, ::Nothing) = restored
 
 #####
 ##### Show methods

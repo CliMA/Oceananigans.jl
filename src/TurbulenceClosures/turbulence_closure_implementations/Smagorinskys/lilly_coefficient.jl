@@ -38,11 +38,9 @@ Keyword arguments
 
 References
 ==========
-
-Lilly, D. K. (1962). On the numerical simulation of buoyant convection. Tellus
-
-Lilly, D. K. (1966). The representation of small-scale turbulence in numerical simulation experiments.
-    NCAR Manuscript No. 281, 0.
+* Lilly, D. K. (1962). "On the numerical simulation of buoyant convection." Tellus, 14(2), 148-172.
+* Lilly, D. K. (1966). "The representation of small-scale turbulence in numerical simulation
+  experiments." NCAR Manuscript No. 281.
 """
 LillyCoefficient(FT=Oceananigans.defaults.FloatType; smagorinsky=0.16, reduction_factor=1) =
     LillyCoefficient(convert(FT, smagorinsky), convert(FT, reduction_factor))
@@ -84,10 +82,10 @@ Arguments
 Keyword arguments
 =================
 
-* `Cˢ`: Smagorinsky coefficient. Default value is 0.16 as obtained by Lilly (1966).
+* `Cˢ`: Smagorinsky coefficient. Default value is 0.16 as obtained by [Lilly (1966)](@cite Lilly66).
 
-* `Cb`: Buoyancy term multipler based on Lilly (1962) (`Cb = 0` turns it off, `Cb ≠ 0` turns it on.
-        Typically, and according to the original work by Lilly (1962), `Cb = 1 / Pr`.)
+* `Cb`: Buoyancy term multipler based on [Lilly (1962)](@cite Lilly62) (`Cb = 0` turns it off, `Cb ≠ 0` turns it on.
+        Typically, and according to the original work by [Lilly (1962)](@cite Lilly62), `Cb = 1 / Pr`.)
 
 * `Pr`: Turbulent Prandtl numbers for each tracer. Either a constant applied to every
         tracer, or a `NamedTuple` with fields for each tracer individually.
@@ -95,16 +93,13 @@ Keyword arguments
 References
 ==========
 
-Smagorinsky, J. "On the numerical integration of the primitive equations of motion for
-    baroclinic flow in a closed region." Monthly Weather Review (1958)
-
-Lilly, D. K. "On the numerical simulation of buoyant convection." Tellus (1962)
-
-Smagorinsky, J. "General circulation experiments with the primitive equations: I.
-    The basic experiment." Monthly Weather Review (1963)
-
-Lilly, D. K. "The representation of small-scale turbulence in numerical simulation experiments."
-    NCAR Manuscript No. 281, 0, (1966)
+* Smagorinsky, J. (1958). "On the numerical integration of the primitive equations of motion for
+  baroclinic flow in a closed region." Monthly Weather Review, 86(12), 457-466.
+* Lilly, D. K. (1962). "On the numerical simulation of buoyant convection." Tellus, 14(2), 148-172.
+* Smagorinsky, J. (1963). "General circulation experiments with the primitive equations: I.
+  The basic experiment." Monthly Weather Review, 91(3), 99-164.
+* Lilly, D. K. (1966). "The representation of small-scale turbulence in numerical simulation
+  experiments." NCAR Manuscript No. 281.
 """
 function SmagorinskyLilly(time_discretization=ExplicitTimeDiscretization(), FT=Oceananigans.defaults.FloatType; C=0.16, Cb=1, Pr=1)
     coefficient = LillyCoefficient(FT, smagorinsky=C, reduction_factor=Cb)

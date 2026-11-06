@@ -350,7 +350,7 @@ end
 reconstruct_conformal_mapping(attrib, ::Val, TY) = nothing
 
 # Read a 2D OSSG metric/coord variable from the file and pad it out to the halo-included
-# shape that the OSSG constructor expects. Returns an OffsetMatrix indexed `[1-Hx:Nx+Hx, …]`.
+# shape that the OSSG constructor expects. Returns a two-dimensional `StaticStridesOffsetArray` indexed `[1-Hx:Nx+Hx, …]`.
 function read_ossg_halo_padded_array(ds, name, FT, arch, lx, ly, topo_instances, sz, halo_sz, file_has_halos)
     raw = collect(ds[name])
     return construct_ossg_halo_padded_array(raw, name, FT, arch, lx, ly,

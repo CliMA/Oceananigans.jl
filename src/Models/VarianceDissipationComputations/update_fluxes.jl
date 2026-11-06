@@ -6,7 +6,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceMo
 function cache_fluxes!(dissipation, model, tracer_name)
     grid = model.grid
     sz   = size(model.tracers[1].data)
-    of   = model.tracers[1].data.offsets
+    of   = OffsetArrays.offsets(model.tracers[1].data)
 
     params = KernelParameters(sz, of)
 

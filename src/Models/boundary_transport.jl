@@ -1,13 +1,26 @@
 using GPUArraysCore: @allowscalar
+using KernelAbstractions: @index, @kernel
 
 using Oceananigans.AbstractOperations: Ax, Ay, Az, Integral, grid_metric_operation
+using Oceananigans.Architectures: architecture
 using Oceananigans.BoundaryConditions: BoundaryCondition, NormalFlow, get_target_transport, has_target_transport
-using Oceananigans.Fields: Field, compute!, interior
+using Oceananigans.DistributedComputations: Distributed, all_reduce
+using Oceananigans.Fields: Field, compute!
+using Oceananigans.Grids: Center, Face, immersed_peripheral_node
+using Oceananigans.Utils: KernelParameters, launch!
 
 const NFBC = BoundaryCondition{<:NormalFlow} # "Radiantion" NormalFlowBoundaryCondition (with a matching scheme)
 const INFBC = BoundaryCondition{<:NormalFlow{<:Nothing}} # "Imposed-velocity" NormalFlowBoundaryCondition (with no scheme)
 const FINFBC = BoundaryCondition{<:NormalFlow{<:Nothing}, <:Number} # "Fixed-imposed-velocity" NormalFlowBoundaryCondition
 const ZINFBC = BoundaryCondition{<:NormalFlow{<:Nothing}, <:Nothing} # "Zero-imposed-velocity" NormalFlowBoundaryCondition (no-inflow)
+
+# Every rank holding part of a boundary sees that boundary's global transport and area, since the integrals
+# along it reduce over the ranks that share it. A global sum must count the boundary once: on the first
+# rank along it.
+counts_boundary(arch, side) = true
+counts_boundary(arch::Distributed, ::Union{Val{:west}, Val{:east}})   = arch.local_index[2] == 1 && arch.local_index[3] == 1
+counts_boundary(arch::Distributed, ::Union{Val{:south}, Val{:north}}) = arch.local_index[1] == 1 && arch.local_index[3] == 1
+counts_boundary(arch::Distributed, ::Union{Val{:bottom}, Val{:top}})  = arch.local_index[1] == 1 && arch.local_index[2] == 1
 
 function get_west_area(grid)
     dA = grid_metric_operation((Face, Center, Center), Ax, grid)
@@ -96,12 +109,19 @@ $(TYPEDSIGNATURES)
 
 Initialize boundary transports for boundaries with `NormalFlowBoundaryCondition`s,
 returning a `NamedTuple` of boundary transports and areas, or `nothing` when no
-open boundary requires correction.
+boundary requires correction. The result is the `boundary_transport` argument of
+`enforce_net_zero_transport!`.
 
 The `velocities` argument is a `NamedTuple` of three face-normal fields.
 Destructuring is positional, so any 3-field `NamedTuple` works:
 `(; u, v, w)` for incompressible / volume-flux models like `NonhydrostaticModel`,
-or `(; ρu, ρv, ρw)` for anelastic / mass-flux models.
+or `(; ρu, ρv, ρw)` for anelastic / mass-flux models, whose transports are then mass fluxes.
+
+A boundary requires correction when its `NormalFlowBoundaryCondition` has a radiation `scheme`
+or `BalancedTransport()`. An imposed `NormalFlowBoundaryCondition` without either is
+never adjusted: a fixed value contributes its transport to the balance, and a zero (impenetrable)
+one contributes nothing. On an `ImmersedBoundaryGrid` the transports and areas count only the
+faces that are not on the immersed boundary.
 """
 function initialize_boundary_transport(velocities::NamedTuple)
 
@@ -109,6 +129,7 @@ function initialize_boundary_transport(velocities::NamedTuple)
     u_bcs = u.boundary_conditions
     v_bcs = v.boundary_conditions
     w_bcs = w.boundary_conditions
+    arch = architecture(u.grid)
 
     boundary_transports = NamedTuple()
     right_scheme_boundaries = ()
@@ -121,8 +142,10 @@ function initialize_boundary_transport(velocities::NamedTuple)
     boundary_transports = merge(boundary_transports, west_transport_and_area)
     if needs_transport_correction(u_bcs.west)
         left_scheme_boundaries = (left_scheme_boundaries..., :west)
-        total_area_scheme_boundaries += boundary_transports.west_area
-        needs_pool_correction(u_bcs.west) && (total_area_pool_boundaries += boundary_transports.west_area)
+        if counts_boundary(arch, Val(:west))
+            total_area_scheme_boundaries += boundary_transports.west_area
+            needs_pool_correction(u_bcs.west) && (total_area_pool_boundaries += boundary_transports.west_area)
+        end
     end
 
     # Check east boundary (u velocity)
@@ -130,8 +153,10 @@ function initialize_boundary_transport(velocities::NamedTuple)
     boundary_transports = merge(boundary_transports, east_transport_and_area)
     if needs_transport_correction(u_bcs.east)
         right_scheme_boundaries = (right_scheme_boundaries..., :east)
-        total_area_scheme_boundaries += boundary_transports.east_area
-        needs_pool_correction(u_bcs.east) && (total_area_pool_boundaries += boundary_transports.east_area)
+        if counts_boundary(arch, Val(:east))
+            total_area_scheme_boundaries += boundary_transports.east_area
+            needs_pool_correction(u_bcs.east) && (total_area_pool_boundaries += boundary_transports.east_area)
+        end
     end
 
     # Check south boundary (v velocity)
@@ -139,8 +164,10 @@ function initialize_boundary_transport(velocities::NamedTuple)
     boundary_transports = merge(boundary_transports, south_transport_and_area)
     if needs_transport_correction(v_bcs.south)
         left_scheme_boundaries = (left_scheme_boundaries..., :south)
-        total_area_scheme_boundaries += boundary_transports.south_area
-        needs_pool_correction(v_bcs.south) && (total_area_pool_boundaries += boundary_transports.south_area)
+        if counts_boundary(arch, Val(:south))
+            total_area_scheme_boundaries += boundary_transports.south_area
+            needs_pool_correction(v_bcs.south) && (total_area_pool_boundaries += boundary_transports.south_area)
+        end
     end
 
     # Check north boundary (v velocity)
@@ -148,8 +175,10 @@ function initialize_boundary_transport(velocities::NamedTuple)
     boundary_transports = merge(boundary_transports, north_transport_and_area)
     if needs_transport_correction(v_bcs.north)
         right_scheme_boundaries = (right_scheme_boundaries..., :north)
-        total_area_scheme_boundaries += boundary_transports.north_area
-        needs_pool_correction(v_bcs.north) && (total_area_pool_boundaries += boundary_transports.north_area)
+        if counts_boundary(arch, Val(:north))
+            total_area_scheme_boundaries += boundary_transports.north_area
+            needs_pool_correction(v_bcs.north) && (total_area_pool_boundaries += boundary_transports.north_area)
+        end
     end
 
     # Check bottom boundary (w velocity)
@@ -157,8 +186,10 @@ function initialize_boundary_transport(velocities::NamedTuple)
     boundary_transports = merge(boundary_transports, bottom_transport_and_area)
     if needs_transport_correction(w_bcs.bottom)
         left_scheme_boundaries = (left_scheme_boundaries..., :bottom)
-        total_area_scheme_boundaries += boundary_transports.bottom_area
-        needs_pool_correction(w_bcs.bottom) && (total_area_pool_boundaries += boundary_transports.bottom_area)
+        if counts_boundary(arch, Val(:bottom))
+            total_area_scheme_boundaries += boundary_transports.bottom_area
+            needs_pool_correction(w_bcs.bottom) && (total_area_pool_boundaries += boundary_transports.bottom_area)
+        end
     end
 
     # Check top boundary (w velocity)
@@ -166,20 +197,23 @@ function initialize_boundary_transport(velocities::NamedTuple)
     boundary_transports = merge(boundary_transports, top_transport_and_area)
     if needs_transport_correction(w_bcs.top)
         right_scheme_boundaries = (right_scheme_boundaries..., :top)
-        total_area_scheme_boundaries += boundary_transports.top_area
-        needs_pool_correction(w_bcs.top) && (total_area_pool_boundaries += boundary_transports.top_area)
+        if counts_boundary(arch, Val(:top))
+            total_area_scheme_boundaries += boundary_transports.top_area
+            needs_pool_correction(w_bcs.top) && (total_area_pool_boundaries += boundary_transports.top_area)
+        end
     end
+
+    total_area_scheme_boundaries = all_reduce(+, total_area_scheme_boundaries, arch)
+    total_area_pool_boundaries = all_reduce(+, total_area_pool_boundaries, arch)
 
     boundary_transports = merge(boundary_transports, (; left_scheme_boundaries,
                                                         right_scheme_boundaries,
                                                         total_area_scheme_boundaries,
                                                         total_area_pool_boundaries))
 
-    if length(boundary_transports.left_scheme_boundaries) == 0 && length(boundary_transports.right_scheme_boundaries) == 0
-        return nothing
-    else
-        return boundary_transports
-    end
+    # A global decision: a rank with no open faces still joins the sum in `open_boundary_inflow_transport`.
+    number_of_scheme_boundaries = length(left_scheme_boundaries) + length(right_scheme_boundaries)
+    return all_reduce(+, number_of_scheme_boundaries, arch) == 0 ? nothing : boundary_transports
 end
 
 update_open_boundary_transport!(boundary_transport) = map(compute!, boundary_transport)
@@ -204,119 +238,185 @@ open_boundary_transport(bt, ::ZINFBC, ::Val{:top})    = zero(bt.total_area_schem
 
 open_boundary_transport(bt, bc, side) = zero(bt.total_area_scheme_boundaries)
 
+function counted_transport(boundary_transport, bc, side, arch)
+    counts_boundary(arch, side) || return zero(boundary_transport.total_area_scheme_boundaries)
+    return open_boundary_transport(boundary_transport, bc, side)
+end
+
 function open_boundary_inflow_transport(boundary_transport, velocities)
     update_open_boundary_transport!(boundary_transport)
 
     u, v, w = velocities
+    arch = architecture(u.grid)
     total_transport = zero(boundary_transport.total_area_scheme_boundaries)
 
     # Add transport through left boundaries
-    total_transport += open_boundary_transport(boundary_transport, u.boundary_conditions.west,   Val(:west))
-    total_transport += open_boundary_transport(boundary_transport, v.boundary_conditions.south,  Val(:south))
-    total_transport += open_boundary_transport(boundary_transport, w.boundary_conditions.bottom, Val(:bottom))
+    total_transport += counted_transport(boundary_transport, u.boundary_conditions.west,   Val(:west),   arch)
+    total_transport += counted_transport(boundary_transport, v.boundary_conditions.south,  Val(:south),  arch)
+    total_transport += counted_transport(boundary_transport, w.boundary_conditions.bottom, Val(:bottom), arch)
 
     # Subtract transport through right boundaries.
-    total_transport -= open_boundary_transport(boundary_transport, u.boundary_conditions.east,  Val(:east))
-    total_transport -= open_boundary_transport(boundary_transport, v.boundary_conditions.north, Val(:north))
-    total_transport -= open_boundary_transport(boundary_transport, w.boundary_conditions.top,   Val(:top))
+    total_transport -= counted_transport(boundary_transport, u.boundary_conditions.east,  Val(:east),  arch)
+    total_transport -= counted_transport(boundary_transport, v.boundary_conditions.north, Val(:north), arch)
+    total_transport -= counted_transport(boundary_transport, w.boundary_conditions.top,   Val(:top),   arch)
 
-    return total_transport
+    return all_reduce(+, total_transport, arch)
 end
 
-# Pool-correction methods. Boundaries with a `target_transport` are corrected
-# independently (see `apply_targeted_*_boundary_correction!` below); skip them
-# here so the pool correction only touches non-targeted boundaries.
-function correct_left_boundary_transport!(u, bc::NFBC, ::Val{:west}, A⁻¹_∮udA)
-    has_target_transport(bc.classification.scheme) && return nothing
-    interior(u, 1, :, :) .-= A⁻¹_∮udA
+#####
+##### Boundary-face shifts
+#####
+
+# Shift the boundary-normal component on a boundary plane by `-δ`. Faces on an immersed boundary are skipped
+@kernel function _shift_x_boundary_faces!(u, grid, i, δ)
+    j, k = @index(Global, NTuple)
+    active = !immersed_peripheral_node(i, j, k, grid, Face(), Center(), Center())
+    @inbounds u[i, j, k] -= ifelse(active, δ, zero(δ))
 end
-function correct_left_boundary_transport!(v, bc::NFBC, ::Val{:south}, A⁻¹_∮udA)
-    has_target_transport(bc.classification.scheme) && return nothing
-    interior(v, :, 1, :) .-= A⁻¹_∮udA
+
+@kernel function _shift_y_boundary_faces!(v, grid, j, δ)
+    i, k = @index(Global, NTuple)
+    active = !immersed_peripheral_node(i, j, k, grid, Center(), Face(), Center())
+    @inbounds v[i, j, k] -= ifelse(active, δ, zero(δ))
 end
-function correct_left_boundary_transport!(w, bc::NFBC, ::Val{:bottom}, A⁻¹_∮udA)
-    has_target_transport(bc.classification.scheme) && return nothing
-    interior(w, :, :, 1) .-= A⁻¹_∮udA
+
+@kernel function _shift_z_boundary_faces!(w, grid, k, δ)
+    i, j = @index(Global, NTuple)
+    active = !immersed_peripheral_node(i, j, k, grid, Center(), Center(), Face())
+    @inbounds w[i, j, k] -= ifelse(active, δ, zero(δ))
 end
-correct_left_boundary_transport!(u, bc::INFBC, ::Val{:west},   A⁻¹_∮udA) = nothing
-correct_left_boundary_transport!(v, bc::INFBC, ::Val{:south},  A⁻¹_∮udA) = nothing
-correct_left_boundary_transport!(w, bc::INFBC, ::Val{:bottom}, A⁻¹_∮udA) = nothing
+
+function shift_x_boundary_faces!(u, i, δ)
+    grid = u.grid
+    launch!(architecture(grid), grid, KernelParameters(1:grid.Ny, 1:grid.Nz), _shift_x_boundary_faces!, u, grid, i, δ)
+    return nothing
+end
+
+function shift_y_boundary_faces!(v, j, δ)
+    grid = v.grid
+    launch!(architecture(grid), grid, KernelParameters(1:grid.Nx, 1:grid.Nz), _shift_y_boundary_faces!, v, grid, j, δ)
+    return nothing
+end
+
+function shift_z_boundary_faces!(w, k, δ)
+    grid = w.grid
+    launch!(architecture(grid), grid, KernelParameters(1:grid.Nx, 1:grid.Ny), _shift_z_boundary_faces!, w, grid, k, δ)
+    return nothing
+end
+
+# Subtract `δ` from the boundary-normal component on the active faces of a boundary plane
+shift_boundary_faces!(u, ::Val{:west},   δ) = shift_x_boundary_faces!(u, 1, δ)
+shift_boundary_faces!(u, ::Val{:east},   δ) = shift_x_boundary_faces!(u, u.grid.Nx + 1, δ)
+shift_boundary_faces!(v, ::Val{:south},  δ) = shift_y_boundary_faces!(v, 1, δ)
+shift_boundary_faces!(v, ::Val{:north},  δ) = shift_y_boundary_faces!(v, v.grid.Ny + 1, δ)
+shift_boundary_faces!(w, ::Val{:bottom}, δ) = shift_z_boundary_faces!(w, 1, δ)
+shift_boundary_faces!(w, ::Val{:top},    δ) = shift_z_boundary_faces!(w, w.grid.Nz + 1, δ)
+
+const LeftSide  = Union{Val{:west}, Val{:south}, Val{:bottom}}
+const RightSide = Union{Val{:east}, Val{:north}, Val{:top}}
+
+#####
+##### Pool correction
+#####
+
+# Boundaries with a `target_transport` are corrected independently (see
+# `apply_targeted_boundary_correction!` below); skip them here so the pool
+# correction only touches non-targeted boundaries. The net transport is
+# positive into the domain, so the left (inflow) faces are lowered and
+# the right (outflow) faces are raised by the same amount per unit area.
+function correct_left_boundary_transport!(u, bc::NFBC, side::LeftSide, A⁻¹_∮udA)
+    has_target_transport(bc.classification.scheme) && return nothing
+    return shift_boundary_faces!(u, side, A⁻¹_∮udA)
+end
+
+function correct_right_boundary_transport!(u, bc::NFBC, side::RightSide, A⁻¹_∮udA)
+    has_target_transport(bc.classification.scheme) && return nothing
+    return shift_boundary_faces!(u, side, -A⁻¹_∮udA)
+end
+
+# Imposed boundaries without `BalancedTransport()`, and closed boundaries, keep their values.
+correct_left_boundary_transport!(u, ::INFBC, ::LeftSide, A⁻¹_∮udA) = nothing
+correct_right_boundary_transport!(u, ::INFBC, ::RightSide, A⁻¹_∮udA) = nothing
 correct_left_boundary_transport!(u, bc, side, A⁻¹_∮udA) = nothing
-
-function correct_right_boundary_transport!(u, bc::NFBC, ::Val{:east}, A⁻¹_∮udA)
-    has_target_transport(bc.classification.scheme) && return nothing
-    interior(u, u.grid.Nx + 1, :, :) .+= A⁻¹_∮udA
-end
-function correct_right_boundary_transport!(v, bc::NFBC, ::Val{:north}, A⁻¹_∮udA)
-    has_target_transport(bc.classification.scheme) && return nothing
-    interior(v, :, v.grid.Ny + 1, :) .+= A⁻¹_∮udA
-end
-function correct_right_boundary_transport!(w, bc::NFBC, ::Val{:top}, A⁻¹_∮udA)
-    has_target_transport(bc.classification.scheme) && return nothing
-    interior(w, :, :, w.grid.Nz + 1) .+= A⁻¹_∮udA
-end
-correct_right_boundary_transport!(u, bc::INFBC, ::Val{:east},  A⁻¹_∮udA) = nothing
-correct_right_boundary_transport!(v, bc::INFBC, ::Val{:north}, A⁻¹_∮udA) = nothing
-correct_right_boundary_transport!(w, bc::INFBC, ::Val{:top},   A⁻¹_∮udA) = nothing
 correct_right_boundary_transport!(u, bc, side, A⁻¹_∮udA) = nothing
+
+#####
+##### Targeted correction
+#####
 
 # Apply a per-boundary correction to reach the prescribed `target_transport`.
 # The boundary velocity is adjusted by a uniform shift so that the integral of the
 # normal velocity over the boundary matches `target_transport` (positive in the
 # positive coordinate direction — e.g., eastward through west/east boundaries).
-function apply_targeted_left_boundary_correction!(u, bc::NFBC, ::Val{:west}, boundary_transport)
+side_area(bt, ::Val{:west})   = bt.west_area
+side_area(bt, ::Val{:east})   = bt.east_area
+side_area(bt, ::Val{:south})  = bt.south_area
+side_area(bt, ::Val{:north})  = bt.north_area
+side_area(bt, ::Val{:bottom}) = bt.bottom_area
+side_area(bt, ::Val{:top})    = bt.top_area
+
+function apply_targeted_boundary_correction!(u, bc::NFBC, side, boundary_transport)
     has_target_transport(bc.classification.scheme) || return nothing
-    west_area = get_west_area(u.grid)
-    target    = get_target_transport(bc.classification.scheme, u.grid)
-    Q_actual  = @allowscalar boundary_transport.west_transport[]
-    interior(u, 1, :, :) .-= (Q_actual - target) / west_area
-    return nothing
+    area     = side_area(boundary_transport, side)
+    target   = get_target_transport(bc.classification.scheme, u.grid)
+    Q_actual = open_boundary_transport(boundary_transport, bc, side)
+    return shift_boundary_faces!(u, side, (Q_actual - target) / area)
 end
 
-function apply_targeted_left_boundary_correction!(v, bc::NFBC, ::Val{:south}, boundary_transport)
-    has_target_transport(bc.classification.scheme) || return nothing
-    south_area = get_south_area(v.grid)
-    target     = get_target_transport(bc.classification.scheme, v.grid)
-    Q_actual   = @allowscalar boundary_transport.south_transport[]
-    interior(v, :, 1, :) .-= (Q_actual - target) / south_area
+apply_targeted_boundary_correction!(velocity, bc, side, boundary_transport) = nothing
+
+apply_targeted_left_boundary_correction!(velocity, bc, side::LeftSide, boundary_transport) =
+    apply_targeted_boundary_correction!(velocity, bc, side, boundary_transport)
+
+apply_targeted_right_boundary_correction!(velocity, bc, side::RightSide, boundary_transport) =
+    apply_targeted_boundary_correction!(velocity, bc, side, boundary_transport)
+
+#####
+##### Net-zero transport
+#####
+
+enforce_net_zero_transport!(velocities, ::Nothing) = nothing
+
+function enforce_net_zero_transport!(velocities, boundary_transport)
+    u, v, w = velocities
+
+    # Step 1: compute current fluxes before any corrections.
+    update_open_boundary_transport!(boundary_transport)
+
+    # Step 2: per-boundary corrections for targeted boundaries.
+    apply_targeted_boundary_correction!(u, u.boundary_conditions.west,   Val(:west),   boundary_transport)
+    apply_targeted_boundary_correction!(v, v.boundary_conditions.south,  Val(:south),  boundary_transport)
+    apply_targeted_boundary_correction!(w, w.boundary_conditions.bottom, Val(:bottom), boundary_transport)
+    apply_targeted_boundary_correction!(u, u.boundary_conditions.east,   Val(:east),   boundary_transport)
+    apply_targeted_boundary_correction!(v, v.boundary_conditions.north,  Val(:north),  boundary_transport)
+    apply_targeted_boundary_correction!(w, w.boundary_conditions.top,    Val(:top),    boundary_transport)
+
+    # Step 3: distribute the remaining imbalance over pool boundaries.
+    A = boundary_transport.total_area_pool_boundaries
+    ∮udA = open_boundary_inflow_transport(boundary_transport, velocities)
+
+    if iszero(A)
+        FT = eltype(u)
+        net_zero_tolerance = sqrt(eps(FT)) * boundary_transport.total_area_scheme_boundaries
+        if abs(∮udA) > net_zero_tolerance
+            error("Every open boundary carries a `target_transport`, but the targets do not sum " *
+                  "to a net-zero transport across the domain (net inflow = $∮udA). The pressure " *
+                  "Poisson problem has no solution in this configuration. Make sure inflow targets " *
+                  "balance outflow targets, or leave at least one open boundary without a " *
+                  "`target_transport` so the global pool correction can absorb the residual.")
+        end
+        return nothing
+    end
+
+    A⁻¹_∮udA = ∮udA / A
+
+    correct_left_boundary_transport!(u, u.boundary_conditions.west,   Val(:west),   A⁻¹_∮udA)
+    correct_left_boundary_transport!(v, v.boundary_conditions.south,  Val(:south),  A⁻¹_∮udA)
+    correct_left_boundary_transport!(w, w.boundary_conditions.bottom, Val(:bottom), A⁻¹_∮udA)
+
+    correct_right_boundary_transport!(u, u.boundary_conditions.east,  Val(:east),  A⁻¹_∮udA)
+    correct_right_boundary_transport!(v, v.boundary_conditions.north, Val(:north), A⁻¹_∮udA)
+    correct_right_boundary_transport!(w, w.boundary_conditions.top,   Val(:top),   A⁻¹_∮udA)
+
     return nothing
 end
-
-function apply_targeted_left_boundary_correction!(w, bc::NFBC, ::Val{:bottom}, boundary_transport)
-    has_target_transport(bc.classification.scheme) || return nothing
-    bottom_area = get_bottom_area(w.grid)
-    target      = get_target_transport(bc.classification.scheme, w.grid)
-    Q_actual    = @allowscalar boundary_transport.bottom_transport[]
-    interior(w, :, :, 1) .-= (Q_actual - target) / bottom_area
-    return nothing
-end
-
-function apply_targeted_right_boundary_correction!(u, bc::NFBC, ::Val{:east}, boundary_transport)
-    has_target_transport(bc.classification.scheme) || return nothing
-    east_area = get_east_area(u.grid)
-    target    = get_target_transport(bc.classification.scheme, u.grid)
-    Q_actual  = @allowscalar boundary_transport.east_transport[]
-    interior(u, u.grid.Nx + 1, :, :) .-= (Q_actual - target) / east_area
-    return nothing
-end
-
-function apply_targeted_right_boundary_correction!(v, bc::NFBC, ::Val{:north}, boundary_transport)
-    has_target_transport(bc.classification.scheme) || return nothing
-    north_area = get_north_area(v.grid)
-    target     = get_target_transport(bc.classification.scheme, v.grid)
-    Q_actual   = @allowscalar boundary_transport.north_transport[]
-    interior(v, :, v.grid.Ny + 1, :) .-= (Q_actual - target) / north_area
-    return nothing
-end
-
-function apply_targeted_right_boundary_correction!(w, bc::NFBC, ::Val{:top}, boundary_transport)
-    has_target_transport(bc.classification.scheme) || return nothing
-    top_area = get_top_area(w.grid)
-    target   = get_target_transport(bc.classification.scheme, w.grid)
-    Q_actual = @allowscalar boundary_transport.top_transport[]
-    interior(w, :, :, w.grid.Nz + 1) .-= (Q_actual - target) / top_area
-    return nothing
-end
-
-apply_targeted_left_boundary_correction!(velocity, bc, side, boundary_transport)  = nothing
-apply_targeted_right_boundary_correction!(velocity, bc, side, boundary_transport) = nothing

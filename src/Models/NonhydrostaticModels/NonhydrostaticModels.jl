@@ -23,7 +23,7 @@ using Oceananigans.TimeSteppers: TimeSteppers, step_lagrangian_particles!, updat
 using Oceananigans.TurbulenceClosures: TurbulenceClosures
 using Oceananigans.Utils: foreach_name, named_tuple, sum_of_velocities
 
-using ..Models: initialize_boundary_transport
+using ..Models: enforce_net_zero_transport!, initialize_boundary_transport
 
 function nonhydrostatic_pressure_solver(::Distributed, local_grid::XYZRegularRG, ::Nothing)
     global_grid = reconstruct_global_grid(local_grid)
@@ -78,7 +78,6 @@ nonhydrostatic_pressure_solver(grid, free_surface) = nonhydrostatic_pressure_sol
 #####
 
 include("background_fields.jl")
-include("enforce_net_zero_transport.jl")
 include("nonhydrostatic_model.jl")
 include("pressure_field.jl")
 include("show_nonhydrostatic_model.jl")
