@@ -4,6 +4,7 @@ using KernelAbstractions: @index, @kernel
 using Oceananigans.AbstractOperations: Ax, Ay, Az, Integral, grid_metric_operation
 using Oceananigans.Architectures: architecture
 using Oceananigans.BoundaryConditions: BoundaryCondition, NormalFlow, get_target_transport, has_target_transport
+using Oceananigans.DistributedComputations: Distributed, all_reduce
 using Oceananigans.Fields: Field, compute!
 using Oceananigans.Grids: Center, Face, immersed_peripheral_node
 using Oceananigans.Utils: KernelParameters, launch!
@@ -12,6 +13,14 @@ const NFBC = BoundaryCondition{<:NormalFlow} # "Radiantion" NormalFlowBoundaryCo
 const INFBC = BoundaryCondition{<:NormalFlow{<:Nothing}} # "Imposed-velocity" NormalFlowBoundaryCondition (with no scheme)
 const FINFBC = BoundaryCondition{<:NormalFlow{<:Nothing}, <:Number} # "Fixed-imposed-velocity" NormalFlowBoundaryCondition
 const ZINFBC = BoundaryCondition{<:NormalFlow{<:Nothing}, <:Nothing} # "Zero-imposed-velocity" NormalFlowBoundaryCondition (no-inflow)
+
+# Every rank holding part of a boundary sees that boundary's global transport and area, since the integrals
+# along it reduce over the ranks that share it. A global sum must count the boundary once: on the first
+# rank along it.
+counts_boundary(arch, side) = true
+counts_boundary(arch::Distributed, ::Union{Val{:west}, Val{:east}})   = arch.local_index[2] == 1 && arch.local_index[3] == 1
+counts_boundary(arch::Distributed, ::Union{Val{:south}, Val{:north}}) = arch.local_index[1] == 1 && arch.local_index[3] == 1
+counts_boundary(arch::Distributed, ::Union{Val{:bottom}, Val{:top}})  = arch.local_index[1] == 1 && arch.local_index[2] == 1
 
 function get_west_area(grid)
     dA = grid_metric_operation((Face, Center, Center), Ax, grid)
@@ -120,6 +129,7 @@ function initialize_boundary_transport(velocities::NamedTuple)
     u_bcs = u.boundary_conditions
     v_bcs = v.boundary_conditions
     w_bcs = w.boundary_conditions
+    arch = architecture(u.grid)
 
     boundary_transports = NamedTuple()
     right_scheme_boundaries = ()
@@ -132,8 +142,10 @@ function initialize_boundary_transport(velocities::NamedTuple)
     boundary_transports = merge(boundary_transports, west_transport_and_area)
     if needs_transport_correction(u_bcs.west)
         left_scheme_boundaries = (left_scheme_boundaries..., :west)
-        total_area_scheme_boundaries += boundary_transports.west_area
-        needs_pool_correction(u_bcs.west) && (total_area_pool_boundaries += boundary_transports.west_area)
+        if counts_boundary(arch, Val(:west))
+            total_area_scheme_boundaries += boundary_transports.west_area
+            needs_pool_correction(u_bcs.west) && (total_area_pool_boundaries += boundary_transports.west_area)
+        end
     end
 
     # Check east boundary (u velocity)
@@ -141,8 +153,10 @@ function initialize_boundary_transport(velocities::NamedTuple)
     boundary_transports = merge(boundary_transports, east_transport_and_area)
     if needs_transport_correction(u_bcs.east)
         right_scheme_boundaries = (right_scheme_boundaries..., :east)
-        total_area_scheme_boundaries += boundary_transports.east_area
-        needs_pool_correction(u_bcs.east) && (total_area_pool_boundaries += boundary_transports.east_area)
+        if counts_boundary(arch, Val(:east))
+            total_area_scheme_boundaries += boundary_transports.east_area
+            needs_pool_correction(u_bcs.east) && (total_area_pool_boundaries += boundary_transports.east_area)
+        end
     end
 
     # Check south boundary (v velocity)
@@ -150,8 +164,10 @@ function initialize_boundary_transport(velocities::NamedTuple)
     boundary_transports = merge(boundary_transports, south_transport_and_area)
     if needs_transport_correction(v_bcs.south)
         left_scheme_boundaries = (left_scheme_boundaries..., :south)
-        total_area_scheme_boundaries += boundary_transports.south_area
-        needs_pool_correction(v_bcs.south) && (total_area_pool_boundaries += boundary_transports.south_area)
+        if counts_boundary(arch, Val(:south))
+            total_area_scheme_boundaries += boundary_transports.south_area
+            needs_pool_correction(v_bcs.south) && (total_area_pool_boundaries += boundary_transports.south_area)
+        end
     end
 
     # Check north boundary (v velocity)
@@ -159,8 +175,10 @@ function initialize_boundary_transport(velocities::NamedTuple)
     boundary_transports = merge(boundary_transports, north_transport_and_area)
     if needs_transport_correction(v_bcs.north)
         right_scheme_boundaries = (right_scheme_boundaries..., :north)
-        total_area_scheme_boundaries += boundary_transports.north_area
-        needs_pool_correction(v_bcs.north) && (total_area_pool_boundaries += boundary_transports.north_area)
+        if counts_boundary(arch, Val(:north))
+            total_area_scheme_boundaries += boundary_transports.north_area
+            needs_pool_correction(v_bcs.north) && (total_area_pool_boundaries += boundary_transports.north_area)
+        end
     end
 
     # Check bottom boundary (w velocity)
@@ -168,8 +186,10 @@ function initialize_boundary_transport(velocities::NamedTuple)
     boundary_transports = merge(boundary_transports, bottom_transport_and_area)
     if needs_transport_correction(w_bcs.bottom)
         left_scheme_boundaries = (left_scheme_boundaries..., :bottom)
-        total_area_scheme_boundaries += boundary_transports.bottom_area
-        needs_pool_correction(w_bcs.bottom) && (total_area_pool_boundaries += boundary_transports.bottom_area)
+        if counts_boundary(arch, Val(:bottom))
+            total_area_scheme_boundaries += boundary_transports.bottom_area
+            needs_pool_correction(w_bcs.bottom) && (total_area_pool_boundaries += boundary_transports.bottom_area)
+        end
     end
 
     # Check top boundary (w velocity)
@@ -177,20 +197,23 @@ function initialize_boundary_transport(velocities::NamedTuple)
     boundary_transports = merge(boundary_transports, top_transport_and_area)
     if needs_transport_correction(w_bcs.top)
         right_scheme_boundaries = (right_scheme_boundaries..., :top)
-        total_area_scheme_boundaries += boundary_transports.top_area
-        needs_pool_correction(w_bcs.top) && (total_area_pool_boundaries += boundary_transports.top_area)
+        if counts_boundary(arch, Val(:top))
+            total_area_scheme_boundaries += boundary_transports.top_area
+            needs_pool_correction(w_bcs.top) && (total_area_pool_boundaries += boundary_transports.top_area)
+        end
     end
+
+    total_area_scheme_boundaries = all_reduce(+, total_area_scheme_boundaries, arch)
+    total_area_pool_boundaries = all_reduce(+, total_area_pool_boundaries, arch)
 
     boundary_transports = merge(boundary_transports, (; left_scheme_boundaries,
                                                         right_scheme_boundaries,
                                                         total_area_scheme_boundaries,
                                                         total_area_pool_boundaries))
 
-    if length(boundary_transports.left_scheme_boundaries) == 0 && length(boundary_transports.right_scheme_boundaries) == 0
-        return nothing
-    else
-        return boundary_transports
-    end
+    # A global decision: a rank with no open faces still joins the sum in `open_boundary_inflow_transport`.
+    number_of_scheme_boundaries = length(left_scheme_boundaries) + length(right_scheme_boundaries)
+    return all_reduce(+, number_of_scheme_boundaries, arch) == 0 ? nothing : boundary_transports
 end
 
 update_open_boundary_transport!(boundary_transport) = map(compute!, boundary_transport)
@@ -215,23 +238,29 @@ open_boundary_transport(bt, ::ZINFBC, ::Val{:top})    = zero(bt.total_area_schem
 
 open_boundary_transport(bt, bc, side) = zero(bt.total_area_scheme_boundaries)
 
+function counted_transport(boundary_transport, bc, side, arch)
+    counts_boundary(arch, side) || return zero(boundary_transport.total_area_scheme_boundaries)
+    return open_boundary_transport(boundary_transport, bc, side)
+end
+
 function open_boundary_inflow_transport(boundary_transport, velocities)
     update_open_boundary_transport!(boundary_transport)
 
     u, v, w = velocities
+    arch = architecture(u.grid)
     total_transport = zero(boundary_transport.total_area_scheme_boundaries)
 
     # Add transport through left boundaries
-    total_transport += open_boundary_transport(boundary_transport, u.boundary_conditions.west,   Val(:west))
-    total_transport += open_boundary_transport(boundary_transport, v.boundary_conditions.south,  Val(:south))
-    total_transport += open_boundary_transport(boundary_transport, w.boundary_conditions.bottom, Val(:bottom))
+    total_transport += counted_transport(boundary_transport, u.boundary_conditions.west,   Val(:west),   arch)
+    total_transport += counted_transport(boundary_transport, v.boundary_conditions.south,  Val(:south),  arch)
+    total_transport += counted_transport(boundary_transport, w.boundary_conditions.bottom, Val(:bottom), arch)
 
     # Subtract transport through right boundaries.
-    total_transport -= open_boundary_transport(boundary_transport, u.boundary_conditions.east,  Val(:east))
-    total_transport -= open_boundary_transport(boundary_transport, v.boundary_conditions.north, Val(:north))
-    total_transport -= open_boundary_transport(boundary_transport, w.boundary_conditions.top,   Val(:top))
+    total_transport -= counted_transport(boundary_transport, u.boundary_conditions.east,  Val(:east),  arch)
+    total_transport -= counted_transport(boundary_transport, v.boundary_conditions.north, Val(:north), arch)
+    total_transport -= counted_transport(boundary_transport, w.boundary_conditions.top,   Val(:top),   arch)
 
-    return total_transport
+    return all_reduce(+, total_transport, arch)
 end
 
 #####
