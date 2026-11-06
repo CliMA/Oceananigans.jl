@@ -1,10 +1,12 @@
 using Oceananigans.BoundaryConditions: BoundaryCondition, FieldBoundaryConditions, NormalFlow, has_target_transport
 using Oceananigans.Fields: Field
 
+using Oceananigans.Architectures: architecture
+
 using ..Models: apply_targeted_left_boundary_correction!, apply_targeted_right_boundary_correction!, bottom_transport,
                 east_transport, get_bottom_area, get_east_area, get_north_area, get_south_area, get_top_area,
-                get_west_area, north_transport, south_transport, top_transport, update_open_boundary_transport!,
-                west_transport
+                get_west_area, initialize_side_target, north_transport, south_transport, top_transport,
+                update_open_boundary_transport!, west_transport
 
 const OBC = BoundaryCondition{<:NormalFlow}
 
@@ -44,46 +46,48 @@ any net imbalance.
 """
 function initialize_targeted_boundary_transport(velocities)
     u, v, w = velocities
+    arch = architecture(u.grid)
     boundary_transports = NamedTuple()
-    has_targeted = false
 
     if _is_targeted(u, :west)
         boundary_transports = merge(boundary_transports, (; west_transport = west_transport(u),
-                                                            west_area = get_west_area(u.grid)))
-        has_targeted = true
+                                                            west_area = get_west_area(u.grid; locally=true)))
     end
 
     if _is_targeted(u, :east)
         boundary_transports = merge(boundary_transports, (; east_transport = east_transport(u),
-                                                            east_area = get_east_area(u.grid)))
-        has_targeted = true
+                                                            east_area = get_east_area(u.grid; locally=true)))
     end
 
     if _is_targeted(v, :south)
         boundary_transports = merge(boundary_transports, (; south_transport = south_transport(v),
-                                                            south_area = get_south_area(v.grid)))
-        has_targeted = true
+                                                            south_area = get_south_area(v.grid; locally=true)))
     end
 
     if _is_targeted(v, :north)
         boundary_transports = merge(boundary_transports, (; north_transport = north_transport(v),
-                                                            north_area = get_north_area(v.grid)))
-        has_targeted = true
+                                                            north_area = get_north_area(v.grid; locally=true)))
     end
 
     if _is_targeted(w, :bottom)
         boundary_transports = merge(boundary_transports, (; bottom_transport = bottom_transport(w),
-                                                            bottom_area = get_bottom_area(w.grid)))
-        has_targeted = true
+                                                            bottom_area = get_bottom_area(w.grid; locally=true)))
     end
 
     if _is_targeted(w, :top)
         boundary_transports = merge(boundary_transports, (; top_transport = top_transport(w),
-                                                            top_area = get_top_area(w.grid)))
-        has_targeted = true
+                                                            top_area = get_top_area(w.grid; locally=true)))
     end
 
-    return has_targeted ? boundary_transports : nothing
+    # Every rank joins the communicator split for each side, whether or not it holds that side
+    sides = ((u, :west), (u, :east), (v, :south), (v, :north), (w, :bottom), (w, :top))
+
+    for (velocity, side) in sides
+        side_target = initialize_side_target(boundary_transports, _get_bc(velocity, side), Val(side), arch)
+        boundary_transports = merge(boundary_transports, side_target)
+    end
+
+    return isempty(boundary_transports) ? nothing : boundary_transports
 end
 
 #####

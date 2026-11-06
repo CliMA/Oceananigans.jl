@@ -4,7 +4,7 @@ using KernelAbstractions: @index, @kernel
 using Oceananigans.AbstractOperations: Ax, Ay, Az, Integral, grid_metric_operation
 using Oceananigans.Architectures: architecture
 using Oceananigans.BoundaryConditions: BoundaryCondition, NormalFlow, get_target_transport, has_target_transport
-using Oceananigans.DistributedComputations: Distributed, all_reduce
+using Oceananigans.DistributedComputations: all_reduce, split_communicator
 using Oceananigans.Fields: Field, compute!
 using Oceananigans.Grids: Center, Face, immersed_peripheral_node
 using Oceananigans.Utils: KernelParameters, launch!
@@ -14,66 +14,62 @@ const INFBC = BoundaryCondition{<:NormalFlow{<:Nothing}} # "Imposed-velocity" No
 const FINFBC = BoundaryCondition{<:NormalFlow{<:Nothing}, <:Number} # "Fixed-imposed-velocity" NormalFlowBoundaryCondition
 const ZINFBC = BoundaryCondition{<:NormalFlow{<:Nothing}, <:Nothing} # "Zero-imposed-velocity" NormalFlowBoundaryCondition (no-inflow)
 
-# Every rank holding part of a boundary sees that boundary's global transport and area, since the integrals
-# along it reduce over the ranks that share it. A global sum must count the boundary once: on the first
-# rank along it.
-counts_boundary(arch, side) = true
-counts_boundary(arch::Distributed, ::Union{Val{:west}, Val{:east}})   = arch.local_index[2] == 1 && arch.local_index[3] == 1
-counts_boundary(arch::Distributed, ::Union{Val{:south}, Val{:north}}) = arch.local_index[1] == 1 && arch.local_index[3] == 1
-counts_boundary(arch::Distributed, ::Union{Val{:bottom}, Val{:top}})  = arch.local_index[1] == 1 && arch.local_index[2] == 1
+# Transports and areas are integrals over this rank's portion of each boundary (`locally = true`).
+# The net transport sums them over every rank in one reduction; a targeted boundary reduces its own
+# transport over the ranks that hold it, through a communicator split once at initialization.
 
-function get_west_area(grid)
+function get_west_area(grid; locally=false)
     dA = grid_metric_operation((Face, Center, Center), Ax, grid)
-    ∫dA = sum(dA, dims=(2, 3))
+    ∫dA = sum(dA; dims=(2, 3), locally)
     return @allowscalar ∫dA[1, 1, 1]
 end
 
-function get_east_area(grid)
+function get_east_area(grid; locally=false)
     dA = grid_metric_operation((Face, Center, Center), Ax, grid)
-    ∫dA = sum(dA, dims=(2, 3))
+    ∫dA = sum(dA; dims=(2, 3), locally)
     return @allowscalar ∫dA[grid.Nx+1, 1, 1]
 end
 
-function get_south_area(grid)
+function get_south_area(grid; locally=false)
     dA = grid_metric_operation((Center, Face, Center), Ay, grid)
-    ∫dA = sum(dA, dims=(1, 3))
+    ∫dA = sum(dA; dims=(1, 3), locally)
     return @allowscalar ∫dA[1, 1, 1]
 end
 
-function get_north_area(grid)
+function get_north_area(grid; locally=false)
     dA = grid_metric_operation((Center, Face, Center), Ay, grid)
-    ∫dA = sum(dA, dims=(1, 3))
+    ∫dA = sum(dA; dims=(1, 3), locally)
     return @allowscalar ∫dA[1, grid.Ny+1, 1]
 end
 
-function get_bottom_area(grid)
+function get_bottom_area(grid; locally=false)
     dA = grid_metric_operation((Center, Center, Face), Az, grid)
-    ∫dA = sum(dA, dims=(1, 2))
+    ∫dA = sum(dA; dims=(1, 2), locally)
     return @allowscalar ∫dA[1, 1, 1]
 end
 
-function get_top_area(grid)
+function get_top_area(grid; locally=false)
     dA = grid_metric_operation((Center, Center, Face), Az, grid)
-    ∫dA = sum(dA, dims=(1, 2))
+    ∫dA = sum(dA; dims=(1, 2), locally)
     return @allowscalar ∫dA[1, 1, grid.Nz+1]
 end
 
 # Left boundary integrals for normal velocity / momentum components
-@inline west_transport(u)   = Field(Integral(view(u, 1, :, :), dims=(2, 3)))
-@inline south_transport(v)  = Field(Integral(view(v, :, 1, :), dims=(1, 3)))
-@inline bottom_transport(w) = Field(Integral(view(w, :, :, 1), dims=(1, 2)))
+@inline west_transport(u)   = Field(Integral(view(u, 1, :, :), dims=(2, 3), locally=true))
+@inline south_transport(v)  = Field(Integral(view(v, :, 1, :), dims=(1, 3), locally=true))
+@inline bottom_transport(w) = Field(Integral(view(w, :, :, 1), dims=(1, 2), locally=true))
 
 # Right boundary integrals for normal velocity / momentum components
-@inline east_transport(u)   = Field(Integral(view(u, u.grid.Nx + 1, :, :), dims=(2, 3)))
-@inline north_transport(v)  = Field(Integral(view(v, :, v.grid.Ny + 1, :), dims=(1, 3)))
-@inline top_transport(w)    = Field(Integral(view(w, :, :, w.grid.Nz + 1), dims=(1, 2)))
+@inline east_transport(u)   = Field(Integral(view(u, u.grid.Nx + 1, :, :), dims=(2, 3), locally=true))
+@inline north_transport(v)  = Field(Integral(view(v, :, v.grid.Ny + 1, :), dims=(1, 3), locally=true))
+@inline top_transport(w)    = Field(Integral(view(w, :, :, w.grid.Nz + 1), dims=(1, 2), locally=true))
 
-initialize_side_transport(u, bc::NFBC, ::Val{:west})   = (; west_transport = west_transport(u), west_area = get_west_area(u.grid))
-initialize_side_transport(u, bc::NFBC, ::Val{:east})   = (; east_transport = east_transport(u), east_area = get_east_area(u.grid))
-initialize_side_transport(v, bc::NFBC, ::Val{:south})  = (; south_transport = south_transport(v), south_area = get_south_area(v.grid))
-initialize_side_transport(v, bc::NFBC, ::Val{:north})  = (; north_transport = north_transport(v), north_area = get_north_area(v.grid))
-initialize_side_transport(w, bc::NFBC, ::Val{:bottom}) = (; bottom_transport = bottom_transport(w), bottom_area = get_bottom_area(w.grid))
-initialize_side_transport(w, bc::NFBC, ::Val{:top})    = (; top_transport = top_transport(w), top_area = get_top_area(w.grid))
+initialize_side_transport(u, bc::NFBC, ::Val{:west})   = (; west_transport = west_transport(u), west_area = get_west_area(u.grid; locally=true))
+initialize_side_transport(u, bc::NFBC, ::Val{:east})   = (; east_transport = east_transport(u), east_area = get_east_area(u.grid; locally=true))
+initialize_side_transport(v, bc::NFBC, ::Val{:south})  = (; south_transport = south_transport(v), south_area = get_south_area(v.grid; locally=true))
+initialize_side_transport(v, bc::NFBC, ::Val{:north})  = (; north_transport = north_transport(v), north_area = get_north_area(v.grid; locally=true))
+initialize_side_transport(w, bc::NFBC, ::Val{:bottom}) = (; bottom_transport = bottom_transport(w), bottom_area = get_bottom_area(w.grid; locally=true))
+initialize_side_transport(w, bc::NFBC, ::Val{:top})    = (; top_transport = top_transport(w), top_area = get_top_area(w.grid; locally=true))
 
 initialize_side_transport(u, bc::ZINFBC, ::Val{:west})   = NamedTuple()
 initialize_side_transport(u, bc::ZINFBC, ::Val{:east})   = NamedTuple()
@@ -82,12 +78,12 @@ initialize_side_transport(v, bc::ZINFBC, ::Val{:north})  = NamedTuple()
 initialize_side_transport(w, bc::ZINFBC, ::Val{:bottom}) = NamedTuple()
 initialize_side_transport(w, bc::ZINFBC, ::Val{:top})    = NamedTuple()
 
-initialize_side_transport(u, bc::FINFBC, ::Val{:west})   = (; west_transport = bc.condition * get_west_area(u.grid), west_area = get_west_area(u.grid))
-initialize_side_transport(u, bc::FINFBC, ::Val{:east})   = (; east_transport = bc.condition * get_east_area(u.grid), east_area = get_east_area(u.grid))
-initialize_side_transport(v, bc::FINFBC, ::Val{:south})  = (; south_transport = bc.condition * get_south_area(v.grid), south_area = get_south_area(v.grid))
-initialize_side_transport(v, bc::FINFBC, ::Val{:north})  = (; north_transport = bc.condition * get_north_area(v.grid), north_area = get_north_area(v.grid))
-initialize_side_transport(w, bc::FINFBC, ::Val{:bottom}) = (; bottom_transport = bc.condition * get_bottom_area(w.grid), bottom_area = get_bottom_area(w.grid))
-initialize_side_transport(w, bc::FINFBC, ::Val{:top})    = (; top_transport = bc.condition * get_top_area(w.grid), top_area = get_top_area(w.grid))
+initialize_side_transport(u, bc::FINFBC, ::Val{:west})   = (; west_transport = bc.condition * get_west_area(u.grid; locally=true), west_area = get_west_area(u.grid; locally=true))
+initialize_side_transport(u, bc::FINFBC, ::Val{:east})   = (; east_transport = bc.condition * get_east_area(u.grid; locally=true), east_area = get_east_area(u.grid; locally=true))
+initialize_side_transport(v, bc::FINFBC, ::Val{:south})  = (; south_transport = bc.condition * get_south_area(v.grid; locally=true), south_area = get_south_area(v.grid; locally=true))
+initialize_side_transport(v, bc::FINFBC, ::Val{:north})  = (; north_transport = bc.condition * get_north_area(v.grid; locally=true), north_area = get_north_area(v.grid; locally=true))
+initialize_side_transport(w, bc::FINFBC, ::Val{:bottom}) = (; bottom_transport = bc.condition * get_bottom_area(w.grid; locally=true), bottom_area = get_bottom_area(w.grid; locally=true))
+initialize_side_transport(w, bc::FINFBC, ::Val{:top})    = (; top_transport = bc.condition * get_top_area(w.grid; locally=true), top_area = get_top_area(w.grid; locally=true))
 
 initialize_side_transport(velocity, ::Nothing, side) = NamedTuple()
 initialize_side_transport(velocity, bc, side) = NamedTuple()
@@ -103,6 +99,33 @@ needs_pool_correction(::INFBC) = false
 needs_pool_correction(bc::NFBC) = !has_target_transport(bc.classification.scheme)
 needs_pool_correction(::Nothing) = false
 needs_pool_correction(bc) = false
+
+is_targeted(::INFBC) = false
+is_targeted(bc::NFBC) = has_target_transport(bc.classification.scheme)
+is_targeted(bc) = false
+
+side_area(bt, ::Val{:west})   = bt.west_area
+side_area(bt, ::Val{:east})   = bt.east_area
+side_area(bt, ::Val{:south})  = bt.south_area
+side_area(bt, ::Val{:north})  = bt.north_area
+side_area(bt, ::Val{:bottom}) = bt.bottom_area
+side_area(bt, ::Val{:top})    = bt.top_area
+
+# A targeted boundary corrects its whole transport, so it needs a communicator over the ranks that hold it
+# and the area of the whole boundary. Every rank splits a communicator for any side that some rank targets.
+function initialize_side_target(boundary_transports, bc, side::Val{S}, arch) where S
+    targeted = is_targeted(bc)
+    targeted_anywhere = all_reduce(max, Int(targeted), arch) > 0
+    targeted_anywhere || return NamedTuple()
+
+    communicator = split_communicator(arch, targeted)
+    targeted || return NamedTuple()
+
+    area = all_reduce(+, side_area(boundary_transports, side), communicator)
+    names = (Symbol(S, :_communicator), Symbol(S, :_target_area))
+
+    return NamedTuple{names}((communicator, area))
+end
 
 """
 $(TYPEDSIGNATURES)
@@ -142,10 +165,8 @@ function initialize_boundary_transport(velocities::NamedTuple)
     boundary_transports = merge(boundary_transports, west_transport_and_area)
     if needs_transport_correction(u_bcs.west)
         left_scheme_boundaries = (left_scheme_boundaries..., :west)
-        if counts_boundary(arch, Val(:west))
-            total_area_scheme_boundaries += boundary_transports.west_area
-            needs_pool_correction(u_bcs.west) && (total_area_pool_boundaries += boundary_transports.west_area)
-        end
+        total_area_scheme_boundaries += boundary_transports.west_area
+        needs_pool_correction(u_bcs.west) && (total_area_pool_boundaries += boundary_transports.west_area)
     end
 
     # Check east boundary (u velocity)
@@ -153,10 +174,8 @@ function initialize_boundary_transport(velocities::NamedTuple)
     boundary_transports = merge(boundary_transports, east_transport_and_area)
     if needs_transport_correction(u_bcs.east)
         right_scheme_boundaries = (right_scheme_boundaries..., :east)
-        if counts_boundary(arch, Val(:east))
-            total_area_scheme_boundaries += boundary_transports.east_area
-            needs_pool_correction(u_bcs.east) && (total_area_pool_boundaries += boundary_transports.east_area)
-        end
+        total_area_scheme_boundaries += boundary_transports.east_area
+        needs_pool_correction(u_bcs.east) && (total_area_pool_boundaries += boundary_transports.east_area)
     end
 
     # Check south boundary (v velocity)
@@ -164,10 +183,8 @@ function initialize_boundary_transport(velocities::NamedTuple)
     boundary_transports = merge(boundary_transports, south_transport_and_area)
     if needs_transport_correction(v_bcs.south)
         left_scheme_boundaries = (left_scheme_boundaries..., :south)
-        if counts_boundary(arch, Val(:south))
-            total_area_scheme_boundaries += boundary_transports.south_area
-            needs_pool_correction(v_bcs.south) && (total_area_pool_boundaries += boundary_transports.south_area)
-        end
+        total_area_scheme_boundaries += boundary_transports.south_area
+        needs_pool_correction(v_bcs.south) && (total_area_pool_boundaries += boundary_transports.south_area)
     end
 
     # Check north boundary (v velocity)
@@ -175,10 +192,8 @@ function initialize_boundary_transport(velocities::NamedTuple)
     boundary_transports = merge(boundary_transports, north_transport_and_area)
     if needs_transport_correction(v_bcs.north)
         right_scheme_boundaries = (right_scheme_boundaries..., :north)
-        if counts_boundary(arch, Val(:north))
-            total_area_scheme_boundaries += boundary_transports.north_area
-            needs_pool_correction(v_bcs.north) && (total_area_pool_boundaries += boundary_transports.north_area)
-        end
+        total_area_scheme_boundaries += boundary_transports.north_area
+        needs_pool_correction(v_bcs.north) && (total_area_pool_boundaries += boundary_transports.north_area)
     end
 
     # Check bottom boundary (w velocity)
@@ -186,10 +201,8 @@ function initialize_boundary_transport(velocities::NamedTuple)
     boundary_transports = merge(boundary_transports, bottom_transport_and_area)
     if needs_transport_correction(w_bcs.bottom)
         left_scheme_boundaries = (left_scheme_boundaries..., :bottom)
-        if counts_boundary(arch, Val(:bottom))
-            total_area_scheme_boundaries += boundary_transports.bottom_area
-            needs_pool_correction(w_bcs.bottom) && (total_area_pool_boundaries += boundary_transports.bottom_area)
-        end
+        total_area_scheme_boundaries += boundary_transports.bottom_area
+        needs_pool_correction(w_bcs.bottom) && (total_area_pool_boundaries += boundary_transports.bottom_area)
     end
 
     # Check top boundary (w velocity)
@@ -197,10 +210,17 @@ function initialize_boundary_transport(velocities::NamedTuple)
     boundary_transports = merge(boundary_transports, top_transport_and_area)
     if needs_transport_correction(w_bcs.top)
         right_scheme_boundaries = (right_scheme_boundaries..., :top)
-        if counts_boundary(arch, Val(:top))
-            total_area_scheme_boundaries += boundary_transports.top_area
-            needs_pool_correction(w_bcs.top) && (total_area_pool_boundaries += boundary_transports.top_area)
-        end
+        total_area_scheme_boundaries += boundary_transports.top_area
+        needs_pool_correction(w_bcs.top) && (total_area_pool_boundaries += boundary_transports.top_area)
+    end
+
+    sides = ((u_bcs.west,  Val(:west)),  (u_bcs.east,  Val(:east)),
+             (v_bcs.south, Val(:south)), (v_bcs.north, Val(:north)),
+             (w_bcs.bottom, Val(:bottom)), (w_bcs.top, Val(:top)))
+
+    for (bc, side) in sides
+        side_target = initialize_side_target(boundary_transports, bc, side, arch)
+        boundary_transports = merge(boundary_transports, side_target)
     end
 
     total_area_scheme_boundaries = all_reduce(+, total_area_scheme_boundaries, arch)
@@ -238,11 +258,6 @@ open_boundary_transport(bt, ::ZINFBC, ::Val{:top})    = zero(bt.total_area_schem
 
 open_boundary_transport(bt, bc, side) = zero(bt.total_area_scheme_boundaries)
 
-function counted_transport(boundary_transport, bc, side, arch)
-    counts_boundary(arch, side) || return zero(boundary_transport.total_area_scheme_boundaries)
-    return open_boundary_transport(boundary_transport, bc, side)
-end
-
 function open_boundary_inflow_transport(boundary_transport, velocities)
     update_open_boundary_transport!(boundary_transport)
 
@@ -251,14 +266,14 @@ function open_boundary_inflow_transport(boundary_transport, velocities)
     total_transport = zero(boundary_transport.total_area_scheme_boundaries)
 
     # Add transport through left boundaries
-    total_transport += counted_transport(boundary_transport, u.boundary_conditions.west,   Val(:west),   arch)
-    total_transport += counted_transport(boundary_transport, v.boundary_conditions.south,  Val(:south),  arch)
-    total_transport += counted_transport(boundary_transport, w.boundary_conditions.bottom, Val(:bottom), arch)
+    total_transport += open_boundary_transport(boundary_transport, u.boundary_conditions.west, Val(:west))
+    total_transport += open_boundary_transport(boundary_transport, v.boundary_conditions.south, Val(:south))
+    total_transport += open_boundary_transport(boundary_transport, w.boundary_conditions.bottom, Val(:bottom))
 
     # Subtract transport through right boundaries.
-    total_transport -= counted_transport(boundary_transport, u.boundary_conditions.east,  Val(:east),  arch)
-    total_transport -= counted_transport(boundary_transport, v.boundary_conditions.north, Val(:north), arch)
-    total_transport -= counted_transport(boundary_transport, w.boundary_conditions.top,   Val(:top),   arch)
+    total_transport -= open_boundary_transport(boundary_transport, u.boundary_conditions.east, Val(:east))
+    total_transport -= open_boundary_transport(boundary_transport, v.boundary_conditions.north, Val(:north))
+    total_transport -= open_boundary_transport(boundary_transport, w.boundary_conditions.top, Val(:top))
 
     return all_reduce(+, total_transport, arch)
 end
@@ -348,18 +363,16 @@ correct_right_boundary_transport!(u, bc, side, A⁻¹_∮udA) = nothing
 # The boundary velocity is adjusted by a uniform shift so that the integral of the
 # normal velocity over the boundary matches `target_transport` (positive in the
 # positive coordinate direction — e.g., eastward through west/east boundaries).
-side_area(bt, ::Val{:west})   = bt.west_area
-side_area(bt, ::Val{:east})   = bt.east_area
-side_area(bt, ::Val{:south})  = bt.south_area
-side_area(bt, ::Val{:north})  = bt.north_area
-side_area(bt, ::Val{:bottom}) = bt.bottom_area
-side_area(bt, ::Val{:top})    = bt.top_area
+side_communicator(bt, ::Val{S}) where S = getproperty(bt, Symbol(S, :_communicator))
+side_target_area(bt, ::Val{S}) where S = getproperty(bt, Symbol(S, :_target_area))
 
 function apply_targeted_boundary_correction!(u, bc::NFBC, side, boundary_transport)
     has_target_transport(bc.classification.scheme) || return nothing
-    area     = side_area(boundary_transport, side)
+    communicator = side_communicator(boundary_transport, side)
+    area     = side_target_area(boundary_transport, side)
     target   = get_target_transport(bc.classification.scheme, u.grid)
-    Q_actual = open_boundary_transport(boundary_transport, bc, side)
+    Q_local  = open_boundary_transport(boundary_transport, bc, side)
+    Q_actual = all_reduce(+, Q_local, communicator)
     return shift_boundary_faces!(u, side, (Q_actual - target) / area)
 end
 

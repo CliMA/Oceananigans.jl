@@ -29,6 +29,26 @@ function all_reduce(op, val::GPUArraysCore.AbstractGPUArray, arch::Distributed)
     return on_architecture(child_architecture(arch), MPI.Allreduce(Array(val), op, arch.communicator))
 end
 
+# Reductions over a sub-communicator from `split_communicator`; `nothing` stands for a serial architecture
+all_reduce(op, val, communicator::MPI.Comm) = MPI.Allreduce(val, op, communicator)
+
+"""
+$(TYPEDSIGNATURES)
+
+Return a communicator over the ranks of `arch` for which `member` is true, or `nothing` on ranks
+that are not members and on serial architectures. Every rank of `arch` must call it, members or not.
+"""
+split_communicator(arch, member) = nothing
+
+function split_communicator(arch::Distributed, member)
+    color = member ? 0 : nothing
+    communicator = MPI.Comm_split(arch.communicator, color, arch.local_rank)
+    return member ? communicator : nothing
+end
+
+# Communicators are rebuilt with the model, so checkpoints skip them
+Oceananigans.prognostic_state(::MPI.Comm) = nothing
+
 all_reduce!(op, val, arch::Distributed) = MPI.Allreduce!(val, op, arch.communicator)
 all_reduce!(op, val, arch) = val
 
