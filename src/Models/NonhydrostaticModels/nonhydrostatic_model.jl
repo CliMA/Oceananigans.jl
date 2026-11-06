@@ -10,7 +10,7 @@ using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: topology, inflate_halo_size, with_halo, architecture
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models: AbstractModel, extract_boundary_conditions, materialize_free_surface
-using Oceananigans.Solvers: FFTBasedPoissonSolver
+using Oceananigans.Solvers: FFTBasedPoissonSolver, ConjugateGradientPoissonSolver
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!, materialize_clock!, AbstractLagrangianParticles
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_closure_fields, time_discretization, implicit_diffusion_solver, initialize_closure_fields!
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE
@@ -276,6 +276,17 @@ function NonhydrostaticModel(grid;
 
     if isnothing(pressure_solver)
         pressure_solver = nonhydrostatic_pressure_solver(grid, free_surface)
+    end
+
+    # ADD 
+    if pressure_solver isa ConjugateGradientPoissonSolver && !isnothing(free_surface)
+        # top_bc = nonhydrostatic_pressure.boundary_conditions.top
+        pressure_solver = ConjugateGradientPoissonSolver(grid;
+                            preconditioner = pressure_solver.conjugate_gradient_solver.preconditioner,
+                            reltol = pressure_solver.conjugate_gradient_solver.reltol,
+                            abstol = pressure_solver.conjugate_gradient_solver.abstol,
+                            maxiter = pressure_solver.conjugate_gradient_solver.maxiter,
+                            top_bc = top_bc)
     end
 
     # Materialize background fields
