@@ -56,7 +56,7 @@ Distributed.addprocs(2)
         Example("Langmuir turbulence",                    "langmuir_turbulence",                false),
         Example("Kelvin-Helmholtz instability",           "kelvin_helmholtz_instability",       true),
         Example("Horizontal convection",                  "horizontal_convection",              true),
-        Example("Baroclinic adjustment",                  "baroclinic_adjustment",              true),
+        Example("Baroclinic adjustment",                  "baroclinic_adjustment",              false),
         Example("Tilted bottom boundary layer",           "tilted_bottom_boundary_layer",       true),
         Example("Convecting plankton",                    "convecting_plankton",                true),
         Example("Two-dimensional turbulence",             "two_dimensional_turbulence",         true),
