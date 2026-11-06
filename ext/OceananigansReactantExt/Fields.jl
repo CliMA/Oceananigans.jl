@@ -1,5 +1,6 @@
 module Fields
 
+using ..Architectures: AnyConcreteReactantArray
 using ..Grids: ReactantGrid, ShardedGrid
 using ..OceananigansReactantExt: OceananigansReactantExt, deconcretize
 using Oceananigans: Oceananigans
@@ -97,6 +98,16 @@ function Oceananigans.Fields.set_to_field!(u::ReactantField, v::ReactantField)
         interpolate!(cpu_u, cpu_v)
         copyto!(interior(u), interior(cpu_u))
     end
+    return u
+end
+
+# Without this method, Reactant arrays reach the generic `u .= a` fallback, which indexes `a` with the
+# field's own indices and so misreads windowed fields such as the free surface displacement.
+# `TracedRArray` rather than `AnyTracedRArray`: the latter is `AbstractArray{<:TracedRNumber}`, which a
+# `Field` of traced data (or an `OffsetArray` of one) also satisfies, making `set!` ambiguous with the
+# generic `Field`-to-`Field` and array methods.
+function Oceananigans.Fields.set!(u::ReactantField, a::Union{AnyConcreteReactantArray, Reactant.TracedRArray}, args...)
+    copyto!(interior(u), a)
     return u
 end
 

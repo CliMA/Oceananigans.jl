@@ -25,6 +25,26 @@ using Statistics: mean
          name = "3D (Bounded, Bounded, Bounded) — ExplicitFreeSurface, QB2"),
     ]
 
+    @testset "set! from Reactant arrays inside a compiled function" begin
+        grid = RectilinearGrid(arch; size=(4, 4, 1), extent=(1, 1, 1), topology=(Bounded, Bounded, Bounded))
+        for free_surface in (ExplicitFreeSurface(), SplitExplicitFreeSurface(grid; substeps=4))
+            model = HydrostaticFreeSurfaceModel(grid; free_surface, buoyancy=nothing, tracers=())
+            u_values = rand(5, 4, 1)
+            v_values = rand(4, 5, 1)
+            η_values = rand(4, 4, 1)
+            u = Reactant.to_rarray(u_values)
+            v = Reactant.to_rarray(v_values)
+            η = Reactant.to_rarray(η_values)
+            set_from_arrays!(model, u, v, η) = (set!(model, u=u, v=v, η=η); nothing)
+            compiled_set! = @compile raise=true raise_first=true sync=true set_from_arrays!(model, u, v, η)
+            compiled_set!(model, u, v, η)
+            # The free surface displacement is a windowed field, which the generic broadcast fallback misreads
+            @test Array(interior(model.free_surface.displacement)) == η_values
+            @test Array(interior(model.velocities.u))[2:4, :, :] == u_values[2:4, :, :]
+            @test Array(interior(model.velocities.v))[:, 2:4, :] == v_values[:, 2:4, :]
+        end
+    end
+
     for config in topologies
         topo_str = config.name
 

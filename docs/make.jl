@@ -38,6 +38,7 @@ Distributed.addprocs(2)
     # The examples that take longer to run should be first. This ensures that the
     # docs built with extra workers is as efficient as possible.
     example_scripts = [
+        "online_learning_double_gyre.jl",
         "global_wind_driven_gyres.jl",
         "single_column_parameter_estimation.jl",
         "ocean_wind_mixing_and_convection.jl",
@@ -146,6 +147,7 @@ example_pages = [
     "Global wind-driven gyres"              => "literated/global_wind_driven_gyres.md",
     "Barotropic jet and Double Drake on a Yin-Yang grid" => "literated/yin_yang_grid.md",
     "Single column parameter estimation"    => "literated/single_column_parameter_estimation.md",
+    "Online learning of an eddy closure"    => "literated/online_learning_double_gyre.md",
 ]
 
 model_pages = [
