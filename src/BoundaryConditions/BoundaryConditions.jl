@@ -1,7 +1,7 @@
 module BoundaryConditions
 
 export
-    Flux, Gradient, Value, NormalFlow,
+    Flux, Gradient, Value, NormalFlow, BalancedTransport,
     BoundaryCondition, getbc,
     PeriodicBoundaryCondition, NormalFlowBoundaryCondition, NoFluxBoundaryCondition, MultiRegionCommunicationBoundaryCondition,
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, DistributedCommunicationBoundaryCondition,
