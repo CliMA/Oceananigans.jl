@@ -8,7 +8,7 @@ using Oceananigans.BoundaryConditions: FieldBoundaryConditions, needs_implicit_s
 using Oceananigans.BuoyancyFormulations: materialize_buoyancy, validate_buoyancy
 using Oceananigans.DistributedComputations: Distributed
 using Oceananigans.Fields: CenterField, Field, TracerFields, ZeroField, tracernames
-using Oceananigans.Forcings: model_forcing
+using Oceananigans.Forcings: model_forcing, penetrative_radiation
 using Oceananigans.Grids: AbstractHorizontallyCurvilinearGrid, Center, Face, MutableVerticalDiscretization,
                           architecture, halo_size
 using Oceananigans.ImmersedBoundaries: GridFittedBoundary, ImmersedBoundaryGrid
@@ -18,7 +18,8 @@ using Oceananigans.TimeSteppers: AbstractLagrangianParticles, Clock, TimeStepper
                                  time_discretization, update_state!
 using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization, add_closure_specific_boundary_conditions,
                                        build_closure_fields, closure_required_tracers, implicit_diffusion_solver,
-                                       initialize_closure_fields!, validate_closure, with_tracers
+                                       initialize_closure_fields!, validate_closure, with_penetrative_radiation,
+                                       with_tracers
 using Oceananigans.Utils: tupleit
 
 PressureField(grid) = (; pHY′ = CenterField(grid))
@@ -338,6 +339,7 @@ function build_hydrostatic_free_surface_model(grid, ::Val{tracer_names}, timeste
     # constructed inside tendency kernels, ensuring field dependency indices
     # are consistent between materialization and tendency computation.
     model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
+    closure = with_penetrative_radiation(closure, penetrative_radiation(forcing))
     forcing = model_forcing(forcing, model_fields, prognostic_fields)
     transport_velocities = transport_velocity_fields(velocities)
 
