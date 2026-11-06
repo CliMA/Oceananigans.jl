@@ -1,5 +1,5 @@
 using Oceananigans: prognostic_state, restore_prognostic_state!
-using Oceananigans.Advection: Centered, adapt_advection_order, materialize_advection
+using Oceananigans.Advection: Centered, adapt_advection_order, materialize_advection, without_bounds_preservation
 using Oceananigans.Architectures: AbstractArchitecture, architecture
 using Oceananigans.Biogeochemistry: AbstractBiogeochemistry, biogeochemical_auxiliary_fields, validate_biogeochemistry
 using Oceananigans.BoundaryConditions: MixedBoundaryCondition, needs_implicit_solver,
@@ -254,7 +254,7 @@ function materialize_nonhydrostatic_model(grid, ::Val{tracer_names}, timestepper
 
     tracer_advection_tuple = with_tracers(tracer_names, tracer_advection,
                                           default_generator, with_velocities=false)
-    momentum_advection_tuple = (; momentum = momentum_advection)
+    momentum_advection_tuple = (; momentum = without_bounds_preservation(momentum_advection))
     advection = merge(momentum_advection_tuple, tracer_advection_tuple)
     advection = materialize_model_advection(advection, grid)
 

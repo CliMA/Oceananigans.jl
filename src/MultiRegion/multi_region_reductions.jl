@@ -3,7 +3,7 @@ using Oceananigans.AbstractOperations: Averaging
 using Oceananigans.Fields: Fields, AbstractField, ReducedAbstractField, Scan, AbstractReducing, AbstractAccumulating,
     AllReduction, AnyReduction, MaximumReduction, MinimumReduction, ProdReduction, SumReduction,
     condition_operand, conditional_length, filltype, get_neutral_mask, indices,
-    initialize_reduced_field!, reduced_dimensions, reduced_location, reduction_operand, scan_indices
+    initialize_reduced_field!, local_extrema!, reduced_dimensions, reduced_location, reduction_operand, scan_indices
 using Oceananigans.ImmersedBoundaries: NotImmersed, NotImmersedColumn
 using Oceananigans.Utils: tupleit
 using Statistics: Statistics
@@ -95,6 +95,17 @@ function reduce_regions!(reduction!, r::MultiRegionAbstractField, operand)
     for region in regions(operand.grid)
         reduce_region!(reduction!, getregion(r, region), getregion(operand, region))
     end
+    return r
+end
+
+# Every region widens the one pair in `r`
+function Base.extrema!(r::AbstractArray, c::MultiRegionAbstractField; init = true)
+    local_extrema!(r, getregion(c, 1); init)
+
+    for region in regions(c.grid)[2:end]
+        local_extrema!(r, getregion(c, region); init = false)
+    end
+
     return r
 end
 

@@ -23,7 +23,8 @@ using Oceananigans.Advection:
         div_Uc,
         _advective_tracer_flux_x,
         _advective_tracer_flux_y,
-        _advective_tracer_flux_z
+        _advective_tracer_flux_z,
+        update_advection!
 
 using Oceananigans.Solvers: ConjugateGradientPoissonSolver
 using Oceananigans.TimeSteppers: compute_tendencies!
@@ -220,9 +221,9 @@ function left_of_thin_wall_tendency(arch, scheme, right_velocity)
 end
 
 @inline face_flux_divergence(i, j, k, grid, advection, U, c) =
-    V⁻¹ᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, _advective_tracer_flux_x, advection, U.u, c) +
-                             δyᵃᶜᵃ(i, j, k, grid, _advective_tracer_flux_y, advection, U.v, c) +
-                             δzᵃᵃᶜ(i, j, k, grid, _advective_tracer_flux_z, advection, U.w, c))
+    (δxᶜᵃᵃ(i, j, k, grid, _advective_tracer_flux_x, advection, U.u, c) +
+     δyᵃᶜᵃ(i, j, k, grid, _advective_tracer_flux_y, advection, U.v, c) +
+     δzᵃᵃᶜ(i, j, k, grid, _advective_tracer_flux_z, advection, U.w, c)) * V⁻¹ᶜᶜᶜ(i, j, k, grid)
 
 @inline active_cell_difference(i, j, k, grid, advection, U, c) =
     ifelse(inactive_cell(i, j, k, grid), zero(grid), div_Uc(i, j, k, grid, advection, U, c) - face_flux_divergence(i, j, k, grid, advection, U, c))
@@ -249,6 +250,7 @@ function cell_and_face_tracer_divergence(arch, scheme)
 
     advection  = materialize_advection(scheme, ibg)
     U          = (; u, v, w)
+    update_advection!(advection, (; grid = ibg, timestepper = nothing, clock = Clock(time = 0, last_Δt = 1e-3)), c)
     difference = compute!(Field(KernelFunctionOperation{Center, Center, Center}(active_cell_difference, ibg, advection, U, c)))
     divergence = compute!(Field(KernelFunctionOperation{Center, Center, Center}(face_flux_divergence, ibg, advection, U, c)))
 
@@ -358,7 +360,8 @@ for arch in archs
     end
 
     @testset "Tracer flux divergence of the cell stencils equals that of the face fluxes" begin
-        @testset "$(summary(scheme)) [$(summary(arch))]" for scheme in (Centered(order=4), UpwindBiased(order=5), WENO(order=5), WENO(order=7), WENO(order=9))
+        @testset "$(summary(scheme)) [$(summary(arch))]" for scheme in (Centered(order=4), UpwindBiased(order=5), WENO(order=5, bounds=nothing),
+                                                                     WENO(order=7, bounds=nothing), WENO(order=9, bounds=nothing), WENO(order=7))
             @test cell_and_face_tracer_divergence(arch, scheme) < 1e-12
         end
     end

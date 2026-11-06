@@ -11,7 +11,7 @@ export
     advective_tracer_flux_y,
     advective_tracer_flux_z,
 
-    Centered, UpwindBiased, WENO,
+    Centered, UpwindBiased, WENO, ExtremaPreservation, BoundsPreservation,
     VectorInvariant, WENOVectorInvariant,
     FluxFormAdvection,
     AdaptiveImplicitVerticalAdvection,
@@ -56,6 +56,8 @@ const advection_buffers = [1, 2, 3, 4, 5, 6]
 @inline Grids.required_halo_size_y(::AbstractAdvectionScheme{B}) where B = B
 @inline Grids.required_halo_size_z(::AbstractAdvectionScheme{B}) where B = B
 
+struct DecreasingOrderAdvectionScheme end
+
 include("time_discretization.jl")
 include("centered_advective_fluxes.jl")
 include("upwind_biased_advective_fluxes.jl")
@@ -64,6 +66,7 @@ include("reconstruction_coefficients.jl")
 include("centered_reconstruction.jl")
 include("upwind_biased_reconstruction.jl")
 include("weno_reconstruction.jl")
+include("extrema_preservation.jl")
 include("weno_interpolants.jl")
 include("stretched_weno_smoothness.jl")
 include("multi_dimensional_reconstruction.jl")
@@ -82,6 +85,7 @@ include("momentum_advection_operators.jl")
 include("curvature_metric_terms.jl")
 include("tracer_advection_operators.jl")
 include("bounds_preserving_tracer_advection_operators.jl")
+include("extrema_preserving_tracer_advection_operators.jl")
 include("cell_advection_timescale.jl")
 include("adapt_advection_order.jl")
 include("materialize_advection.jl")

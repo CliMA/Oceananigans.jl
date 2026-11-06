@@ -83,11 +83,11 @@ function TimeSteppers.update_state!(model::HydrostaticFreeSurfaceModel, grid, ca
         update_adaptive_timesteps!(model.advection, model)
         compute_momentum_tendencies!(model, callbacks)
         compute_coriolis_prognostic_tendencies!(model.coriolis, model)
-
-        # The bounds-preserving limiters read the tracer halos, which are synchronized
-        # when the momentum tendencies are completed.
-        update_bounds_preserving_limiters!(model.advection, model)
     end
+
+    # The bounds-preserving limiters read the tracer halos, which are synchronized
+    # when the momentum tendencies are completed.
+    update_bounds_preserving_limiters!(model.advection, model)
 
     return nothing
 end

@@ -39,13 +39,26 @@ if CUDA.functional()
     end
 end
 
-weight_computation(::WENO{<:Any, <:Any, WCT}) where WCT = WCT
+function append_weight_computation_type!(list, weno::WENO{<:Any, <:Any, WCT}) where {WCT}
+    push!(list, WCT)
+    append_weight_computation_type!(list, weno.buffer_scheme)
+end
+append_weight_computation_type!(::Any, ::Any) = nothing
+
+# Extract all weight computation types from WENO
+# Assumes a non-weno buffer scheme will not have WENO buffer scheme
+function get_weight_computation_from_weno_advection(weno::WENO)
+    weight_computation_types = DataType[]
+    append_weight_computation_type!(weight_computation_types, weno)
+    return weight_computation_types
+end
 
 @testset "Verify WENO schemes construction" begin
 
     # WENO
-    weno7 = WENO(order=7; weight_computation=Oceananigans.Utils.NormalDivision)
-    @test weight_computation(weno7) == Oceananigans.Utils.NormalDivision
+    weno5 = WENO(order=7; weight_computation=Oceananigans.Utils.NormalDivision)
+    weight_computation_types = get_weight_computation_from_weno_advection(weno5)
+    @test all(weight_computation_types .== Oceananigans.Utils.NormalDivision)
 
     # Vector Invariant WENO
     vector_weno = WENOVectorInvariant(order=9, weight_computation=Oceananigans.Utils.BackendOptimizedDivision)
@@ -53,7 +66,8 @@ weight_computation(::WENO{<:Any, <:Any, WCT}) where WCT = WCT
     for field_name in fieldnames(typeof(vector_weno))
         field = getfield(vector_weno, field_name)
         if field isa WENO
-            @test weight_computation(field) == Oceananigans.Utils.BackendOptimizedDivision
+            weight_computation_types = get_weight_computation_from_weno_advection(field)
+            @test all(weight_computation_types .== Oceananigans.Utils.BackendOptimizedDivision)
         end
     end
 end

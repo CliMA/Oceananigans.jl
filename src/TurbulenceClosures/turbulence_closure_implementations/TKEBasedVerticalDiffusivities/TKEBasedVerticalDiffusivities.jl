@@ -20,8 +20,8 @@ using Oceananigans.Operators: Δzᶜᶜᶜ, Δzᶜᶠᶠ, Δzᶠᶜᶠ, Δz⁻¹
                               ∂zᶜᶠᶠ, ∂zᶠᶜᶠ
 using Oceananigans.TimeSteppers: TimeSteppers, time_discretization
 using Oceananigans.TurbulenceClosures: TurbulenceClosures, AbstractScalarDiffusivity, VerticalFormulation,
-                                       VerticallyImplicitTimeDiscretization, buoyancy_force, buoyancy_tracers,
-                                       dissipation, getclosure, shear_production
+                                       VerticallyBoundedGrid, VerticallyImplicitTimeDiscretization, buoyancy_force,
+                                       buoyancy_tracers, dissipation, getclosure, shear_production
 using Oceananigans.Utils: Utils, f32_safe_cbrt, launch!, named_tuple, prettysummary
 
 const c = Center()
@@ -154,6 +154,11 @@ include("time_step_catke_equation.jl")
 include("tke_dissipation_vertical_diffusivity.jl")
 include("tke_dissipation_stability_functions.jl")
 include("tke_dissipation_equations.jl")
+
+# The diffusivities vanish on every peripheral face, so no flux crosses a boundary under any boundary condition
+@inline TurbulenceClosures.diffusive_flux_z(i, j, k, grid::VerticallyBoundedGrid, ::VITD, ::Union{CATKEVD, TDVD}, K, id, c, clk, fields, b) = zero(grid)
+@inline  TurbulenceClosures.viscous_flux_uz(i, j, k, grid::VerticallyBoundedGrid, ::VITD, ::Union{CATKEVD, TDVD}, K, clk, fields, b) = zero(grid)
+@inline  TurbulenceClosures.viscous_flux_vz(i, j, k, grid::VerticallyBoundedGrid, ::VITD, ::Union{CATKEVD, TDVD}, K, clk, fields, b) = zero(grid)
 
 for S in (:CATKEMixingLength,
           :CATKEEquation,

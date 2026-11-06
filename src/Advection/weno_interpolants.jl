@@ -500,25 +500,8 @@ end
     return weno_reconstruction(scheme, ψ₀, δ, ω)
 end
 
-# the reconstruction with the optimal weights, which is the upwind-biased reconstruction of the same order
-@inline linear_interpolate(::WENO{N, FT}, bias, S) where {N, FT} = biased_interpolate(UpwindBiased{N, FT}(nothing, nothing), bias, S)
-
-# Interpolation functions
-@inline function biased_interpolate(i, j, k, grid, dir, ℓ, scheme::WENO{N, FT}, bias, ψ, args...) where {N, FT}
-    S = load_stencil(i, j, k, grid, dir, ℓ, Val(N), ψ, args...)
-    return biased_interpolate(scheme, bias, S)
-end
-
-@inline function biased_interpolate(i, j, k, grid, dir, ℓ, scheme::WENO{N, FT}, bias, ψ, VI::AbstractSmoothnessStencil, args...) where {N, FT}
-    S = load_stencil(i, j, k, grid, dir, ℓ, Val(N), ψ, args...)
-    return biased_interpolate(scheme, bias, S)
-end
-
-# The smoothness stencils continue past walls with the agreement factors of the reconstructed stencil
-@inline function biased_interpolate(i, j, k, grid, dir, ℓ, scheme::WENO{N, FT}, bias, ψ, VI::VelocityStencil, u, v, args...) where {N, FT}
-    S,  G = load_stencil(i, j, k, grid, dir, ℓ, Val(N), nothing, ψ, u, v, args...)
-    Sᵤ, _ = load_stencil(i, j, k, grid, dir, ℓ, Val(N), G, ℑyᵃᶠᵃ, u)
-    Sᵥ, _ = load_stencil(i, j, k, grid, dir, ℓ, Val(N), G, ℑxᶠᵃᵃ, v)
+# with the smoothness of the velocities `Sᵤ` and `Sᵥ`
+@inline function biased_interpolate(scheme::WENO{N, FT}, bias, S, (Sᵤ, Sᵥ)::NTuple{2}) where {N, FT}
     S  = weno_stencil(scheme, bias, S)
     Sᵤ = weno_stencil(scheme, bias, Sᵤ)
     Sᵥ = weno_stencil(scheme, bias, Sᵥ)
@@ -534,9 +517,8 @@ end
     return weno_reconstruction(scheme, ψ₀, δ, ω)
 end
 
-@inline function biased_interpolate(i, j, k, grid, dir, ℓ, scheme::WENO{N, FT}, bias, ψ, VI::FunctionStencil, args...) where {N, FT}
-    S,  G = load_stencil(i, j, k, grid, dir, ℓ, Val(N), nothing, ψ, args...)
-    Sₛ, _ = load_stencil(i, j, k, grid, dir, ℓ, Val(N), G, VI.func, args...)
+# with the smoothness of the function values `Sₛ`
+@inline function biased_interpolate(scheme::WENO{N, FT}, bias, S, (Sₛ,)::NTuple{1}) where {N, FT}
     S  = weno_stencil(scheme, bias, S)
     Sₛ = weno_stencil(scheme, bias, Sₛ)
     ψ₀ = weno_anchor(scheme, S)
@@ -544,4 +526,39 @@ end
     δₛ = weno_differences(scheme, Sₛ)
     ω  = biased_weno_weights(δₛ, scheme)
     return weno_reconstruction(scheme, ψ₀, δ, ω)
+end
+
+# Interpolation functions
+@inline biased_interpolate(i, j, k, grid, dir, ℓ, scheme::WENO{N}, bias, ψ, args...) where N =
+    buffered_interpolate(scheme, bias, load_stencil(i, j, k, grid, dir, ℓ, Val(N), Val(2N), ψ, args...))
+
+@inline biased_interpolate(i, j, k, grid, dir, ℓ, scheme::WENO{N}, bias, ψ, ::AbstractSmoothnessStencil, args...) where N =
+    buffered_interpolate(scheme, bias, load_stencil(i, j, k, grid, dir, ℓ, Val(N), Val(2N), ψ, args...))
+
+@inline function biased_interpolate(i, j, k, grid, dir, ℓ, scheme::WENO{N}, bias, ψ, ::VelocityStencil, u, v, args...) where N
+    _, nᴸ, nᴿ = load_stencil(i, j, k, grid, dir, ℓ, Val(N), Val(2N), ψ, u, v, args...)
+    K = stencil_reach(Int32(N) - nᴸ, nᴿ - Int32(N + 1), bias)
+    return buffered_interpolate(i, j, k, grid, dir, ℓ, scheme, bias, K, ψ, u, v, args...)
+end
+
+# the vorticity and the smoothness stencils of the velocities loaded per level of the buffer chain, innermost level first
+@inline function buffered_interpolate(i, j, k, grid, dir, ℓ, scheme::AbstractAdvectionScheme{M}, bias, K, ψ, u, v, args...) where M
+    ψᵇ = buffered_interpolate(i, j, k, grid, dir, ℓ, scheme.buffer_scheme, bias, K, ψ, u, v, args...)
+    S,  _, _ = load_stencil(i, j, k, grid, dir, ℓ, Val(M), Val(2M), ψ, u, v, args...)
+    Sᵤ, _, _ = load_stencil(i, j, k, grid, dir, ℓ, Val(M), Val(2M), ℑyᵃᶠᵃ, u)
+    Sᵥ, _, _ = load_stencil(i, j, k, grid, dir, ℓ, Val(M), Val(2M), ℑxᶠᵃᵃ, v)
+    ψᴹ = biased_interpolate(scheme, bias, S, (Sᵤ, Sᵥ))
+    # BFloat16 WENO reconstructions are Float32, the lowest-order buffer schemes BFloat16
+    return ifelse(K ≥ M, ψᴹ, convert(typeof(ψᴹ), ψᵇ))
+end
+
+@inline function buffered_interpolate(i, j, k, grid, dir, ℓ, scheme::AbstractAdvectionScheme{1}, bias, K, ψ, u, v, args...)
+    S, _, _ = load_stencil(i, j, k, grid, dir, ℓ, Val(1), Val(2), ψ, u, v, args...)
+    return biased_interpolate(scheme, bias, S, ())
+end
+
+@inline function biased_interpolate(i, j, k, grid, dir, ℓ, scheme::WENO{N}, bias, ψ, VI::FunctionStencil, args...) where N
+    stencil  = load_stencil(i, j, k, grid, dir, ℓ, Val(N), Val(2N), ψ, args...)
+    Sₛ, _, _ = load_stencil(i, j, k, grid, dir, ℓ, Val(N), Val(2N), VI.func, args...)
+    return buffered_interpolate(scheme, bias, stencil, (Sₛ,))
 end

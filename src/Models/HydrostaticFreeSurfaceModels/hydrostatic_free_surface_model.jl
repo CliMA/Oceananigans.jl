@@ -1,6 +1,6 @@
 using Oceananigans: prognostic_state, restore_prognostic_state!
 using Oceananigans.Advection: AbstractAdvectionScheme, Centered, VectorInvariant, WENOVectorInvariant,
-                              adapt_advection_order, materialize_advection, weno_order
+                              adapt_advection_order, materialize_advection, weno_order, without_bounds_preservation
 using Oceananigans.Architectures: AbstractArchitecture, ReactantState
 using Oceananigans.Biogeochemistry: AbstractBiogeochemistry, biogeochemical_auxiliary_fields, validate_biogeochemistry
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions, needs_implicit_solver,
@@ -240,7 +240,7 @@ function materialize_hydrostatic_free_surface_model(grid, ::Val{tracer_names}, t
 
     # Generate tracer advection scheme for each tracer
     tracer_advection_tuple = with_tracers(tracer_names, tracer_advection, default_generator, with_velocities=false)
-    momentum_advection_tuple = (; momentum = momentum_advection)
+    momentum_advection_tuple = (; momentum = without_bounds_preservation(momentum_advection))
     advection = merge(momentum_advection_tuple, tracer_advection_tuple)
     advection = map(scheme -> adapt_advection_order(scheme, grid), advection)
 

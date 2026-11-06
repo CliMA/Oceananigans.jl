@@ -41,11 +41,40 @@ end
 
 materialize_bounds(bounds, grid) = bounds
 materialize_bounds(bounds::BoundsPreservation, grid) = BoundsPreservation(bounds.minimum_value, bounds.maximum_value, bounds.maximum_courant_number, CenterField(grid))
+function materialize_bounds(bounds::ExtremaPreservation, grid)
+    FT = eltype(grid)
+    empty_range = (convert(FT, Inf), convert(FT, -Inf))
+    extrema = on_architecture(architecture(grid), fill(empty_range, 1))
+    return ExtremaPreservation(extrema, Ref(convert(FT, Inf)), Ref(false), bounds.downwind_weight)
+end
 
 materialize_advection(weno::WENO{N, FT, WCT}, grid) where {N, FT, WCT} =
-    WENO{N, FT, WCT}(materialize_bounds(weno.bounds, grid), weno.advecting_velocity_scheme, weno.time_discretization)
+    WENO{N, FT, WCT}(materialize_bounds(weno.bounds, grid),
+                     materialize_advection(weno.buffer_scheme, grid),
+                     materialize_advection(weno.advecting_velocity_scheme, grid),
+                     weno.time_discretization)
 
 function materialize_advection(weno::WENO{N, FT, Nothing}, grid) where {N, FT}
     WTC = default_weno_weight_computation(architecture(grid))
-    return WENO{N, FT, WTC}(materialize_bounds(weno.bounds, grid), weno.advecting_velocity_scheme, weno.time_discretization)
+    return WENO{N, FT, WTC}(materialize_bounds(weno.bounds, grid),
+                            materialize_advection(weno.buffer_scheme, grid),
+                            materialize_advection(weno.advecting_velocity_scheme, grid),
+                            weno.time_discretization)
 end
+
+materialize_advection(scheme::UpwindBiased{N, FT}, grid) where {N, FT} =
+    UpwindBiased{N, FT}(materialize_advection(scheme.buffer_scheme, grid),
+                        materialize_advection(scheme.advecting_velocity_scheme, grid),
+                        scheme.time_discretization)
+
+materialize_advection(scheme::Centered{N, FT}, grid) where {N, FT} =
+    Centered{N, FT}(materialize_advection(scheme.buffer_scheme, grid), scheme.time_discretization)
+
+# momentum is never bounded
+without_bounds_preservation(scheme) = scheme
+
+without_bounds_preservation(weno::WENO{N, FT, WCT}) where {N, FT, WCT} =
+    WENO{N, FT, WCT}(nothing, weno.buffer_scheme, weno.advecting_velocity_scheme, weno.time_discretization)
+
+without_bounds_preservation(scheme::FluxFormAdvection) =
+    FluxFormAdvection(without_bounds_preservation(scheme.x), without_bounds_preservation(scheme.y), without_bounds_preservation(scheme.z))

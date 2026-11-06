@@ -3,6 +3,7 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 using Oceananigans.Operators: Δxᶠᵃᵃ, Δxᶜᵃᵃ, Δxᶠᶠᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶜᶜᵃ
 using Oceananigans.Operators: Δyᵃᶠᵃ, Δyᵃᶜᵃ, Δyᶠᶠᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶜᶜᵃ
 using Oceananigans.BoundaryConditions: UPivot, TPivot, FPivot, regularize_field_boundary_conditions
+using Oceananigans.Advection: buffered_interpolate, biased_interpolate, LeftBias, RightBias, materialize_advection, vertical_flux_Wu
 
 
 function test_three_dimensional_differences(T=Float64)
@@ -330,5 +331,59 @@ end
             @test all(δyTᵃᶜᵃ(i, j, 1, grid, V) ≈ δyᵃᶜᵃ(i, j, 1, grid, V) for i in 1:Nx, j in 1:northernmost_row)
             @test all(δyTᵃᶠᵃ(i, j, 1, grid, c) ≈ δyᵃᶠᵃ(i, j, 1, grid, c) for i in 1:Nx, j in 1:northernmost_row)
         end
+    end
+
+    @testset "Device reads of StaticStridesOffsetArray [$T]" for T in (Float32, Float64, Bool)
+        for (dims, offsets) in (((7,), (-2,)), ((5, 7), (-1, 3)), ((5, 7, 3), (-2, -2, 0)))
+            values = rand(T, dims...)
+            GC.@preserve values begin
+                device_array = CUDA.CuDeviceArray{T, length(dims), 0}(reinterpret(Core.LLVMPtr{T, 0}, pointer(values)), dims)
+                offset_array = StaticStridesOffsetArray(device_array, offsets...)
+                @test all(offset_array[(Tuple(I) .+ offsets)...] === values[I] for I in CartesianIndices(dims))
+            end
+        end
+    end
+
+    @testset "Reconstructions next to a wall read only what their stencil needs" begin
+        S = ntuple(n -> Float64(n)^4, 6)
+        no_wall, wall_on_the_right, wall_on_the_left = (Int32(0), Int32(7)), (Int32(0), Int32(6)), (Int32(1), Int32(7))
+        scheme = UpwindBiased(order=5)
+        lower_order(bias) = biased_interpolate(scheme.buffer_scheme, bias, S[2:5], ())
+
+        @test buffered_interpolate(scheme, LeftBias, (S, no_wall...)) == biased_interpolate(scheme, LeftBias, S, ())
+        @test buffered_interpolate(scheme, RightBias, (S, no_wall...)) == biased_interpolate(scheme, RightBias, S, ())
+
+        # a biased stencil of half-width 3 reads 3 nodes upwind and 2 downwind
+        @test buffered_interpolate(scheme, LeftBias, (S, wall_on_the_right...)) == biased_interpolate(scheme, LeftBias, S, ())
+        @test buffered_interpolate(scheme, RightBias, (S, wall_on_the_left...)) == biased_interpolate(scheme, RightBias, S, ())
+        @test buffered_interpolate(scheme, RightBias, (S, wall_on_the_right...)) == lower_order(RightBias)
+        @test buffered_interpolate(scheme, LeftBias, (S, wall_on_the_left...)) == lower_order(LeftBias)
+
+        # a symmetric stencil of half-width 3 reads 3 nodes on both sides
+        symmetric = Centered(order=6)
+        @test buffered_interpolate(symmetric, nothing, (S, no_wall...)) == biased_interpolate(symmetric, nothing, S, ())
+        @test buffered_interpolate(symmetric, nothing, (S, wall_on_the_right...)) == biased_interpolate(symmetric.buffer_scheme, nothing, S[2:5], ())
+        @test buffered_interpolate(symmetric, nothing, (S, wall_on_the_left...)) == biased_interpolate(symmetric.buffer_scheme, nothing, S[2:5], ())
+    end
+
+    @testset "Vector-invariant vertical momentum fluxes vanish on the faces of a step" begin
+        underlying_grid = RectilinearGrid(CPU(), size=(16, 8), x=(0, 1), z=(-1, 0), topology=(Periodic, Flat, Bounded), halo=(4, 4))
+        grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(x -> x < 1/2 ? -1/2 : -1))
+        scheme = materialize_advection(WENOVectorInvariant(), grid)
+        U = (u = XFaceField(grid), v = YFaceField(grid), w = ZFaceField(grid))
+
+        Random.seed!(1234)
+        set!(U.u, (x, z) -> randn())
+        set!(U.w, (x, z) -> randn())
+        fill_halo_regions!(U.u)
+        fill_halo_regions!(U.w)
+
+        # the u face between the shallow and the deep side, above the bottom of the domain and up to the height of the step
+        step_face = size(grid, 1) ÷ 2 + 1
+        Nz = size(grid, 3)
+        vertical_flux(i, k) = vertical_flux_Wu(i, 1, k, grid, scheme.vertical_advection_scheme, U.w, U.u)
+        @test all(vertical_flux(step_face, k) == 0 for k in 2:Nz÷2+1)
+        @test all(vertical_flux(step_face, k) != 0 for k in Nz÷2+2:Nz)
+        @test all(vertical_flux(step_face + 2, k) != 0 for k in 2:Nz)
     end
 end

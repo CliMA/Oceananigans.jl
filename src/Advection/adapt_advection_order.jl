@@ -87,10 +87,11 @@ function adapt_advection_order(advection::UpwindBiased{B}, N::Int, grid::Abstrac
         return UpwindBiased(eltype(grid); order=2N-1)
     end
 end
+
 function adapt_advection_order(advection::WENO{B}, N::Int, grid::AbstractGrid) where B
     if N >= B
         return advection
     else
-        return WENO(eltype(grid); order=2N-1)
+        return WENO(eltype(grid); order=2N-1, bounds=advection.bounds)
     end
 end

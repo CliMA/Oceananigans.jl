@@ -1,5 +1,5 @@
 using Oceananigans.Advection: Advection, WENO, VectorInvariant, adapt_advection_order, cell_advection_timescale, materialize_advection,
-                              BoundsPreservation
+                              BoundsPreservation, BoundsPreservingWENO, ExtremaPreservation
 using Oceananigans.BuoyancyFormulations: BuoyancyFormulations, BuoyancyForce, NegativeZDirection, AbstractBuoyancyFormulation, validate_unit_vector
 using Oceananigans.TimeSteppers: TimeSteppers, QuasiAdamsBashforth2TimeStepper, SplitRungeKuttaTimeStepper
 using Oceananigans.Models: Models, ExplicitFreeSurface, HydrostaticFreeSurfaceModel, ImplicitFreeSurface, PrescribedVelocityFields
@@ -36,6 +36,9 @@ function Advection.materialize_advection(advection::MultiRegionObject, grid::Mul
     @apply_regionally new_advection = materialize_advection(advection, grid)
     return new_advection
 end
+
+# All regions share the extrema of a tracer
+Advection.materialize_bounds(bounds::ExtremaPreservation, grid::MultiRegionGrids) = Advection.materialize_bounds(bounds, getregion(grid, 1))
 
 # Utility to generate the inputs to complex `getregion`s
 function getregionalproperties(type, inner=true)
@@ -132,6 +135,12 @@ end
 @inline Utils.isregional(mrm::MultiRegionModel) = true
 @inline Utils.regions(mrm::MultiRegionModel) = regions(mrm.grid)
 
+Advection.update_bounds_preserving_limiter!(scheme::BoundsPreservingWENO, model::MultiRegionModel, c) =
+    @apply_regionally Advection.update_bounds_preserving_limiter!(scheme, model, c)
+
+Advection.update_bounds_preserving_limiter!(scheme::MultiRegionObject, model::MultiRegionModel, c) =
+    @apply_regionally Advection.update_bounds_preserving_limiter!(scheme, model, c)
+
 Oceananigans.TimeSteppers.cache_previous_tendencies!(model::MultiRegionModel) =
     @apply_regionally Oceananigans.TimeSteppers.cache_previous_tendencies!(model)
 
@@ -176,10 +185,12 @@ Advection.WENO(mrg::MultiRegionGrid, args...; kwargs...) = construct_regionally(
 
 # The bounds-preserving limiter of a WENO scheme on a multi-region grid is a multi-region field
 @inline Utils.getregion(weno::WENO{N, FT, WCT}, r) where {N, FT, WCT} =
-    WENO{N, FT, WCT}(_getregion(weno.bounds, r), _getregion(weno.advecting_velocity_scheme, r), weno.time_discretization)
+    WENO{N, FT, WCT}(_getregion(weno.bounds, r), _getregion(weno.buffer_scheme, r),
+                     _getregion(weno.advecting_velocity_scheme, r), weno.time_discretization)
 
 @inline Utils._getregion(weno::WENO{N, FT, WCT}, r) where {N, FT, WCT} =
-    WENO{N, FT, WCT}(getregion(weno.bounds, r), getregion(weno.advecting_velocity_scheme, r), weno.time_discretization)
+    WENO{N, FT, WCT}(getregion(weno.bounds, r), getregion(weno.buffer_scheme, r),
+                     getregion(weno.advecting_velocity_scheme, r), weno.time_discretization)
 
 function Advection.cell_advection_timescale(grid::MultiRegionGrids, velocities)
     Δt = construct_regionally(cell_advection_timescale, grid, velocities)

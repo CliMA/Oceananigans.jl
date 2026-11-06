@@ -75,8 +75,8 @@ end
     aiva_td = AdaptiveVerticallyImplicitDiscretization(cfl=10.0)
     aiva_td.Δt[] = Δt
 
-    explicit_scheme = WENO(; weight_computation = Oceananigans.Utils.NormalDivision)
-    adaptive_scheme = WENO(; time_discretization = aiva_td, weight_computation = Oceananigans.Utils.NormalDivision)
+    explicit_scheme = WENO(; bounds = nothing, weight_computation = Oceananigans.Utils.NormalDivision)
+    adaptive_scheme = WENO(; bounds = nothing, time_discretization = aiva_td, weight_computation = Oceananigans.Utils.NormalDivision)
 
     W = ZFaceField(grid)
     set!(W, (x, y, z) -> 1.0)
@@ -104,7 +104,7 @@ end
     aiva_td = AdaptiveVerticallyImplicitDiscretization(cfl=cfl)
     aiva_td.Δt[] = Δt
 
-    scheme = WENO(; time_discretization = aiva_td, weight_computation = Oceananigans.Utils.NormalDivision)
+    scheme = WENO(; bounds = nothing, time_discretization = aiva_td, weight_computation = Oceananigans.Utils.NormalDivision)
 
     W = ZFaceField(grid)
     set!(W, (x, y, z) -> 1.0)

@@ -40,8 +40,7 @@ end
 ##### Flux difference across a cell, from one stencil of 2N + 1 values shared by both faces
 #####
 
-# the velocity that sets the upwind bias: the volume flux, or the velocity itself across a tracer cell
-@inline upwind_velocity(i, j, k, grid, dir, ℓ, scheme, U) = transport(i, j, k, grid, dir, ℓ, scheme, U)
+# the velocity that sets the upwind bias across a tracer cell
 @inline upwind_velocity(i, j, k, grid, dir, ::Tuple{Center, Center, Center}, scheme, U) = @inbounds U[i, j, k]
 
 # the volume flux through the faces along `dir` of a tracer cell
@@ -53,34 +52,31 @@ end
 # the flux implicitly
 @inline explicit_velocity_scale(i, j, k, grid, ℓ, scheme, td, U) = one(grid)
 
-# the reconstructions at the two faces along `dir` of the cell at `ℓ`, from one window of their 2N + 1 values
-@inline function face_values(i, j, k, grid, dir, ℓ, scheme::AbstractAdvectionScheme{N}, ũ⁻, ũ⁺, ψ) where N
-    (S⁻, _, _), (S⁺, _, _) = load_stencil(i, j, k, grid, dir, node_location(dir, ℓ), Val(N), Val(2N + 1), ψ)
-    return biased_interpolate(scheme, bias(ũ⁻), S⁻), biased_interpolate(scheme, bias(ũ⁺), S⁺)
-end
+# the volume flux through the face (i, j, k) along `dir` of a cell at `ℓ` that the explicit update carries
+@inline explicit_transport(i, j, k, grid, dir, ℓ, scheme, td, u) =
+    explicit_velocity_scale(i, j, k, grid, node_location(dir, ℓ), scheme, td, u) * transport(i, j, k, grid, dir, ℓ, scheme, u)
 
-@inline function face_values(i, j, k, grid, dir, ℓ::Tuple{Center, Center, Center}, scheme::AbstractAdvectionScheme{N}, ũ⁻, ũ⁺, ψ) where N
-    stencil⁻, stencil⁺ = load_stencil(i, j, k, grid, dir, node_location(dir, ℓ), Val(N), Val(2N + 1), CubicContinuation(), ψ)
+# the advective flux of `ψ` through the face (i, j, k) along `dir` of its cell at `ℓ`, given its reconstruction `ψᶠ` at the face
+@inline reconstructed_flux(i, j, k, grid, dir, ℓ, scheme, td, u, ψ, ψᶠ) = explicit_transport(i, j, k, grid, dir, ℓ, scheme, td, u) * ψᶠ
+
+# the reconstructions at the two faces along `dir` of the cell at `ℓ`, from one window of their 2N + 1 values: the point (i, j, k)
+# reconstructs from the first 2N values, the next point from the last 2N
+@inline function face_values(i, j, k, grid, dir, ℓ, scheme::AbstractAdvectionScheme{N}, ũ⁻, ũ⁺, ψ) where N
+    W, nᴸ, nᴿ = load_stencil(i, j, k, grid, dir, node_location(dir, ℓ), Val(N), Val(2N + 1), ψ)
+    stencil⁻ = (ntuple(n -> W[n],     Val(2N)), nᴸ, min(nᴿ, Int32(2N + 1)))
+    stencil⁺ = (ntuple(n -> W[n + 1], Val(2N)), max(nᴸ - Int32(1), Int32(0)), nᴿ - Int32(1))
     return wall_interpolate(scheme, bias(ũ⁻), stencil⁻), wall_interpolate(scheme, bias(ũ⁺), stencil⁺)
 end
 
-# The difference of the advective fluxes of `ψ` through the two faces along `dir` of its cell at `ℓ`, centered along `dir`
-@inline function advective_flux_difference(i, j, k, grid, dir, ℓ, scheme::Union{CenteredScheme{N}, UpwindScheme{N}}, U, ψ) where N
-    ℓᶠ = node_location(dir, ℓ)
-
+# The difference of the advective fluxes of `ψ` by the velocity `u` through the two faces along `dir` of its cell at `ℓ`,
+# centered along `dir`
+@inline function advective_flux_difference(i, j, k, grid, dir, ℓ, scheme::Union{CenteredScheme{N}, UpwindScheme{N}}, u, ψ) where N
     i⁺, j⁺, k⁺ = stencil_node(i, j, k, dir, 1)
-    ũ⁻ = upwind_velocity(i,  j,  k,  grid, dir, ℓ, scheme, U)
-    ũ⁺ = upwind_velocity(i⁺, j⁺, k⁺, grid, dir, ℓ, scheme, U)
+    ũ⁻ = upwind_velocity(i,  j,  k,  grid, dir, ℓ, scheme, u)
+    ũ⁺ = upwind_velocity(i⁺, j⁺, k⁺, grid, dir, ℓ, scheme, u)
     ψ⁻, ψ⁺ = face_values(i, j, k, grid, dir, ℓ, scheme, ũ⁻, ũ⁺, ψ)
-
     td = TimeSteppers.time_discretization(scheme)
-    s⁻ = explicit_velocity_scale(i,  j,  k,  grid, ℓᶠ, scheme, td, U)
-    s⁺ = explicit_velocity_scale(i⁺, j⁺, k⁺, grid, ℓᶠ, scheme, td, U)
-
-    F⁻ = s⁻ * (transport(i,  j,  k,  grid, dir, ℓ, scheme, U) * ψ⁻)
-    F⁺ = s⁺ * (transport(i⁺, j⁺, k⁺, grid, dir, ℓ, scheme, U) * ψ⁺)
-
-    return F⁺ - F⁻
+    return reconstructed_flux(i⁺, j⁺, k⁺, grid, dir, ℓ, scheme, td, u, ψ, ψ⁺) - reconstructed_flux(i, j, k, grid, dir, ℓ, scheme, td, u, ψ, ψ⁻)
 end
 
 @inline advective_flux_difference(i, j, k, grid, dir, ℓ, ::Nothing, U, ψ) = zero(grid)

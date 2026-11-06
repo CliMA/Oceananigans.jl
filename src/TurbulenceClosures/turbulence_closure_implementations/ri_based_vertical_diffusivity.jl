@@ -183,6 +183,11 @@ const f = Face()
 @inline viscosity(::FlavorOfRBVD, closure_fields) = closure_fields.κu
 @inline diffusivity(::FlavorOfRBVD, closure_fields, id) = closure_fields.κc
 
+# The diffusivities vanish on every peripheral face, so no flux crosses a boundary under any boundary condition
+@inline diffusive_flux_z(i, j, k, grid::VerticallyBoundedGrid, ::VITD, ::RBVD, K, id, c, clk, fields, b) = zero(grid)
+@inline viscous_flux_uz(i, j, k, grid::VerticallyBoundedGrid, ::VITD, ::RBVD, K, clk, fields, b) = zero(grid)
+@inline viscous_flux_vz(i, j, k, grid::VerticallyBoundedGrid, ::VITD, ::RBVD, K, clk, fields, b) = zero(grid)
+
 Utils.with_tracers(tracers, closure::FlavorOfRBVD) = closure
 
 # Note: computing diffusivities at cell centers for now.

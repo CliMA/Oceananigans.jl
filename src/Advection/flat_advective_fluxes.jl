@@ -25,8 +25,8 @@ for SchemeType in [:CenteredScheme, :UpwindScheme]
         @inline advective_tracer_flux_z(i, j, k, grid::ZFG, ::$SchemeType, ::ETD, U, c) = zero(grid)
 
         @inline advective_flux_difference(i, j, k, grid::XFG, ::Val{1}, ℓ, ::$SchemeType, U, ψ) = zero(grid)
-        @inline advective_flux_difference(i, j, k, grid::YFG, ::Val{2}, ℓ, ::$SchemeType, V, ψ) = zero(grid)
-        @inline advective_flux_difference(i, j, k, grid::ZFG, ::Val{3}, ℓ, ::$SchemeType, W, ψ) = zero(grid)
+        @inline advective_flux_difference(i, j, k, grid::YFG, ::Val{2}, ℓ, ::$SchemeType, U, ψ) = zero(grid)
+        @inline advective_flux_difference(i, j, k, grid::ZFG, ::Val{3}, ℓ, ::$SchemeType, U, ψ) = zero(grid)
     end
 end
 

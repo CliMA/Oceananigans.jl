@@ -4,18 +4,27 @@ using Oceananigans.BoundaryConditions: fill_bottom_and_top_halo!
 using Oceananigans.Utils: launch!
 using KernelAbstractions: @index, @kernel
 
-"""
-    BoundsPreservation(minimum_value, maximum_value, maximum_courant_number, limiter)
-
-The interval a tracer is restricted to, the Courant number ``ω̂₁`` up to which the bound holds, and the field
-`limiter` holding the cell-wise rescaling factor ``θ``. `limiter` is `nothing` until the scheme is materialized
-on a grid.
-"""
 struct BoundsPreservation{FT, L}
     minimum_value :: FT
     maximum_value :: FT
     maximum_courant_number :: FT
     limiter :: L
+end
+
+"""
+    BoundsPreservation(minimum_value, maximum_value; maximum_courant_number = 5//18)
+
+Restrict a tracer to `[minimum_value, maximum_value]` with the maximum-principle-satisfying limiter of Zhang and Shu (2010),
+which rescales the reconstruction of every cell towards the cell mean so that the advective update stays within the interval.
+One rescaling factor is shared by the three directions, so the bound is three-dimensional. It is guaranteed for a forward Euler
+or strong-stability-preserving update whose Courant numbers satisfy `λˣ + λʸ + λᶻ ≤ maximum_courant_number`, with
+`maximum_courant_number = ω̂₁ ∈ (0, 1/2)`; raising it admits a larger time step and limits more aggressively.
+
+The field `limiter` holding the cell-wise rescaling factor ``θ`` is `nothing` until the scheme is materialized on a grid.
+"""
+function BoundsPreservation(minimum_value, maximum_value; maximum_courant_number = 5//18)
+    0 < maximum_courant_number < 1//2 || throw(ArgumentError("maximum_courant_number must lie in (0, 1/2), found $maximum_courant_number"))
+    return BoundsPreservation(promote(minimum_value, maximum_value, maximum_courant_number)..., nothing)
 end
 
 Base.show(io::IO, bounds::BoundsPreservation) = print(io, "(", bounds.minimum_value, ", ", bounds.maximum_value, ")")
@@ -103,9 +112,13 @@ end
     @inbounds θ[i, j, k] = bounds_preserving_limiter(i, j, k, grid, scheme, c)
 end
 
-update_bounds_preserving_limiter!(scheme, grid, c) = nothing
+update_bounds_preserving_limiter!(scheme, model, c) = nothing
 
-update_bounds_preserving_limiter!(scheme::FluxFormAdvection, grid, c) = update_bounds_preserving_limiter!(scheme.z, grid, c)
+function update_bounds_preserving_limiter!(scheme::FluxFormAdvection, model, c)
+    update_bounds_preserving_limiter!(scheme.x, model, c)
+    update_bounds_preserving_limiter!(scheme.y, model, c)
+    return update_bounds_preserving_limiter!(scheme.z, model, c)
+end
 
 """
 $(TYPEDSIGNATURES)
@@ -114,7 +127,8 @@ Fill the rescaling factor ``θ`` carried by a bounds-preserving `scheme` from th
 ``θ`` is computed in the first horizontal halo layer too, from the halos of `c`, so that
 only its bottom and top halos are filled afterwards and no halo is communicated.
 """
-function update_bounds_preserving_limiter!(scheme::BoundsPreservingWENO, grid, c)
+function update_bounds_preserving_limiter!(scheme::BoundsPreservingWENO, model, c)
+    grid = model.grid
     isnothing(c) && return nothing # the `momentum` entry has no tracer to limit
     θ = scheme.bounds.limiter
     parameters = horizontally_extended_interior_kernel_parameters(grid)

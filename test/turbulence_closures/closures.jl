@@ -623,6 +623,26 @@ end
         end
     end
 
+    @testset "Diffusivities vanish on the boundary faces of vertically implicit closures that carry no boundary flux" begin
+        closures = (CATKEVerticalDiffusivity(), TKEDissipationVerticalDiffusivity(), RiBasedVerticalDiffusivity(warning=false))
+
+        @testset "$(nameof(typeof(closure))) [$(typeof(arch))]" for arch in archs, closure in closures
+            grid = RectilinearGrid(arch, size=(2, 2, 4), extent=(1, 1, 1), topology=(Periodic, Periodic, Bounded))
+            Nz = size(grid, 3)
+            b_bcs = FieldBoundaryConditions(bottom=ValueBoundaryCondition(1), top=GradientBoundaryCondition(1))
+            model = HydrostaticFreeSurfaceModel(grid; closure, buoyancy=BuoyancyTracer(), tracers=:b, timestepper=:QuasiAdamsBashforth2,
+                                                boundary_conditions=(; b=b_bcs))
+            set!(model, b=(x, y, z) -> 1e-3 * z, u=(x, y, z) -> z)
+            time_step!(model, 1)
+
+            for κ in (model.closure_fields.κc, model.closure_fields.κu)
+                @test all(iszero, Array(interior(κ, :, :, 1)))
+                @test all(iszero, Array(interior(κ, :, :, Nz + 1)))
+                @test any(!iszero, Array(interior(κ, :, :, Nz)))
+            end
+        end
+    end
+
     @testset "Vertical diffusive CFL diagnostics" begin
         grid = RectilinearGrid(CPU(); size=(20, 30, 4), x=(-10, 10), y=(-10, 10), z=(-10, 0), halo=(6, 6, 5))
 

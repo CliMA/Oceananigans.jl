@@ -287,6 +287,14 @@ function Fields.dot!(r, u::DistributedAbstractField, v::DistributedAbstractField
     return fill!(r, all_reduce(+, dot_local, arch))
 end
 
+# Distributed extrema: the local pair is reduced across ranks on the host and copied back into `r`
+function Base.extrema!(r::AbstractArray, c::DistributedAbstractField; init = true)
+    Fields.local_extrema!(r, c; init)
+    m, M = @allowscalar r[1]
+    arch = architecture(c)
+    return fill!(r, (all_reduce(min, m, arch), all_reduce(max, M, arch)))
+end
+
 @inline function _mean(f, c::DistributedAbstractField, ::Colon; condition=nothing, mask=0)
     operand = condition_operand(f, c, condition, mask)
 

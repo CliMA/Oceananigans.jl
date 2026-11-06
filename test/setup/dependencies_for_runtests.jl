@@ -89,12 +89,6 @@ include(joinpath(@__DIR__, "utils_for_runtests.jl"))
 float_types = (Float32, Float64)
 archs = test_architectures()
 
-# We need to Mock a grid since it provides an architecture for advection materialization
-struct MockGrid{A <: AbstractArchitecture}
-    arch::A
-end
-Oceananigans.Grids.architecture(a::MockGrid) = a.arch
-
 # Tests write fixed-name output files; each test module gets its own directory so parallel
 # workers never collide. Only ParallelTestRunner workers have the runner loaded in Main: MPI ranks
 # (launched by srun or spawned by a test) must share the parent's directory, and so must a REPL.

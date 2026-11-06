@@ -208,6 +208,7 @@ nothing_to_default(user_value; default=nothing) = isnothing(user_value) ? defaul
                         divergence_order = nothing,
                         kinetic_energy_gradient_order = nothing,
                         multi_dimensional_stencil = false,
+                        minimum_buffer_upwind_order = 1,
                         weno_kw...)
 
 Return a vector-invariant weighted essentially non-oscillatory (WENO) scheme.
@@ -244,6 +245,7 @@ function WENOVectorInvariant(FT::DataType = Oceananigans.defaults.FloatType;
                              kinetic_energy_gradient_order = nothing,
                              time_discretization = ExplicitTimeDiscretization(),
                              multi_dimensional_stencil = false,
+                             minimum_buffer_upwind_order = 1,
                              weno_kw...)
 
     if isnothing(order) # apply global defaults
@@ -258,10 +260,13 @@ function WENOVectorInvariant(FT::DataType = Oceananigans.defaults.FloatType;
         kinetic_energy_gradient_order = nothing_to_default(kinetic_energy_gradient_order, default = order)
     end
 
-    vorticity_scheme               = WENO(FT; order=vorticity_order, weno_kw...)
-    vertical_advection_scheme      = WENO(FT; order=vertical_order, time_discretization, weno_kw...)
-    kinetic_energy_gradient_scheme = WENO(FT; order=kinetic_energy_gradient_order, weno_kw...)
-    divergence_scheme              = WENO(FT; order=divergence_order, weno_kw...)
+    # momentum is never limited
+    weno_kw = merge((; bounds = nothing), weno_kw)
+
+    vorticity_scheme               = WENO(FT; order=vorticity_order, minimum_buffer_upwind_order, weno_kw...)
+    vertical_advection_scheme      = WENO(FT; order=vertical_order, minimum_buffer_upwind_order, time_discretization, weno_kw...)
+    kinetic_energy_gradient_scheme = WENO(FT; order=kinetic_energy_gradient_order, minimum_buffer_upwind_order, weno_kw...)
+    divergence_scheme              = WENO(FT; order=divergence_order, minimum_buffer_upwind_order, weno_kw...)
 
     default_upwinding = OnlySelfUpwinding(cross_scheme = divergence_scheme)
     upwinding = nothing_to_default(upwinding; default = default_upwinding)
@@ -371,9 +376,12 @@ end
 ##### Upwinding vertical advection (2. and 3.)
 #####
 
-# The vertical volume flux through the faces of a horizontal velocity cell
-@inline transport(i, j, k, grid, ::Val{3}, ::Tuple{Face, Center, Center}, scheme, W) = ℑxᶠᵃᵃ(i, j, k, grid, Az_qᶜᶜᶠ, W)
-@inline transport(i, j, k, grid, ::Val{3}, ::Tuple{Center, Face, Center}, scheme, W) = ℑyᵃᶠᵃ(i, j, k, grid, Az_qᶜᶜᶠ, W)
+# Vertical fluxes vanish on faces that touch an immersed boundary
+@inline vertical_flux_Wu(i, j, k, grid, scheme, W, u) =
+    conditional_flux(i, j, k, grid, Face(), Center(), Face(), zero(grid), _advective_momentum_flux_Wu(i, j, k, grid, scheme, W, u))
+
+@inline vertical_flux_Wv(i, j, k, grid, scheme, W, v) =
+    conditional_flux(i, j, k, grid, Center(), Face(), Face(), zero(grid), _advective_momentum_flux_Wv(i, j, k, grid, scheme, W, v))
 
 @inline vector_invariant_flux_Wu(i, j, k, grid, scheme, W, u) = vertical_flux_Wu(i, j, k, grid, scheme.vertical_advection_scheme, W, u)
 @inline vector_invariant_flux_Wv(i, j, k, grid, scheme, W, v) = vertical_flux_Wv(i, j, k, grid, scheme.vertical_advection_scheme, W, v)

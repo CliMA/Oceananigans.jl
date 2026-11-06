@@ -925,6 +925,20 @@ end
 Base.extrema(c::AbstractField; kwargs...) = (minimum(c; kwargs...), maximum(c; kwargs...))
 Base.extrema(f, c::AbstractField; kwargs...) = (minimum(f, c; kwargs...), maximum(f, c; kwargs...))
 
+@inline value_pair(x) = (x, x)
+@inline widest_range((a, b), (c, d)) = (min(a, c), max(b, d))
+
+# The pair (minimum, maximum) of `c` in one pass, into a one-element array; immersed cells carry the empty range
+function local_extrema!(r::AbstractArray, c::AbstractField; init = true)
+    FT = eltype(c)
+    empty_range = (convert(FT, Inf), convert(FT, -Inf))
+    init && fill!(r, empty_range)
+    Base.mapreducedim!(identity, widest_range, r, reduction_operand(condition_operand(value_pair, c, nothing, empty_range)))
+    return r
+end
+
+Base.extrema!(r::AbstractArray, c::AbstractField; init = true) = local_extrema!(r, c; init)
+
 # Index reductions: locate extrema over `interior(c)`, returning indices in the field's own
 # axes so that `c[argmax(c)] == maximum(c)` — which for default fields coincide with positional
 # interior (and `nodes`) indices. The generic fallbacks scalar-index on the GPU and are blind

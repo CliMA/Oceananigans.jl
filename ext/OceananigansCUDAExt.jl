@@ -214,4 +214,36 @@ end
 # Other number types (e.g. BFloat16) have no approximate reciprocal instruction
 fast_inv_cuda(a) = inv(a)
 
+# The IR below spells opaque pointers, which the LLVM of Julia 1.11 and later reads
+@static if VERSION >= v"1.11"
+
+    # One multi-index GEP, whose constant offsets SeparateConstOffsetFromGEP pools into one displacement from one base register per array
+    @generated function load_element(p::Core.LLVMPtr{T, A}, ::Val{S}, I::Vararg{Int, N}) where {T, A, S, N}
+        array = "[$(sizeof(T)) x i8]"
+        for d in 1:N-1
+            array = "[$(S[d]) x $array]"
+        end
+        arguments = join(("i64 %I$d" for d in N:-1:1), ", ")
+        ir = """
+        define ptr addrspace($A) @entry(ptr addrspace($A) %p, $arguments) #0 {
+            %q = getelementptr inbounds $array, ptr addrspace($A) %p, $arguments
+            ret ptr addrspace($A) %q
+        }
+        attributes #0 = { alwaysinline }
+        """
+        types = Tuple{Core.LLVMPtr{T, A}, ntuple(_ -> Int, N)...}
+        indices = [:(I[$d]) for d in N:-1:1]
+        alignment = Val(Base.datatype_alignment(T))
+        return quote
+            q = Base.llvmcall(($ir, "entry"), Core.LLVMPtr{$T, $A}, $types, p, $(indices...))
+            return unsafe_load(q, 1, $alignment)
+        end
+    end
+
+    @inline function Base.getindex(a::UT.SSOA{T, N, S, O, <:CuDeviceArray}, I::Vararg{Int, N}) where {T, N, S, O}
+        @boundscheck checkbounds(a, I...)
+        return load_element(pointer(parent(a)), Val(S), map((i, o) -> i - o - 1, I, O)...)
+    end
+end
+
 end # module OceananigansCUDAExt
