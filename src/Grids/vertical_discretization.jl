@@ -34,16 +34,8 @@ struct StaticVerticalDiscretization{C, D, E, F} <: AbstractVerticalCoordinate
     Δ⁻¹ᵃᵃᶜ :: F
 end
 
-# the reciprocal of a spacing or metric, wrapped like it
-reciprocal(Δ) = 1 ./ Δ
-
-function reciprocal(Δ::OffsetArrays.AbstractOffsetArray)
-    data, rewrap = OffsetArrays.unwrap(Δ)
-    return rewrap(1 ./ data)
-end
-
 function StaticVerticalDiscretization(cᵃᵃᶠ, cᵃᵃᶜ, Δᵃᵃᶠ, Δᵃᵃᶜ)
-    Δ⁻¹ᵃᵃᶠ, Δ⁻¹ᵃᵃᶜ = map(Δ -> on_architecture(architecture(Δ), reciprocal(on_architecture(CPU(), Δ))), (Δᵃᵃᶠ, Δᵃᵃᶜ))
+    Δ⁻¹ᵃᵃᶠ, Δ⁻¹ᵃᵃᶜ = map(Δ -> on_architecture(architecture(Δ), reciprocal_metric(on_architecture(CPU(), Δ))), (Δᵃᵃᶠ, Δᵃᵃᶜ))
     return StaticVerticalDiscretization(cᵃᵃᶠ, cᵃᵃᶜ, Δᵃᵃᶠ, Δᵃᵃᶜ, Δ⁻¹ᵃᵃᶠ, Δ⁻¹ᵃᵃᶜ)
 end
 
@@ -167,7 +159,7 @@ function generate_coordinate(FT, topo, size, halo, coordinate::MutableVerticalDi
     r_faces = coordinate.cᵃᵃᶠ
 
     LR, rᵃᵃᶠ, rᵃᵃᶜ, Δrᵃᵃᶠ, Δrᵃᵃᶜ = generate_coordinate(FT, topo[3](), Nz, Hz, r_faces, :r, arch)
-    Δr⁻¹ᵃᵃᶠ, Δr⁻¹ᵃᵃᶜ = map(Δ -> on_architecture(arch, reciprocal(on_architecture(CPU(), Δ))), (Δrᵃᵃᶠ, Δrᵃᵃᶜ))
+    Δr⁻¹ᵃᵃᶠ, Δr⁻¹ᵃᵃᶜ = map(Δ -> on_architecture(arch, reciprocal_metric(on_architecture(CPU(), Δ))), (Δrᵃᵃᶠ, Δrᵃᵃᶜ))
 
     args = (topo, (Nx, Ny, Nz), (Hx, Hy, Hz))
 

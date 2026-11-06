@@ -1,4 +1,4 @@
-using Adapt
+using Adapt: Adapt
 
 using Oceananigans.Utils: Utils
 

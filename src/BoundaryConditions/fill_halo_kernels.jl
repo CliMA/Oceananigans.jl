@@ -85,7 +85,7 @@ end
     return (parent_size[dim1], parent_size[dim2])
 end
 
-# Windowed fields (from `view(field, indices...)`) have OffsetArray offsets equal to the kernel
+# Windowed fields (from `view(field, indices...)`) have offsets equal to the kernel
 # launch offset in windowed dimensions, and negative ones elsewhere; subtracting the positive part
 # avoids double-counting the launch offset and leaves only windows starting at a non-positive index.
 @inline periodic_offset(c, dim1, dim2, kernel_offset) = (min(kernel_offset[1], 0), min(kernel_offset[2], 0))

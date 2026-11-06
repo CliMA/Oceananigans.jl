@@ -1,16 +1,17 @@
-import Oceananigans: prognostic_state, restore_prognostic_state!
-using Oceananigans.BoundaryConditions:  construct_boundary_conditions_kernels, halo_fill_args, NFBC, MCBC,
-    BoundaryCondition, AbstractBoundaryConditionClassification, LeftBoundary, RightBoundary,
-    Zipper, validate_boundary_condition_architecture, validate_boundary_condition_topology
-using Oceananigans.Grids: parent_index_range, default_indices, validate_indices,
-    index_range_contains, halo_size, offset_data, interior_parent_indices
-using Oceananigans.Utils: @apply_regionally, getregion
+using Oceananigans: prognostic_state, restore_prognostic_state!
 using Oceananigans.Architectures: CPU, convert_to_device, on_architecture
+using Oceananigans.BoundaryConditions: AbstractBoundaryConditionClassification, BoundaryCondition, LeftBoundary, MCBC,
+                                       NFBC, RightBoundary, Zipper, construct_boundary_conditions_kernels,
+                                       halo_fill_args, validate_boundary_condition_architecture,
+                                       validate_boundary_condition_topology
+using Oceananigans.Grids: default_indices, halo_size, index_range_contains, interior_parent_indices, offset_data,
+                          parent_index_range, validate_indices
+using Oceananigans.Utils: @apply_regionally, getregion
 
-using LinearAlgebra: LinearAlgebra
-using KernelAbstractions: @kernel, @index
 using Base: @propagate_inbounds
 using GPUArraysCore: @allowscalar
+using KernelAbstractions: @index, @kernel
+using LinearAlgebra: LinearAlgebra
 using ReactantCore: ReactantCore
 using Statistics: Statistics
 
@@ -76,7 +77,7 @@ function validate_boundary_conditions(loc, grid, bcs)
         validate_boundary_condition_topology(bc, topo, side)
 
         # Check that boundary condition is valid given field location
-        topo isa Bounded && validate_boundary_condition_location(bc, ℓ, side)
+        topo isa BoundaryTopology && validate_boundary_condition_location(bc, ℓ, side)
 
         # Check that boundary condition arrays, if used, are on the right architecture
         validate_boundary_condition_architecture(bc, architecture(grid), side)
@@ -121,7 +122,7 @@ location in `(x, y, z)` respectively.
 Keyword arguments
 =================
 
-- `data :: OffsetArray`: An offset array with the fields data. If nothing is provided the
+- `data :: AbstractOffsetArray`: An offset array with the fields data. If nothing is provided the
   field is filled with zeros.
 - `boundary_conditions`: If nothing is provided, then field is created using the default
   boundary conditions via [`FieldBoundaryConditions`](@ref).
@@ -241,11 +242,11 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Return an `OffsetArray` of `parent(data)`.
+Return a `StaticStridesOffsetArray` of `parent(data)`.
 
 If `indices` is not (:, :, :), a `view` of `parent(data)` with `indices`.
 
-If `indices === (:, :, :)`, return an `OffsetArray` of `parent(data)`.
+If `indices === (:, :, :)`, return a `StaticStridesOffsetArray` of `parent(data)`.
 """
 function offset_windowed_data(data, data_indices, loc, grid, view_indices)
     halo = halo_size(grid)
@@ -331,12 +332,12 @@ function Base.view(f::Field, i, j, k)
     @apply_regionally begin
         view_indices = map(convert_colon_indices, view_indices, f.indices)
 
-        # Choice: OffsetArray of view of OffsetArray, or OffsetArray of view?
-        #     -> the first retains a reference to the original f.data (an OffsetArray)
+        # Choice: offset array of view of offset array, or offset array of view?
+        #     -> the first retains a reference to the original f.data (a StaticStridesOffsetArray)
         #     -> the second loses it, so we'd have to "re-offset" the underlying data to access.
         #     -> we choose the second here, opting to "reduce indirection" at the cost of "index recomputation".
         #
-        # OffsetArray around a view of parent with appropriate indices:
+        # StaticStridesOffsetArray around a view of parent with appropriate indices:
         windowed_data = offset_windowed_data(f.data, f.indices, loc, grid, view_indices)
 
         boundary_conditions = FieldBoundaryConditions(view_indices, f.boundary_conditions)
@@ -590,7 +591,17 @@ const ReducedField = Union{XReducedField,
 # Boundary conditions reduced in two directions --- the surviving index sits in the same slot on both admissible boundaries
 @inline BoundaryConditions.getbc(condition::XYReducedField, ::Integer, k::Integer, grid::AbstractGrid, args...) = @inbounds condition[1, 1, k]
 @inline BoundaryConditions.getbc(condition::YZReducedField, i::Integer, ::Integer, grid::AbstractGrid, args...) = @inbounds condition[i, 1, 1]
-# A field reduced in x and z is ambiguous: the surviving index is the first one on x boundaries and the second one on z boundaries
+
+# A field reduced in x and z has its y index first on x boundaries and second on z boundaries.
+# Regularized boundary conditions wrap it in an `XZReducedCondition` that knows its boundary;
+# otherwise we guess the boundary from the grid, as for a `FieldTimeSeries` reduced in x and z.
+@inline function BoundaryConditions.getbc(condition::XZReducedField, i₁::Integer, i₂::Integer, grid::AbstractGrid, args...)
+    Nz = size(grid, 3)
+    j = ifelse(Nz == 1, i₁, i₂)
+    return @inbounds condition[1, j, 1]
+end
+
+@inline BoundaryConditions.xz_reduced_getbc(condition::XZReducedField, j, grid, args...) = @inbounds condition[1, j, 1]
 
 # 0D boundary conditions --- easy case
 @inline BoundaryConditions.getbc(condition::XYZReducedField, ::Integer, ::Integer, ::AbstractGrid, args...) = @inbounds condition[1, 1, 1]
@@ -646,8 +657,13 @@ function BoundaryConditions.regularize_boundary_condition(condition::Field, grid
                             "or windowed along it to a single plane if at all, but has location $(location(condition)) " *
                             "and indices $indices."))
 
-    return window_to_boundary(condition, dim, side)
+    windowed = window_to_boundary(condition, dim, side)
+
+    return xz_reduced_boundary_condition(windowed, Val(dim))
 end
+
+xz_reduced_boundary_condition(condition, dim) = condition
+xz_reduced_boundary_condition(condition::XZReducedField, dim) = BoundaryConditions.xz_reduced_condition(condition, dim)
 
 boundary_plane(::Type{LeftBoundary},  condition, dim) = 1
 boundary_plane(::Type{RightBoundary}, condition, dim) = size(condition, dim)
@@ -1043,16 +1059,16 @@ Grids.nodes(f::Field; kwargs...) = nodes(f.grid, instantiated_location(f)...; in
 # `copyto!` straight into the existing device array. Serializing the device array directly
 # makes JLD2 reconstruct a *new* device array on read, doubling GPU memory at pickup and
 # OOMing for large fields. `parent` keeps the same indexing as `restored`'s parent below.
-function prognostic_state(field::Field)
+function Oceananigans.prognostic_state(field::Field)
     return (; data = on_architecture(CPU(), parent(field)),
               boundary_conditions = prognostic_state(field.boundary_conditions))
 end
 
-function restore_prognostic_state!(restored::Field, from)
+function Oceananigans.restore_prognostic_state!(restored::Field, from)
     # `from.data` is a host-side copy of the parent data; restore region-by-region when needed.
     @apply_regionally copyto!(parent(restored), from.data)
     haskey(from, :boundary_conditions) && restore_prognostic_state!(restored.boundary_conditions, from.boundary_conditions)
     return restored
 end
 
-restore_prognostic_state!(::Field, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::Field, ::Nothing) = nothing

@@ -1,8 +1,9 @@
+using SeawaterPolynomials: SeawaterPolynomials, BoussinesqEquationOfState, ρ
+
 using Oceananigans.AbstractOperations: AbstractOperation, KernelFunctionOperation
 using Oceananigans.BuoyancyFormulations: SeawaterBuoyancy, Zᶜᶜᶜ
 using Oceananigans.Fields: field
 using Oceananigans.Grids: Center
-using SeawaterPolynomials: SeawaterPolynomials, BoussinesqEquationOfState, ρ
 
 "Extend `SeawaterPolynomials.ρ` to compute density for a `KernelFunctionOperation` -
 **note** `eos` must be `BoussinesqEquationOfState` because a reference density is needed for the computation."
@@ -116,6 +117,11 @@ julia> density_field = Field(density_operation)
 
 Values for `temperature`, `salinity` and `geopotential_height` can be passed to
 `seawater_density` to override the defaults that are obtained from the `model`.
+
+References
+==========
+* Roquet, F., Madec, G., McDougall, T. J., & Barker, P. M. (2015). "Accurate polynomial expressions
+  for the density and specific volume of seawater using the TEOS-10 standard." Ocean Modelling, 90, 29-43.
 """
 function seawater_density(model::ModelsWithBuoyancy;
                           temperature = model_temperature(model.buoyancy.formulation, model),

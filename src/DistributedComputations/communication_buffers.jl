@@ -1,15 +1,12 @@
-using Oceananigans.BoundaryConditions
-using Oceananigans.BoundaryConditions: FieldBoundaryConditions, BoundaryCondition
-using Oceananigans.BoundaryConditions: MultiRegionCommunication, DistributedCommunication
+using KernelAbstractions: @index, @kernel, get_backend
+
+using Oceananigans.Architectures: Architectures, on_architecture
+using Oceananigans.BoundaryConditions: BoundaryConditions, Bottom, BottomAndTop, BoundaryCondition,
+                                       DistributedCommunication, East, FieldBoundaryConditions,
+                                       MultiRegionCommunication, North, South, SouthAndNorth, Top, West, WestAndEast
+using Oceananigans.Fields: Fields, communication_buffers
 using Oceananigans.Grids: CommunicatingSide, halo_size, size, topology
 using Oceananigans.Utils: launch!
-
-using Adapt
-
-using KernelAbstractions: @kernel, @index, get_backend
-
-import Oceananigans.Architectures: on_architecture
-import Oceananigans.Fields: communication_buffers
 
 const MCBC = BoundaryCondition{<:MultiRegionCommunication}
 const DCBC = BoundaryCondition{<:DistributedCommunication}
@@ -37,7 +34,7 @@ Adapt.adapt_structure(to, buff::CommunicationBuffers) =
                          Adapt.adapt(to, buff.northeast),
                          Adapt.adapt(to, buff.state))
 
-on_architecture(arch, buff::CommunicationBuffers) =
+Architectures.on_architecture(arch, buff::CommunicationBuffers) =
     CommunicationBuffers(on_architecture(arch, buff.west),
                          on_architecture(arch, buff.east),
                          on_architecture(arch, buff.south),
@@ -48,8 +45,7 @@ on_architecture(arch, buff::CommunicationBuffers) =
                          on_architecture(arch, buff.northeast),
                          on_architecture(arch, buff.state))
 
-
-communication_buffers(grid::DistributedGrid, data, boundary_conditions) = CommunicationBuffers(grid, data, boundary_conditions)
+Fields.communication_buffers(grid::DistributedGrid, data, boundary_conditions) = CommunicationBuffers(grid, data, boundary_conditions)
 
 """
 $(TYPEDSIGNATURES)
@@ -178,13 +174,13 @@ function x_communication_buffer(arch::Distributed, grid::AbstractGrid{<:Any, TX,
     _, Ty, Tz = size(parent(data))
     Ny = size(grid, 2)
     FT = eltype(data)
-    if (ranks(arch)[2] == 1) || ((TY <: Sides{<:CommunicatingSide}) != (TY <: Sides{<:Any, <:CommunicatingSide}))
-        send = on_architecture(arch, zeros(FT, H, Ty, Tz))
-        recv = on_architecture(arch, zeros(FT, H, Ty, Tz))
+    if (ranks(arch)[2] == 1) || ((TY <: TwoSided{<:CommunicatingSide}) != (TY <: TwoSided{<:Any, <:CommunicatingSide}))
+        send = communication_buffer_array(arch, FT, H, Ty, Tz)
+        recv = communication_buffer_array(arch, FT, H, Ty, Tz)
         return OneDBuffer(send, recv)
     else
-        send = on_architecture(arch, zeros(FT, H, Ny, Tz))
-        recv = on_architecture(arch, zeros(FT, H, Ny, Tz))
+        send = communication_buffer_array(arch, FT, H, Ny, Tz)
+        recv = communication_buffer_array(arch, FT, H, Ny, Tz)
         return TwoDBuffer(send, recv)
     end
 end
@@ -193,13 +189,13 @@ function y_communication_buffer(arch::Distributed, grid::AbstractGrid{<:Any, TX,
     Tx, _, Tz = size(parent(data))
     FT = eltype(data)
     Nx = size(grid, 1)
-    if (ranks(arch)[1] == 1) || ((TX <: Sides{<:CommunicatingSide}) != (TX <: Sides{<:Any, <:CommunicatingSide}))
-        send = on_architecture(arch, zeros(FT, Tx, H, Tz))
-        recv = on_architecture(arch, zeros(FT, Tx, H, Tz))
+    if (ranks(arch)[1] == 1) || ((TX <: TwoSided{<:CommunicatingSide}) != (TX <: TwoSided{<:Any, <:CommunicatingSide}))
+        send = communication_buffer_array(arch, FT, Tx, H, Tz)
+        recv = communication_buffer_array(arch, FT, Tx, H, Tz)
         return OneDBuffer(send, recv)
     else
-        send = on_architecture(arch, zeros(FT, Nx, H, Tz))
-        recv = on_architecture(arch, zeros(FT, Nx, H, Tz))
+        send = communication_buffer_array(arch, FT, Nx, H, Tz)
+        recv = communication_buffer_array(arch, FT, Nx, H, Tz)
         return TwoDBuffer(send, recv)
     end
 end
@@ -237,15 +233,15 @@ corner_communication_buffer(arch::Distributed, grid, data, Hx, Hy, xedge, ::Noth
 function corner_communication_buffer(arch::Distributed, grid, data, Hx, Hy, xedge, yedge)
     Tz = size(parent(data), 3)
     FT = eltype(data)
-    send = on_architecture(arch, zeros(FT, Hx, Hy, Tz))
-    recv = on_architecture(arch, zeros(FT, Hx, Hy, Tz))
+    send = communication_buffer_array(arch, FT, Hx, Hy, Tz)
+    recv = communication_buffer_array(arch, FT, Hx, Hy, Tz)
     return CornerBuffer(send, recv)
 end
 
 """
 $(TYPEDSIGNATURES)
 
-fills `buffers.send` from OffsetArray `c` preparing for message passing.
+fills `buffers.send` from the offset array `c` preparing for message passing.
 """
 function fill_send_buffers!(c::AbstractOffsetArray, buff::CommunicationBuffers, grid)
     Hx, Hy, _ = halo_size(grid)
@@ -319,7 +315,7 @@ fill_send_buffers!(c::AbstractOffsetArray, buff::CommunicationBuffers, grid, ::B
 """
 $(TYPEDSIGNATURES)
 
-fills OffsetArray `c` from `buffers.recv` after message passing occurred.
+fills the offset array `c` from `buffers.recv` after message passing occurred.
 """
 function recv_from_buffers!(c::AbstractOffsetArray, buff::CommunicationBuffers, grid)
     Hx, Hy, _ = halo_size(grid)

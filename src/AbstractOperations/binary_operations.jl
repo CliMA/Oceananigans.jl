@@ -32,7 +32,7 @@ end
 # Recompute location of binary operation
 @inline at(loc, β::BinaryOperation) = β.op(loc, at(loc, β.a), at(loc, β.b))
 
-indices(β::BinaryOperation) = intersect_indices(location(β), β.a, β.b)
+Fields.indices(β::BinaryOperation) = intersect_indices(location(β), β.a, β.b)
 
 """Create a binary operation for `op` acting on `a` and `b` at `Lc`, where
 `a` and `b` have location `La` and `Lb`."""
@@ -226,7 +226,7 @@ end
 ##### Nested computations
 #####
 
-function compute_at!(β::BinaryOperation, time)
+function Fields.compute_at!(β::BinaryOperation, time)
     compute_at!(β.a, time)
     compute_at!(β.b, time)
     return nothing

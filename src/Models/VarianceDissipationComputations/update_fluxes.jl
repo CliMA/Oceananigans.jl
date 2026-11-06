@@ -1,5 +1,5 @@
 using Oceananigans: fields
-using Oceananigans.Grids: topology, Flat
+using Oceananigans.Grids: Flat, topology
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel, tracer_advecting_velocities
 
 advecting_velocities(model, tracer_name) = model.velocities

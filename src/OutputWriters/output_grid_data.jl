@@ -40,7 +40,7 @@ function halo_fill_2d_metric(old_data, grid, LX, LY)
     Ni = Base.length(LX(), TX(), Nx)
     Nj = Base.length(LY(), TY(), Ny)
 
-    # Materialize the interior because a lazy view of a GPU-backed OffsetArray
+    # Materialize the interior because a lazy view of a GPU-backed StaticStridesOffsetArray
     # retains generic scalar indexing in its broadcast path.
     old_interior = old_data[1:Ni, 1:Nj]
 

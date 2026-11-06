@@ -1,8 +1,10 @@
 include(joinpath(@__DIR__, "..", "setup", "reactant_test_utils.jl"))
 
 using CUDA
+using KernelAbstractions: get_backend
 using Statistics: mean
-using Oceananigans.OutputReaders: cpu_interpolating_time_indices, Clamp, Cyclical
+using Oceananigans.OutputReaders: cpu_interpolating_time_indices, Clamp, Cyclical, update_field_time_series!, InMemory,
+                                  TimeSeriesInterpolation
 using Oceananigans.Units: Time
 
 arch = ReactantState()
@@ -145,6 +147,11 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
         constant_ibg = OceananigansReactantExt.constant_with_arch(cpu_ibg, ReactantState())
         @test architecture(constant_ibg) isa ReactantState
         @test architecture(constant_ibg.immersed_boundary.bottom_height) isa CPU
+
+        top_ibg = ImmersedBoundaryGrid(llg, GridFittedVerticalBoundaries(bottom_height=ridge, top_height=0.9))
+        top_ib′ = OceananigansReactantExt.deconcretize(top_ibg.immersed_boundary)
+        @test parent(top_ib′.bottom_height) isa Array
+        @test parent(top_ib′.top_height) isa Array
 
         @info "  Testing constantified OrthogonalSphericalShellGrid construction [$FT]..."
         rllg = RotatedLatitudeLongitudeGrid(arch, FT; size = (4, 4, 4),
@@ -298,6 +305,23 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
         @test Array(interior(u)) == repeat(column, outer=(4, 4, 1))
     end
 
+    @testset "LatitudeLongitudeGrid with a non-static vertical coordinate" begin
+        # `on_architecture(::ReactantState, ::LatitudeLongitudeGrid)` rebuilds the grid field by
+        # field. Vertical coordinates other than `StaticVerticalDiscretization` used to hit a
+        # MethodError there.
+        @info "  Testing LatitudeLongitudeGrid with MutableVerticalDiscretization..."
+        grid = LatitudeLongitudeGrid(arch; size = (4, 4, 4),
+                                     longitude = [0, 1, 2, 3, 4],
+                                     latitude = [0, 1, 2, 3, 4],
+                                     z = MutableVerticalDiscretization((0, 1)))
+
+        @test architecture(grid) isa ReactantState
+        @test grid.z isa MutableVerticalDiscretization
+        @test grid.z.cᵃᵃᶠ isa StaticStridesOffsetArray{Float64, 1, <:Any, <:Any, <:Reactant.AbstractConcreteArray}
+        @test architecture(grid.z.σᶜᶜⁿ) isa ReactantState
+        @test architecture(grid.z.ηⁿ) isa ReactantState
+    end
+
     @testset "Computed fields on a grid with an array-valued vertical coordinate" begin
         Nz = 4
         z = collect(range(-1, 0, length = Nz + 1))
@@ -447,4 +471,106 @@ end
                               topology = (Periodic, Flat, Bounded))
     δρᵢ  = CenterField(grid_ad)
     @test maximum(δρᵢ) == maximum(Array(interior(δρᵢ)))
+end
+
+# A field set from another one on a different grid is interpolated on the CPU, with the source's halos
+# filled: the cells next to a boundary read them
+@testset "set! between ReactantState fields on different grids" begin
+    function coarse_to_fine(arch)
+        coarse = CenterField(RectilinearGrid(arch; size = (2, 1, 1), x = (0, 1), y = (0, 1), z = (0, 1)))
+        fine = CenterField(RectilinearGrid(arch; size = (4, 1, 1), x = (0, 1), y = (0, 1), z = (0, 1)))
+        set!(coarse, (x, y, z) -> x)
+        set!(fine, coarse)
+        return Array(interior(fine))
+    end
+
+    @test coarse_to_fine(ReactantState()) ≈ coarse_to_fine(CPU())
+end
+
+# Host data with missing values (a NetCDF read) reaches ReactantState as a float array with NaN, plain, viewed or
+# reshaped, and reshaped host data keeps its shape
+@testset "on_architecture of host data with missing values and reshaped host data" begin
+    data = Union{Missing, Float32}[1, missing, 1, 2]
+    for (host, expected) in ((data, Float32[1, NaN, 1, 2]),
+                             (view(data, 1:3), Float32[1, NaN, 1]),
+                             (reshape(data, 2, 2), Float32[1 1; NaN 2]),
+                             (reshape(view(data, 1:4), 2, 2), Float32[1 1; NaN 2]),
+                             (reshape(view(Float32[1, 2, 3, 4], 1:4), 1, 4), Float32[1 2 3 4]))
+        device = on_architecture(ReactantState(), host)
+        @test device isa Reactant.AbstractConcreteArray{Float32}
+        @test size(device) == size(host)
+        @test isequal(Array(device), expected)
+    end
+end
+
+@testset "Updating a FieldTimeSeries whose window holds every snapshot, at a traced time" begin
+    times = [0.0, 1.0, 2.0, 3.0]
+    grid = RectilinearGrid(ReactantState(); size = (2, 2, 2), extent = (1, 1, 1))
+    fts = FieldTimeSeries{Center, Center, Center}(grid, times; backend = InMemory(length(times)))
+    refresh!(fts, t) = (update_field_time_series!(fts, Time(t)); nothing)
+
+    t = Reactant.ConcreteRNumber(1.5)
+    @jit refresh!(fts, t)
+    @test fts.backend.start == 1
+    @test length(fts.backend) == length(times)
+end
+
+@testset "A Field of a TimeSeriesInterpolation on a device clock, at a traced time" begin
+    grid = RectilinearGrid(ReactantState(); size = (2, 2, 2), extent = (1, 1, 1))
+    fts = FieldTimeSeries{Center, Center, Center}(grid, [0.0, 10.0])
+    set!(fts[1], 1)
+    set!(fts[2], 3)
+    clock = Clock(grid)
+    interpolated = Field(TimeSeriesInterpolation(fts, grid; clock))
+
+    refresh!(field, clock, t) = (clock.time = t; compute!(field); nothing)
+    @jit raise = true refresh!(interpolated, clock, Reactant.ConcreteRNumber(5.0))
+    @test all(Array(interior(interpolated)) .≈ 2)
+end
+
+@kernel function _bracket!(low, high, column, z, N)
+    n = @index(Global, Linear)
+    i₁, i₂ = Oceananigans.Fields.index_binary_search(column, z[n], N)
+    @inbounds low[n] = i₁
+    @inbounds high[n] = i₂
+end
+
+bracket!(low, high, column, z) = _bracket!(get_backend(low), 16)(low, high, column, z, length(column); ndrange=length(low))
+
+# A search with an early `return` inside its loop cannot be raised ("cannot raise op to stablehlo")
+@testset "index_binary_search inside a raised kernel" begin
+    column = Float32.(cumsum(1:16))
+    midpoints = (column[1:end-1] .+ column[2:end]) ./ 2
+    points = vcat(column, midpoints, column[1] - 1, column[end] + 1)
+
+    low = Reactant.to_rarray(zeros(Int, length(points)))
+    high = Reactant.to_rarray(zeros(Int, length(points)))
+    reactant_column, reactant_points = Reactant.to_rarray(column), Reactant.to_rarray(points)
+    raised_bracket! = @compile raise_first=true raise=true bracket!(low, high, reactant_column, reactant_points)
+    raised_bracket!(low, high, reactant_column, reactant_points)
+
+    expected = [Oceananigans.Fields.index_binary_search(column, z, length(column)) for z in points]
+    @test Array(low) == first.(expected)
+    @test Array(high) == last.(expected)
+end
+
+@kernel function _store_adaptive_Δt!(c, td)
+    i, j, k = @index(Global, NTuple)
+    @inbounds c[i, j, k] = td.Δt
+end
+
+function store_adaptive_Δt!(c, td, Δt)
+    td.Δt[] = Δt
+    grid = c.grid
+    launch!(architecture(grid), grid, :xyz, _store_adaptive_Δt!, c, td)
+    return nothing
+end
+
+# A traced Δt held by AdaptiveVerticallyImplicitDiscretization must be adapted when it is passed to a kernel
+@testset "AdaptiveVerticallyImplicitDiscretization with a traced Δt in a kernel" begin
+    grid = RectilinearGrid(ReactantState(); size = (2, 2, 2), extent = (1, 1, 1))
+    c = CenterField(grid)
+    td = Oceananigans.TimeSteppers.AdaptiveVerticallyImplicitDiscretization(0.5, Ref(Reactant.ConcreteRNumber(0.0)))
+    @jit store_adaptive_Δt!(c, td, Reactant.ConcreteRNumber(3.0))
+    @test all(Array(interior(c)) .== 3)
 end

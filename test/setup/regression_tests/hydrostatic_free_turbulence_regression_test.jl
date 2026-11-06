@@ -7,7 +7,8 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceMo
 using Oceananigans.TurbulenceClosures: HorizontalScalarDiffusivity
 
 using Oceananigans.DistributedComputations: Distributed, DistributedGrid, DistributedComputations, all_reduce
-using Oceananigans.DistributedComputations: reconstruct_global_topology, partition, cpu_architecture
+using Oceananigans.Architectures: cpu_architecture
+using Oceananigans.DistributedComputations: reconstruct_global_topology, partition
 
 using JLD2
 
@@ -117,7 +118,7 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; reg
     )
 
     if !regenerate_data
-        datadep_path = "regression_truth_data_v2/" * output_filename
+        datadep_path = "regression_truth_data_v3/" * output_filename
         regression_data_path = @datadep_str datadep_path
         file = jldopen(regression_data_path)
 

@@ -40,7 +40,7 @@ function RectilinearGrid{TX, TY, TZ, SZ}(arch::Arch, Nx, Ny, Nz, Hx, Hy, Hz,
                                           z    :: CZ,
                                          Δx⁻¹ᶠᵃᵃ :: DXF, Δx⁻¹ᶜᵃᵃ :: DXC,
                                          Δy⁻¹ᵃᶠᵃ :: DYF, Δy⁻¹ᵃᶜᵃ :: DYC) where {SZ, Arch, FT, TX, TY, TZ,
-                                                                                DXF, DXC, XF, XC, DYF, DYC, YF, YC, CZ}
+                                                                               DXF, DXC, XF, XC, DYF, DYC, YF, YC, CZ}
 
     return RectilinearGrid{FT, TX, TY, TZ, CZ, DXF, DXC, XF, XC, DYF, DYC, YF, YC, Arch, SZ}(arch, Nx, Ny, Nz,
                                                                                              Hx, Hy, Hz, Lx, Ly, Lz,
@@ -54,7 +54,7 @@ function RectilinearGrid{TX, TY, TZ, SZ}(arch, Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, L
                                          Δyᵃᶠᵃ, Δyᵃᶜᵃ, yᵃᶠᵃ, yᵃᶜᵃ, z) where {TX, TY, TZ, SZ}
 
     spacings = (Δxᶠᵃᵃ, Δxᶜᵃᵃ, Δyᵃᶠᵃ, Δyᵃᶜᵃ)
-    reciprocal_spacings = map(Δ -> on_architecture(arch, reciprocal(on_architecture(CPU(), Δ))), spacings)
+    reciprocal_spacings = map(Δ -> on_architecture(arch, reciprocal_metric(on_architecture(CPU(), Δ))), spacings)
 
     return RectilinearGrid{TX, TY, TZ, SZ}(arch, Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz,
                                            Δxᶠᵃᵃ, Δxᶜᵃᵃ, xᶠᵃᵃ, xᶜᵃᵃ,

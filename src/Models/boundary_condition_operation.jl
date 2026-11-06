@@ -1,9 +1,10 @@
-using Oceananigans: fields
-using Oceananigans.BoundaryConditions: getbc, bc_str
-using Oceananigans.Fields: Field, location
-using Oceananigans.AbstractOperations: KernelFunctionOperation
-using Oceananigans.Utils: Utils
 using Adapt: Adapt
+
+using Oceananigans: fields
+using Oceananigans.AbstractOperations: KernelFunctionOperation
+using Oceananigans.BoundaryConditions: bc_str, getbc
+using Oceananigans.Fields: Field, location
+using Oceananigans.Utils: Utils
 
 struct BoundaryConditionKernelFunction{Side, BC}
     bc :: BC

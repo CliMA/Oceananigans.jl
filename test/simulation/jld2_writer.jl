@@ -32,6 +32,53 @@ function test_jld2_constant_field_output(arch)
     return nothing
 end
 
+# A kernel function that holds many fields, so that a field of its operation is large
+struct ManyFieldsKernelFunction{F}
+    fields :: F
+end
+
+@inline (kernel::ManyFieldsKernelFunction)(i, j, k, grid) = @inbounds kernel.fields[1][i, j, k]
+Adapt.adapt_structure(to, kernel::ManyFieldsKernelFunction) = ManyFieldsKernelFunction(Adapt.adapt(to, kernel.fields))
+
+function test_jld2_large_outputs(arch)
+    grid = RectilinearGrid(arch, size=(2, 2, 8), extent=(1, 1, 1))
+    model = NonhydrostaticModel(grid)
+
+    names = ntuple(n -> Symbol(:c, n), 45)
+    kernel = ManyFieldsKernelFunction(NamedTuple{names}(ntuple(n -> CenterField(grid), 45)))
+    operation = KernelFunctionOperation{Center, Center, Center}(kernel, grid)
+    outputs = (; slice = Field(operation; indices=(:, :, 1)),
+                 column = Field(Integral(operation, dims=3)))
+
+    # Initializing and writing the outputs must not need stack in proportion to their
+    # size, so run the simulation on a task with a 1 MiB stack.
+    mktempdir() do dir
+        simulation = Simulation(model; Δt=1, stop_iteration=1, verbose=false)
+        simulation.output_writers[:large] = JLD2Writer(model, outputs;
+                                                       dir,
+                                                       filename = "large_outputs.jld2",
+                                                       schedule = IterationInterval(1),
+                                                       overwrite_files = true)
+
+        task = Task(() -> run!(simulation), 2^20)
+        schedule(task)
+        outcome = try
+            wait(task)
+            :completed
+        catch err
+            err.task.exception
+        end
+        @test outcome === :completed
+
+        jldopen(joinpath(dir, "large_outputs.jld2")) do file
+            @test file["timeseries/slice/serialized/indices"] == (:, :, 1:1)
+            @test haskey(file, "timeseries/column/1")
+        end
+    end
+
+    return nothing
+end
+
 function jld2_sliced_field_output(model, outputs=model.velocities)
 
     model.clock.iteration = 0
@@ -194,17 +241,21 @@ function test_jld2_compression(arch)
     grid = RectilinearGrid(arch, size=(16, 16, 16), extent=(1, 1, 1))
     model = NonhydrostaticModel(grid; tracers=:c)
 
-    file_sizes = Dict{Bool, Int}()
+    compressors = ("none" => false,
+                   "deflate" => true,
+                   "zstd" => ZstdFilter(),
+                   "shuffle-zstd" => [Shuffle(), ZstdFilter(1)])
+    file_sizes = Dict{String, Int}()
 
     mktempdir() do dir
-        for compress in (false, true)
+        for (label, compress) in compressors
             model.clock.iteration = 0
             model.clock.time = 0.0
             set!(model, c=(x, y, z) -> exp(z))
 
             simulation = Simulation(model; Δt=1, stop_iteration=1, verbose=false)
 
-            filename = joinpath(dir, "compression_test_$compress.jld2")
+            filename = joinpath(dir, "compression_test_$label.jld2")
             simulation.output_writers[:tracers] = JLD2Writer(model, model.tracers;
                                                              filename,
                                                              schedule = IterationInterval(1),
@@ -213,14 +264,16 @@ function test_jld2_compression(arch)
 
             run!(simulation)
 
-            file_sizes[compress] = filesize(filename)
+            file_sizes[label] = filesize(filename)
         end
 
-        c_uncompressed = FieldTimeSeries(joinpath(dir, "compression_test_false.jld2"), "c")
-        c_compressed = FieldTimeSeries(joinpath(dir, "compression_test_true.jld2"), "c")
+        c_uncompressed = FieldTimeSeries(joinpath(dir, "compression_test_none.jld2"), "c")
 
-        @test parent(c_compressed) == parent(c_uncompressed)
-        @test file_sizes[true] < file_sizes[false]
+        for label in ("deflate", "zstd", "shuffle-zstd")
+            c_compressed = FieldTimeSeries(joinpath(dir, "compression_test_$label.jld2"), "c")
+            @test parent(c_compressed) == parent(c_uncompressed)
+            @test file_sizes[label] < file_sizes["none"]
+        end
     end
     return nothing
 end
@@ -234,8 +287,9 @@ function test_jld2_compress_keyword_precedence(arch)
                                      schedule = IterationInterval(1),
                                      kwargs...)
 
-    @test writer().jld2_kw[:compress] == true
+    @test writer().jld2_kw[:compress] == [Shuffle(), ZstdFilter(1)]
     @test writer(compress=false).jld2_kw[:compress] == false
+    @test writer(compress=true).jld2_kw[:compress] == true
     @test writer(jld2_kw=Dict{Symbol, Any}(:compress => true)).jld2_kw[:compress] == true
 
     # An explicit :compress entry in jld2_kw takes precedence over the compress keyword
@@ -609,5 +663,6 @@ for arch in archs
         @test size(parent(ηt[1])) == (4, 4, 1)
 
         test_jld2_constant_field_output(arch)
+        test_jld2_large_outputs(arch)
     end
 end

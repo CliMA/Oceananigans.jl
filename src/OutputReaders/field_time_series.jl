@@ -126,6 +126,11 @@ t = fts.times
 Δt = t[end] - t[end-1]
 period = t[end] - t[1] + Δt
 ```
+
+For calendar times (e.g. `DateTime`), `period` can be a whole number of `Dates.Year`s:
+times are then folded into the series by calendar years, so that a climatology repeats
+on the same calendar dates every year. A 29 February that falls outside a leap year
+reads 28 February.
 """
 struct Cyclical{FT}
     period :: FT

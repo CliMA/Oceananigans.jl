@@ -77,6 +77,32 @@ end
     @test saved.dynamics_calls == [4]
 end
 
+@testset "Tracked fields at final positions [HydrostaticFreeSurfaceModel, $arch, $FT, $timestepper]" for
+    arch in archs, FT in float_types,
+    timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta2, :SplitRungeKutta3, :SplitRungeKutta4, :SplitRungeKutta5)
+
+    grid = RectilinearGrid(arch, FT; size=(4, 4, 4), x=(0, 1000), y=(0, 1000), z=(-1000, 0))
+    concentration = CenterField(grid)
+    set!(concentration, (x, y, z) -> x)
+
+    values = (x = FT[300], y = FT[300], z = FT[-500], concentration = FT[-1])
+    properties = StructArray(on_architecture(arch, values))
+    particles = LagrangianParticles(properties; tracked_fields=(; concentration))
+    model = HydrostaticFreeSurfaceModel(grid; particles, timestepper, buoyancy=nothing, tracers=())
+    set!(model, u = 10)
+    time_step!(model, FT(1))
+
+    saved = on_architecture(CPU(), fetch_output(particles, model))
+    @test saved.x ≈ FT[310]
+    @test saved.concentration ≈ FT[310]
+
+    set!(concentration, (x, y, z) -> x + FT(1000))
+    time_step!(model, FT(1))
+    saved = on_architecture(CPU(), fetch_output(particles, model))
+    @test saved.x ≈ FT[320]
+    @test saved.concentration ≈ FT[1320]
+end
+
 function particle_tracking_simulation(; grid, particles, dir, timestepper=:RungeKutta3, velocities=nothing)
     Arch = typeof(architecture(grid))
 
@@ -408,7 +434,8 @@ function run_immersed_boundary_bounce_tests(arch, FT)
 
     @testset "Lagrangian particles bouncing off an immersed boundary [$(typeof(arch)), $FT] with restitution $restitution" for restitution in (1.0, 0.5)
         x, y, z = on_architecture.(Ref(arch), (copy(x₀), copy(y₀), copy(z₀)))
-        particles = LagrangianParticles(; x, y, z, restitution)
+        boundary_conditions = ParticleBoundaryConditions(ReflectingBoundary(restitution))
+        particles = LagrangianParticles(; x, y, z, boundary_conditions)
         model = HydrostaticFreeSurfaceModel(grid; particles, velocities, buoyancy=nothing, tracers=())
         time_step!(model, 1)
 
