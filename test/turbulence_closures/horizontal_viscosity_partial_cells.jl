@@ -24,9 +24,9 @@ end
 #     [vec(Gu); vec(Gv)] = A U,    Gu = -∂ⱼτ₁ⱼ,  Gv = -∂ⱼτ₂ⱼ,
 #
 # i.e., A is the discrete version of the viscous operator acting on (u, v): ν ∇² for a Laplacian viscosity,
-# -ν ∇⁴ for a biharmonic one, and so on for any closure whose stresses are linear in (u, v). We build A one column
-# at a time: column n is the tendency produced by a velocity that is 1 at point n and 0 everywhere else. A contains
-# only the viscous term (no pressure, free surface, Coriolis, or advection).
+# -ν ∇⁴ for a biharmonic one, and so on for any closure whose stresses are linear in (u, v).
+# We build A one column at a time: column n is the tendency produced by a velocity that is 1 at point n and 0 everywhere else.
+# Matrix A contains only the viscous term (no pressure, free surface, Coriolis, or advection).
 #
 # M holds the volumes Vᶠᶜᶜ (u points) and Vᶜᶠᶜ (v points), so the discrete kinetic energy is E = ½ Uᵀ diag(M) U.
 # A itself is not symmetric, because each row is divided by its own volume. The viscous operator is self-adjoint
