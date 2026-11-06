@@ -5,7 +5,7 @@ using Oceananigans.BoundaryConditions: Mixed, MixedBoundaryCondition
 using Oceananigans.BoundaryConditions: Zipper, ContinuousBoundaryFunction, DiscreteBoundaryFunction, regularize_field_boundary_conditions
 using Oceananigans.BoundaryConditions: compute_x_bcs!, compute_y_bcs!, compute_z_bcs!
 using Oceananigans.Fields: Face, Center
-using Oceananigans.Grids: Pole
+using Oceananigans.Grids: Pole, with_halo
 
 simple_bc(ξ, η, t) = exp(ξ) * cos(η) * sin(t)
 
