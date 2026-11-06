@@ -1,7 +1,7 @@
 # Every rank runs the same files in the same order; a failing testset makes the rank exit non-zero.
 
 const mpi_groups = Dict(
-    "distributed"                           => ["mpi/architectures", "mpi/models"],
+    "distributed"                           => ["mpi/architectures", "mpi/models", "mpi/boundary_transport", "mpi/distributed_communication"],
     "distributed_solvers"                   => ["mpi/transpose", "mpi/poisson_solvers", "mpi/conjugate_gradient_solver"],
     "distributed_hydrostatic_model"         => ["mpi/hydrostatic_model", "mpi/split_explicit_boundaries"],
     "distributed_hydrostatic_regression"    => ["regression/hydrostatic"],
