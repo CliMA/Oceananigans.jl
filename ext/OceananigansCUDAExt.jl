@@ -91,6 +91,9 @@ AC.architecture(::Type{CuDeviceArray}) = CUDAGPU()
 AC.architecture(::CuSparseMatrixCSC) = CUDAGPU()
 AC.array_type(::AC.GPU{CUDABackend}) = CuArray
 
+# Page-locked host memory whose device pointer is also a valid host pointer, for MPI without CUDA support
+DC.host_mapped_zeros(::CUDAGPU, FT, dims...) = fill!(CuArray{FT, length(dims), CUDA.HostMemory}(undef, dims...), zero(FT))
+
 AC.on_architecture(::CUDAGPU, a::Number) = a
 AC.on_architecture(::AC.CPU, a::CuArray) = Array(a)
 AC.on_architecture(::CUDAGPU, a::Array) = CuArray(a)

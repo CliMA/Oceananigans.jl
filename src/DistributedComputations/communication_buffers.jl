@@ -175,12 +175,12 @@ function x_communication_buffer(arch::Distributed, grid::AbstractGrid{<:Any, TX,
     Ny = size(grid, 2)
     FT = eltype(data)
     if (ranks(arch)[2] == 1) || ((TY <: TwoSided{<:CommunicatingSide}) != (TY <: TwoSided{<:Any, <:CommunicatingSide}))
-        send = on_architecture(arch, zeros(FT, H, Ty, Tz))
-        recv = on_architecture(arch, zeros(FT, H, Ty, Tz))
+        send = communication_buffer_array(arch, FT, H, Ty, Tz)
+        recv = communication_buffer_array(arch, FT, H, Ty, Tz)
         return OneDBuffer(send, recv)
     else
-        send = on_architecture(arch, zeros(FT, H, Ny, Tz))
-        recv = on_architecture(arch, zeros(FT, H, Ny, Tz))
+        send = communication_buffer_array(arch, FT, H, Ny, Tz)
+        recv = communication_buffer_array(arch, FT, H, Ny, Tz)
         return TwoDBuffer(send, recv)
     end
 end
@@ -190,12 +190,12 @@ function y_communication_buffer(arch::Distributed, grid::AbstractGrid{<:Any, TX,
     FT = eltype(data)
     Nx = size(grid, 1)
     if (ranks(arch)[1] == 1) || ((TX <: TwoSided{<:CommunicatingSide}) != (TX <: TwoSided{<:Any, <:CommunicatingSide}))
-        send = on_architecture(arch, zeros(FT, Tx, H, Tz))
-        recv = on_architecture(arch, zeros(FT, Tx, H, Tz))
+        send = communication_buffer_array(arch, FT, Tx, H, Tz)
+        recv = communication_buffer_array(arch, FT, Tx, H, Tz)
         return OneDBuffer(send, recv)
     else
-        send = on_architecture(arch, zeros(FT, Nx, H, Tz))
-        recv = on_architecture(arch, zeros(FT, Nx, H, Tz))
+        send = communication_buffer_array(arch, FT, Nx, H, Tz)
+        recv = communication_buffer_array(arch, FT, Nx, H, Tz)
         return TwoDBuffer(send, recv)
     end
 end
@@ -233,8 +233,8 @@ corner_communication_buffer(arch::Distributed, grid, data, Hx, Hy, xedge, ::Noth
 function corner_communication_buffer(arch::Distributed, grid, data, Hx, Hy, xedge, yedge)
     Tz = size(parent(data), 3)
     FT = eltype(data)
-    send = on_architecture(arch, zeros(FT, Hx, Hy, Tz))
-    recv = on_architecture(arch, zeros(FT, Hx, Hy, Tz))
+    send = communication_buffer_array(arch, FT, Hx, Hy, Tz)
+    recv = communication_buffer_array(arch, FT, Hx, Hy, Tz)
     return CornerBuffer(send, recv)
 end
 

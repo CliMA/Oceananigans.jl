@@ -1,6 +1,7 @@
 include(joinpath(@__DIR__, "..", "setup", "reactant_test_utils.jl"))
 
 using CUDA
+using KernelAbstractions: get_backend
 using Statistics: mean
 using Oceananigans.OutputReaders: cpu_interpolating_time_indices, Clamp, Cyclical, update_field_time_series!, InMemory,
                                   TimeSeriesInterpolation
@@ -304,6 +305,33 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
         @test Array(interior(u)) == repeat(column, outer=(4, 4, 1))
     end
 
+    @testset "Indexing fields with a traced element type" begin
+        grid = RectilinearGrid(arch; size = (4, 4, 4), extent = (1, 1, 1))
+        u = CenterField(grid)
+        values = reshape(collect(1.0:64.0), 4, 4, 4)
+        set!(u, values)
+
+        # Fields allocated inside a compiled function have a traced element type. Indexing them must not
+        # be ambiguous with Reactant's methods for arrays of traced numbers, and must drop the index along
+        # reduced dimensions.
+        function index_traced_fields!(u)
+            full = CenterField(u.grid)
+            interior(full) .= interior(u)
+            column = Field{Nothing, Nothing, Center}(u.grid)
+            interior(column) .= 3
+            @allowscalar begin
+                column[1, 1, 2] = 2 * column[3, 4, 2]
+                u[1, 1, 1] = full[2, 2, 1] + column[2, 3, 2]
+            end
+            return nothing
+        end
+
+        compiled_index_traced_fields! = @compile sync=true index_traced_fields!(u)
+        compiled_index_traced_fields!(u)
+
+        @test Array(interior(u))[1, 1, 1] ≈ values[2, 2, 1] + 6
+    end
+
     @testset "LatitudeLongitudeGrid with a non-static vertical coordinate" begin
         # `on_architecture(::ReactantState, ::LatitudeLongitudeGrid)` rebuilds the grid field by
         # field. Vertical coordinates other than `StaticVerticalDiscretization` used to hit a
@@ -525,6 +553,32 @@ end
     refresh!(field, clock, t) = (clock.time = t; compute!(field); nothing)
     @jit raise = true refresh!(interpolated, clock, Reactant.ConcreteRNumber(5.0))
     @test all(Array(interior(interpolated)) .≈ 2)
+end
+
+@kernel function _bracket!(low, high, column, z, N)
+    n = @index(Global, Linear)
+    i₁, i₂ = Oceananigans.Fields.index_binary_search(column, z[n], N)
+    @inbounds low[n] = i₁
+    @inbounds high[n] = i₂
+end
+
+bracket!(low, high, column, z) = _bracket!(get_backend(low), 16)(low, high, column, z, length(column); ndrange=length(low))
+
+# A search with an early `return` inside its loop cannot be raised ("cannot raise op to stablehlo")
+@testset "index_binary_search inside a raised kernel" begin
+    column = Float32.(cumsum(1:16))
+    midpoints = (column[1:end-1] .+ column[2:end]) ./ 2
+    points = vcat(column, midpoints, column[1] - 1, column[end] + 1)
+
+    low = Reactant.to_rarray(zeros(Int, length(points)))
+    high = Reactant.to_rarray(zeros(Int, length(points)))
+    reactant_column, reactant_points = Reactant.to_rarray(column), Reactant.to_rarray(points)
+    raised_bracket! = @compile raise_first=true raise=true bracket!(low, high, reactant_column, reactant_points)
+    raised_bracket!(low, high, reactant_column, reactant_points)
+
+    expected = [Oceananigans.Fields.index_binary_search(column, z, length(column)) for z in points]
+    @test Array(low) == first.(expected)
+    @test Array(high) == last.(expected)
 end
 
 @kernel function _store_adaptive_Δt!(c, td)
