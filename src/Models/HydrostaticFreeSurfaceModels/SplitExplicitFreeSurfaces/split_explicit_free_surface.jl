@@ -1,13 +1,11 @@
-using Oceananigans: Oceananigans
-using Oceananigans.Grids: Grids, Flat
-using Oceananigans.Grids: halo_size, on_architecture, minimum_xspacing, minimum_yspacing, with_halo, connected_range
-using Oceananigans.BoundaryConditions: BoundaryCondition, NormalFlow
-using Oceananigans.Fields: TracerFields, XFaceField, YFaceField
-using Oceananigans.Utils: prettytime, KernelParameters
 using Adapt: Adapt
 
-import Oceananigans: prognostic_state, restore_prognostic_state!
-import ..HydrostaticFreeSurfaceModels: hydrostatic_tendency_fields
+using Oceananigans: Oceananigans, prognostic_state, restore_prognostic_state!
+using Oceananigans.BoundaryConditions: BoundaryCondition, NormalFlow
+using Oceananigans.Fields: TracerFields, XFaceField, YFaceField
+using Oceananigans.Grids: Grids, Flat, connected_range, halo_size, minimum_xspacing, minimum_yspacing, on_architecture,
+                          with_halo
+using Oceananigans.Utils: KernelParameters, prettytime
 
 #####
 ##### Substepping halo strategies
@@ -254,7 +252,7 @@ split_explicit_substepping(::Nothing, ::Nothing, ::Nothing, grid, averaging_kern
 split_explicit_substepping(::Nothing, ::Nothing, fixed_Δt, grid, averaging_kernel, gravitational_acceleration) =
     split_explicit_substepping(nothing, MINIMUM_SUBSTEPS, fixed_Δt, grid, averaging_kernel, gravitational_acceleration)
 
-Base.@constprop :aggressive function hydrostatic_tendency_fields(velocities, free_surface::SplitExplicitFreeSurface, grid, tracer_names, bcs)
+Base.@constprop :aggressive function HydrostaticFreeSurfaceModels.hydrostatic_tendency_fields(velocities, free_surface::SplitExplicitFreeSurface, grid, tracer_names, bcs)
     u = XFaceField(grid, boundary_conditions=bcs.u)
     v = YFaceField(grid, boundary_conditions=bcs.v)
 
@@ -270,7 +268,7 @@ end
 const ConnectedTopology = Union{TwoSided{Connected}, TwoSided{<:Any, Connected}}
 
 # Internal function for HydrostaticFreeSurfaceModel
-function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_halos}, velocities, grid, bcs) where {extend_halos}
+function HydrostaticFreeSurfaceModels.materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_halos}, velocities, grid, bcs) where {extend_halos}
     TX, TY, _   = topology(grid)
     substepping = free_surface.substepping
 
@@ -330,7 +328,7 @@ end
 ##### GravityWaveRadiation–SurfaceWaveRadiation pairing
 #####
 
-function default_free_surface_boundary_conditions(free_surface::SplitExplicitFreeSurface, user_boundary_conditions)
+function HydrostaticFreeSurfaceModels.default_free_surface_boundary_conditions(free_surface::SplitExplicitFreeSurface, user_boundary_conditions)
     g = free_surface.gravitational_acceleration
     U = get(user_boundary_conditions, :U, nothing)
     V = get(user_boundary_conditions, :V, nothing)
@@ -512,17 +510,17 @@ end
 ##### Checkpointing
 #####
 
-function prognostic_state(fs::SplitExplicitFreeSurface)
+function Oceananigans.prognostic_state(fs::SplitExplicitFreeSurface)
     return (displacement = prognostic_state(fs.displacement),
             barotropic_velocities = prognostic_state(fs.barotropic_velocities),
             timestepper = prognostic_state(fs.timestepper))
 end
 
-function restore_prognostic_state!(restored::SplitExplicitFreeSurface, from)
+function Oceananigans.restore_prognostic_state!(restored::SplitExplicitFreeSurface, from)
     restore_prognostic_state!(restored.displacement, from.displacement)
     restore_prognostic_state!(restored.barotropic_velocities, from.barotropic_velocities)
     restore_prognostic_state!(restored.timestepper, from.timestepper)
     return restored
 end
 
-restore_prognostic_state!(::SplitExplicitFreeSurface, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::SplitExplicitFreeSurface, ::Nothing) = nothing

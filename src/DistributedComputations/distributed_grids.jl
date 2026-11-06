@@ -1,28 +1,21 @@
-using MPI
-using OffsetArrays
+using Oceananigans.Grids: Grids, AbstractGrid, AbstractTopology, LatitudeLongitudeGrid, RectilinearGrid,
+                          StaticVerticalDiscretization, architecture, constructor_arguments, cpu_face_constructor_x,
+                          cpu_face_constructor_y, cpu_face_constructor_z, generate_coordinate, halo_size,
+                          metrics_precomputed, pop_flat_elements, regular_nodes, size, size_summary, topology,
+                          total_length, validate_lat_lon_grid_args, validate_rectilinear_grid_args, with_halo,
+                          with_precomputed_metrics
 
-using Oceananigans.Fields
-using Oceananigans.Grids: AbstractGrid, topology, size, halo_size, architecture, pop_flat_elements,
-                          validate_rectilinear_grid_args, validate_lat_lon_grid_args,
-                          generate_coordinate, with_precomputed_metrics,
-                          cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z,
-                          metrics_precomputed, constructor_arguments,
-                          AbstractTopology, StaticVerticalDiscretization, regular_faces, regular_centers, total_length
-
-
-import Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid,
-                           with_halo, with_number_type, size_summary, generate_coordinate
 
 # This rank's part of a regular coordinate: the nodes of the whole coordinate at this rank's indices
-function generate_coordinate(FT, topo::AbstractTopology, n, H, p::PartitionedInterval, coordinate_name, arch)
+function Grids.generate_coordinate(FT, topo::AbstractTopology, n, H, p::PartitionedInterval, coordinate_name, arch)
     c₁, c₂ = @. BigFloat(p.interval)
     Δ = (c₂ - c₁) / p.N
 
     TF = total_length(Face(),   topo, n, H)
     TC = total_length(Center(), topo, n, H)
 
-    whole_F = regular_faces(FT, c₁, c₂, p.N, H, p.N + 2H + p.offset + TF)
-    whole_C = regular_centers(whole_F, length(whole_F))
+    whole_F = regular_nodes(FT, Face(),   c₁, c₂, p.N, H, p.N + 2H + p.offset + TF)
+    whole_C = regular_nodes(FT, Center(), c₁, c₂, p.N, H, p.N + 2H + p.offset + TF)
 
     F = OffsetArray(on_architecture(arch, [whole_F[p.offset + i] for i in 1:TF]), -H)
     C = OffsetArray(on_architecture(arch, [whole_C[p.offset + i] for i in 1:TC]), -H)
@@ -95,15 +88,15 @@ global_size(arch, local_size) = map(sum, concatenate_local_sizes(local_size, arc
 
 Return the rank-local portion of `RectilinearGrid` on `arch`itecture.
 """
-function RectilinearGrid(arch::Distributed,
-                         FT::DataType = Oceananigans.defaults.FloatType;
-                         size,
-                         x = nothing,
-                         y = nothing,
-                         z = nothing,
-                         halo = nothing,
-                         extent = nothing,
-                         topology = (Periodic, Periodic, Bounded))
+function Grids.RectilinearGrid(arch::Distributed,
+                               FT::DataType = Oceananigans.defaults.FloatType;
+                               size,
+                               x = nothing,
+                               y = nothing,
+                               z = nothing,
+                               halo = nothing,
+                               extent = nothing,
+                               topology = (Periodic, Periodic, Bounded))
 
     topology, global_sz, halo, x, y, z =
         validate_rectilinear_grid_args(topology, size, halo, FT, extent, x, y, z)
@@ -144,16 +137,16 @@ end
 
 Return the rank-local portion of `LatitudeLongitudeGrid` on `arch`itecture.
 """
-function LatitudeLongitudeGrid(arch::Distributed,
-                               FT::DataType = Oceananigans.defaults.FloatType;
-                               precompute_metrics = true,
-                               size,
-                               latitude = nothing,
-                               longitude = nothing,
-                               z = nothing,
-                               topology = nothing,
-                               radius = Oceananigans.defaults.planet_radius,
-                               halo = nothing)
+function Grids.LatitudeLongitudeGrid(arch::Distributed,
+                                     FT::DataType = Oceananigans.defaults.FloatType;
+                                     precompute_metrics = true,
+                                     size,
+                                     latitude = nothing,
+                                     longitude = nothing,
+                                     z = nothing,
+                                     topology = nothing,
+                                     radius = Oceananigans.defaults.planet_radius,
+                                     halo = nothing)
 
     topology, global_sz, halo, latitude, longitude, z, precompute_metrics =
         validate_lat_lon_grid_args(topology, size, halo, FT, latitude, longitude, z, precompute_metrics)
@@ -309,19 +302,19 @@ end
 # We _HAVE_ to dispatch individually for all grid types because
 # `RectilinearGrid`, `LatitudeLongitudeGrid` and `ImmersedBoundaryGrid`
 # take precedence on `DistributedGrid`
-function with_halo(new_halo, grid::DistributedRectilinearGrid)
+function Grids.with_halo(new_halo, grid::DistributedRectilinearGrid)
     new_grid = with_halo(new_halo, reconstruct_global_grid(grid))
     return scatter_local_grids(new_grid, architecture(grid), size(grid))
 end
 
-function with_halo(new_halo, grid::DistributedLatitudeLongitudeGrid)
+function Grids.with_halo(new_halo, grid::DistributedLatitudeLongitudeGrid)
     new_grid = with_halo(new_halo, reconstruct_global_grid(grid))
     return scatter_local_grids(new_grid, architecture(grid), size(grid))
 end
 
 # Extending child_architecture for grids
-child_architecture(grid::AbstractGrid) = architecture(grid)
-child_architecture(grid::DistributedGrid) = child_architecture(architecture(grid))
+Architectures.child_architecture(grid::AbstractGrid) = architecture(grid)
+Architectures.child_architecture(grid::DistributedGrid) = child_architecture(architecture(grid))
 
 """
 $(TYPEDSIGNATURES)
@@ -434,7 +427,7 @@ function reconstruct_global_topology(local_topologies::AbstractVector, R::Int)
     return TwoSided{left, right}
 end
 
-function with_number_type(FT, local_grid::DistributedRectilinearGrid)
+function Grids.with_number_type(FT, local_grid::DistributedRectilinearGrid)
     global_grid = reconstruct_global_grid(local_grid)
     args_local, _ = constructor_arguments(local_grid)
     _, kwargs_global = constructor_arguments(global_grid)
@@ -447,7 +440,7 @@ end
 ##### Show
 #####
 
-function size_summary(grid::DistributedGrid)
+function Grids.size_summary(grid::DistributedGrid)
     local_summary = size_summary(size(grid))
     arch = architecture(grid)
 

@@ -1,8 +1,9 @@
+using SeawaterPolynomials: SeawaterPolynomials, BoussinesqEquationOfState, ρ
+
 using Oceananigans.AbstractOperations: AbstractOperation, KernelFunctionOperation
 using Oceananigans.BuoyancyFormulations: SeawaterBuoyancy, Zᶜᶜᶜ
 using Oceananigans.Fields: field
 using Oceananigans.Grids: Center
-using SeawaterPolynomials: SeawaterPolynomials, BoussinesqEquationOfState, ρ
 
 "Extend `SeawaterPolynomials.ρ` to compute density for a `KernelFunctionOperation` -
 **note** `eos` must be `BoussinesqEquationOfState` because a reference density is needed for the computation."

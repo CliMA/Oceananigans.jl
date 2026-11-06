@@ -1,6 +1,6 @@
 using Adapt: Adapt
 
-import Oceananigans: prognostic_state, restore_prognostic_state!
+using Oceananigans: prognostic_state, restore_prognostic_state!
 
 """
     struct ForwardBackwardScheme
@@ -81,14 +81,14 @@ initialize_free_surface_timestepper!(::ForwardBackwardSchemes, args...) = nothin
 ##### Checkpointing
 #####
 
-prognostic_state(::ForwardBackwardScheme) = nothing
-restore_prognostic_state!(restored::ForwardBackwardScheme, ::Nothing) = restored
+Oceananigans.prognostic_state(::ForwardBackwardScheme) = nothing
+Oceananigans.restore_prognostic_state!(restored::ForwardBackwardScheme, ::Nothing) = restored
 
-prognostic_state(ts::CoriolisForwardBackwardScheme) = (; previous_transports = prognostic_state(ts.previous_transports))
+Oceananigans.prognostic_state(ts::CoriolisForwardBackwardScheme) = (; previous_transports = prognostic_state(ts.previous_transports))
 
-function restore_prognostic_state!(restored::CoriolisForwardBackwardScheme, from)
+function Oceananigans.restore_prognostic_state!(restored::CoriolisForwardBackwardScheme, from)
     restore_prognostic_state!(restored.previous_transports, from.previous_transports)
     return restored
 end
 
-restore_prognostic_state!(restored::CoriolisForwardBackwardScheme, ::Nothing) = restored
+Oceananigans.restore_prognostic_state!(restored::CoriolisForwardBackwardScheme, ::Nothing) = restored

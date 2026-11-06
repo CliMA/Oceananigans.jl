@@ -1,7 +1,8 @@
-using Oceananigans.Advection
+using Oceananigans.Advection: Advection, UpwindBiased, WENO
+using Oceananigans.Coriolis: x_f_cross_U, y_f_cross_U
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Coriolis
-using Oceananigans.Operators
+using Oceananigans.Operators: Az⁻¹ᶜᶜᶜ, Az⁻¹ᶜᶠᶜ, Az⁻¹ᶠᶜᶜ, div_xyᶜᶜᶜ, Δx_qᶜᶠᶜ, Δxᶠᶜᶜ, Δy_qᶠᶜᶜ, Δyᶜᶠᶜ, δxᶜᵃᵃ, δxᶠᵃᵃ, δyᵃᶜᵃ,
+                              δyᵃᶠᵃ, ℑxyᶠᶠᵃ, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ, ∂xᵣᶠᶜᶜ, ∂yᵣᶜᶠᶜ
 using Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ
 
 @inline half_g_h²(i, j, k, grid, h, g)  = @inbounds 1/2 * g * h[i, j, k]^2

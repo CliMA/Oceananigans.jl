@@ -9,17 +9,28 @@ export
     @root, @onrank, @distribute, @handshake,
     SimplifiedGeneralizedBlockDistribution, create_cost_map, create_balanced_partition
 
-using MPI
-
-using Oceananigans
-using Oceananigans.Utils
-using Oceananigans.Grids
-using OffsetArrays
-using Oceananigans.Grids: BoundaryTopology, XYZRegularRG
-using Oceananigans.Solvers: GridWithFourierTridiagonalSolver
-
-import Oceananigans.Solvers: fft_poisson_solver
 using DocStringExtensions: TYPEDSIGNATURES
+using GPUArraysCore: GPUArraysCore
+using LinearAlgebra: LinearAlgebra
+using MPI: MPI
+using OffsetArrays: OffsetArrays, OffsetArray
+using Statistics: Statistics
+
+using Oceananigans: Oceananigans
+using Oceananigans.Architectures: Architectures, AbstractArchitecture, AbstractSerialArchitecture, CPU,
+                                  GPU, ndevices
+using Oceananigans.BoundaryConditions: BoundaryConditions, Bottom, BottomAndTop, East, North, South,
+                                       SouthAndNorth, Top, West, WestAndEast
+using Oceananigans.Fields: Fields, AbstractField, CenterField, data, field
+using Oceananigans.Grids: Grids, BoundaryTopology, Bounded, Center, CenterFoldConnected, CenterFolded, Closed,
+                          Connected, Face, FaceFoldConnected, FaceFolded, Flat, Open, OrthogonalSphericalShellGrid,
+                          Periodic, TwoSided, XYZRegularRG, grid
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaries, ImmersedBoundaryGrid,
+                                       materialize_immersed_boundary
+using Oceananigans.Solvers: Solvers, GridWithFourierTridiagonalSolver, compute_preconditioner_rhs!,
+                            fft_poisson_solver
+using Oceananigans.Utils: Utils
+
 
 include("distributed_macros.jl")
 include("sanitize_environ.jl")
@@ -45,24 +56,22 @@ include("load_balancing.jl")
 
 function NCCLDistributed end
 
-fft_poisson_solver(grid::DistributedRectilinearGrid) = fft_poisson_solver(grid, reconstruct_global_grid(grid))
+Solvers.fft_poisson_solver(grid::DistributedRectilinearGrid) = fft_poisson_solver(grid, reconstruct_global_grid(grid))
 
-fft_poisson_solver(local_grid::DistributedRectilinearGrid, global_grid::XYZRegularRG) =
+Solvers.fft_poisson_solver(local_grid::DistributedRectilinearGrid, global_grid::XYZRegularRG) =
     DistributedFFTBasedPoissonSolver(global_grid, local_grid)
 
-fft_poisson_solver(local_grid::DistributedRectilinearGrid, global_grid::GridWithFourierTridiagonalSolver) =
+Solvers.fft_poisson_solver(local_grid::DistributedRectilinearGrid, global_grid::GridWithFourierTridiagonalSolver) =
     DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid)
 
-import Oceananigans.Solvers: compute_preconditioner_rhs!, precondition!
-
 # But we need to define the precondition! methods here
-function precondition!(p, preconditioner::DistributedFFTBasedPoissonSolver, r, args...)
+function Solvers.precondition!(p, preconditioner::DistributedFFTBasedPoissonSolver, r, args...)
     compute_preconditioner_rhs!(preconditioner, r)
     solve!(p, preconditioner)
     return p
 end
 
-function precondition!(p, preconditioner::DistributedFourierTridiagonalPoissonSolver, r, args...)
+function Solvers.precondition!(p, preconditioner::DistributedFourierTridiagonalPoissonSolver, r, args...)
     compute_preconditioner_rhs!(preconditioner, r)
     solve!(p, preconditioner)
     return p

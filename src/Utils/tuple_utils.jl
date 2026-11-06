@@ -1,14 +1,14 @@
-import Oceananigans: tupleit
+using Oceananigans: tupleit
 
 #####
 ##### Some utilities for tupling
 #####
 
-tupleit(::Nothing) = ()
-tupleit(t::NamedTuple) = t
-tupleit(t::Tuple) = t
-tupleit(nt) = tuple(nt)
-tupleit(nt::Vector) = tuple(nt...)
+Oceananigans.tupleit(::Nothing) = ()
+Oceananigans.tupleit(t::NamedTuple) = t
+Oceananigans.tupleit(t::Tuple) = t
+Oceananigans.tupleit(nt) = tuple(nt)
+Oceananigans.tupleit(nt::Vector) = tuple(nt...)
 
 parenttuple(obj) = Tuple(f.data.parent for f in obj)
 
