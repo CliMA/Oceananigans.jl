@@ -100,6 +100,14 @@ end
 
 NormalFlow() = NormalFlow(nothing)
 
+"""
+    struct BalancedTransport
+
+A [`NormalFlow`](@ref) `scheme` that imposes the given value and lets the net-zero transport
+correction adjust it, for prescribed inflow and outflow that need not balance exactly.
+"""
+struct BalancedTransport end
+
 (normal_flow::NormalFlow)() = normal_flow
 
 Adapt.adapt_structure(to, normal_flow::NormalFlow) = NormalFlow(adapt(to, normal_flow.scheme))
