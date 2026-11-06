@@ -105,7 +105,7 @@ for large eddy simulation (LES).
 
 [`SmagorinskyLilly`](@ref) computes an eddy viscosity from the resolved strain rate
 with a buoyancy-based stability correction, following the classic work of
-[Smagorinsky1958](@citet), [Smagorinsky63](@citet), [Lilly62](@citet), and [Lilly66](@citet):
+[Smagorinsky1958](@citet), [Smagorinsky1963](@citet), [Lilly62](@citet), and [Lilly66](@citet):
 
 ```jldoctest
 julia> using Oceananigans

@@ -32,6 +32,53 @@ function test_jld2_constant_field_output(arch)
     return nothing
 end
 
+# A kernel function that holds many fields, so that a field of its operation is large
+struct ManyFieldsKernelFunction{F}
+    fields :: F
+end
+
+@inline (kernel::ManyFieldsKernelFunction)(i, j, k, grid) = @inbounds kernel.fields[1][i, j, k]
+Adapt.adapt_structure(to, kernel::ManyFieldsKernelFunction) = ManyFieldsKernelFunction(Adapt.adapt(to, kernel.fields))
+
+function test_jld2_large_outputs(arch)
+    grid = RectilinearGrid(arch, size=(2, 2, 8), extent=(1, 1, 1))
+    model = NonhydrostaticModel(grid)
+
+    names = ntuple(n -> Symbol(:c, n), 45)
+    kernel = ManyFieldsKernelFunction(NamedTuple{names}(ntuple(n -> CenterField(grid), 45)))
+    operation = KernelFunctionOperation{Center, Center, Center}(kernel, grid)
+    outputs = (; slice = Field(operation; indices=(:, :, 1)),
+                 column = Field(Integral(operation, dims=3)))
+
+    # Initializing and writing the outputs must not need stack in proportion to their
+    # size, so run the simulation on a task with a 1 MiB stack.
+    mktempdir() do dir
+        simulation = Simulation(model; Δt=1, stop_iteration=1, verbose=false)
+        simulation.output_writers[:large] = JLD2Writer(model, outputs;
+                                                       dir,
+                                                       filename = "large_outputs.jld2",
+                                                       schedule = IterationInterval(1),
+                                                       overwrite_files = true)
+
+        task = Task(() -> run!(simulation), 2^20)
+        schedule(task)
+        outcome = try
+            wait(task)
+            :completed
+        catch err
+            err.task.exception
+        end
+        @test outcome === :completed
+
+        jldopen(joinpath(dir, "large_outputs.jld2")) do file
+            @test file["timeseries/slice/serialized/indices"] == (:, :, 1:1)
+            @test haskey(file, "timeseries/column/1")
+        end
+    end
+
+    return nothing
+end
+
 function jld2_sliced_field_output(model, outputs=model.velocities)
 
     model.clock.iteration = 0
@@ -616,5 +663,6 @@ for arch in archs
         @test size(parent(ηt[1])) == (4, 4, 1)
 
         test_jld2_constant_field_output(arch)
+        test_jld2_large_outputs(arch)
     end
 end

@@ -35,6 +35,7 @@ using Oceananigans.Utils: Utils, StaticStridesOffsetArray
 include("distributed_macros.jl")
 include("sanitize_environ.jl")
 include("distributed_architectures.jl")
+include("validate_distributed_configuration.jl")
 include("partition_assemble.jl")
 include("distributed_grids.jl")
 include("distributed_immersed_boundaries.jl")
