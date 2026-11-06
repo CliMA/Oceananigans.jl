@@ -25,6 +25,13 @@ struct StructuredVerticalDiscretization{C, D, E, F, FM} <: Oceananigans.Grids.Ab
     formulation :: FM
 end
 
+Adapt.adapt_structure(to, z::StructuredVerticalDiscretization) =
+    StructuredVerticalDiscretization(Adapt.adapt(to, z.cᵃᵃᶠ),
+                                     Adapt.adapt(to, z.cᵃᵃᶜ),
+                                     Adapt.adapt(to, z.Δᵃᵃᶠ),
+                                     Adapt.adapt(to, z.Δᵃᵃᶜ),
+                                     Adapt.adapt(to, z.formulation))
+
 @testset "Reactant unit tests" begin
     @testset "Checkbounds = auto" begin
         @test Base.JLOptions().check_bounds == 0
