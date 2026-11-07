@@ -1,5 +1,5 @@
 using Oceananigans.Grids: peripheral_node
-using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, SplitRungeKuttaTimeStepper
+using Oceananigans.TimeSteppers: MultiStageTimeStepper, QuasiAdamsBashforth2TimeStepper, SplitRungeKuttaTimeStepper
 using Oceananigans.Utils: Utils
 
 # This file contains two different methods performed at different stages of the simulation.
@@ -46,7 +46,7 @@ function initialize_free_surface_state!(free_surface, baroclinic_timestepper, ti
 end
 
 # At the last stage we reset the velocities and perform the complete substepping from n to n+1
-function initialize_free_surface_state!(free_surface, baroclinic_ts::SplitRungeKuttaTimeStepper, barotropic_ts)
+function initialize_free_surface_state!(free_surface, baroclinic_ts::MultiStageTimeStepper, barotropic_ts)
 
     η = free_surface.displacement
     U, V = free_surface.barotropic_velocities

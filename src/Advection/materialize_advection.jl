@@ -47,14 +47,16 @@ materialize_advection(weno::WENO{N, FT, WCT}, grid) where {N, FT, WCT} =
     WENO{N, FT, WCT}(materialize_bounds(weno.bounds, grid),
                      materialize_advection(without_bounds_preservation(weno.buffer_scheme), grid),
                      materialize_advection(weno.advecting_velocity_scheme, grid),
-                     weno.time_discretization)
+                     weno.time_discretization,
+                     materialize_coefficients(weno.coefficients, weno, grid))
 
 function materialize_advection(weno::WENO{N, FT, Nothing}, grid) where {N, FT}
     WTC = default_weno_weight_computation(architecture(grid))
     return WENO{N, FT, WTC}(materialize_bounds(weno.bounds, grid),
                             materialize_advection(without_bounds_preservation(weno.buffer_scheme), grid),
                             materialize_advection(weno.advecting_velocity_scheme, grid),
-                            weno.time_discretization)
+                            weno.time_discretization,
+                            materialize_coefficients(weno.coefficients, weno, grid))
 end
 
 materialize_advection(scheme::UpwindBiased{N, FT}, grid) where {N, FT} =

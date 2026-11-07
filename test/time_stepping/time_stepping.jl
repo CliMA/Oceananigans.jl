@@ -3,7 +3,7 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 using Adapt: Adapt
 using Dates: Millisecond
 using TimesDates: TimeDate
-using Oceananigans: UpdateStateCallsite
+using Oceananigans: TracerTendencyCallsite, UpdateStateCallsite
 using Oceananigans.Grids: topological_tuple_length
 using Oceananigans.TimeSteppers: Clock, AbstractLagrangianParticles
 using Oceananigans.Utils: kernel_time_step
@@ -29,6 +29,35 @@ mutable struct ΔtTypeRecorder
 end
 
 (recorder::ΔtTypeRecorder)(particles, model, Δt) = (recorder.Δt_type = typeof(Δt); nothing)
+
+η_cosine_forcing(i, j, k, grid, clock, model_fields) = cos(2π * clock.time / 20)
+
+# z-star reads the same forcing for the grid motion, so a constant tracer stays constant only if the solve and the grid agree
+function η_forcing_constancy_drift(arch, timestepper)
+    grid = RectilinearGrid(arch; size=(4, 4, 4), x=(0, 1000), y=(0, 1000), z=MutableVerticalDiscretization((-100, 0)),
+                           topology=(Periodic, Periodic, Bounded))
+    model = HydrostaticFreeSurfaceModel(grid; timestepper, buoyancy=nothing, tracers=:c, vertical_coordinate=ZStarCoordinate(),
+                                        free_surface=SplitExplicitFreeSurface(grid; substeps=20),
+                                        forcing=(; η=Forcing(η_cosine_forcing; discrete_form=true)))
+    set!(model, c=1)
+    for _ in 1:40
+        time_step!(model, 0.5)
+    end
+    return maximum(abs, Array(interior(model.tracers.c)) .- 1)
+end
+
+# η(T) = (20 / 2π) sin(2π T / 20) for a uniform forcing: no pressure gradient, so only the time quadrature matters
+function η_forcing_error(arch, timestepper, Δt; stop_time = 5)
+    grid = RectilinearGrid(arch; size=(4, 4, 1), x=(0, 1000), y=(0, 1000), z=(-100, 0), topology=(Periodic, Periodic, Bounded))
+    model = HydrostaticFreeSurfaceModel(grid; timestepper, buoyancy=nothing, tracers=(),
+                                        free_surface=SplitExplicitFreeSurface(grid; substeps=20),
+                                        forcing=(; η=Forcing(η_cosine_forcing; discrete_form=true)))
+    for _ in 1:round(Int, stop_time / Δt)
+        time_step!(model, Δt)
+    end
+    η = first(Array(interior(model.free_surface.displacement)))
+    return abs(η - 20 / 2π * sin(2π * stop_time / 20))
+end
 
 # Particles that advance their own state by `clock.last_stage_Δt` in `update_lagrangian_particle_state!`
 mutable struct ElapsedTimeParticles <: AbstractLagrangianParticles
@@ -510,6 +539,39 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
         end
     end
 
+    @testset "SSPRungeKutta3 integrates the η forcing with the stage quadrature [$arch]" for arch in archs
+        errors = [η_forcing_error(arch, :SSPRungeKutta3, Δt) for Δt in (0.2, 0.1, 0.05)]
+        @test all(log2(errors[i] / errors[i+1]) > 3 for i in 1:length(errors)-1)
+        @test η_forcing_constancy_drift(arch, :SSPRungeKutta3) < 1e-10
+    end
+
+    @testset "Multi-stage time steppers execute TracerTendencyCallsite callbacks at every stage [$arch, $timestepper]" for
+        arch in archs, timestepper in (:SplitRungeKutta3, :SSPRungeKutta3)
+
+        grid = RectilinearGrid(arch; size=(4, 4, 4), extent=(1, 1, 1), topology=(Periodic, Periodic, Bounded))
+        model = HydrostaticFreeSurfaceModel(grid; timestepper, tracers=:c, buoyancy=nothing,
+                                            free_surface=SplitExplicitFreeSurface(grid; substeps=4))
+        simulation = Simulation(model; Δt=1e-3, stop_iteration=2, verbose=false)
+        executions = Ref(0)
+        add_callback!(simulation, sim -> (executions[] += 1; nothing), IterationInterval(1); callsite=TracerTendencyCallsite())
+        run!(simulation)
+        @test executions[] == 6
+    end
+
+    @testset "CATKE steps with multi-stage time steppers [$arch, $timestepper]" for
+        arch in archs, timestepper in (:SplitRungeKutta3, :SSPRungeKutta3)
+
+        grid = RectilinearGrid(arch; size=(4, 4, 8), extent=(1000, 1000, 100), topology=(Periodic, Periodic, Bounded))
+        model = with_logger(NullLogger()) do
+            HydrostaticFreeSurfaceModel(grid; timestepper, tracers=:b, buoyancy=BuoyancyTracer(),
+                                        closure=CATKEVerticalDiffusivity(),
+                                        free_surface=SplitExplicitFreeSurface(grid; substeps=4))
+        end
+        set!(model, b=(x, y, z) -> 1e-5 * z, e=1e-5)
+        time_step!(model, 10)
+        @test all(isfinite, Array(interior(model.tracers.e)))
+    end
+
     @testset "SplitRungeKutta stages evaluate time-dependent forcing at the stage time" begin
         split_runge_kutta_timesteppers = (:SplitRungeKutta2, :SplitRungeKutta3, :SplitRungeKutta4, :SplitRungeKutta5)
 
@@ -521,7 +583,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
             # If every stage sees tⁿ instead, c(t) = t (t - Δt) / 2.
             forcing = Forcing((x, y, z, t) -> t)
 
-            for timestepper in split_runge_kutta_timesteppers
+            for timestepper in (split_runge_kutta_timesteppers..., :SSPRungeKutta3)
                 model = HydrostaticFreeSurfaceModel(grid; timestepper, tracers=:c, forcing=(; c=forcing),
                                                     velocities=PrescribedVelocityFields())
                 for n in 1:3
@@ -537,7 +599,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
             # Float32 round-off (~1e-7) requires coarse steps to resolve the 4th- and 5th-order errors.
             Δts = FT == Float32 ? (1.0, 0.5, 0.25) : (0.2, 0.1, 0.05)
 
-            for (timestepper, order) in zip(split_runge_kutta_timesteppers, (2, 3, 4, 5))
+            for (timestepper, order) in zip((split_runge_kutta_timesteppers..., :SSPRungeKutta3), (2, 3, 4, 5, 3))
                 errors = [time_dependent_forcing_error(arch, FT, timestepper, Δt) for Δt in Δts]
                 observed_orders = [log2(errors[i] / errors[i+1]) for i in 1:length(Δts)-1]
                 @test all(observed_orders .> order - 0.3)

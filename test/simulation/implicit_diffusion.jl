@@ -136,7 +136,7 @@ end
 
 @testset "Implicit Diffusion Diagnostic" begin
     schedules = [IterationInterval(1), IterationInterval(10), IterationInterval(100)]
-    timesteppers = (:QuasiAdamsBashforth2, :SplitRungeKutta2, :SplitRungeKutta3, :SplitRungeKutta5)
+    timesteppers = (:QuasiAdamsBashforth2, :SplitRungeKutta2, :SplitRungeKutta3, :SplitRungeKutta5, :SSPRungeKutta3)
     for arch in archs, schedule in schedules, timestepper in timesteppers
         @testset "Implicit Diffusion on $schedule schedule and $timestepper, in $dim-direction [$(typeof(arch))]" for dim in (:x, :y, :z)
             test_implicit_diffusion_diagnostic(arch, dim, timestepper, schedule)

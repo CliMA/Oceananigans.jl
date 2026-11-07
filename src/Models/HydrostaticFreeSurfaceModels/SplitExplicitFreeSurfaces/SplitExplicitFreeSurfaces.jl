@@ -1,9 +1,14 @@
 module SplitExplicitFreeSurfaces
 
-export SplitExplicitFreeSurface, ForwardBackwardScheme
+export SplitExplicitFreeSurface, ForwardBackwardScheme, RungeKutta3Scheme
 export FixedSubstepNumber, FixedTimeStepSize
+export ConstantAveragingKernel, CosineAveragingKernel, LowDissipationAveragingKernel
+export SymmetricTrigAveragingKernel, WideTrigAveragingKernel
+export OptimizedSymmetricAveragingKernel, OptimizedAsymmetricAveragingKernel
+export FrozenSlowForcing, ProgressiveSlowForcing
 
 using DocStringExtensions: TYPEDSIGNATURES
+using LinearAlgebra: LinearAlgebra
 using KernelAbstractions: @index, @kernel, @localmem, @synchronize, StaticSize
 
 using Oceananigans: Oceananigans
@@ -27,6 +32,8 @@ using Oceananigans.Units: Time
 using Oceananigans.Utils: Utils, @apply_regionally, KernelParameters, add_time_interval, configure_kernel, launch!
 
 include("split_explicit_timesteppers.jl")
+include("slow_forcing_reconstruction.jl")
+include("split_explicit_averaging_kernels.jl")
 include("split_explicit_free_surface.jl")
 include("distributed_split_explicit_free_surface.jl")
 include("initialize_split_explicit_substepping.jl")
