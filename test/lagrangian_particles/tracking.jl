@@ -6,7 +6,6 @@ using Oceananigans.Architectures: architecture, on_architecture
 
 using Oceananigans.Models.LagrangianParticleTracking: no_dynamics
 using Oceananigans.OutputWriters: fetch_output
-using Oceananigans.TimeSteppers: step_lagrangian_particles!
 
 struct TestParticle{T}
     x::T
@@ -61,13 +60,22 @@ end
     @test saved.previous_concentration ≈ FT[310]
     @test saved.dynamics_calls == [2]
 
-    set!(model, u = 1100, w = 800)
+    # Particles are advanced with the scheme of the model. Quasi-Adams-Bashforth extrapolates
+    # from the particle velocity at the previous time step, Uⁿ⁺¹ᐟ² = (3/2 + χ) Uⁿ - (1/2 + χ) Uⁿ⁻¹,
+    # while the stages of RungeKutta3 all see the new, spatially uniform velocity.
+    # The particle lands away from the periodic seam in x for both schemes.
+    set!(model, u = 1250, w = 800)
     time_step!(model, FT(1))
     saved = on_architecture(CPU(), fetch_output(particles, model))
-    @test saved.x ≈ FT[420]
-    @test saved.z ≈ FT[340]
-    @test saved.concentration ≈ FT[1420]
-    @test saved.altitude ≈ FT[340]
+    χ = timestepper == :QuasiAdamsBashforth2 ? model.timestepper.χ : nothing
+    extrapolate(Uⁿ, Uⁿ⁻¹, ::Nothing) = Uⁿ
+    extrapolate(Uⁿ, Uⁿ⁻¹, χ) = (3/2 + χ) * Uⁿ - (1/2 + χ) * Uⁿ⁻¹
+    x₃ = mod(320 + extrapolate(1250, 10, χ), 1000)
+    z₃ = mod(540 + extrapolate(800, 20, χ), 1000)
+    @test saved.x ≈ FT[x₃]
+    @test saved.z ≈ FT[z₃]
+    @test saved.concentration ≈ FT[x₃ + 1000]
+    @test saved.altitude ≈ FT[z₃]
 
     set!(model; u=10, w=0)
     time_step!(model, FT(1))
@@ -75,6 +83,32 @@ end
     @test saved.concentration ≈ saved.x .+ 1000
     @test saved.altitude ≈ saved.z
     @test saved.dynamics_calls == [4]
+end
+
+@testset "Tracked fields at final positions [HydrostaticFreeSurfaceModel, $arch, $FT, $timestepper]" for
+    arch in archs, FT in float_types,
+    timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta2, :SplitRungeKutta3, :SplitRungeKutta4, :SplitRungeKutta5)
+
+    grid = RectilinearGrid(arch, FT; size=(4, 4, 4), x=(0, 1000), y=(0, 1000), z=(-1000, 0))
+    concentration = CenterField(grid)
+    set!(concentration, (x, y, z) -> x)
+
+    values = (x = FT[300], y = FT[300], z = FT[-500], concentration = FT[-1])
+    properties = StructArray(on_architecture(arch, values))
+    particles = LagrangianParticles(properties; tracked_fields=(; concentration))
+    model = HydrostaticFreeSurfaceModel(grid; particles, timestepper, buoyancy=nothing, tracers=())
+    set!(model, u = 10)
+    time_step!(model, FT(1))
+
+    saved = on_architecture(CPU(), fetch_output(particles, model))
+    @test saved.x ≈ FT[310]
+    @test saved.concentration ≈ FT[310]
+
+    set!(concentration, (x, y, z) -> x + FT(1000))
+    time_step!(model, FT(1))
+    saved = on_architecture(CPU(), fetch_output(particles, model))
+    @test saved.x ≈ FT[320]
+    @test saved.concentration ≈ FT[1320]
 end
 
 function particle_tracking_simulation(; grid, particles, dir, timestepper=:RungeKutta3, velocities=nothing)
@@ -408,7 +442,8 @@ function run_immersed_boundary_bounce_tests(arch, FT)
 
     @testset "Lagrangian particles bouncing off an immersed boundary [$(typeof(arch)), $FT] with restitution $restitution" for restitution in (1.0, 0.5)
         x, y, z = on_architecture.(Ref(arch), (copy(x₀), copy(y₀), copy(z₀)))
-        particles = LagrangianParticles(; x, y, z, restitution)
+        boundary_conditions = ParticleBoundaryConditions(ReflectingBoundary(restitution))
+        particles = LagrangianParticles(; x, y, z, boundary_conditions)
         model = HydrostaticFreeSurfaceModel(grid; particles, velocities, buoyancy=nothing, tracers=())
         time_step!(model, 1)
 

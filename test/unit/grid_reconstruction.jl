@@ -3,7 +3,7 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 using Oceananigans.Grids: Face, architecture, constructor_arguments, halo_size, topology, znodes
 using NCDatasets
 using Oceananigans.OutputWriters: write_grid_reconstruction_data!, materialize_from_netcdf, reconstruct_grid
-using Oceananigans.OrthogonalSphericalShellGrids: LambertConformalConicGrid
+using Oceananigans.OrthogonalSphericalShellGrids: ConformalConicGrid
 using Oceananigans.Architectures: on_architecture
 
 cpu_parent_array(array) = Array(parent(on_architecture(CPU(), array)))
@@ -230,12 +230,12 @@ function test_latitude_longitude_grid_reconstruction(original_grid)
     return nothing
 end
 
-function test_lambert_conformal_conic_grid_reconstruction(original_grid)
+function test_conformal_conic_grid_reconstruction(original_grid)
     args, kwargs = constructor_arguments(original_grid)
 
-    reconstructed_grid = LambertConformalConicGrid(args[:architecture], args[:number_type]; kwargs...)
+    reconstructed_grid = ConformalConicGrid(args[:architecture], args[:number_type]; kwargs...)
 
-    @test reconstructed_grid isa LambertConformalConicGrid
+    @test reconstructed_grid isa ConformalConicGrid
     @test size(reconstructed_grid) == size(original_grid)
     @test halo_size(reconstructed_grid) == halo_size(original_grid)
     @test eltype(reconstructed_grid) == eltype(original_grid)
@@ -260,12 +260,12 @@ function test_lambert_conformal_conic_grid_reconstruction(original_grid)
     return nothing
 end
 
-function test_flat_lambert_conformal_conic_grid_reconstruction(original_grid)
+function test_flat_conformal_conic_grid_reconstruction(original_grid)
     args, kwargs = constructor_arguments(original_grid)
 
-    reconstructed_grid = LambertConformalConicGrid(args[:architecture], args[:number_type]; kwargs...)
+    reconstructed_grid = ConformalConicGrid(args[:architecture], args[:number_type]; kwargs...)
 
-    @test reconstructed_grid isa LambertConformalConicGrid
+    @test reconstructed_grid isa ConformalConicGrid
     @test size(reconstructed_grid) == size(original_grid)
     @test halo_size(reconstructed_grid) == halo_size(original_grid)
     @test eltype(reconstructed_grid) == eltype(original_grid)
@@ -414,7 +414,7 @@ N = 6
             test_latitude_longitude_grid_reconstruction(stretched_latlon_grid)
         end
 
-        lcc_grid = LambertConformalConicGrid(arch, FT;
+        conformal_conic_grid = ConformalConicGrid(arch, FT;
                                              size = (N, N, N),
                                              center = (-105, 40),
                                              spacing = 20e3,
@@ -425,7 +425,7 @@ N = 6
                                              z = (-1, 0),
                                              halo = (2, 2, 2))
 
-        flat_lcc_grid = LambertConformalConicGrid(arch, FT;
+        flat_conformal_conic_grid = ConformalConicGrid(arch, FT;
                                                   size = (N, N),
                                                   center = (-105, 40),
                                                   spacing = 20e3,
@@ -437,10 +437,10 @@ N = 6
                                                   topology = (Bounded, Bounded, Flat),
                                                   halo = (2, 2))
 
-        @testset "LambertConformalConicGrid reconstruction tests [$FT, $(typeof(arch))]" begin
-            @info "  Testing LambertConformalConicGrid reconstruction [$FT, $(typeof(arch))]..."
-            test_lambert_conformal_conic_grid_reconstruction(lcc_grid)
-            test_flat_lambert_conformal_conic_grid_reconstruction(flat_lcc_grid)
+        @testset "ConformalConicGrid reconstruction tests [$FT, $(typeof(arch))]" begin
+            @info "  Testing ConformalConicGrid reconstruction [$FT, $(typeof(arch))]..."
+            test_conformal_conic_grid_reconstruction(conformal_conic_grid)
+            test_flat_conformal_conic_grid_reconstruction(flat_conformal_conic_grid)
         end
 
         @testset "NetCDF grid reconstruction tests [$FT, $(typeof(arch))]" begin

@@ -1,4 +1,4 @@
-using Oceananigans.Operators: Vᶜᶠᶜ, Vᶠᶜᶜ, δxᶠᶜᶜ, δyᶜᶠᶜ, ζ₃ᶠᶠᶜ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ
+using Oceananigans.Operators: δxᶠᶜᶜ, δyᶜᶠᶜ, ζ₃ᶠᶠᶜ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ
 
 # These are also used in Coriolis/hydrostatic_spherical_coriolis.jl
 struct EnergyConserving{FT}    <: AbstractAdvectionScheme{1, FT, ExplicitTimeDiscretization} end
@@ -14,9 +14,16 @@ TimeSteppers.time_discretization(::EnstrophyConserving) = ExplicitTimeDiscretiza
     EnergyConservingUpwinding(scheme)
 
 Vorticity scheme for `VectorInvariant` that reconstructs vorticity with the upwind-biased `scheme` and pairs
-the reconstructed values symmetrically between the `u` and `v` equations, as in the TRiSK scheme of Ringler et al. (2010).
+the reconstructed values symmetrically between the `u` and `v` equations, as in the TRiSK scheme
+of [Ringler et al. (2010)](@cite Ringler2010).
 The horizontal vorticity flux does no work on the flow for any reconstructed vorticity, so the upwinding
 dissipates enstrophy while conserving kinetic energy.
+
+References
+==========
+* Ringler, T. D., Thuburn, J., Klemp, J. B., & Skamarock, W. C. (2010). "A unified approach to energy
+  conservation and potential vorticity dynamics for arbitrarily-structured C-grids." Journal of
+  Computational Physics, 229(9), 3065-3090.
 """
 struct EnergyConservingUpwinding{N, FT, TD, S} <: AbstractAdvectionScheme{N, FT, TD}
     scheme :: S
@@ -375,20 +382,23 @@ end
 @inline vertical_flux_Wv(i, j, k, grid, scheme, W, v) =
     conditional_flux(i, j, k, grid, Center(), Face(), Face(), zero(grid), _advective_momentum_flux_Wv(i, j, k, grid, scheme, W, v))
 
+@inline vector_invariant_flux_Wu(i, j, k, grid, scheme, W, u) = vertical_flux_Wu(i, j, k, grid, scheme.vertical_advection_scheme, W, u)
+@inline vector_invariant_flux_Wv(i, j, k, grid, scheme, W, v) = vertical_flux_Wv(i, j, k, grid, scheme.vertical_advection_scheme, W, v)
+
 @inline function vertical_advection_U(i, j, k, grid, scheme::VectorInvariant, U)
 
     Φᵟ = upwinded_divergence_flux_Uᶠᶜᶜ(i, j, k, grid, scheme, U.u, U.v)
-    𝒜ᶻ = δzᵃᵃᶜ(i, j, k, grid, vertical_flux_Wu, scheme.vertical_advection_scheme, U.w, U.u)
+    𝒜ᶻ = δzᵃᵃᶜ(i, j, k, grid, vector_invariant_flux_Wu, scheme, U.w, U.u)
 
-    return 1/Vᶠᶜᶜ(i, j, k, grid) * (Φᵟ + 𝒜ᶻ)
+    return V⁻¹ᶠᶜᶜ(i, j, k, grid) * (Φᵟ + 𝒜ᶻ)
 end
 
 @inline function vertical_advection_V(i, j, k, grid, scheme::VectorInvariant, U)
 
     Φᵟ = upwinded_divergence_flux_Vᶜᶠᶜ(i, j, k, grid, scheme, U.u, U.v)
-    𝒜ᶻ = δzᵃᵃᶜ(i, j, k, grid, vertical_flux_Wv, scheme.vertical_advection_scheme, U.w, U.v)
+    𝒜ᶻ = δzᵃᵃᶜ(i, j, k, grid, vector_invariant_flux_Wv, scheme, U.w, U.v)
 
-    return 1/Vᶜᶠᶜ(i, j, k, grid) * (Φᵟ + 𝒜ᶻ)
+    return V⁻¹ᶜᶠᶜ(i, j, k, grid) * (Φᵟ + 𝒜ᶻ)
 end
 
 #####

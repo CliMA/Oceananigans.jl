@@ -1,5 +1,3 @@
-using MPI
-
 #####
 ##### Handle commands, typically downloading files
 ##### which should be executed by only one rank or distributed among ranks

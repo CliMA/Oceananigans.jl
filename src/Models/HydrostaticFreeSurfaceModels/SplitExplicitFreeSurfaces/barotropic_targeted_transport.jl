@@ -1,5 +1,5 @@
-using Oceananigans.BoundaryConditions: GWNFBC, has_target_transport, get_target_transport, TransportTimeSeries
-using Oceananigans.DistributedComputations: all_reduce, device_all_reduce!, synchronize_communication!
+using Oceananigans.BoundaryConditions: GWNFBC, TransportTimeSeries, get_target_transport, has_target_transport
+using Oceananigans.DistributedComputations: all_reduce, all_reduce!, synchronize_communication!
 
 #####
 ##### Targeted barotropic transports through GravityWaveRadiation boundaries
@@ -250,7 +250,7 @@ function pin_barotropic_faces!(pins::DistributedFacePins)
     integrate_face!(pins, pins.sides.east,  3)
     integrate_face!(pins, pins.sides.south, 5)
     integrate_face!(pins, pins.sides.north, 7)
-    device_all_reduce!(+, pins.sums, pins.architecture)
+    all_reduce!(+, pins.sums, pins.architecture)
     shift_face!(pins, pins.sides.west,  1)
     shift_face!(pins, pins.sides.east,  3)
     shift_face!(pins, pins.sides.south, 5)

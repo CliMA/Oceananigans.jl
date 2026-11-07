@@ -37,6 +37,10 @@ const _ε₂ = 1e-20
 # Note: this can probably be generalized to include UpwindBiased
 const BoundsPreservingWENO = WENO{<:Any, <:Any, <:Any, <:Any, <:BoundsPreservation}
 
+# The limiter is also computed in the first horizontal halo layer, whose reconstructions reach one cell further
+@inline Grids.required_halo_size_x(::WENO{N, <:Any, <:Any, <:Any, <:BoundsPreservation}) where N = N + 1
+@inline Grids.required_halo_size_y(::WENO{N, <:Any, <:Any, <:Any, <:BoundsPreservation}) where N = N + 1
+
 #####
 ##### Cell-wise rescaling factor, from cᵢ = ω̂₁ c⁻ + ω̂₁ c⁺ + (1 - 2ω̂₁) p̃ in each direction
 #####
@@ -147,7 +151,7 @@ end
     div_y = bounded_tracer_flux_divergence_y(i, j, k, grid, advection, 1, U.v, c)
     div_z = bounded_tracer_flux_divergence_z(i, j, k, grid, advection, 1, U.w, c)
 
-    return 1/Vᶜᶜᶜ(i, j, k, grid) * (div_x + div_y + div_z)
+    return V⁻¹ᶜᶜᶜ(i, j, k, grid) * (div_x + div_y + div_z)
 end
 
 # Support for Flat directions
