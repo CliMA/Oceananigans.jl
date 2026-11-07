@@ -1,22 +1,41 @@
 using Oceananigans.Fields: Field
 
-import Oceananigans.Architectures: on_architecture
+using Oceananigans.Architectures: on_architecture
+
+#####
+##### Host-staged communication, for MPI libraries that are not GPU-aware
+#####
+
+stages_communication_through_host(arch) = false
+
+# NCCL communicators move device buffers themselves.
+function stages_communication_through_host(arch::Distributed)
+    staging = parse(Bool, get(ENV, "OCEANANIGANS_HOST_STAGED_COMMUNICATION", string(!MPI.has_cuda())))
+    return staging && child_architecture(arch) isa GPU && arch.communicator isa MPI.Comm
+end
+
+function host_mapped_zeros end
+
+function communication_buffer_array(arch, FT, dims...)
+    stages_communication_through_host(arch) && return host_mapped_zeros(child_architecture(arch), FT, dims...)
+    return on_architecture(arch, zeros(FT, dims...))
+end
 
 all_reduce(op, val, arch::Distributed) = MPI.Allreduce(val, op, arch.communicator)
 all_reduce(op, val, arch) = val
 
+function all_reduce(op, val::GPUArraysCore.AbstractGPUArray, arch::Distributed)
+    stages_communication_through_host(arch) || return MPI.Allreduce(val, op, arch.communicator)
+    return on_architecture(child_architecture(arch), MPI.Allreduce(Array(val), op, arch.communicator))
+end
+
 all_reduce!(op, val, arch::Distributed) = MPI.Allreduce!(val, op, arch.communicator)
 all_reduce!(op, val, arch) = val
 
-# Reduces a device array in place, staged through the host
-function device_all_reduce!(op, val, arch::Distributed)
-    host_val = on_architecture(CPU(), val)
-    all_reduce!(op, host_val, arch)
-    copyto!(val, host_val)
-    return val
+function all_reduce!(op, val::GPUArraysCore.AbstractGPUArray, arch::Distributed)
+    stages_communication_through_host(arch) || return MPI.Allreduce!(val, op, arch.communicator)
+    return copyto!(val, MPI.Allreduce!(Array(val), op, arch.communicator))
 end
-
-device_all_reduce!(op, val, arch) = val
 
 # MPI Barrier
 barrier(arch) = nothing
@@ -70,19 +89,22 @@ function partition_coordinate(c::AbstractVector, n, arch, dim)
     return c[start_idx:end_idx]
 end
 
+"""
+    PartitionedInterval(interval, N, offset)
+
+The part of a regular coordinate that starts `offset` cells into the whole coordinate, which spans `interval` with `N`
+cells.
+"""
+struct PartitionedInterval{C}
+    interval :: C
+    N :: Int
+    offset :: Int
+end
+
 function partition_coordinate(c::Tuple, n, arch, dim)
     nl = concatenate_local_sizes(n, arch, dim)
-    N  = sum(nl)
-    R  = arch.ranks[dim]
-    Δl = (c[2] - c[1]) / N
-
-    l = Tuple{Float64, Float64}[(c[1], c[1] + Δl * nl[1])]
-    for i in 2:R
-        lp = l[i-1][2]
-        push!(l, (lp, lp + Δl * nl[i]))
-    end
-
-    return l[arch.local_index[dim]]
+    r  = arch.local_index[dim]
+    return PartitionedInterval(c, sum(nl), sum(nl[1:r-1]))
 end
 
 """

@@ -173,7 +173,7 @@ const reference_smoothness_normalization = (1, 3, 6//25, 63//1250, 189//15625)
 """
     exact_smoothness_matrix(buffer, stencil)
 
-Return the `buffer × buffer` matrix `Q` of the Jiang & Shu smoothness indicator
+Return the `buffer × buffer` matrix `Q` of the [Jiang and Shu (1996)](@cite Jiang96) smoothness indicator
 
 ```math
 β = ∑ₗ₌₁ᵇᵘᶠᶠᵉʳ⁻¹ ∫ (dˡpᵣ / dxˡ)² dx = ψᵀ Q ψ
@@ -183,6 +183,11 @@ of the stencil number `stencil` of a WENO reconstruction of order `2buffer - 1`,
 arithmetic. `pᵣ` is the polynomial that reconstructs the cell averages `ψ` of the stencil (ordered from left to
 right), the integral spans the cell whose right face is reconstructed (of unit width), and `Q` is multiplied by
 the normalization of the reference tables.
+
+References
+==========
+* Jiang, G.-S., & Shu, C.-W. (1996). "Efficient implementation of weighted ENO schemes." Journal of
+  Computational Physics, 126(1), 202-228.
 """
 function exact_smoothness_matrix(buffer, stencil)
     R = Rational{BigInt}
@@ -383,10 +388,11 @@ end
 # 1 + r², fused
 @inline zweno_ratio_term(r) = muladd(r, r, 1)
 
-@inline zweno_regularization(scheme, τ) = ϵ
+@inline zweno_regularization(scheme, τ) = oftype(τ, ϵ)
 
+# Float32 for BFloat16 schemes too, so that their weights use the fast approximate reciprocal of Float32
 for FT in (Float32, BFloat16)
-    @eval @inline zweno_regularization(::WENO{N, $FT}, τ) where N = max(ϵ, τ * $(inv(FT(2)^62)))
+    @eval @inline zweno_regularization(::WENO{N, $FT}, τ) where N = max(ϵ, Float32(τ) * $(inv(Float32(2)^62)))
 end
 
 for buffer in advection_buffers[2:end]

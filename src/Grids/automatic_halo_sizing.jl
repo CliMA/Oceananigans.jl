@@ -65,6 +65,11 @@ required_halo_size_y(::Nothing) = 0
 required_halo_size_z(tendency_term) = 1
 required_halo_size_z(::Nothing) = 0
 
+# Per-field schemes, such as a model's tracer advection
+required_halo_size_x(terms::NamedTuple) = maximum(required_halo_size_x, terms; init=0)
+required_halo_size_y(terms::NamedTuple) = maximum(required_halo_size_y, terms; init=0)
+required_halo_size_z(terms::NamedTuple) = maximum(required_halo_size_z, terms; init=0)
+
 inflate_halo_size_one_dimension(req_H, old_H, _, grid)            = max(req_H, old_H)
 inflate_halo_size_one_dimension(req_H, old_H, ::Type{Flat}, grid) = 0
 
