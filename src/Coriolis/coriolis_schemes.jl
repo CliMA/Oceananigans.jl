@@ -143,21 +143,30 @@ end
 
 Energy-conserving Coriolis scheme for grids whose cell thickness ``Δz`` varies horizontally,
 such as an `ImmersedBoundaryGrid` with `PartialCellBottom`. It is the [Sadourny (1975)](@cite Sadourny1975)
-energy-conserving form written for volume transports ``𝒰 = A_x u`` and ``𝒱 = A_y v``, with potential
-vorticity ``q = f / h`` at cell corners:
+energy-conserving form written for volume transports 𝒰 = Aˣ u and 𝒱 = Aʸ v, with potential
+vorticity q = f / h at cell corners:
 
-```math
-(f × u)ˣ = - \\frac{1}{Δx} \\overline{q \\overline{𝒱}^x}^y , \\qquad
-(f × u)ʸ = + \\frac{1}{Δy} \\overline{q \\overline{𝒰}^y}^x .
-```
+    (f × u)ˣ = - ℑʸ(q ℑˣ𝒱) / Δx,    (f × u)ʸ = + ℑˣ(q ℑʸ𝒰) / Δy,
 
-The corner thickness ``h`` is the mean thickness of the active (non-peripheral) velocity faces that
-meet at the corner. With these weights the discrete Coriolis work
-``Σ Vᵘ u (f × u)ˣ + Σ Vᵛ v (f × u)ʸ = Σ q (\\overline{𝒱}^x \\overline{𝒰}^y - \\overline{𝒰}^y \\overline{𝒱}^x)``
-vanishes identically, corner by corner, for any distribution of ``Δz``. The `EnergyConserving` and
-`EnstrophyConserving` schemes divide by the thickness-weighted face area instead, so their work
-vanishes only when ``Δz`` is uniform. When ``Δz`` is uniform, `ThicknessWeightedEnergyConserving`
-is identical to `EnergyConserving`. Like `EnergyConserving`, it does not conserve potential enstrophy.
+where ℑˣ and ℑʸ are the two-point interpolation operators, which take unweighted averages of
+neighbouring values. The corner thickness h is the mean thickness of the active
+(non-peripheral) velocity faces that meet at the corner. With these weights the discrete Coriolis work
+
+    Σ Δx Aˣ u (f × u)ˣ + Σ Δy Aʸ v (f × u)ʸ = Σ q (ℑˣ𝒱 ℑʸ𝒰 - ℑʸ𝒰 ℑˣ𝒱)
+
+vanishes identically, corner by corner, for any distribution of Δz. The conserved kinetic energy is
+Σ Δx Aˣ u² / 2 + Σ Δy Aʸ v² / 2, which is also the energy that the hydrostatic pressure gradient and
+the continuity equation exchange consistently. It equals Σ V u² / 2 + Σ V v² / 2 when Az = Δx Δy.
+
+The `EnergyConserving` and `EnstrophyConserving` (default) schemes divide by the thickness-weighted
+face area instead, so their work vanishes only when Δz is uniform. When Δz is uniform,
+`ThicknessWeightedEnergyConserving` is identical to `EnergyConserving`.
+
+Using one corner q for both components changes the local Coriolis strength where Δz varies:
+a thin face next to thicker ones feels its neighbors' Coriolis acceleration amplified by up to
+a factor of 4, and a thick face next to thinner ones feels it reduced. Like `EnergyConserving`, the
+scheme does not conserve potential enstrophy. It applies to the Coriolis term only; the vorticity
+term of `VectorInvariant` momentum advection is discretized separately.
 
 Example
 =======
@@ -180,32 +189,28 @@ Base.summary(::ThicknessWeightedEnergyConserving) = "ThicknessWeightedEnergyCons
 
 const TWENC = AbstractRotation{<:ThicknessWeightedEnergyConserving}
 
-@inline active_Δzᶠᶜᶜ(i, j, k, grid) = ifelse(not_peripheral_nodeᶠᶜᶜ(i, j, k, grid), Δzᶠᶜᶜ(i, j, k, grid), zero(grid))
-@inline active_Δzᶜᶠᶜ(i, j, k, grid) = ifelse(not_peripheral_nodeᶜᶠᶜ(i, j, k, grid), Δzᶜᶠᶜ(i, j, k, grid), zero(grid))
-
 # Mean thickness of the active velocity faces meeting at the corner (i, j): u-faces at (i, j) and (i, j-1),
 # v-faces at (i, j) and (i-1, j). Zero if none is active, in which case all four transports vanish too.
 @inline function corner_thicknessᶠᶠᶜ(i, j, k, grid)
-    active_faces = not_peripheral_nodeᶠᶜᶜ(i, j,   k, grid) + not_peripheral_nodeᶠᶜᶜ(i,   j-1, k, grid) +
-                   not_peripheral_nodeᶜᶠᶜ(i, j,   k, grid) + not_peripheral_nodeᶜᶠᶜ(i-1, j,   k, grid)
+    a₁ = not_peripheral_nodeᶠᶜᶜ(i, j,   k, grid)
+    a₂ = not_peripheral_nodeᶠᶜᶜ(i, j-1, k, grid)
+    a₃ = not_peripheral_nodeᶜᶠᶜ(i,   j, k, grid)
+    a₄ = not_peripheral_nodeᶜᶠᶜ(i-1, j, k, grid)
 
-    total_thickness = active_Δzᶠᶜᶜ(i, j,   k, grid) + active_Δzᶠᶜᶜ(i,   j-1, k, grid) +
-                      active_Δzᶜᶠᶜ(i, j,   k, grid) + active_Δzᶜᶠᶜ(i-1, j,   k, grid)
+    Σh = a₁ * Δzᶠᶜᶜ(i, j,   k, grid) + a₂ * Δzᶠᶜᶜ(i, j-1, k, grid) +
+         a₃ * Δzᶜᶠᶜ(i,   j, k, grid) + a₄ * Δzᶜᶠᶜ(i-1, j, k, grid)
 
-    return total_thickness / max(1, active_faces)
+    return Σh / max(1, a₁ + a₂ + a₃ + a₄)
 end
 
-@inline function q_ℑx_Ay_vᶠᶠᶜ(i, j, k, grid, coriolis::AbstractRotation, v)
+@inline function corner_potential_vorticityᶠᶠᶜ(i, j, k, grid, coriolis)
     h = corner_thicknessᶠᶠᶜ(i, j, k, grid)
-    f_𝒱 = f_ℑx_Ay_vᶠᶠᶜ(i, j, k, grid, coriolis, v)
-    return ifelse(h == 0, zero(grid), f_𝒱 / ifelse(h == 0, one(h), h))
+    f = fᶠᶠᵃ(i, j, k, grid, coriolis)
+    return ifelse(h == 0, zero(grid), f / ifelse(h == 0, one(h), h))
 end
 
-@inline function q_ℑy_Ax_uᶠᶠᶜ(i, j, k, grid, coriolis::AbstractRotation, u)
-    h = corner_thicknessᶠᶠᶜ(i, j, k, grid)
-    f_𝒰 = f_ℑy_Ax_uᶠᶠᶜ(i, j, k, grid, coriolis, u)
-    return ifelse(h == 0, zero(grid), f_𝒰 / ifelse(h == 0, one(h), h))
-end
+@inline q_ℑx_Ay_vᶠᶠᶜ(i, j, k, grid, coriolis, v) = corner_potential_vorticityᶠᶠᶜ(i, j, k, grid, coriolis) * ℑxᶠᵃᵃ(i, j, k, grid, masked_Ay_qᶜᶠᶜ, v)
+@inline q_ℑy_Ax_uᶠᶠᶜ(i, j, k, grid, coriolis, u) = corner_potential_vorticityᶠᶠᶜ(i, j, k, grid, coriolis) * ℑyᵃᶠᵃ(i, j, k, grid, masked_Ax_qᶠᶜᶜ, u)
 
 @inline x_f_cross_U(i, j, k, grid, coriolis::TWENC, U) = @inbounds - ℑyᵃᶜᵃ(i, j, k, grid, q_ℑx_Ay_vᶠᶠᶜ, coriolis, U[2]) / Δxᶠᶜᶜ(i, j, k, grid)
 @inline y_f_cross_U(i, j, k, grid, coriolis::TWENC, U) = @inbounds + ℑxᶜᵃᵃ(i, j, k, grid, q_ℑy_Ax_uᶠᶠᶜ, coriolis, U[1]) / Δyᶜᶠᶜ(i, j, k, grid)

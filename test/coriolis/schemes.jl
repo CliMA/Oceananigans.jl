@@ -4,7 +4,7 @@ using Oceananigans.Advection: EnergyConserving, EnstrophyConserving
 using Oceananigans.Coriolis: fᶜᶜᵃ, fᶠᶠᵃ, HydrostaticFormulation, TriadScheme, ActiveWeightedEnergyConserving, ActiveWeightedEnstrophyConserving, DualGridScheme,
                              ThicknessWeightedEnergyConserving
 using Oceananigans.Coriolis: 𝒯⁺⁺, 𝒯⁻⁺, 𝒯⁺⁻, 𝒯⁻⁻
-using Oceananigans.Operators: Ayᶜᶠᶜ, Ayᶠᶜᶜ, Vᶠᶜᶜ, Vᶜᶠᶜ, Azᶜᶜᶜ
+using Oceananigans.Operators: Ayᶜᶠᶜ, Ayᶠᶜᶜ, Axᶠᶜᶜ, Δxᶠᶜᶜ, Δyᶜᶠᶜ, Vᶠᶜᶜ, Vᶜᶠᶜ, Azᶜᶜᶜ
 using Oceananigans.Grids: peripheral_node
 using Oceananigans.ImmersedBoundaries: PartialCellBottom
 using Random: Random
@@ -418,8 +418,9 @@ end
 #####
 ##### 10. Coriolis work with horizontally varying Δz (PartialCellBottom)
 #####
-##### The discrete Coriolis work Σ Vᵘ u (f × u)ˣ + Σ Vᵛ v (f × u)ʸ should vanish for any u, v.
+##### The discrete Coriolis work Σ Δx Aˣ u (f × u)ˣ + Σ Δy Aʸ v (f × u)ʸ should vanish for any u, v.
 ##### With a single level over a PartialCellBottom, Δz varies by orders of magnitude between neighbors.
+##### The stretched latitude grid has Az ≠ Δx Δy, so the weights Δx Aˣ and V differ there.
 #####
 
 function partial_cell_grid(underlying_grid; seed=1234)
@@ -436,11 +437,11 @@ function random_masked_velocities(grid; seed=42)
     Random.seed!(seed)
     FT = eltype(grid)
     U = make_velocity_fields(grid)
-    Nx, Ny, Nz = size(grid)
-    u_data = [peripheral_node(i, j, 1, grid, Face(), Center(), Center()) ? zero(FT) : randn(FT) for i in 1:Nx, j in 1:Ny, k in 1:Nz]
-    v_data = [peripheral_node(i, j, 1, grid, Center(), Face(), Center()) ? zero(FT) : randn(FT) for i in 1:Nx, j in 1:Ny, k in 1:Nz]
-    set!(U.u, u_data)
-    set!(U.v, v_data)
+    for (velocity, location) in ((U.u, (Face(), Center(), Center())), (U.v, (Center(), Face(), Center())))
+        Nx, Ny, Nz = size(velocity)
+        data = [peripheral_node(i, j, k, grid, location...) ? zero(FT) : randn(FT) for i in 1:Nx, j in 1:Ny, k in 1:Nz]
+        set!(velocity, data)
+    end
     fill_halo_regions!((U.u, U.v))
     return U
 end
@@ -450,8 +451,8 @@ function relative_coriolis_work(grid, coriolis, U)
     work = zero(eltype(grid))
     scale = zero(eltype(grid))
     for j in 1:Ny, i in 1:Nx
-        Wu = Vᶠᶜᶜ(i, j, 1, grid) * U.u[i, j, 1] * x_f_cross_U(i, j, 1, grid, coriolis, U)
-        Wv = Vᶜᶠᶜ(i, j, 1, grid) * U.v[i, j, 1] * y_f_cross_U(i, j, 1, grid, coriolis, U)
+        Wu = Δxᶠᶜᶜ(i, j, 1, grid) * Axᶠᶜᶜ(i, j, 1, grid) * U.u[i, j, 1] * x_f_cross_U(i, j, 1, grid, coriolis, U)
+        Wv = Δyᶜᶠᶜ(i, j, 1, grid) * Ayᶜᶠᶜ(i, j, 1, grid) * U.v[i, j, 1] * y_f_cross_U(i, j, 1, grid, coriolis, U)
         work += Wu + Wv
         scale += abs(Wu) + abs(Wv)
     end
@@ -465,32 +466,44 @@ function test_coriolis_work_with_partial_cells(FT)
     latlon = LatitudeLongitudeGrid(CPU(), FT; size=(16, 12, 1), halo=(3, 3, 3), longitude=(0, 360), latitude=(-60, 60),
                                    z=(-4000, 0))
 
+    stretched_latitude = [-60 + 120 * (j / 12)^(3/2) for j in 0:12]
+    stretched_latlon = LatitudeLongitudeGrid(CPU(), FT; size=(16, 12, 1), halo=(3, 3, 3), longitude=(0, 360),
+                                             latitude=stretched_latitude, z=(-4000, 0))
+
     for (underlying_grid, coriolis) in ((rectilinear, scheme -> FPlane(FT; f=1e-4, scheme)),
-                                        (latlon, scheme -> HydrostaticSphericalCoriolis(FT; scheme)))
+                                        (latlon, scheme -> HydrostaticSphericalCoriolis(FT; scheme)),
+                                        (stretched_latlon, scheme -> HydrostaticSphericalCoriolis(FT; scheme)))
         grid = partial_cell_grid(underlying_grid)
         U = random_masked_velocities(grid)
 
         # Exact up to roundoff for the thickness-weighted scheme
         @test relative_coriolis_work(grid, coriolis(ThicknessWeightedEnergyConserving()), U) < 100 * eps(FT)
 
-        # Not for the existing energy-conserving scheme, whose work vanishes only for uniform Δz
+        # Not for the existing schemes, whose work vanishes only for uniform Δz
         @test relative_coriolis_work(grid, coriolis(EnergyConserving()), U) > 1e-3
+        @test relative_coriolis_work(grid, coriolis(EnstrophyConserving()), U) > 1e-3
     end
 end
 
 #####
-##### 11. ThicknessWeightedEnergyConserving = EnergyConserving for uniform Δz
+##### 11. ThicknessWeightedEnergyConserving = EnergyConserving for uniform Δz, including next to a GridFittedBottom
 #####
 
 function test_thickness_weighted_equals_energy_conserving_uniform_Δz(FT)
-    grid = LatitudeLongitudeGrid(CPU(), FT; size=(8, 8, 1), latitude=(30, 60), longitude=(0, 30), z=(-100, 0))
-    U = random_masked_velocities(grid)
+    underlying_grid = LatitudeLongitudeGrid(CPU(), FT; size=(8, 8, 1), latitude=(30, 60), longitude=(0, 30), z=(-100, 0))
+    Nx, Ny, _ = size(underlying_grid)
+    bottom_height = fill(FT(-200), Nx, Ny)
+    bottom_height[1:3, 1:2] .= 0 # some land
+
     cor_ene = HydrostaticSphericalCoriolis(FT, scheme=EnergyConserving())
     cor_twe = HydrostaticSphericalCoriolis(FT, scheme=ThicknessWeightedEnergyConserving())
 
-    for j in 2:7, i in 2:7
-        @test x_f_cross_U(i, j, 1, grid, cor_twe, U) ≈ x_f_cross_U(i, j, 1, grid, cor_ene, U)
-        @test y_f_cross_U(i, j, 1, grid, cor_twe, U) ≈ y_f_cross_U(i, j, 1, grid, cor_ene, U)
+    for grid in (underlying_grid, ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height)))
+        U = random_masked_velocities(grid)
+        for j in 1:Ny, i in 1:Nx
+            @test x_f_cross_U(i, j, 1, grid, cor_twe, U) ≈ x_f_cross_U(i, j, 1, grid, cor_ene, U)
+            @test y_f_cross_U(i, j, 1, grid, cor_twe, U) ≈ y_f_cross_U(i, j, 1, grid, cor_ene, U)
+        end
     end
 end
 
@@ -498,8 +511,8 @@ end
 ##### 12. Spurious growing mode with a single-level PartialCellBottom (issue #6397)
 #####
 ##### Unforced, inviscid, f-plane, explicit free surface, random initial velocities over random depths
-##### from 8 m to 4000 m. With EnergyConserving the energy grows exponentially; with
-##### ThicknessWeightedEnergyConserving it does not grow.
+##### from 8 m to 4000 m. With EnergyConserving or EnstrophyConserving the energy grows exponentially;
+##### with ThicknessWeightedEnergyConserving it does not grow.
 #####
 
 function total_energy(model)
@@ -513,13 +526,13 @@ function total_energy(model)
                g * Azᶜᶜᶜ(i, j, 1, grid) * η[i, j, 1]^2 / 2 for i in 1:Nx, j in 1:Ny)
 end
 
-function energy_growth_with_partial_cells(scheme; N=24, steps=500)
+function energy_growth_with_partial_cells(scheme, timestepper; N=24, steps=500)
     underlying_grid = RectilinearGrid(CPU(); size=(N, N, 1), halo=(3, 3, 3), x=(0, 1e6), y=(0, 1e6), z=(-4000, 0),
                                       topology=(Periodic, Periodic, Bounded))
 
     grid = partial_cell_grid(underlying_grid)
 
-    model = HydrostaticFreeSurfaceModel(grid; coriolis = FPlane(; f=1e-4, scheme),
+    model = HydrostaticFreeSurfaceModel(grid; timestepper, coriolis = FPlane(; f=1e-4, scheme),
                                         free_surface = ExplicitFreeSurface(gravitational_acceleration=0.01),
                                         momentum_advection = nothing, buoyancy = nothing, tracers = nothing, closure = nothing)
 
@@ -625,9 +638,12 @@ for arch in archs
     end
 
     if arch isa CPU
-        @testset "Spurious growing mode with single-level PartialCellBottom (#6397)" begin
-            @test energy_growth_with_partial_cells(EnergyConserving()) > 2
-            @test energy_growth_with_partial_cells(ThicknessWeightedEnergyConserving()) < 1
+        for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
+            @testset "Spurious growing mode with single-level PartialCellBottom (#6397) [$timestepper]" begin
+                @test energy_growth_with_partial_cells(EnergyConserving(), timestepper) > 2
+                @test energy_growth_with_partial_cells(EnstrophyConserving(), timestepper) > 2
+                @test energy_growth_with_partial_cells(ThicknessWeightedEnergyConserving(), timestepper) < 1.01
+            end
         end
     end
 

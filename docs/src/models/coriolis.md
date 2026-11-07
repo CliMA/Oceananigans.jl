@@ -232,12 +232,20 @@ by the thickness-weighted face area at the velocity point. Their discrete Coriol
 the cell thickness ``Δz`` is the same in neighboring cells. With `PartialCellBottom`, ``Δz`` varies near
 topography, and in a single-level model whose partial cell spans the whole ocean depth it varies everywhere.
 The Coriolis term then does net work and can drive a spurious, exponentially growing mode.
+This includes the default `EnstrophyConserving` scheme.
 
 `ThicknessWeightedEnergyConserving` is the [Sadourny1975](@citet) energy-conserving form written for volume
 transports ``𝒰 = A_x u`` and ``𝒱 = A_y v``, with potential vorticity ``q = f / h`` at cell corners, where
 ``h`` is the mean thickness of the active velocity faces meeting at the corner. It divides by the horizontal
-spacing only, so that its discrete work vanishes identically for any ``Δz``. With uniform ``Δz`` it is
-identical to `EnergyConserving`. It does not conserve potential enstrophy.
+spacing only, so that its discrete work vanishes identically for any ``Δz``. The conserved kinetic energy is
+``\sum Δx A_x u^2 / 2 + \sum Δy A_y v^2 / 2``, the same energy that the pressure gradient and continuity
+equation exchange consistently. With uniform ``Δz`` the scheme is identical to `EnergyConserving`.
+
+The price of using a single corner ``q`` for both velocity components is that where ``Δz`` varies the local
+Coriolis strength changes. A thin face next to thicker ones feels its neighbors' Coriolis acceleration
+amplified by up to a factor of 4, and a thick face next to thinner ones feels it reduced. The scheme does not
+conserve potential enstrophy, and it covers the Coriolis term only. The vorticity term of `VectorInvariant`
+momentum advection is discretized separately.
 
 ```jldoctest
 julia> coriolis = HydrostaticSphericalCoriolis(scheme=Oceananigans.Coriolis.ThicknessWeightedEnergyConserving())
