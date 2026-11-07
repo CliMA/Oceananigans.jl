@@ -1,5 +1,6 @@
 using Oceananigans.Grids: peripheral_node
-using Oceananigans.Operators: div_xyᶜᶜᶜ
+using Oceananigans.ImmersedBoundaries: PCBIBG, XFlatPCBIBG, YFlatPCBIBG, XYFlatPCBIBG
+using Oceananigans.Operators: div_xyᶜᶜᶜ, Δzᶜᶠᶜ, Δzᶠᶜᶜ
 
 """
     abstract type AbstractScalarBiharmonicDiffusivity <: AbstractTurbulenceClosure end
@@ -135,6 +136,41 @@ using Oceananigans.OrthogonalSphericalShellGrids: ConformalCubedSpherePanelGridO
                      )
               )
     return Az⁻¹ᶠᶠᶜ(i, j, k, grid) * Γ
+end
+
+#####
+##### Horizontal biharmonic viscosity on partial cells
+#####
+
+# ∇⁴u = L(L(u)), with L(u) = V⁻¹ [ ∇(Az Δzᵐⁱⁿ δ) - ẑ × ∇(Az Δzᶠᶠᶜ ζ) ] and Δzᵐⁱⁿ the thinnest velocity face of a cell
+@inline Δzᵐⁱⁿᶜᶜᶜ(i, j, k, grid) = min(Δzᶠᶜᶜ(i, j, k, grid), Δzᶠᶜᶜ(i+1, j, k, grid), Δzᶜᶠᶜ(i, j, k, grid), Δzᶜᶠᶜ(i, j+1, k, grid))
+@inline Δzᵐⁱⁿᶜᶜᶜ(i, j, k, grid::XFlatPCBIBG) = min(Δzᶜᶠᶜ(i, j, k, grid), Δzᶜᶠᶜ(i, j+1, k, grid))
+@inline Δzᵐⁱⁿᶜᶜᶜ(i, j, k, grid::YFlatPCBIBG) = min(Δzᶠᶜᶜ(i, j, k, grid), Δzᶠᶜᶜ(i+1, j, k, grid))
+@inline Δzᵐⁱⁿᶜᶜᶜ(i, j, k, grid::XYFlatPCBIBG) = Δzᶜᶜᶜ(i, j, k, grid)
+
+@inline Δzᵐⁱⁿδᶜᶜᶜ(i, j, k, grid, u, v) = Δzᵐⁱⁿᶜᶜᶜ(i, j, k, grid) * Az⁻¹ᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, u) + δyᵃᶜᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, v))
+
+@inline function free_slip_vorticityᶠᶠᶜ(i, j, k, grid, u, v)
+    ζ = Az⁻¹ᶠᶠᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, Δy_qᶜᶠᶜ, v) - δyᵃᶠᵃ(i, j, k, grid, Δx_qᶠᶜᶜ, u))
+    return ifelse(peripheral_node(i, j, k, grid, Face(), Face(), Center()), zero(grid), ζ)
+end
+
+@inline ∇²★uᶠᶜᶜ(i, j, k, grid, u, v) = V⁻¹ᶠᶜᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, Δy_qᶜᶜᶜ, Δzᵐⁱⁿδᶜᶜᶜ, u, v) - δyᵃᶜᵃ(i, j, k, grid, Ay_qᶠᶠᶜ, free_slip_vorticityᶠᶠᶜ, u, v))
+@inline ∇²★vᶜᶠᶜ(i, j, k, grid, u, v) = V⁻¹ᶜᶠᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_qᶠᶠᶜ, free_slip_vorticityᶠᶠᶜ, u, v) + δyᵃᶠᵃ(i, j, k, grid, Δx_qᶜᶜᶜ, Δzᵐⁱⁿδᶜᶜᶜ, u, v))
+
+@inline Δy_∇²u(i, j, k, grid::PCBIBG, u, v) = Δy_qᶠᶜᶜ(i, j, k, grid, biharmonic_mask_x, ∇²★uᶠᶜᶜ, u, v)
+@inline Δx_∇²v(i, j, k, grid::PCBIBG, u, v) = Δx_qᶜᶠᶜ(i, j, k, grid, biharmonic_mask_y, ∇²★vᶜᶠᶜ, u, v)
+@inline Δy_∇²v(i, j, k, grid::PCBIBG, u, v) = Δy_qᶜᶠᶜ(i, j, k, grid, biharmonic_mask_y, ∇²★vᶜᶠᶜ, u, v)
+@inline Δx_∇²u(i, j, k, grid::PCBIBG, u, v) = Δx_qᶠᶜᶜ(i, j, k, grid, biharmonic_mask_x, ∇²★uᶠᶜᶜ, u, v)
+
+@inline function δ★ᶜᶜᶜ(i, j, k, grid::PCBIBG, u, v)
+    δ★ = Az⁻¹ᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Δy_∇²u, u, v) + δyᵃᶜᵃ(i, j, k, grid, Δx_∇²v, u, v))
+    return Δzᵐⁱⁿᶜᶜᶜ(i, j, k, grid) * Δz⁻¹ᶜᶜᶜ(i, j, k, grid) * δ★
+end
+
+@inline function ζ★ᶠᶠᶜ(i, j, k, grid::PCBIBG, u, v)
+    ζ★ = Az⁻¹ᶠᶠᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, Δy_∇²v, u, v) - δyᵃᶠᵃ(i, j, k, grid, Δx_∇²u, u, v))
+    return ifelse(peripheral_node(i, j, k, grid, Face(), Face(), Center()), zero(grid), ζ★)
 end
 
 #####

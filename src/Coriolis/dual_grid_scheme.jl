@@ -9,7 +9,7 @@ using Oceananigans.Utils: launch!
 """
     DualGridScheme(grid; relaxation_time = 10 * 86400)
 
-C-D grid Coriolis scheme of Adcroft, Hill and Marshall (1999), Mon. Wea. Rev. 127, 1928-1936.
+C-D grid Coriolis scheme of [Adcroft et al. (1999)](@cite Adcroft1999Coriolis).
 The Coriolis force on the C-grid velocities uses D-grid velocities located at the same points,
 `vᴰ` at `u` points and `uᴰ` at `v` points, so that `f × u` is evaluated without spatial averaging.
 The D-grid velocities are the C-grid velocities averaged to the D-grid points plus a prognostic deviation,
@@ -23,6 +23,11 @@ Keyword arguments
 
 - `relaxation_time`: time scale `τ` [s] over which the D-grid velocities relax toward the averaged C-grid velocities.
   Default: 10 days. `Inf` disables the relaxation.
+
+References
+==========
+* Adcroft, A. J., Hill, C. N., & Marshall, J. C. (1999). "A new treatment of the Coriolis terms in
+  C-grid models at both high and low resolutions." Monthly Weather Review, 127(8), 1928-1936.
 """
 struct DualGridScheme{D, S, FT}
     velocity_deviations :: D

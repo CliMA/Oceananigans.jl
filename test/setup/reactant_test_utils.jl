@@ -24,7 +24,8 @@ OceananigansReactantExt = Base.get_extension(Oceananigans, :OceananigansReactant
 bottom_height(x, y) = - 0.5
 
 function r_run!(sim, r_time_step!, r_first_time_step!)
-    stop_iteration = sim.stop_iteration
+    # A device number on a Reactant Simulation: this eager loop bounds its range on the host
+    stop_iteration = Int(sim.stop_iteration)
     start_iteration = iteration(sim) + 1
     for n = start_iteration:stop_iteration
         if n == 1
@@ -197,4 +198,18 @@ end
 @kernel function _add_one!(f)
     i, j, k = @index(Global, NTuple)
     @inbounds f[i, j, k] += 1
+end
+
+double(i, j, k, grid, c) = @inbounds 2 * c[i, j, k]
+
+# Builds the operation inside the traced function and passes it to the kernel within a NamedTuple
+function compute_doubled!(out, c)
+    operations = (; doubled = KernelFunctionOperation{Center, Center, Center}(double, c.grid, c))
+    launch!(architecture(out), out.grid, :xyz, _compute_doubled!, out, operations)
+    return out
+end
+
+@kernel function _compute_doubled!(out, operations)
+    i, j, k = @index(Global, NTuple)
+    @inbounds out[i, j, k] = operations.doubled[i, j, k]
 end

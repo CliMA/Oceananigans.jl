@@ -169,6 +169,13 @@ own.
 
 The transports enter unconverted, so the tidal mass flux is preserved where the atlas and the model
 disagree about depth. Keyword arguments reach `dataset`, such as the `dir` it reads.
+
+References
+==========
+* Flather, R. A. (1976). "A tidal model of the north-west European continental shelf."
+  Memoires de la Societe Royale des Sciences de Liege, 6(10), 141-164.
+* Chapman, D. C. (1985). "Numerical treatment of cross-shelf open boundaries in a
+  barotropic coastal ocean model." Journal of Physical Oceanography, 15(8), 1060-1075.
 """
 function tidal_boundary_conditions(grid, harmonics::TidalHarmonics, dataset; kw...)
 

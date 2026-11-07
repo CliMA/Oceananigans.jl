@@ -17,7 +17,9 @@ For local testing (especially without GPU), temporarily modify `docs/make.jl`:
 1. Comment out Literate examples in `example_scripts` and `example_pages`
 2. Add `warnonly = [:cross_references, :example_block, :linkcheck]`
 3. Comment out GPU-requiring pages (e.g., `simulation_tips.md`)
-4. Optional: `doctest = false`, `linkcheck = false`, `draft = true`
+4. Optional: `linkcheck = false`, `draft = true`
+
+Doctests are not run by the docs build: `test/doctests/doctests.jl` runs them in the GPU test job.
 
 **Remember to revert these changes before committing!**
 
