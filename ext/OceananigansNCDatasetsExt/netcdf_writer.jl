@@ -106,7 +106,8 @@ function NetCDFWriter(model::AbstractModel, outputs;
                       part = 1,
                       file_splitting = NoFileSplitting(),
                       dimension_name_generator = trilocation_dim_name,
-                      dimension_type = Float64)
+                      dimension_type = Float64,
+                      asynchronous = false)
 
     if with_halos && indices != (:, :, :)
         throw(ArgumentError("If with_halos=true then you cannot pass indices: $indices"))
@@ -141,27 +142,30 @@ function NetCDFWriter(model::AbstractModel, outputs;
     # schedule::AveragedTimeInterval
     schedule, outputs = time_average_outputs(schedule, outputs, model)
 
-    return NetCDFWriter(unique_grids,
-                        output_grid_map,
-                        filepath,
-                        outputs,
-                        schedule,
-                        array_type,
-                        indices,
-                        global_attributes,
-                        output_attributes,
-                        dimensions,
-                        with_halos,
-                        include_grid_metrics,
-                        overwrite_files,
-                        overwrite_snapshots,
-                        verbose,
-                        deflatelevel,
-                        part,
-                        file_splitting,
-                        dimension_name_generator,
-                        dimension_type,
-                        false)
+    asynchronous && Oceananigans.OutputWriters.validate_async_outputs(outputs, array_type, model)
+
+    Mode = asynchronous ? Asynchronous : Synchronous
+    return NetCDFWriter{Mode}(unique_grids,
+                              output_grid_map,
+                              filepath,
+                              outputs,
+                              schedule,
+                              array_type,
+                              indices,
+                              global_attributes,
+                              output_attributes,
+                              dimensions,
+                              with_halos,
+                              include_grid_metrics,
+                              overwrite_files,
+                              overwrite_snapshots,
+                              verbose,
+                              deflatelevel,
+                              part,
+                              file_splitting,
+                              dimension_name_generator,
+                              dimension_type,
+                              false)
 end
 
 """
@@ -489,36 +493,61 @@ function time_index_for_writing(ds, t, ow, filepath)
 end
 
 """
-    write_output!(ow::NetCDFWriter, model)
+    NetCDFWriteSnapshot
 
-Write output to netcdf file `output_writer.filepath` at specified intervals. Increments the `time` dimension
-every time an output is written to the file.
+Captures everything needed to commit a NetCDF write to disk after the GPU→CPU
+copy has completed. Created by `prepare_async_write` on the main thread;
+consumed by `commit_async_write!` (inline for `Synchronous` mode, on a
+background task for `Asynchronous` mode).
+
+The fetched data is keyed by output name. Per-output dispatch (regular field,
+`LagrangianParticles`, constant field) at commit time is driven by the `outputs`
+reference, which is the writer's own outputs Dict — safe to share since it's not
+mutated during a write.
 """
-function write_output!(ow::NetCDFWriter, model::AbstractModel)
+struct NetCDFWriteSnapshot{D, O}
+    time :: Any
+    data :: D
+    outputs :: O
+    filepath :: String
+    verbose :: Bool
+end
+
+function prepare_async_write(ow::NetCDFWriter, model::AbstractModel)
     model.clock.iteration == 0 && !has_initial_output(ow.schedule) && return nothing
 
     # Ensure the writer is initialized before writing
     initialize!(ow, model)
 
-    # Start a new file if the file_splitting(model) is true
+    # File splitting decision (synchronous; mutates `ow.filepath`).
     ow.file_splitting(model) && start_next_file(model, ow)
     update_file_splitting_schedule!(ow.file_splitting, ow.filepath)
 
-    ds = open(ow)
-    verbose, filepath = ow.verbose, ow.filepath
-
-    if verbose
-        @info "Writing to NetCDF: $filepath..."
-        # Time and file size before computing any outputs.
-        t0, sz0 = time_ns(), filesize(filepath)
-    end
-
-    # Every output is fetched before the output time is computed: for a schedule like
-    # `FilteredTimeInterval`, computing the output time also advances internal state that fetching
-    # still depends on (which frame's accumulated sum is "current").
+    # Synchronous fetch — GPU→CPU transfer that must complete before the GPU advances to
+    # the next time step. Every output is fetched before the output time is computed: for
+    # a schedule like `FilteredTimeInterval`, computing the output time also advances
+    # internal state that fetching still depends on (which frame's accumulated sum is
+    # "current").
     fetched = OrderedDict(output_name => fetch_and_convert_output(output, model, ow) for (output_name, output) in ow.outputs)
 
     t = float_or_date_time(output_time(model.clock, ow.schedule))
+
+    return NetCDFWriteSnapshot(t, fetched, ow.outputs, ow.filepath, ow.verbose)
+end
+
+function commit_async_write!(ow::NetCDFWriter, snap::NetCDFWriteSnapshot)
+    ow.commit_delay > 0 && sleep(ow.commit_delay)
+    ow.commit_throws === nothing || throw(ow.commit_throws)
+
+    filepath, verbose, t = snap.filepath, snap.verbose, snap.time
+
+    if verbose
+        @info "Writing to NetCDF: $filepath..."
+        t0, sz0 = time_ns(), filesize(filepath)
+    end
+
+    ds = NCDataset(filepath, "a")
+
     time_index = time_index_for_writing(ds, t, ow, filepath)
 
     if isnothing(time_index)
@@ -528,24 +557,36 @@ function write_output!(ow::NetCDFWriter, model::AbstractModel)
 
     ds["time"][time_index] = t
 
-    verbose && @info "Writing NetCDF outputs at time index $(time_index): $(keys(ow.outputs))..."
+    verbose && @info "Writing NetCDF outputs at time index $(time_index): $(keys(snap.outputs))..."
 
-    for (output_name, output) in ow.outputs
-        write_time_dependent_output!(ds, output, fetched[output_name], time_index, output_name)
+    for (output_name, output) in snap.outputs
+        write_time_dependent_output!(ds, output, snap.data[output_name], time_index, output_name)
     end
 
     sync(ds)
     close(ds)
 
     if verbose
-        # Time and file size after computing and writing all outputs to disk.
         t1, sz1 = time_ns(), filesize(filepath)
-        verbose && @info begin
-            @sprintf("Writing done: time=%s, size=%s, Δsize=%s",
-                    prettytime((t1-t0)/1e9), pretty_filesize(sz1), pretty_filesize(sz1-sz0))
-        end
+        @info @sprintf("Writing done: time=%s, size=%s, Δsize=%s",
+                       prettytime((t1 - t0) / 1e9), pretty_filesize(sz1), pretty_filesize(sz1 - sz0))
     end
 
+    return nothing
+end
+
+"""
+    write_output!(ow::NetCDFWriter, model)
+
+Write output to netcdf file `output_writer.filepath` at specified intervals. Increments the `time` dimension
+every time an output is written to the file. For `Synchronous` writers this runs prepare and commit inline;
+the `Asynchronous` path uses the same prepare/commit pair via the generic
+`write_output!(::AsyncOutputWriter, ::AbstractModel)`, but spawns the commit on a background task.
+"""
+function write_output!(ow::NetCDFWriter{Synchronous}, model::AbstractModel)
+    snapshot = prepare_async_write(ow, model)
+    snapshot === nothing && return nothing
+    commit_async_write!(ow, snapshot)
     return nothing
 end
 
@@ -604,7 +645,9 @@ function Base.show(io::IO, ow::NetCDFWriter)
     averaging_schedule = output_averaging_schedule(ow)
     num_outputs = length(ow.outputs)
 
-    print(io, "NetCDFWriter scheduled on $(summary(ow.schedule)):", "\n",
+    async_tag = is_asynchronous(ow) ? " (async)" : ""
+
+    print(io, "NetCDFWriter$(async_tag) scheduled on $(summary(ow.schedule)):", "\n",
               "├── filepath: ", relpath(ow.filepath), "\n",
               "├── dimensions: $dims", "\n",
               "├── $num_outputs outputs: ", prettykeys(ow.outputs), show_averaging_schedule(averaging_schedule), "\n",

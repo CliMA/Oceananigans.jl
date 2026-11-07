@@ -4,7 +4,7 @@ using Oceananigans.Architectures: architecture
 using Oceananigans.Diagnostics: nan_detected, reset_nan_checker!
 using Oceananigans.DistributedComputations: all_reduce, check_field_tags
 using Oceananigans.Fields: set!
-using Oceananigans.OutputWriters: WindowedTimeAverage, TimeFilteredOutput, TimeDerivative, checkpoint_path, load_checkpoint_state
+using Oceananigans.OutputWriters: WindowedTimeAverage, TimeFilteredOutput, TimeDerivative, checkpoint_path, load_checkpoint_state, wait_for_async_writes!
 using Oceananigans.TimeSteppers: time_step!, update_state!, unit_time
 using Oceananigans.Utils: PrecedingIterations, schedule_aligned_time_step
 
@@ -170,6 +170,10 @@ function run!(sim; pickup=false, checkpoint_at_end=false)
     while sim.running
         time_step!(sim)
     end
+
+    # Flush any in-flight async writes before checkpointing or finalizing,
+    # so the on-disk state reflects all output produced during this run.
+    wait_for_async_writes!(sim)
 
     if checkpoint_at_end
         if nan_checker_detected_nan(sim)

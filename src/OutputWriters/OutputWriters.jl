@@ -4,6 +4,8 @@ export
     JLD2Writer, NetCDFWriter, ZarrWriter,
     Checkpointer, checkpoint,
     written_names,
+    Synchronous, Asynchronous, AsyncOutputWriter, SyncOutputWriter,
+    is_asynchronous, wait_for_async_writes!,
     WindowedTimeAverage, AveragedSpecifiedTimes, FileSizeLimit, TimeDerivative,
     TimeInterval, IterationInterval, WallTimeInterval, AveragedTimeInterval,
     FilteredTimeInterval, AbstractFilterKernel, LanczosKernel, BoxcarKernel, HanningKernel
@@ -12,7 +14,7 @@ using DocStringExtensions: TYPEDSIGNATURES
 using OffsetArrays: OffsetArrays, AbstractOffsetArray
 using OrderedCollections: OrderedDict
 
-using Oceananigans: Oceananigans, AbstractOutputWriter, boundary_conditions, write_output!
+using Oceananigans: Oceananigans, AbstractOutputWriter, AbstractModel, boundary_conditions, write_output!
 using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Oceananigans.Architectures: Architectures, CPU, GPU, architecture, on_architecture
 using Oceananigans.BoundaryConditions: fill_halo_regions!
@@ -57,6 +59,7 @@ include("averaged_specified_times.jl")
 include("windowed_time_average.jl")
 include("time_derivative.jl")
 include("output_construction.jl")
+include("async_output_writer.jl")
 include("jld2_writer.jl")
 include("filtered_time_interval.jl")
 include("output_attributes.jl")

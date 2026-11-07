@@ -5,7 +5,7 @@
 #####
 ##### ZarrWriter struct definition
 #####
-mutable struct ZarrWriter{O, T, S, A, FS, C, CH, G, DN, DT} <: AbstractOutputWriter
+mutable struct ZarrWriter{Mode, O, T, S, A, FS, C, CH, G, DN, DT} <: AbstractOutputWriter{Mode}
     filepath :: String
     store :: S
     grids :: G
@@ -28,6 +28,26 @@ mutable struct ZarrWriter{O, T, S, A, FS, C, CH, G, DN, DT} <: AbstractOutputWri
     dimension_name_generator :: DN
     dimension_type :: DT
     initialized :: Bool
+    task :: Union{Task, Nothing}  # in-flight async write task; `nothing` for `Synchronous`
+    commit_delay :: Float64       # test-only: artificial sleep inside commit_async_write!
+    commit_throws :: Union{Nothing, Exception}  # test-only: exception to throw in commit_async_write!
+end
+
+# Parametric outer constructor that fills in `task = nothing`. Lets us write
+# `ZarrWriter{Synchronous}(...)` or `ZarrWriter{Asynchronous}(...)` and have
+# Julia infer the remaining type parameters from the arguments.
+function ZarrWriter{Mode}(filepath, store::S, grids::G, output_grid_map::Dict, outputs::O,
+                          schedule::T, array_type::A, indices::Tuple,
+                          global_attributes::Dict, output_attributes::Dict, dimensions::Dict,
+                          with_halos::Bool, include_grid_metrics::Bool, overwrite_files::Bool,
+                          verbose::Bool, part::Int, file_splitting::FS, compressor::C, chunks::CH,
+                          dimension_name_generator::DN, dimension_type::DT,
+                          initialized::Bool) where {Mode, O, T, S, A, FS, C, CH, G, DN, DT}
+    return ZarrWriter{Mode, O, T, S, A, FS, C, CH, G, DN, DT}(
+        filepath, store, grids, output_grid_map, outputs, schedule, array_type, indices,
+        global_attributes, output_attributes, dimensions, with_halos, include_grid_metrics,
+        overwrite_files, verbose, part, file_splitting, compressor, chunks,
+        dimension_name_generator, dimension_type, initialized, nothing, 0.0, nothing)
 end
 
 # method in OceananigansZarrExt
@@ -49,7 +69,8 @@ end
                part = 1,
                store = nothing,
                chunks = nothing,
-               compressor = nothing)
+               compressor = nothing,
+               asynchronous = false)
 
 Construct a `ZarrWriter` for an Oceananigans `model` that writes `label, output` pairs in
 `outputs` to a Zarr store.
@@ -142,6 +163,15 @@ Keyword arguments
                               to the name of the dimension `var_name` on `grid` with location `(LX, LY, LZ)`
                               along `dim`. This advanced option can be used to rename dimensions and variables
                               to satisfy certain naming conventions. Default: `trilocation_dim_name`.
+
+- `asynchronous`: If `true`, wrap the writer in an [`AsyncOutputWriter`](@ref) so that the
+                  disk-write phase runs on a background task. The synchronous GPU→CPU copy
+                  still happens on the main thread, so output content is identical to the
+                  synchronous case. Use [`wait_for_async_writes!`](@ref) to flush pending
+                  writes (called automatically at the end of `run!`). Async is currently
+                  supported only on non-distributed (serial) runs; passing `asynchronous=true`
+                  with a `Distributed` architecture emits a warning and falls back to
+                  synchronous. Default: `false`.
 
 Reading output back
 ===================

@@ -292,9 +292,8 @@ makedocs(; sitename = "Oceananigans.jl",
          clean = true,
          linkcheck = true,
          linkcheck_ignore = [
-             r"jstor\.org",
-             r"^https://github\.com/.*?/blob/",
-             r"https://clima\.caltech\.edu/?",
+            r"jstor\.org",
+            r"^https://github\.com/.*?/blob/",
          ],
          draft = false,        # set to true to speed things up
          doctest = false,      # doctests run in test/doctests/doctests.jl

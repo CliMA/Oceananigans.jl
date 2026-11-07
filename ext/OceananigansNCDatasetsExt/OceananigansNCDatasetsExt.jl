@@ -69,6 +69,9 @@ using Oceananigans.OutputWriters:
     convert_output,
     fetch_and_convert_output,
     show_array_type,
+    Synchronous,
+    Asynchronous,
+    is_asynchronous,
     default_dimension_attributes,
     gather_dimensions,
     gather_grid_metrics,
@@ -93,7 +96,9 @@ import Oceananigans.OutputWriters:
     convert_for_netcdf,
     materialize_from_netcdf,
     reconstruct_grid,
-    trilocation_dim_name
+    trilocation_dim_name,
+    prepare_async_write,
+    commit_async_write!
 
 const c = Center()
 const f = Face()
