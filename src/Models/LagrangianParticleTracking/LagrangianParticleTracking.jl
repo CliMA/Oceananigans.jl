@@ -33,7 +33,7 @@ Base.show(io::IO, p::Particle) = print(io, "Particle at (",
                                        @sprintf("%-8s", prettysummary(p.y, true) * ", "),
                                        @sprintf("%-8s", prettysummary(p.z, true) * ")"))
 
-struct LagrangianParticles{P, B, T, D, Π, S, R} <: AbstractLagrangianParticles
+struct LagrangianParticles{P, B, T, D, Π, S, R, M} <: AbstractLagrangianParticles
              properties :: P
     boundary_conditions :: B
          tracked_fields :: T
@@ -41,6 +41,7 @@ struct LagrangianParticles{P, B, T, D, Π, S, R} <: AbstractLagrangianParticles
              parameters :: Π
                 sorting :: S
                 removal :: R
+          tendencies :: M
 end
 
 @inline no_dynamics(args...) = nothing
@@ -90,19 +91,21 @@ Construct some `LagrangianParticles` that can be passed to a model. The `particl
 and can contain custom fields.
 
 `boundary_conditions` specifies the behavior of particles at boundaries; see [`ParticleBoundaryConditions`](@ref).
-Particles that cross an [`AbsorbingBoundary`](@ref) are removed after they are advected.
+Particles that cross an [`AbsorbingBoundary`](@ref) stop moving and are removed at the end of the time step.
 
 A number of `tracked_fields` may be passed in as a `NamedTuple` of fields. Each particle will track the value of each
 field. Each tracked field must have a corresponding particle property. So if `T` is a tracked field, then `T` must also
 be a custom particle property. Tracked fields are sampled before `dynamics` and refreshed after advection
 and boundary handling, so properties match the final particle positions.
 
-`dynamics` is a function of `(lagrangian_particles, model, Δt)` that is called prior to advecting particles.
-`parameters` can be accessed inside the `dynamics` function.
+`dynamics` is a function of `(lagrangian_particles, model, Δt)` that is called once per time step,
+with the full time step `Δt`, prior to advecting particles. `parameters` can be accessed inside the `dynamics` function.
+
+Particle positions are advanced with the time-stepping scheme of the model; see `substep_lagrangian_particles!`.
 
 `sorting` specifies an algorithm for sorting particles by grid cell, either
 [`CountingSort`](@ref) or [`ComparisonSort`](@ref). Default: `nothing` (particles are not sorted).
-Sorted particles are reordered at the beginning of every call to `step_lagrangian_particles!`,
+Sorted particles are reordered at the beginning of every time step,
 so that `dynamics` sees particles stored in order of increasing cell index.
 See [`sort_lagrangian_particles!`](@ref).
 """
@@ -123,7 +126,10 @@ function LagrangianParticles(particles::StructArray;
     removal = materialize_removal(boundary_conditions, particles)
     validate_reordering(dynamics, sorting, removal)
 
-    return LagrangianParticles(particles, boundary_conditions, tracked_fields, dynamics, parameters, sorting, removal)
+    tendencies = nothing # materialized by the model constructor; see `materialize_lagrangian_particles`
+
+    return LagrangianParticles(particles, boundary_conditions, tracked_fields, dynamics, parameters,
+                               sorting, removal, tendencies)
 end
 
 Base.size(lagrangian_particles::LagrangianParticles) = size(lagrangian_particles.properties)
@@ -163,16 +169,7 @@ include("particle_boundary_conditions.jl")
 include("lagrangian_particle_advection.jl")
 include("drogued_dynamics.jl")
 include("lagrangian_particle_sorting.jl")
-
-TimeSteppers.step_lagrangian_particles!(::Nothing, model, Δt) = nothing
-
-function TimeSteppers.step_lagrangian_particles!(particles::LagrangianParticles, model, Δt)
-    sort_lagrangian_particles!(particles, model.grid)
-    particles.dynamics(particles, model, Δt)
-    advect_lagrangian_particles!(particles, model, Δt)
-    remove_absorbed_particles!(particles, model.grid)
-    return nothing
-end
+include("lagrangian_particle_time_stepping.jl")
 
 ####
 #### Extend output writers to support LagrangianParticles
@@ -189,11 +186,19 @@ end
 # Checkpointing
 
 function Oceananigans.prognostic_state(lagrangian_particles::LagrangianParticles)
-    return (; properties = prognostic_state(lagrangian_particles.properties))
+    return (; properties = prognostic_state(lagrangian_particles.properties),
+              tendencies = prognostic_state(lagrangian_particles.tendencies))
 end
 
 function Oceananigans.restore_prognostic_state!(restored::LagrangianParticles, from)
+    # Particles may have been absorbed before the checkpoint was written
+    resize!(restored.properties, length(from.properties.x))
     restore_prognostic_state!(restored.properties, from.properties)
+
+    if hasproperty(from, :tendencies)
+        restore_prognostic_state!(restored.tendencies, from.tendencies)
+    end
+
     return restored
 end
 

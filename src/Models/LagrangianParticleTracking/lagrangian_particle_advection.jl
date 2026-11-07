@@ -76,11 +76,14 @@ rightmost_interface_index(::Flat, N) = N
 """
 $(TYPEDSIGNATURES)
 
-Return the new position `(x⁺, y⁺, z⁺)` of a particle at position `(x, y, z)`, given `velocities`,
-time-step `Δt`, and particle `boundary_conditions`, and whether the particle was absorbed
-at an [`AbsorbingBoundary`](@ref).
+Return the indices `(i, j, k)` of the cell that contains a particle at position `(x, y, z)`,
+and the velocity `(ẋ, ẏ, ż)` of the particle in the coordinates of `grid`; for example,
+in degrees per second for the horizontal coordinates of a `LatitudeLongitudeGrid`.
+
+The particle velocity is the fluid `velocities` interpolated to the particle position and
+then modified by `particle_u_velocity`, `particle_v_velocity`, and `particle_w_velocity`.
 """
-@inline function advect_particle((x, y, z), particles, p, boundary_conditions, grid, Δt, velocities)
+@inline function particle_coordinate_velocity((x, y, z), particles, p, grid, velocities)
     X = flattened_node((x, y, z), grid)
 
     # Obtain current particle indices, looking at the interfaces
@@ -89,8 +92,6 @@ at an [`AbsorbingBoundary`](@ref).
     i, _, _ = interpolator(fi.i)
     j, _, _ = interpolator(fi.j)
     k, _, _ = interpolator(fi.k)
-
-    current_particle_indices = (i, j, k)
 
     uf = interpolate(X, velocities.u, (f, c, c), grid)
     vf = interpolate(X, velocities.v, (c, f, c), grid)
@@ -101,16 +102,24 @@ at an [`AbsorbingBoundary`](@ref).
     vp = particle_v_velocity(particles, p, vf)
     wp = particle_w_velocity(particles, p, wf)
 
-    # Advect particles, calculating the advection metric for a curvilinear grid.
+    # Transform to coordinate velocities with the metric of a curvilinear grid.
     # Note that all supported grids use length coordinates in the vertical, so we do not
     # transform the vertical velocity nor invoke the k-index.
     ξ = x_metric(i, j, grid)
     η = y_metric(i, j, grid)
 
-    # Advected position, before boundary conditions are applied
-    x̃ = x + ξ * up * Δt
-    ỹ = y + η * vp * Δt
-    z̃ = z +     wp * Δt
+    return (i, j, k), (ξ * up, η * vp, wp)
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Return the position `(x⁺, y⁺, z⁺)` of a particle that was advected from the cell with
+indices `previous_particle_indices` to the position `(x̃, ỹ, z̃)`, after applying particle
+`boundary_conditions`, and whether the particle was absorbed at an [`AbsorbingBoundary`](@ref).
+"""
+@inline function enforce_particle_boundary_conditions((x̃, ỹ, z̃), previous_particle_indices, boundary_conditions, grid)
+    i, j, k = previous_particle_indices
 
     # Satisfy boundary conditions for particles: bounce off walls, travel over periodic boundaries.
     tx, ty, tz = map(instantiate, topology(grid))
@@ -137,7 +146,6 @@ at an [`AbsorbingBoundary`](@ref).
     absorbed = absorbed_x | absorbed_y | absorbed_z
 
     if grid isa ImmersedBoundaryGrid
-        previous_particle_indices = current_particle_indices # particle has been advected
         (x⁺, y⁺, z⁺), absorbed_immersed = bounce_immersed_particle((x⁺, y⁺, z⁺), (x̃, ỹ, z̃), grid, bcs.immersed,
                                                                    previous_particle_indices)
         absorbed = absorbed | absorbed_immersed
@@ -161,38 +169,63 @@ end
 @inline y_metric(i, j, grid::LatitudeLongitudeGrid{FT}) where FT = 1 / grid.radius * FT(360 / 2π)
 @inline y_metric(i, j, grid::ImmersedBoundaryGrid) = y_metric(i, j, grid.underlying_grid)
 
-@kernel function _advect_particles!(particles, boundary_conditions, absorbed, grid::AbstractGrid, Δt, velocities)
+# The vertical position of drogued particles is fixed at `depths`; see `DroguedParticleDynamics`.
+drogue_depths(dynamics) = nothing
+
+@inline particle_z(particles, p, ::Nothing) = @inbounds particles.z[p]
+@inline particle_z(particles, p, depths) = @inbounds depths[p]
+
+@inline store_particle_z!(particles, p, z, ::Nothing) = @inbounds particles.z[p] = z
+@inline store_particle_z!(particles, p, z, depths) = nothing
+
+# Advance `particles` through one `stage` of a time-stepping scheme. `state` holds per-particle
+# storage for the scheme (or `nothing`), and `absorbed` flags the particles that were absorbed at an
+# `AbsorbingBoundary` during the current time step (or `nothing`). Absorbed particles stop
+# moving until they are removed at the end of the time step.
+@kernel function _advect_particles!(particles, state, stage, boundary_conditions, absorbed,
+                                    grid::AbstractGrid, Δt, velocities, depths)
     p = @index(Global)
 
     @inbounds begin
         x = particles.x[p]
         y = particles.y[p]
-        z = particles.z[p]
     end
 
-    (x⁺, y⁺, z⁺), absorbed_p = advect_particle((x, y, z), particles, p, boundary_conditions, grid, Δt, velocities)
+    z = particle_z(particles, p, depths)
+
+    indices, Ẋ = particle_coordinate_velocity((x, y, z), particles, p, grid, velocities)
+    X̃ = advance_particle_position(stage, (x, y, z), Ẋ, Δt, state, p)
+    (x⁺, y⁺, z⁺), absorbed_now = enforce_particle_boundary_conditions(X̃, indices, boundary_conditions, grid)
+
+    absorbed_before = previously_absorbed(absorbed, p)
 
     @inbounds begin
-        particles.x[p] = x⁺
-        particles.y[p] = y⁺
-        particles.z[p] = z⁺
+        particles.x[p] = ifelse(absorbed_before, x, x⁺)
+        particles.y[p] = ifelse(absorbed_before, y, y⁺)
     end
 
-    record_absorption!(absorbed, p, absorbed_p)
+    store_particle_z!(particles, p, ifelse(absorbed_before, z, z⁺), depths)
+    record_absorption!(absorbed, p, absorbed_before | absorbed_now)
 end
 
-function advect_lagrangian_particles!(particles, model, Δt)
+"""
+$(TYPEDSIGNATURES)
+
+Advance the positions of `particles` through one `stage` of a time-stepping scheme, using the
+velocities of `model`. `stage` is returned by `particle_stage` and determines the scheme
+through `advance_particle_position`. `Δt` is the full time step.
+"""
+function advect_lagrangian_particles!(particles, model, Δt, stage)
     grid = model.grid
     arch = architecture(grid)
     Np = length(particles)
     Np == 0 && return nothing
 
-    prepare_removal!(particles.removal, Np)
-
     launch!(arch, grid, KernelParameters(1:Np),
             _advect_particles!,
-            particles.properties, particles.boundary_conditions, absorbed_flags(particles.removal),
-            model.grid, Δt, total_velocities(model))
+            particles.properties, particle_tendencies_state(particles.tendencies), stage,
+            particles.boundary_conditions, absorbed_flags(particles.removal),
+            grid, Δt, total_velocities(model), drogue_depths(particles.dynamics))
 
     return nothing
 end
