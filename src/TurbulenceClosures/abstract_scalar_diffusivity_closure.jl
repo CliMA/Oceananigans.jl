@@ -246,9 +246,9 @@ const C = Center
 @inline νz_σᶠᶜᶠ(i, j, k, grid, closure, K, clock, fields, σᶠᶜᶠ, args...) = νzᶠᶜᶠ(i, j, k, grid, closure, K, clock, fields) * σᶠᶜᶠ(i, j, k, grid, args...)
 @inline νz_σᶜᶠᶠ(i, j, k, grid, closure, K, clock, fields, σᶜᶠᶠ, args...) = νzᶜᶠᶠ(i, j, k, grid, closure, K, clock, fields) * σᶜᶠᶠ(i, j, k, grid, args...)
 
-@inline viscous_flux_uz(i, j, k, grid, clo::AVD, K, clk, fields, b) = - νz_σᶠᶜᶠ(i, j, k, grid, clo, K, clk, fields, diffusive_∂z_uᶠᶜᶠ, stencil_order(clo), fields.u)
-@inline viscous_flux_vz(i, j, k, grid, clo::AVD, K, clk, fields, b) = - νz_σᶜᶠᶠ(i, j, k, grid, clo, K, clk, fields, diffusive_∂z_vᶜᶠᶠ, stencil_order(clo), fields.v)
-@inline viscous_flux_wz(i, j, k, grid, clo::AVD, K, clk, fields, b) = - νz_σᶜᶜᶜ(i, j, k, grid, clo, K, clk, fields, diffusive_∂zᶜᶜᶜ, stencil_order(clo), fields.w)
+@inline viscous_flux_uz(i, j, k, grid, clo::AVD, K, clk, fields, b) = - νz_σᶠᶜᶠ(i, j, k, grid, clo, K, clk, fields, ∂zᶠᶜᶠ, stencil_order(clo), fields.u)
+@inline viscous_flux_vz(i, j, k, grid, clo::AVD, K, clk, fields, b) = - νz_σᶜᶠᶠ(i, j, k, grid, clo, K, clk, fields, ∂zᶜᶠᶠ, stencil_order(clo), fields.v)
+@inline viscous_flux_wz(i, j, k, grid, clo::AVD, K, clk, fields, b) = - νz_σᶜᶜᶜ(i, j, k, grid, clo, K, clk, fields, ∂zᶜᶜᶜ, stencil_order(clo), fields.w)
 
 #####
 ##### Diffusive fluxes
@@ -257,9 +257,9 @@ const C = Center
 const AIDorAHD = Union{AID, AHD}
 const AIDorAVD = Union{AID, AVD}
 
-@inline diffusive_flux_x(i, j, k, grid, cl::AIDorAHD, K, id, c, clk, fields, b) = - κhᶠᶜᶜ(i, j, k, grid, cl, K, id, clk, fields) * diffusive_∂xᶠᶜᶜ(i, j, k, grid, stencil_order(cl), c)
-@inline diffusive_flux_y(i, j, k, grid, cl::AIDorAHD, K, id, c, clk, fields, b) = - κhᶜᶠᶜ(i, j, k, grid, cl, K, id, clk, fields) * diffusive_∂yᶜᶠᶜ(i, j, k, grid, stencil_order(cl), c)
-@inline diffusive_flux_z(i, j, k, grid, cl::AIDorAVD, K, id, c, clk, fields, b) = - κzᶜᶜᶠ(i, j, k, grid, cl, K, id, clk, fields) * diffusive_∂zᶜᶜᶠ(i, j, k, grid, stencil_order(cl), c)
+@inline diffusive_flux_x(i, j, k, grid, cl::AIDorAHD, K, id, c, clk, fields, b) = - κhᶠᶜᶜ(i, j, k, grid, cl, K, id, clk, fields) * ∂xᵣᶠᶜᶜ(i, j, k, grid, stencil_order(cl), c)
+@inline diffusive_flux_y(i, j, k, grid, cl::AIDorAHD, K, id, c, clk, fields, b) = - κhᶜᶠᶜ(i, j, k, grid, cl, K, id, clk, fields) * ∂yᵣᶜᶠᶜ(i, j, k, grid, stencil_order(cl), c)
+@inline diffusive_flux_z(i, j, k, grid, cl::AIDorAVD, K, id, c, clk, fields, b) = - κzᶜᶜᶠ(i, j, k, grid, cl, K, id, clk, fields) * ∂zᶜᶜᶠ(i, j, k, grid, stencil_order(cl), c)
 
 #####
 ##### Support for VerticallyImplicit
