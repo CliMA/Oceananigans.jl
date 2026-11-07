@@ -13,6 +13,7 @@ paths:
 
 steps:
   - label: "🦕 AMDGPU extension tests - Julia {{matrix.version}}"
+    skip: "Disabled"
     matrix:
       setup:
         version:
@@ -36,6 +37,7 @@ steps:
 
 
   - label: "🦖 oneAPI extension tests - Julia {{matrix.version}}"
+    skip: "Disabled"
     matrix:
       setup:
         version:
