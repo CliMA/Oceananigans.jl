@@ -262,6 +262,7 @@ function maybe_prepare_first_time_step!(model::AbstractModel{<:SplitRungeKuttaTi
         model.clock.last_stage_Δt = Δt / model.timestepper.β[1]
         reconcile_state!(model)
         initialize_boundary_conditions!(model)
+        cache_current_fields!(model) # so that `Ψ⁻` holds the state the first stage updates from
         update_state!(model, callbacks)
     end
     return nothing

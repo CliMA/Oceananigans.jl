@@ -43,6 +43,15 @@ end
 materialize_bounds(bounds, grid) = bounds
 materialize_bounds(bounds::BoundsPreservation, grid) = BoundsPreservation(bounds.minimum_value, bounds.maximum_value, bounds.maximum_courant_number, CenterField(grid))
 
+function materialize_bounds(bounds::OutflowLimitedBounds, grid)
+    outflow_fraction = CenterField(grid)
+    provisional_fraction = CenterField(grid)
+    fill!(outflow_fraction, 1)
+    fill!(provisional_fraction, 1)
+    limiter = OutflowLimiter(CenterField(grid), outflow_fraction, provisional_fraction)
+    return BoundsPreservation(bounds.minimum_value, bounds.maximum_value, bounds.maximum_courant_number, limiter)
+end
+
 materialize_advection(weno::WENO{N, FT, WCT}, grid) where {N, FT, WCT} =
     WENO{N, FT, WCT}(materialize_bounds(weno.bounds, grid),
                      materialize_advection(without_bounds_preservation(weno.buffer_scheme), grid),
