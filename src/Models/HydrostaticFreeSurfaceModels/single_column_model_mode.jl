@@ -2,18 +2,14 @@ using GPUArraysCore: @allowscalar
 
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Advection: AbstractAdvectionScheme, update_advection!
-using Oceananigans.TimeSteppers: TimeSteppers
-using Oceananigans.Grids: Flat, Bounded
+using Oceananigans.BoundaryConditions: fill_halo_regions!
+using Oceananigans.Coriolis: AbstractRotation, x_f_cross_U, y_f_cross_U, z_f_cross_U
 using Oceananigans.Fields: XFaceField, YFaceField, ZeroField
-using Oceananigans.Coriolis: AbstractRotation
-using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure
+using Oceananigans.Grids: Bounded, Flat
+using Oceananigans.Models: validate_tracer_advection
+using Oceananigans.TimeSteppers: TimeSteppers
+using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure, compute_closure_fields!, ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∇_dot_qᶜ
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: CATKEVDArray
-
-import Oceananigans.Models: validate_tracer_advection
-import Oceananigans.BoundaryConditions: fill_halo_regions!
-import Oceananigans.TurbulenceClosures: compute_closure_fields!
-import Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∇_dot_qᶜ
-import Oceananigans.Coriolis: x_f_cross_U, y_f_cross_U, z_f_cross_U
 
 #####
 ##### Implements a "single column model mode" for HydrostaticFreeSurfaceModel
@@ -27,12 +23,12 @@ const SingleColumnGrid = AbstractGrid{<:AbstractFloat, <:Flat, <:Flat, <:Bounded
 
 PressureField(arch, ::SingleColumnGrid) = (pHY′ = nothing,)
 
-materialize_free_surface(::ExplicitFreeSurface{Nothing}, velocities,                 ::SingleColumnGrid, bcs) = nothing
-materialize_free_surface(::ImplicitFreeSurface{Nothing}, velocities,                 ::SingleColumnGrid, bcs) = nothing
-materialize_free_surface(::SplitExplicitFreeSurface,     velocities,                 ::SingleColumnGrid, bcs) = nothing
-materialize_free_surface(::ExplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, ::SingleColumnGrid, bcs) = nothing
-materialize_free_surface(::ImplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, ::SingleColumnGrid, bcs) = nothing
-materialize_free_surface(::SplitExplicitFreeSurface,     ::PrescribedVelocityFields, ::SingleColumnGrid, bcs) = nothing
+Models.materialize_free_surface(::ExplicitFreeSurface{Nothing}, velocities,                 ::SingleColumnGrid, bcs) = nothing
+Models.materialize_free_surface(::ImplicitFreeSurface{Nothing}, velocities,                 ::SingleColumnGrid, bcs) = nothing
+Models.materialize_free_surface(::SplitExplicitFreeSurface,     velocities,                 ::SingleColumnGrid, bcs) = nothing
+Models.materialize_free_surface(::ExplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, ::SingleColumnGrid, bcs) = nothing
+Models.materialize_free_surface(::ImplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, ::SingleColumnGrid, bcs) = nothing
+Models.materialize_free_surface(::SplitExplicitFreeSurface,     ::PrescribedVelocityFields, ::SingleColumnGrid, bcs) = nothing
 
 free_surface_names(::ExplicitFreeSurface{Nothing}, velocities,                 ::SingleColumnGrid) = tuple()
 free_surface_names(::ImplicitFreeSurface{Nothing}, velocities,                 ::SingleColumnGrid) = tuple()
@@ -51,8 +47,8 @@ end
 validate_velocity_boundary_conditions(::SingleColumnGrid, velocities) = nothing
 validate_velocity_boundary_conditions(::SingleColumnGrid, ::PrescribedVelocityFields) = nothing
 validate_momentum_advection(momentum_advection, ::SingleColumnGrid) = nothing
-validate_tracer_advection(tracer_advection_tuple::NamedTuple, ::SingleColumnGrid) = Centered(), tracer_advection_tuple
-validate_tracer_advection(tracer_advection::AbstractAdvectionScheme, ::SingleColumnGrid) = tracer_advection, NamedTuple()
+Models.validate_tracer_advection(tracer_advection_tuple::NamedTuple, ::SingleColumnGrid) = Centered(), tracer_advection_tuple
+Models.validate_tracer_advection(tracer_advection::AbstractAdvectionScheme, ::SingleColumnGrid) = tracer_advection, NamedTuple()
 
 compute_w_from_continuity!(velocities, ::SingleColumnGrid, args...; kwargs...) = nothing
 compute_w_from_continuity!(::PrescribedVelocityFields, ::SingleColumnGrid, args...; kwargs...) = nothing
@@ -67,7 +63,7 @@ compute_free_surface_tendency!(::SingleColumnGrid, model, ::SplitExplicitFreeSur
 
 # Fast state update and halo filling
 
-function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGrid, callbacks)
+function TimeSteppers.update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGrid, callbacks)
 
     mask_immersed_field!(model.tracers)
     update_model_field_time_series!(model, model.clock)
@@ -98,17 +94,17 @@ end
 
 const ClosureArray = AbstractArray{<:AbstractTurbulenceClosure}
 
-@inline function ∂ⱼ_τ₁ⱼ(i, j, k, grid::SingleColumnGrid, closure_array::ClosureArray, args...)
+@inline function TurbulenceClosures.∂ⱼ_τ₁ⱼ(i, j, k, grid::SingleColumnGrid, closure_array::ClosureArray, args...)
     @inbounds closure = closure_array[i, j]
     return ∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, args...)
 end
 
-@inline function ∂ⱼ_τ₂ⱼ(i, j, k, grid::SingleColumnGrid, closure_array::ClosureArray, args...)
+@inline function TurbulenceClosures.∂ⱼ_τ₂ⱼ(i, j, k, grid::SingleColumnGrid, closure_array::ClosureArray, args...)
     @inbounds closure = closure_array[i, j]
     return ∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, args...)
 end
 
-@inline function ∇_dot_qᶜ(i, j, k, grid::SingleColumnGrid, closure_array::ClosureArray, c, tracer_index, args...)
+@inline function TurbulenceClosures.∇_dot_qᶜ(i, j, k, grid::SingleColumnGrid, closure_array::ClosureArray, c, tracer_index, args...)
     @inbounds closure = closure_array[i, j]
     return ∇_dot_qᶜ(i, j, k, grid, closure, c, tracer_index, args...)
 end
@@ -122,7 +118,7 @@ end
 ##### CATKEVerticalDiffusivity helpers
 #####
 
-@inline tracer_tendency_kernel_function(model::HydrostaticFreeSurfaceModel, closure::CATKEVDArray, ::Val{:e}) =
+@inline Oceananigans.tracer_tendency_kernel_function(model::HydrostaticFreeSurfaceModel, closure::CATKEVDArray, ::Val{:e}) =
     hydrostatic_turbulent_kinetic_energy_tendency
 
 @inline function hydrostatic_turbulent_kinetic_energy_tendency(i, j, k, grid::SingleColumnGrid,
@@ -140,12 +136,12 @@ end
 
 const CoriolisArray = AbstractArray{<:AbstractRotation}
 
-@inline function x_f_cross_U(i, j, k, grid::SingleColumnGrid, coriolis_array::CoriolisArray, U)
+@inline function Coriolis.x_f_cross_U(i, j, k, grid::SingleColumnGrid, coriolis_array::CoriolisArray, U)
     @inbounds coriolis = coriolis_array[i, j]
     return x_f_cross_U(i, j, k, grid, coriolis, U)
 end
 
-@inline function y_f_cross_U(i, j, k, grid::SingleColumnGrid, coriolis_array::CoriolisArray, U)
+@inline function Coriolis.y_f_cross_U(i, j, k, grid::SingleColumnGrid, coriolis_array::CoriolisArray, U)
     @inbounds coriolis = coriolis_array[i, j]
     return y_f_cross_U(i, j, k, grid, coriolis, U)
 end

@@ -73,13 +73,14 @@ function TransposableField(field_in, FT = eltype(field_in); with_halos = false)
     end
 
     # One dimensional buffers to "pack" three-dimensional data in for communication
-    yzbuffer = Ry == 1 ? nothing : (send = on_architecture(zarch, zeros(FT, prod(yN))),
-                                    recv = on_architecture(zarch, zeros(FT, prod(zN))))
-    xybuffer = Rx == 1 ? nothing : (send = on_architecture(zarch, zeros(FT, prod(xN))),
-                                    recv = on_architecture(zarch, zeros(FT, prod(yN))))
+    yzbuffer = Ry == 1 ? nothing : (send = communication_buffer_array(zarch, FT, prod(yN)),
+                                    recv = communication_buffer_array(zarch, FT, prod(zN)))
+    xybuffer = Rx == 1 ? nothing : (send = communication_buffer_array(zarch, FT, prod(xN)),
+                                    recv = communication_buffer_array(zarch, FT, prod(yN)))
 
-    yzcomm = MPI.Comm_split(MPI.COMM_WORLD, zarch.local_index[1], zarch.local_index[1])
-    xycomm = MPI.Comm_split(MPI.COMM_WORLD, yarch.local_index[3], yarch.local_index[3])
+    # Split the architecture's own communicator: a grid may live on a subset of MPI.COMM_WORLD.
+    yzcomm = MPI.Comm_split(mpi_communicator(zarch.communicator), zarch.local_index[1], zarch.local_index[1])
+    xycomm = MPI.Comm_split(mpi_communicator(yarch.communicator), yarch.local_index[3], yarch.local_index[3])
 
     zRx, zRy, zRz = ranks(zarch)
     yRx, yRy, yRz = ranks(yarch)
@@ -168,7 +169,8 @@ function twin_grid(grid::DistributedGrid; local_direction = :y)
         return grid
     end
 
-    new_arch  = Distributed(child_arch; partition = Partition(ranks...), field_count = arch.field_count)
+    new_arch  = distributed_architecture(child_arch; partition = Partition(ranks...), field_count = arch.field_count,
+                                         communicator = mpi_communicator(arch.communicator), devices = arch.devices)
     global_sz = global_size(new_arch, (nnx, nny, nnz))
     global_sz = deflate_tuple(TX, TY, TZ, global_sz)
     global_hl = halo_size(grid)

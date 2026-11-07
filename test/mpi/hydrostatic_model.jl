@@ -23,7 +23,8 @@ using Oceananigans.ImmersedBoundaries: immersed_cell
 
 MPI.Initialized() || MPI.Init(threadlevel=:multiple)
 
-using Oceananigans.DistributedComputations: ranks, partition, all_reduce, cpu_architecture, reconstruct_global_grid, synchronized, synchronize_communication!
+using Oceananigans.Architectures: cpu_architecture
+using Oceananigans.DistributedComputations: ranks, partition, all_reduce, reconstruct_global_grid, synchronized, synchronize_communication!
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: CATKEVerticalDiffusivity
 
 function Δ_min(grid)

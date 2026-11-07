@@ -3,7 +3,8 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 using MPI
 MPI.Initialized() || MPI.Init(threadlevel=:multiple)
 
-using Oceananigans.DistributedComputations: child_architecture, cpu_architecture, partition, reconstruct_global_grid
+using Oceananigans.Architectures: cpu_architecture
+using Oceananigans.DistributedComputations: child_architecture, partition, reconstruct_global_grid
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, immersed_peripheral_node
 using Oceananigans.BoundaryConditions: NormalRadiation, GravityWaveRadiationBoundaryCondition
 using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: LocalHaloFilling, CompleteHaloFilling
@@ -223,7 +224,7 @@ end
         cpu_arch = cpu_architecture(arch)
 
         grid = RectilinearGrid(arch, size=(40, 20, 2), x=(0, 1), y=(0, 1), z=(-1, 0),
-                               halo=(4, 4, 2), topology=(Bounded, Periodic, Bounded))
+                               halo=(4, 4, 2), topology=(Open, Periodic, Bounded))
         global_grid = reconstruct_global_grid(grid)
 
         mp = build_rotating_open(grid; timestepper)
