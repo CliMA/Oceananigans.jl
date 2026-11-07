@@ -1,6 +1,6 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
-using Oceananigans.Advection: EnergyConserving, EnstrophyConserving
+using Oceananigans.Advection: EnergyConserving, EnstrophyConserving, horizontal_advection_U, horizontal_advection_V
 using Oceananigans.Coriolis: fᶜᶜᵃ, fᶠᶠᵃ, HydrostaticFormulation, TriadScheme, ActiveWeightedEnergyConserving, ActiveWeightedEnstrophyConserving, DualGridScheme,
                              ThicknessWeightedEnergyConserving
 using Oceananigans.Coriolis: 𝒯⁺⁺, 𝒯⁻⁺, 𝒯⁺⁻, 𝒯⁻⁻
@@ -418,7 +418,8 @@ end
 #####
 ##### 10. Coriolis work with horizontally varying Δz (PartialCellBottom)
 #####
-##### The discrete Coriolis work Σ Δx Aˣ u (f × u)ˣ + Σ Δy Aʸ v (f × u)ʸ should vanish for any u, v.
+##### The discrete Coriolis work Σ Δx Aˣ u (f × u)ˣ + Σ Δy Aʸ v (f × u)ʸ should vanish for any u, v,
+##### and so should the work of the VectorInvariant vorticity term (ζ × u).
 ##### With a single level over a PartialCellBottom, Δz varies by orders of magnitude between neighbors.
 ##### The stretched latitude grid has Az ≠ Δx Δy, so the weights Δx Aˣ and V differ there.
 #####
@@ -446,18 +447,24 @@ function random_masked_velocities(grid; seed=42)
     return U
 end
 
-function relative_coriolis_work(grid, coriolis, U)
+function relative_work(grid, U, Fu, Fv)
     Nx, Ny, _ = size(grid)
     work = zero(eltype(grid))
     scale = zero(eltype(grid))
     for j in 1:Ny, i in 1:Nx
-        Wu = Δxᶠᶜᶜ(i, j, 1, grid) * Axᶠᶜᶜ(i, j, 1, grid) * U.u[i, j, 1] * x_f_cross_U(i, j, 1, grid, coriolis, U)
-        Wv = Δyᶜᶠᶜ(i, j, 1, grid) * Ayᶜᶠᶜ(i, j, 1, grid) * U.v[i, j, 1] * y_f_cross_U(i, j, 1, grid, coriolis, U)
+        Wu = Δxᶠᶜᶜ(i, j, 1, grid) * Axᶠᶜᶜ(i, j, 1, grid) * U.u[i, j, 1] * Fu(i, j)
+        Wv = Δyᶜᶠᶜ(i, j, 1, grid) * Ayᶜᶠᶜ(i, j, 1, grid) * U.v[i, j, 1] * Fv(i, j)
         work += Wu + Wv
         scale += abs(Wu) + abs(Wv)
     end
     return abs(work) / scale
 end
+
+relative_coriolis_work(grid, coriolis, U) = relative_work(grid, U, (i, j) -> x_f_cross_U(i, j, 1, grid, coriolis, U),
+                                                                   (i, j) -> y_f_cross_U(i, j, 1, grid, coriolis, U))
+
+relative_vorticity_work(grid, advection, U) = relative_work(grid, U, (i, j) -> horizontal_advection_U(i, j, 1, grid, advection, U.u, U.v),
+                                                                     (i, j) -> horizontal_advection_V(i, j, 1, grid, advection, U.u, U.v))
 
 function test_coriolis_work_with_partial_cells(FT)
     rectilinear = RectilinearGrid(CPU(), FT; size=(16, 12, 1), halo=(3, 3, 3), x=(0, 1e6), y=(0, 1e6), z=(-4000, 0),
@@ -482,6 +489,9 @@ function test_coriolis_work_with_partial_cells(FT)
         # Not for the existing schemes, whose work vanishes only for uniform Δz
         @test relative_coriolis_work(grid, coriolis(EnergyConserving()), U) > 1e-3
         @test relative_coriolis_work(grid, coriolis(EnstrophyConserving()), U) > 1e-3
+
+        # The VectorInvariant vorticity term uses the same flux with q = ζ / h
+        @test relative_vorticity_work(grid, VectorInvariant(vorticity_scheme=EnergyConserving()), U) < 100 * eps(FT)
     end
 end
 
@@ -512,7 +522,8 @@ end
 #####
 ##### Unforced, inviscid, f-plane, explicit free surface, random initial velocities over random depths
 ##### from 8 m to 4000 m. With EnergyConserving or EnstrophyConserving the energy grows exponentially;
-##### with ThicknessWeightedEnergyConserving it does not grow.
+##### with ThicknessWeightedEnergyConserving it does not grow. Nor does it with VectorInvariant momentum
+##### advection, whose vorticity term uses the same flux.
 #####
 
 function total_energy(model)
@@ -526,20 +537,21 @@ function total_energy(model)
                g * Azᶜᶜᶜ(i, j, 1, grid) * η[i, j, 1]^2 / 2 for i in 1:Nx, j in 1:Ny)
 end
 
-function energy_growth_with_partial_cells(scheme, timestepper; N=24, steps=500)
+function energy_growth_with_partial_cells(scheme, timestepper; N=24, steps=500, Δt=600, amplitude=0.05,
+                                          gravitational_acceleration=0.01, momentum_advection=nothing)
     underlying_grid = RectilinearGrid(CPU(); size=(N, N, 1), halo=(3, 3, 3), x=(0, 1e6), y=(0, 1e6), z=(-4000, 0),
                                       topology=(Periodic, Periodic, Bounded))
 
     grid = partial_cell_grid(underlying_grid)
 
     model = HydrostaticFreeSurfaceModel(grid; timestepper, coriolis = FPlane(; f=1e-4, scheme),
-                                        free_surface = ExplicitFreeSurface(gravitational_acceleration=0.01),
-                                        momentum_advection = nothing, buoyancy = nothing, tracers = nothing, closure = nothing)
+                                        free_surface = ExplicitFreeSurface(; gravitational_acceleration),
+                                        momentum_advection, buoyancy = nothing, tracers = nothing, closure = nothing)
 
     Random.seed!(1)
-    set!(model, u = 0.05 .* randn(N, N, 1), v = 0.05 .* randn(N, N, 1))
+    set!(model, u = amplitude .* randn(N, N, 1), v = amplitude .* randn(N, N, 1))
     E₀ = total_energy(model)
-    run!(Simulation(model; Δt=600, stop_iteration=steps, verbose=false))
+    run!(Simulation(model; Δt, stop_iteration=steps, verbose=false))
 
     return total_energy(model) / E₀
 end
@@ -594,7 +606,7 @@ for arch in archs
                 test_een_triad_structure(FT)
             end
 
-            @testset "Coriolis work with partial cells [$FT]" begin
+            @testset "Coriolis and vorticity work with partial cells [$FT]" begin
                 test_coriolis_work_with_partial_cells(FT)
             end
 
@@ -643,6 +655,12 @@ for arch in archs
                 @test energy_growth_with_partial_cells(EnergyConserving(), timestepper) > 2
                 @test energy_growth_with_partial_cells(EnstrophyConserving(), timestepper) > 2
                 @test energy_growth_with_partial_cells(ThicknessWeightedEnergyConserving(), timestepper) < 1.01
+            end
+
+            @testset "No growing mode with VectorInvariant vorticity and single-level PartialCellBottom [$timestepper]" begin
+                momentum_advection = VectorInvariant(vorticity_scheme=EnergyConserving())
+                @test energy_growth_with_partial_cells(ThicknessWeightedEnergyConserving(), timestepper; momentum_advection,
+                                                       gravitational_acceleration=9.81, amplitude=2, Δt=30, steps=4000) < 1
             end
         end
     end

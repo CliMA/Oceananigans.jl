@@ -165,8 +165,9 @@ face area instead, so their work vanishes only when Δz is uniform. When Δz is 
 Using one corner q for both components changes the local Coriolis strength where Δz varies:
 a thin face next to thicker ones feels its neighbors' Coriolis acceleration amplified by up to
 a factor of 4, and a thick face next to thinner ones feels it reduced. Like `EnergyConserving`, the
-scheme does not conserve potential enstrophy. It applies to the Coriolis term only; the vorticity
-term of `VectorInvariant` momentum advection is discretized separately.
+scheme does not conserve potential enstrophy. On `PartialCellBottom` grids, the vorticity term of
+`VectorInvariant(vorticity_scheme=EnergyConserving())` uses the same flux with q = ζ / h, so the
+total (f + ζ) term is energy-neutral.
 
 Example
 =======
@@ -189,31 +190,8 @@ Base.summary(::ThicknessWeightedEnergyConserving) = "ThicknessWeightedEnergyCons
 
 const TWENC = AbstractRotation{<:ThicknessWeightedEnergyConserving}
 
-# Mean thickness of the active velocity faces meeting at the corner (i, j): u-faces at (i, j) and (i, j-1),
-# v-faces at (i, j) and (i-1, j). Zero if none is active, in which case all four transports vanish too.
-@inline function corner_thicknessᶠᶠᶜ(i, j, k, grid)
-    a₁ = not_peripheral_nodeᶠᶜᶜ(i, j,   k, grid)
-    a₂ = not_peripheral_nodeᶠᶜᶜ(i, j-1, k, grid)
-    a₃ = not_peripheral_nodeᶜᶠᶜ(i,   j, k, grid)
-    a₄ = not_peripheral_nodeᶜᶠᶜ(i-1, j, k, grid)
-
-    Σh = a₁ * Δzᶠᶜᶜ(i, j,   k, grid) + a₂ * Δzᶠᶜᶜ(i, j-1, k, grid) +
-         a₃ * Δzᶜᶠᶜ(i,   j, k, grid) + a₄ * Δzᶜᶠᶜ(i-1, j, k, grid)
-
-    return Σh / max(1, a₁ + a₂ + a₃ + a₄)
-end
-
-@inline function corner_potential_vorticityᶠᶠᶜ(i, j, k, grid, coriolis)
-    h = corner_thicknessᶠᶠᶜ(i, j, k, grid)
-    f = fᶠᶠᵃ(i, j, k, grid, coriolis)
-    return ifelse(h == 0, zero(grid), f / ifelse(h == 0, one(h), h))
-end
-
-@inline q_ℑx_Ay_vᶠᶠᶜ(i, j, k, grid, coriolis, v) = corner_potential_vorticityᶠᶠᶜ(i, j, k, grid, coriolis) * ℑxᶠᵃᵃ(i, j, k, grid, masked_Ay_qᶜᶠᶜ, v)
-@inline q_ℑy_Ax_uᶠᶠᶜ(i, j, k, grid, coriolis, u) = corner_potential_vorticityᶠᶠᶜ(i, j, k, grid, coriolis) * ℑyᵃᶠᵃ(i, j, k, grid, masked_Ax_qᶠᶜᶜ, u)
-
-@inline x_f_cross_U(i, j, k, grid, coriolis::TWENC, U) = @inbounds - ℑyᵃᶜᵃ(i, j, k, grid, q_ℑx_Ay_vᶠᶠᶜ, coriolis, U[2]) / Δxᶠᶜᶜ(i, j, k, grid)
-@inline y_f_cross_U(i, j, k, grid, coriolis::TWENC, U) = @inbounds + ℑxᶜᵃᵃ(i, j, k, grid, q_ℑy_Ax_uᶠᶠᶜ, coriolis, U[1]) / Δyᶜᶠᶜ(i, j, k, grid)
+@inline x_f_cross_U(i, j, k, grid, coriolis::TWENC, U) = - potential_vorticity_flux_xᶠᶜᶜ(i, j, k, grid, U[2], fᶠᶠᵃ, coriolis)
+@inline y_f_cross_U(i, j, k, grid, coriolis::TWENC, U) = + potential_vorticity_flux_yᶜᶠᶜ(i, j, k, grid, U[1], fᶠᶠᵃ, coriolis)
 
 #####
 ##### EEN (Energy and Enstrophy conserving, Arakawa & Lamb, 1981) scheme
