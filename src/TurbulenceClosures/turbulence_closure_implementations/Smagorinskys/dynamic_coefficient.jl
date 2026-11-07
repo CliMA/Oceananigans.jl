@@ -260,12 +260,13 @@ end
     return 𝒥ᴸᴹ_ijk / 𝒥ᴹᴹ_ijk * (𝒥ᴹᴹ_ijk > 0)
 end
 
+# Here Σ is the strain-rate magnitude √(2ΣᵢⱼΣᵢⱼ), and Σ̄ is its test-filtered counterpart
 @kernel function _compute_Σ!(Σ, grid, u, v, w)
     i, j, k = @index(Global, NTuple)
 
     @inbounds begin
         Σsq = ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w)
-        Σ[i, j, k] = sqrt(Σsq)
+        Σ[i, j, k] = sqrt(2Σsq)
     end
 end
 
@@ -274,7 +275,7 @@ end
 
     @inbounds begin
         Σ̄sq = Σ̄ᵢⱼΣ̄ᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w)
-        Σ̄[i, j, k] = sqrt(Σ̄sq)
+        Σ̄[i, j, k] = sqrt(2Σ̄sq)
     end
 end
 
