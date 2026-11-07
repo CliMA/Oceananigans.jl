@@ -1,6 +1,6 @@
-using Oceananigans.Architectures: Architectures, on_architecture, CPU
+using Oceananigans.Architectures: Architectures, CPU, on_architecture
 
-import Oceananigans: prognostic_state, restore_prognostic_state!
+using Oceananigans: prognostic_state, restore_prognostic_state!
 
 import KernelAbstractions as KA
 
@@ -219,11 +219,11 @@ end
 ##### Checkpointing
 #####
 
-function prognostic_state(mo::MultiRegionObject)
+function Oceananigans.prognostic_state(mo::MultiRegionObject)
     return Tuple(prognostic_state(regional_obj) for regional_obj in mo.regional_objects)
 end
 
-function restore_prognostic_state!(restored::MultiRegionObject, from)
+function Oceananigans.restore_prognostic_state!(restored::MultiRegionObject, from)
     regional_states = from isa MultiRegionObject ? from.regional_objects : from
 
     for (regional_obj, regional_state) in zip(restored.regional_objects, regional_states)
@@ -232,4 +232,4 @@ function restore_prognostic_state!(restored::MultiRegionObject, from)
     return restored
 end
 
-restore_prognostic_state!(::MultiRegionObject, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::MultiRegionObject, ::Nothing) = nothing

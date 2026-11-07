@@ -1,7 +1,6 @@
-using Oceananigans.Grids: halo_size, topology
-using Oceananigans.Operators: flux_div_xyᶜᶜᶜ, Az⁻¹ᶜᶜᶜ, Δrᶜᶜᶜ, ∂t_σ
+using Oceananigans.Grids: halo_size, surface_kernel_parameters, topology
 using Oceananigans.ImmersedBoundaries: immersed_cell
-using Oceananigans.Grids: surface_kernel_parameters
+using Oceananigans.Operators: Az⁻¹ᶜᶜᶜ, flux_div_xyᶜᶜᶜ, Δrᶜᶜᶜ, ∂t_σ
 
 """
     update_vertical_velocities!(velocities, grid, model; parameters=surface_kernel_parameters(grid))

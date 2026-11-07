@@ -6,18 +6,20 @@ export TripolarGrid, RotatedLatitudeLongitudeGrid, ConformalCubedSpherePanelGrid
        geographic_to_conformal_conic, conformal_conic_to_geographic, conformal_conic_scale_factor, conformal_conic_rotation_angle
 
 import Oceananigans
-import Oceananigans.Architectures: on_architecture
+using Oceananigans.Architectures: Architectures, AbstractArchitecture, CPU, GPU, on_architecture
 
-using Distances: haversine
 using Adapt: Adapt, adapt
-using KernelAbstractions: @kernel, @index
+using Distances: haversine
 using DocStringExtensions: TYPEDSIGNATURES
+using KernelAbstractions: @index, @kernel
 
-using Oceananigans.Architectures: on_architecture, AbstractArchitecture, CPU, GPU
-using Oceananigans.BoundaryConditions: BoundaryCondition
-using Oceananigans.Grids: halo_size, generate_coordinate, topology
-using Oceananigans.Grids: total_length, add_halos, fill_metric_halo_regions!
-using Oceananigans.BoundaryConditions: fill_halo_regions!
+using Oceananigans.AbstractOperations: AbstractOperations
+using Oceananigans.BoundaryConditions: BoundaryConditions, BoundaryCondition, fill_halo_regions!
+using Oceananigans.DistributedComputations: DistributedComputations
+using Oceananigans.Fields: Fields
+using Oceananigans.Grids: Grids, Grids, add_halos, fill_metric_halo_regions!, generate_coordinate, halo_size, topology,
+                          total_length
+using Oceananigans.Operators: Operators
 
 include("generate_tripolar_coordinates.jl")
 include("tripolar_grid.jl")
@@ -47,7 +49,6 @@ include("tripolar_grid_reductions.jl")
 # what the reconstruction routine needs that isn't already on the metric arrays
 # themselves: architecture, FT, size, halo, topology, radius.
 using OrderedCollections: OrderedDict
-using Oceananigans.Grids: Grids
 function Grids.constructor_arguments(grid::Oceananigans.Grids.OrthogonalSphericalShellGrid)
     args = OrderedDict{Symbol, Any}(:architecture => Oceananigans.Grids.architecture(grid),
                                     :number_type  => eltype(grid))

@@ -427,12 +427,12 @@ function reconcile_restored_output_schedule!(writer::NonCheckpointingOutputWrite
     return nothing
 end
 
-function Oceananigans.restore_prognostic_state!(restored::OffsetArray, from::AbstractArray)
+function Oceananigans.restore_prognostic_state!(restored::AbstractOffsetArray, from::AbstractArray)
     restored_parent = parent(restored)
     return restore_prognostic_state!(restored_parent, from)
 end
 
-function Oceananigans.restore_prognostic_state!(restored::OffsetArray, from::OffsetArray)
+function Oceananigans.restore_prognostic_state!(restored::AbstractOffsetArray, from::AbstractOffsetArray)
     restored_parent = parent(restored)
     from_parent = parent(from)
     return restore_prognostic_state!(restored_parent, from_parent)
