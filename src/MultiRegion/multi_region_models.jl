@@ -158,21 +158,21 @@ end
 
 Advection.WENO(mrg::MultiRegionGrid, args...; kwargs...) = construct_regionally(WENO, mrg, args...; kwargs...)
 
-@inline Utils.getregion(t::VectorInvariant{N, FT, TD, Z, ZS, V, K, D, U, M}, r) where {N, FT, TD, Z, ZS, V, K, D, U, M} =
-    VectorInvariant{N, FT, TD, M}(_getregion(t.vorticity_scheme, r),
-                                  _getregion(t.vorticity_stencil, r),
-                                  _getregion(t.vertical_advection_scheme, r),
-                                  _getregion(t.kinetic_energy_gradient_scheme, r),
-                                  _getregion(t.divergence_scheme, r),
-                                  _getregion(t.upwinding, r))
+@inline Utils.getregion(t::VectorInvariant{N, FT, TD}, r) where {N, FT, TD} =
+    VectorInvariant{N, FT, TD}(_getregion(t.vorticity_scheme, r),
+                               _getregion(t.vorticity_stencil, r),
+                               _getregion(t.vertical_advection_scheme, r),
+                               _getregion(t.kinetic_energy_gradient_scheme, r),
+                               _getregion(t.divergence_scheme, r),
+                               _getregion(t.upwinding, r))
 
-@inline Utils._getregion(t::VectorInvariant{N, FT, TD, Z, ZS, V, K, D, U, M}, r) where {N, FT, TD, Z, ZS, V, K, D, U, M} =
-    VectorInvariant{N, FT, TD, M}(getregion(t.vorticity_scheme, r),
-                                  getregion(t.vorticity_stencil, r),
-                                  getregion(t.vertical_advection_scheme, r),
-                                  getregion(t.kinetic_energy_gradient_scheme, r),
-                                  getregion(t.divergence_scheme, r),
-                                  getregion(t.upwinding, r))
+@inline Utils._getregion(t::VectorInvariant{N, FT, TD}, r) where {N, FT, TD} =
+    VectorInvariant{N, FT, TD}(getregion(t.vorticity_scheme, r),
+                               getregion(t.vorticity_stencil, r),
+                               getregion(t.vertical_advection_scheme, r),
+                               getregion(t.kinetic_energy_gradient_scheme, r),
+                               getregion(t.divergence_scheme, r),
+                               getregion(t.upwinding, r))
 
 # The bounds-preserving limiter of a WENO scheme on a multi-region grid is a multi-region field
 @inline Utils.getregion(weno::WENO{N, FT, WCT}, r) where {N, FT, WCT} =
