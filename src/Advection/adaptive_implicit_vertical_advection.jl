@@ -1,7 +1,7 @@
 using Oceananigans.Operators: Δz⁻¹ᶜᶜᶜ, Δz⁻¹ᶜᶜᶠ, Δz⁻¹ᶠᶜᶠ, Δz⁻¹ᶜᶠᶠ, Az_qᶜᶜᶠ, Azᶜᶜᶠ, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
 using Oceananigans.Grids: Center, Face
 using Oceananigans.BoundaryConditions: BoundaryConditions, _unwrap_for_gpu
-using Oceananigans.TimeSteppers: SplitRungeKuttaTimeStepper, RungeKutta3TimeStepper
+using Oceananigans.TimeSteppers: SplitRungeKuttaTimeStepper, SSPRungeKutta3TimeStepper, RungeKutta3TimeStepper
 using Oceananigans.Utils: foreach_name
 
 const AVID = AdaptiveVerticallyImplicitDiscretization
@@ -163,6 +163,8 @@ end
     nstage = ifelse(stage < timestepper.Nstages, stage + 1, 1)
     return Δt / timestepper.β[nstage]
 end
+
+@inline adaptive_advection_timestep(timestepper::SSPRungeKutta3TimeStepper, clock) = clock.last_stage_Δt
 
 @inline sum_rk3_coefficients(ts, ::Val{1}) = ts.γ¹
 @inline sum_rk3_coefficients(ts, ::Val{2}) = ts.γ² + ts.ζ²

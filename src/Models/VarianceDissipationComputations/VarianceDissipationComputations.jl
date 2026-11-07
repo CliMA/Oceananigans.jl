@@ -16,7 +16,10 @@ using Oceananigans.Operators: Axᶠᶜᶜ, Ayᶜᶠᶜ, Azᶜᶜᶠ, δxᶠᶜ�
 using Oceananigans.Simulations: Simulations, Callback, validate_schedule
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper,
                                  RungeKutta3TimeStepper,
-                                 SplitRungeKuttaTimeStepper
+                                 SplitRungeKuttaTimeStepper,
+                                 SSPRungeKutta3TimeStepper,
+                                 MultiStageTimeStepper,
+                                 ssp_quadrature_weights
 using Oceananigans.TurbulenceClosures: _diffusive_flux_x,
                                        _diffusive_flux_y,
                                        _diffusive_flux_z
@@ -68,8 +71,8 @@ Keyword Arguments
 - `Uⁿ`: The velocity field at the current time step. Default: `VelocityFields(grid)`.
 
 !!! compat "Time stepper compatibility"
-    At the moment, the variance dissipation diagnostic is supported only for a [`QuasiAdamsBashforth2TimeStepper`](@ref)
-    and a [`SplitRungeKuttaTimeStepper`](@ref).
+    At the moment, the variance dissipation diagnostic is supported only for a [`QuasiAdamsBashforth2TimeStepper`](@ref),
+    a [`SplitRungeKuttaTimeStepper`](@ref) and an [`SSPRungeKutta3TimeStepper`](@ref).
 """
 function VarianceDissipation(tracer_name, grid;
                              Uⁿ⁻¹ = VelocityFields(grid),

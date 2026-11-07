@@ -21,8 +21,8 @@ using Oceananigans.Grids: Grids, AbstractGrid, OrthogonalSphericalShellGrid, Per
 using Oceananigans.Models: Models, default_free_surface_boundary_conditions, materialize_free_surface
 using Oceananigans.Operators: Δzᶜᶠᶜ, Δzᶠᶜᶜ
 using Oceananigans.Simulations: Simulations, timestepper
-using Oceananigans.TimeSteppers: TimeSteppers, QuasiAdamsBashforth2TimeStepper, SplitRungeKuttaName,
-                                 SplitRungeKuttaTimeStepper, step_lagrangian_particles!,
+using Oceananigans.TimeSteppers: TimeSteppers, MultiStageTimeStepper, QuasiAdamsBashforth2TimeStepper, SplitRungeKuttaName,
+                                 SSPRungeKutta3TimeStepper, SplitRungeKuttaTimeStepper, step_lagrangian_particles!,
                                  update_lagrangian_particle_state!
 using Oceananigans.TurbulenceClosures: TurbulenceClosures
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: TKEBasedVerticalDiffusivities
@@ -200,6 +200,7 @@ include("update_hydrostatic_free_surface_model_state.jl")
 include("deferred_barotropic_acceleration.jl")
 include("hydrostatic_free_surface_ab2_step.jl")
 include("hydrostatic_free_surface_rk_step.jl")
+include("hydrostatic_free_surface_ssp_step.jl")
 include("cache_hydrostatic_free_surface_tendencies.jl")
 include("prescribed_hydrostatic_velocity_fields.jl")
 include("single_column_model_mode.jl")

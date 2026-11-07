@@ -772,6 +772,101 @@ function test_gravity_wave_target_transport()
     return pinned && flat && drift && inert && wet_only && rejected
 end
 
+const boundary_read_times = Float64[]
+
+function record_boundary_read_time(j, k, grid, clock, model_fields)
+    push!(boundary_read_times, clock.time)
+    return zero(grid)
+end
+
+# The latest time one time step reads barotropic boundary data at, in units of Δt from tⁿ
+function latest_boundary_read(timestepper; Δt = 0.5)
+    grid = RectilinearGrid(size = (20, 1, 1), x = (0, 1000), y = (0, 100), z = (-100, 0),
+                           topology = ((Closed, Open), Periodic, Bounded))
+
+    u_bcs = FieldBoundaryConditions(east = NormalFlowBoundaryCondition(0; scheme = NormalRadiation(outflow_timescale = 100.0)))
+    U_bcs = FieldBoundaryConditions(grid, (Face(), Center(), nothing);
+                                    east = GravityWaveRadiationBoundaryCondition((0.0, record_boundary_read_time)))
+
+    model = HydrostaticFreeSurfaceModel(grid; timestepper,
+        free_surface = SplitExplicitFreeSurface(grid; substeps = 10),
+        boundary_conditions = (u = u_bcs, U = U_bcs),
+        buoyancy = nothing, tracers = ())
+
+    time_step!(model, Δt)
+    empty!(boundary_read_times)
+    tⁿ = model.clock.time
+    time_step!(model, Δt)
+
+    return (maximum(boundary_read_times) - tⁿ) / Δt
+end
+
+const exterior_target_reads = Ref(0)
+
+function count_exterior_target_read(j, k, grid, clock, model_fields)
+    exterior_target_reads[] += 1
+    return zero(grid)
+end
+
+# Stepping is the only reader of a radiation target, and zero timescales send the exterior state to the target at once:
+# returns the exterior tracer after one step, starting from c = 1, and the reads of the normal velocity target per step
+function stepped_exterior_states(timestepper)
+    grid = RectilinearGrid(size = (8, 1, 1), x = (0, 1000), y = (0, 100), z = (-100, 0), topology = (Open, Periodic, Bounded))
+
+    relaxed = NormalRadiation(inflow_timescale = 0, outflow_timescale = 0)
+    open_transport = GravityWaveRadiationBoundaryCondition((0.0, 0.0))
+
+    boundary_conditions = (u = FieldBoundaryConditions(west = NormalFlowBoundaryCondition(count_exterior_target_read; discrete_form = true, scheme = relaxed),
+                                                       east = NormalFlowBoundaryCondition(0; scheme = NormalRadiation(outflow_timescale = 100.0))),
+                           U = FieldBoundaryConditions(grid, (Face(), Center(), nothing); west = open_transport, east = open_transport),
+                           c = FieldBoundaryConditions(west = ValueBoundaryCondition(0; scheme = relaxed)))
+
+    model = HydrostaticFreeSurfaceModel(grid; timestepper, boundary_conditions, buoyancy = nothing, tracers = :c,
+                                        free_surface = SplitExplicitFreeSurface(grid; substeps = 10))
+    set!(model, c = 1)
+    time_step!(model, 0.5)
+    exterior_target_reads[] = 0
+    time_step!(model, 0.5)
+
+    return model.tracers.c[0, 1, 1], exterior_target_reads[]
+end
+
+# The energy a multi-stage model leaves in the domain after radiating a surface pulse
+function radiated_pulse_energy(timestepper; free_surface_keywords = (;))
+    Nx, Ny, Nz = 60, 1, 1
+    Lx, Ly, H = 1000.0, 100.0, 100.0
+
+    grid = RectilinearGrid(size = (Nx, Ny, Nz),
+                           x = (0, Lx), y = (0, Ly), z = (-H, 0),
+                           topology = (Open, Periodic, Bounded))
+
+    u_bcs = FieldBoundaryConditions(east = NormalFlowBoundaryCondition(0; scheme = NormalRadiation(outflow_timescale = 100.0)),
+                                    west = NormalFlowBoundaryCondition(0; scheme = NormalRadiation(outflow_timescale = 100.0)))
+    U_bcs = FieldBoundaryConditions(grid, (Face(), Center(), nothing);
+                                    east = GravityWaveRadiationBoundaryCondition((0.0, 0.0)),
+                                    west = GravityWaveRadiationBoundaryCondition((0.0, 0.0)))
+    η_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Face());
+                                    east = SurfaceWaveRadiationBoundaryCondition(),
+                                    west = SurfaceWaveRadiationBoundaryCondition())
+
+    model = HydrostaticFreeSurfaceModel(grid; timestepper,
+        free_surface = SplitExplicitFreeSurface(grid; substeps = 10, free_surface_keywords...),
+        boundary_conditions = (u = u_bcs, U = U_bcs, η = η_bcs),
+        buoyancy = nothing, tracers = ())
+
+    σ = Lx / 10
+    set!(model, η = (x, y, z) -> 0.01 * exp(-(x - Lx/2)^2 / (2σ^2)))
+
+    η = model.free_surface.displacement
+    E₀ = sum(interior(η) .^ 2)
+
+    for _ in 1:100
+        time_step!(model, 0.5)
+    end
+
+    return sum(interior(η) .^ 2) / E₀
+end
+
 @testset "Open Boundary Conditions for HydrostaticFreeSurfaceModel" begin
     @testset "GravityWaveRadiation with target_transport" begin
         @test test_gravity_wave_target_transport()
@@ -807,6 +902,23 @@ end
 
     @testset "SurfaceWaveRadiation + GravityWaveRadiation barotropic radiation" begin
         @test test_implicit_gravity_wave_radiation()
+    end
+
+    @testset "SSPRungeKutta3 barotropic solves read boundary data from tⁿ at every stage" begin
+        # A solve starting at the time of stage 2, tⁿ + Δt, would read past tⁿ + 2Δt
+        @test latest_boundary_read(:SSPRungeKutta3) < 2
+    end
+
+    @testset "Multi-stage time steppers step the exterior states of open boundaries [$timestepper]" for
+        timestepper in (:SplitRungeKutta3, :SSPRungeKutta3)
+
+        exterior_tracer, velocity_target_reads = stepped_exterior_states(timestepper)
+        @test exterior_tracer == 0
+        @test velocity_target_reads == 3
+    end
+
+    @testset "SSPRungeKutta3 radiates a surface pulse" begin
+        @test radiated_pulse_energy(:SSPRungeKutta3) < 1e-3
     end
 
     @testset "GravityWaveRadiation–SurfaceWaveRadiation default pairing" begin

@@ -79,6 +79,16 @@ function step_free_surface!(free_surface::ExplicitFreeSurface, model, timesteppe
     return nothing
 end
 
+function step_free_surface!(free_surface::ExplicitFreeSurface, model, timestepper::SSPRungeKutta3TimeStepper, Δt)
+    FT = eltype(model.grid)
+    a, b = timestepper.coefficients[model.clock.stage]
+    @apply_regionally launch!(model.architecture, model.grid, :xy, _ssp_step_explicit_free_surface!,
+                              free_surface.displacement, convert(FT, Δt), timestepper.Gⁿ.η, timestepper.Ψ⁻.η,
+                              convert(FT, a), convert(FT, b), size(model.grid, 3))
+    fill_halo_regions!(free_surface.displacement; async=true)
+    return nothing
+end
+
 explicit_rk3_step_free_surface!(free_surface, model, Δt) =
     launch!(model.architecture, model.grid, :xy,
             _explicit_rk3_step_free_surface!, free_surface.displacement, Δt,
@@ -96,6 +106,12 @@ explicit_ab2_step_free_surface!(free_surface, model, Δt) =
 @kernel function _explicit_rk3_step_free_surface!(η, Δt, Gⁿ, η⁻, Nz)
     i, j = @index(Global, NTuple)
     @inbounds η[i, j, Nz+1] = η⁻[i, j, Nz+1] + Δt * Gⁿ[i, j, Nz+1]
+end
+
+# ηᵐ = a ηⁿ + b (ηᵐ⁻¹ + Δt Gᵐ)
+@kernel function _ssp_step_explicit_free_surface!(η, Δt, Gⁿ, ηⁿ, a, b, Nz)
+    i, j = @index(Global, NTuple)
+    @inbounds η[i, j, Nz+1] = a * ηⁿ[i, j, Nz+1] + b * (η[i, j, Nz+1] + Δt * Gⁿ[i, j, Nz+1])
 end
 
 @kernel function _explicit_ab2_step_free_surface!(η, Δt, χ, Gηⁿ, Gη⁻, Nz)

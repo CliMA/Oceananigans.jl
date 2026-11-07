@@ -1,7 +1,8 @@
 using Oceananigans: fields
 using Oceananigans.Grids: bottommost_active_node
 using Oceananigans.Operators: σ⁻, σ⁻¹ⁿ, σⁿ
-using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, SplitRungeKuttaTimeStepper, implicit_step!
+using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, SplitRungeKuttaTimeStepper, SSPRungeKutta3TimeStepper, MultiStageTimeStepper,
+                                 _ssp_blend_tracer_field!, implicit_step!
 
 get_time_step(closure::CATKEVerticalDiffusivity) = closure.tke_time_step
 
@@ -74,7 +75,7 @@ function time_step_catke_equation!(model, ::QuasiAdamsBashforth2TimeStepper, Δt
     return nothing
 end
 
-function time_step_catke_equation!(model, ::SplitRungeKuttaTimeStepper, Δt)
+function time_step_catke_equation!(model, timestepper::MultiStageTimeStepper, Δt)
 
     # TODO: properly handle closure tuples
     if model.closure isa Tuple
@@ -118,10 +119,10 @@ function time_step_catke_equation!(model, ::SplitRungeKuttaTimeStepper, Δt)
                 model.velocities, tracers, buoyancy, closure_fields)
 
         if m == 1
-            # First substep: reset from cached state σe⁻
+            # First substep: reset from the state the stage starts from
             launch!(arch, grid, :xyz,
                     _rk_substep_turbulent_kinetic_energy!,
-                    Le, σe⁻, grid, closure,
+                    Le, stage_start_turbulent_kinetic_energy(timestepper, σe⁻), grid, closure,
                     model.velocities, previous_velocities,
                     tracers, buoyancy, closure_fields,
                     Δτ, Gⁿ)
@@ -142,10 +143,28 @@ function time_step_catke_equation!(model, ::SplitRungeKuttaTimeStepper, Δt)
                        Δτ)
     end
 
+    blend_turbulent_kinetic_energy!(e, timestepper, σe⁻, arch, grid, model.clock.stage)
+
     return nothing
 end
 
 const c = Center()
+
+# Split stages restart from the (σe)ⁿ cached in σe⁻, SSP stages advance the previous stage σ⁻ e
+@inline stage_start_turbulent_kinetic_energy(::SplitRungeKuttaTimeStepper, σe⁻) = σe⁻
+@inline stage_start_turbulent_kinetic_energy(::SSPRungeKutta3TimeStepper, σe⁻) = nothing
+
+@inline stage_start_turbulent_kinetic_energy(i, j, k, grid, σe⁻, e) = @inbounds σe⁻[i, j, k]
+@inline stage_start_turbulent_kinetic_energy(i, j, k, grid, ::Nothing, e) = @inbounds σ⁻(i, j, k, grid, c, c, c) * e[i, j, k]
+
+blend_turbulent_kinetic_energy!(e, timestepper, σe⁻, arch, grid, stage) = nothing
+
+function blend_turbulent_kinetic_energy!(e, timestepper::SSPRungeKutta3TimeStepper, σe⁻, arch, grid, stage)
+    FT = eltype(grid)
+    a, b = timestepper.coefficients[stage]
+    launch!(arch, grid, :xyz, _ssp_blend_tracer_field!, e, grid, σe⁻, convert(FT, a), convert(FT, b))
+    return nothing
+end
 
 @kernel function compute_TKE_diffusivity!(κe, grid, closure,
                                           next_velocities, tracers, buoyancy, closure_fields)
@@ -281,7 +300,7 @@ end
 
     @inbounds begin
         total_Gⁿ = slow_Gⁿe[i, j, k] + fast_Gⁿe * σᶜᶜⁿ
-        e[i, j, k] = (σe⁻[i, j, k] + Δt * total_Gⁿ * active) * σ⁻¹ᶜᶜⁿ
+        e[i, j, k] = (stage_start_turbulent_kinetic_energy(i, j, k, grid, σe⁻, e) + Δt * total_Gⁿ * active) * σ⁻¹ᶜᶜⁿ
     end
 end
 

@@ -89,3 +89,30 @@ end
         Fⁿ.z[i, j, k] = _advective_tracer_flux_z(i, j, k, grid, advection, U.w, tracer) * σⁿ(i, j, k, grid, c, c, f)
     end
 end
+
+#####
+##### Strong-stability-preserving accumulation: the budget of cⁿ⁺¹ = cⁿ + Δt Σₘ βₘ Gᵐ closes with Σₘ βₘ Fᵐ
+#####
+
+@kernel function _accumulate_ssp_advective_fluxes!(Fⁿ, grid, advection, U, tracer, β, keep)
+    i, j, k = @index(Global, NTuple)
+
+    fx = _advective_tracer_flux_x(i, j, k, grid, advection, U.u, tracer)
+    fy = _advective_tracer_flux_y(i, j, k, grid, advection, U.v, tracer)
+    fz = _advective_tracer_flux_z(i, j, k, grid, advection, U.w, tracer)
+
+    @inbounds begin
+        Fⁿ.x[i, j, k] = keep * Fⁿ.x[i, j, k] + β * fx
+        Fⁿ.y[i, j, k] = keep * Fⁿ.y[i, j, k] + β * fy
+        Fⁿ.z[i, j, k] = keep * Fⁿ.z[i, j, k] + β * fz
+    end
+end
+
+@kernel function _accumulate_ssp_transport!(Uⁿ, grid, U, β, keep)
+    i, j, k = @index(Global, NTuple)
+    @inbounds begin
+        Uⁿ.u[i, j, k] = keep * Uⁿ.u[i, j, k] + β * U.u[i, j, k] * Axᶠᶜᶜ(i, j, k, grid)
+        Uⁿ.v[i, j, k] = keep * Uⁿ.v[i, j, k] + β * U.v[i, j, k] * Ayᶜᶠᶜ(i, j, k, grid)
+        Uⁿ.w[i, j, k] = keep * Uⁿ.w[i, j, k] + β * U.w[i, j, k] * Azᶜᶜᶠ(i, j, k, grid)
+    end
+end

@@ -8,10 +8,8 @@ include(joinpath(@__DIR__, "..", "setup", "zstar_conservation_test_utils.jl"))
         for topology in zstar_test_topologies(arch)
             grids = zstar_test_grids(arch, topology, z_stretched)
 
-            # We test only SKR3 because AB2 is not conservative
-            timestepper = :SplitRungeKutta3
-
-            for grid in grids
+            # We test only the Runge-Kutta timesteppers because AB2 is not conservative
+            for timestepper in (:SplitRungeKutta3, :SSPRungeKutta3), grid in grids
                 split_free_surface    = SplitExplicitFreeSurface(grid; substeps=8)
                 explicit_free_surface = ExplicitFreeSurface()
 
