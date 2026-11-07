@@ -108,8 +108,22 @@ MultiRegionCommunicationBoundaryCondition() = BoundaryCondition(MultiRegionCommu
 
 ValueBoundaryCondition(val; scheme = nothing, kwargs...)      = BoundaryCondition(Value(scheme), val; kwargs...)
 GradientBoundaryCondition(val; kwargs...)                     = BoundaryCondition(Gradient(), val; kwargs...)
-NormalFlowBoundaryCondition(val; scheme = nothing, kwargs...) = BoundaryCondition(NormalFlow(scheme), val; kwargs...)
 MultiRegionCommunicationBoundaryCondition(val; kwargs...)     = BoundaryCondition(MultiRegionCommunication(), val; kwargs...)
+
+"""
+    NormalFlowBoundaryCondition(val; scheme = nothing, kwargs...)
+
+Return a [`NormalFlow`](@ref) `BoundaryCondition` that sets the boundary-normal velocity to `val`.
+
+With the default `scheme = nothing` the value is imposed as is. A radiation `scheme` such as
+[`PerturbationAdvection`](@ref) instead radiates the boundary-normal velocity out of the domain.
+
+With `scheme = BalancedTransport()` the net-zero transport correction may adjust the imposed
+value; see [`BalancedTransport`](@ref).
+
+`kwargs` (`parameters`, `discrete_form`, `field_dependencies`) apply to `val`.
+"""
+NormalFlowBoundaryCondition(val; scheme = nothing, kwargs...) = BoundaryCondition(NormalFlow(scheme), val; kwargs...)
 
             UPivotZipperBoundaryCondition(val; kwargs...) = BoundaryCondition(Zipper{UPivot}(), val; kwargs...)
             TPivotZipperBoundaryCondition(val; kwargs...) = BoundaryCondition(Zipper{TPivot}(), val; kwargs...)
@@ -211,6 +225,33 @@ const NumberRef = Base.RefValue{<:Number}
 # A NamedTuple just returns a tuple output
 @inline getbc(condition::NamedTuple, i::Integer, j::Integer, grid::AbstractGrid, args...) = getbc(values(condition), i, j, grid, args...)
 
+"""
+    XZReducedCondition{D}(condition)
+
+A `condition` reduced in `x` and `z` (for example a `Field` or a `FieldTimeSeries` located at
+`(Nothing, LY, Nothing)`), used as a boundary condition on dimension `D`. Its `y` index is the
+first boundary index on the west and east boundaries (`D = 1`), and the second on the bottom and
+top boundaries (`D = 3`). Types that are wrapped extend `xz_reduced_getbc(condition, j, grid, args...)`.
+"""
+struct XZReducedCondition{D, C}
+    condition :: C
+end
+
+XZReducedCondition{D}(condition::C) where {D, C} = XZReducedCondition{D, C}(condition)
+
+function xz_reduced_getbc end
+
+xz_reduced_condition(condition, dim) = condition
+xz_reduced_condition(condition, ::Val{1}) = XZReducedCondition{1}(condition)
+xz_reduced_condition(condition, ::Val{3}) = XZReducedCondition{3}(condition)
+
+@inline getbc(c::XZReducedCondition{1}, j::Integer, k::Integer, grid::AbstractGrid, args...) = xz_reduced_getbc(c.condition, j, grid, args...)
+@inline getbc(c::XZReducedCondition{3}, i::Integer, j::Integer, grid::AbstractGrid, args...) = xz_reduced_getbc(c.condition, j, grid, args...)
+
+Adapt.adapt_structure(to, c::XZReducedCondition{D}) where D = XZReducedCondition{D}(adapt(to, c.condition))
+Architectures.on_architecture(to, c::XZReducedCondition{D}) where D = XZReducedCondition{D}(on_architecture(to, c.condition))
+Base.summary(c::XZReducedCondition) = summary(c.condition)
+
 #####
 ##### Validation with topology
 #####
@@ -225,6 +266,9 @@ validate_boundary_condition_topology(bc, ::TwoSided{L, R}, side) where {L, R} = 
 validate_boundary_condition_topology(bc::Union{VBC, NFBC}, ::Closed, side) =
     isnothing(bc.classification.scheme) ? nothing : throw(ArgumentError(
         "Cannot set $side $bc on a `Closed` side; open boundary schemes need an `Open` side."))
+
+# A balanced-transport normal flow reads no exterior state, so like any imposed normal flow it is allowed on a `Closed` side
+validate_boundary_condition_topology(::BoundaryCondition{<:NormalFlow{BalancedTransport}}, ::Closed, side) = nothing
 
 validate_boundary_condition_topology(bc::FBC, ::Open, side) =
     isnothing(bc.condition) ? nothing : throw(ArgumentError(

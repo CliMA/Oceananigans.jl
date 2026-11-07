@@ -22,9 +22,9 @@ export
 using Adapt: Adapt
 using Base: Callable
 using DocStringExtensions: TYPEDSIGNATURES
-import MuladdMacro
+using MuladdMacro: MuladdMacro
+using Oceananigans.Utils: StaticStridesOffsetArray
 using Preferences: @load_preference
-using OffsetArrays: OffsetArray
 
 using Oceananigans: Oceananigans, fully_supported_float_types
 using Oceananigans.Architectures: Architectures, architecture, on_architecture, CPU
