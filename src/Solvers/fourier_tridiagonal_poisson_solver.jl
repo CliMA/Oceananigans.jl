@@ -237,7 +237,6 @@ function solve!(x, solver::FourierTridiagonalPoissonSolver, b=nothing)
 
     # Solve tridiagonal system of linear equations at every column.
     ϕ = solver.storage
-    solve!(ϕ, solver.batched_tridiagonal_solver, solver.source_term)
 
     # Solutions to Poisson's equation are only unique up to a constant (the global mean
     # of the solution), so we need to pick a constant. We choose the constant to be zero
@@ -246,7 +245,11 @@ function solve!(x, solver::FourierTridiagonalPoissonSolver, b=nothing)
     if solver.tridiagonal_formulation isa AbstractHomogeneousNeumannFormulation
         dim = dimension(solver.batched_tridiagonal_solver.tridiagonal_direction)
         zero_mode = view(ϕ, ntuple(d -> d == dim ? Colon() : 1, 3)...)
+        zero_mode .= zero(eltype(ϕ))
+        solve!(ϕ, solver.batched_tridiagonal_solver, solver.source_term)
         zero_mode .-= sum(zero_mode, dims=1) ./ length(zero_mode)
+    else
+        solve!(ϕ, solver.batched_tridiagonal_solver, solver.source_term)
     end
 
     apply_transforms!(solver.transforms.backward, ϕ, solver.buffer)
