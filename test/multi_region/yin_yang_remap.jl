@@ -99,10 +99,22 @@ zonal_average(source) = Field(Average(source, dims=1))
         @test remap_error(vˡ, (λ, φ) -> sind(φ)) < 2e-5
 
         set_panel_components!(u, v, solid_body_velocity)
-        ū, v̄ = map(zonal_average, remapped_field((u, v)))
+        uᵍ, vᵍ = remapped_field((u, v))
+        ū, v̄ = map(zonal_average, (uᵍ, vᵍ))
         @test location(v̄) == (Nothing, Center, Center)
         @test Array(interior(ū, 1, :, 1)) ≈ cosd.(φ) .* cos(π/4) rtol=1e-5
         @test maximum(abs, interior(v̄)) < 1e-10
+
+        # Remapped fields are windowed in the vertical, within the window of the source
+        c₂ = remapped_field(Field(c; indices=(:, :, 2)), destination_grid)
+        @test size(c₂) == (64, 32, 1)
+        @test interior(c₂) == interior(cˡ, :, :, 2:2)
+        @test interior(remapped_field(c, destination_grid; indices=(:, :, 2))) == interior(cˡ, :, :, 2:2)
+        @test_throws ArgumentError remapped_field(Field(c; indices=(1:2, :, :)), destination_grid)
+        @test_throws ArgumentError remapped_field(Field(c; indices=(:, :, 1)), destination_grid; indices=(:, :, 2))
+        @test summary(cˡ.operand) == "Remap of $(summary(c)) with YinYangRemapping"
+        @test summary(uᵍ.operand) == "Remap of the eastward component of a vector with YinYangRemapping"
+        @test summary(vᵍ.operand) == "Remap of the northward component of a vector with YinYangRemapping"
 
         # `set!` remaps, and the vertical sizes must agree
         set!(cˡ, c)

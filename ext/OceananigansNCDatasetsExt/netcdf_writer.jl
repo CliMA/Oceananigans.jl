@@ -94,6 +94,7 @@ function NetCDFWriter(model::AbstractModel, outputs;
                       dir = ".",
                       array_type = Array{Float32},
                       indices = (:, :, :),
+                      grid = nothing,
                       global_attributes = Dict(),
                       output_attributes = Dict(),
                       dimensions = Dict(),
@@ -121,10 +122,10 @@ function NetCDFWriter(model::AbstractModel, outputs;
     schedule = materialize_schedule(schedule)
     update_file_splitting_schedule!(file_splitting, filepath)
 
-    outputs = OrderedDict(string(name) => construct_output(outputs[name], indices, with_halos) for name in output_names(outputs))
+    outputs = OrderedDict(string(name) => construct_output(outputs[name], indices, with_halos, grid) for name in output_names(outputs))
 
     # Extract grids from outputs, falling back to model grid for non-field outputs
-    output_grids = OrderedDict(name => something((try grid(output) catch; nothing end), grid(model)) for (name, output) in outputs)
+    output_grids = OrderedDict(name => something((try Grids.grid(output) catch; nothing end), Grids.grid(model)) for (name, output) in outputs)
     unique_grids = Tuple(unique(objectid, collect(values(output_grids))))
     output_grid_map = Dict(name => findfirst(gr -> gr === output_grids[name], unique_grids) for name in keys(outputs))
 

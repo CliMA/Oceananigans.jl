@@ -8,6 +8,7 @@ function OutputWriters.ZarrWriter(model::AbstractModel, outputs;
                                   dir = ".",
                                   indices = (:, :, :),
                                   with_halos = false,
+                                  grid = nothing,
                                   array_type = Array{Float32},
                                   global_attributes = Dict(),
                                   output_attributes = Dict(),
@@ -60,7 +61,7 @@ function OutputWriters.ZarrWriter(model::AbstractModel, outputs;
     schedule = materialize_schedule(schedule)
     update_file_splitting_schedule!(file_splitting, filepath)
 
-    nt_outputs = NamedTuple(Symbol(name) => construct_output(outputs[name], indices, with_halos)
+    nt_outputs = NamedTuple(Symbol(name) => construct_output(outputs[name], indices, with_halos, grid)
                             for name in output_names(outputs))
     schedule, d_outputs = time_average_outputs(schedule, nt_outputs, model)
 

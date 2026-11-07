@@ -1,6 +1,6 @@
-using Oceananigans.Fields: validate_indices, Reduction
+using Oceananigans.Fields: validate_indices, Reduction, remapped_field
 using Oceananigans.Grids: default_indices
-using Oceananigans.Utils: @apply_regionally
+using Oceananigans.Utils: @apply_regionally, getregion
 
 restrict_to_interior(::Colon, loc, topo, N) = interior_indices(loc, topo, N)
 restrict_to_interior(::Colon, ::Nothing, topo, N) = UnitRange(1, 1)
@@ -85,3 +85,34 @@ function construct_output(derivative::TimeDerivative, indices, with_halos)
     output = construct_output(derivative.operand, indices, with_halos)
     return TimeDerivative(output; expected_max_time_step_growth = derivative.expected_max_time_step_growth)
 end
+
+#####
+##### Remapping onto the grid of the writer
+#####
+
+# Outputs are remapped onto `grid` with `remapped_field` unless they already live on it, or `grid` is `nothing`.
+# `indices` and `with_halos` refer to `grid`, where the output is written.
+same_grid(output_grid, grid) = output_grid === grid || output_grid == grid
+
+function construct_output(output, indices, with_halos, grid)
+    isnothing(grid) || @warn "Cannot remap $output onto $(summary(grid)): output will not be remapped."
+    return construct_output(output, indices, with_halos)
+end
+
+Base.@nospecializeinfer function construct_output(@nospecialize(output::Union{AbstractField, Reduction}), user_indices, with_halos, grid)
+    if isnothing(grid) || same_grid(Grids.grid(output), grid)
+        return construct_output(output, user_indices, with_halos)
+    end
+
+    indices = output_indices(output, grid, user_indices, with_halos)
+    return remapped_field(output, grid; indices = getregion(indices, 1))
+end
+
+construct_output(output::ConstantFields, indices, with_halos, grid) = output
+
+construct_output(averaged_output::WindowedTimeAverage{<:Field}, indices, with_halos, grid) =
+    WindowedTimeAverage(construct_output(averaged_output.operand, indices, with_halos, grid); schedule=averaged_output.schedule)
+
+construct_output(derivative::TimeDerivative, indices, with_halos, grid) =
+    TimeDerivative(construct_output(derivative.operand, indices, with_halos, grid);
+                   expected_max_time_step_growth = derivative.expected_max_time_step_growth)

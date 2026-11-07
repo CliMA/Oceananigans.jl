@@ -216,6 +216,53 @@ the other supported compressors.
 
 See [`JLD2Writer`](@ref) for more information.
 
+## Output on another grid
+
+The keyword `grid` remaps every field output onto another grid before it is written, with
+[`remapped_field`](@ref). The `indices` and `with_halos` of the writer then refer to the destination grid,
+which is the grid saved to the file, so a [`FieldTimeSeries`](@ref) loads the output on it. Fields that
+already live on the destination grid are written as they are. Between grids that share their coordinates,
+such as two `RectilinearGrid`s, the output is interpolated pointwise onto the nodes of the destination:
+
+```@example remapped_output
+using Oceananigans
+
+grid = RectilinearGrid(size=(16, 16, 8), extent=(1, 1, 1))
+model = NonhydrostaticModel(grid, tracers=:c)
+
+coarse_grid = RectilinearGrid(size=(8, 8, 8), extent=(1, 1, 1))
+
+simulation = Simulation(model, Δt=1, stop_iteration=1)
+
+simulation.output_writers[:coarse] = JLD2Writer(model, model.tracers;
+                                                filename = "coarse_tracers.jld2",
+                                                schedule = IterationInterval(1),
+                                                grid = coarse_grid,
+                                                overwrite_files = true)
+```
+
+A simulation on a [`YinYangGrid`](@ref), whose panels overlap, is written in geographic coordinates with
+`grid = latitude_longitude_grid(model.grid)`, which interpolates each node from the panel that owns it.
+The components of a horizontal vector on such a grid are rotated into the geographic basis, which requires
+both of them, so they are remapped explicitly with `remapped_field((u, v), grid)`, and the writer passes
+them through:
+
+```julia
+using Oceananigans.MultiRegion: latitude_longitude_grid
+
+geographic_grid = latitude_longitude_grid(model.grid)
+u, v, w = model.velocities
+uᵍ, vᵍ = remapped_field((u, v), geographic_grid)
+
+simulation.output_writers[:geographic] = JLD2Writer(model, (; u = uᵍ, v = vᵍ, T = model.tracers.T);
+                                                    filename = "geographic.jld2",
+                                                    schedule = TimeInterval(1day),
+                                                    grid = geographic_grid)
+```
+
+With an `AveragedTimeInterval`, each output is remapped as it is accumulated, so the written average is
+the time-average of the remapped field.
+
 ## Time-averaged output
 
 Time-averaged output is specified by setting the `schedule` keyword argument for either `NetCDFWriter` or
