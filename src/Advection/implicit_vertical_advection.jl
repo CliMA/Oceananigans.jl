@@ -155,7 +155,7 @@ end
 #####   Fⁱ_k = Az_k ρᶜ_k [max(wⁱ_k, 0) q_k / ρᶠ_k + min(wⁱ_k, 0) q_{k+1} / ρᶠ_{k+1}],   q = ρ w
 #####
 ##### Boundary faces reduce to identity rows, and the coupling of row Nz to the untouched face
-##### Nz+1 vanishes with `w` there.
+##### Nz+1 enters the right hand side with the known `w` there.
 #####
 
 @inline function implicit_advection_upper_diagonal(i, j, k, grid, advection::AIVA, w, Δt, ℓx, ℓy, ℓz::Face, density=nothing)
