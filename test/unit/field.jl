@@ -396,6 +396,27 @@ end
 @testset "Fields" begin
     @info "Testing Fields..."
 
+    @testset "StaticStridesOffsetArray constructor" begin
+        underlying_data = reshape(collect(1.0:12.0), 4, 3)
+        array = StaticStridesOffsetArray(underlying_data, Int32(-1), -2)
+        @test parent(array) === underlying_data
+        @test OffsetArrays.offsets(array) === (-1, -2)
+        @test_throws OverflowError StaticStridesOffsetArray(underlying_data, typemax(Int), 0)
+
+        wrapped_array = StaticStridesOffsetArray(array, 1, 1)
+        @test parent(wrapped_array) === underlying_data
+        @test OffsetArrays.offsets(wrapped_array) === (0, -1)
+
+        # slicing along one dimension returns an OffsetArray that retains the offsets of the others
+        array_slice = array[1:2, :]
+        @test array_slice isa OffsetArray
+        sliced_array = StaticStridesOffsetArray(array_slice, 3, 0)
+        @test parent(sliced_array) isa Array
+        @test OffsetArrays.offsets(sliced_array) === (3, -2)
+        @test sliced_array[4, -1] == array_slice[1, -1] == underlying_data[2, 1]
+        @test_throws OverflowError StaticStridesOffsetArray(array_slice, typemax(Int), 0)
+    end
+
     @testset "Field initialization" begin
         @info "  Testing Field initialization..."
 
@@ -974,6 +995,25 @@ end
 
             @test mean(c) ≈ @allowscalar mean(interior(c))
             @test mean(windowed_c) ≈ @allowscalar mean(interior(windowed_c))
+        end
+    end
+
+    @testset "index_binary_search matches the early-return search it replaces" begin
+        function early_return_search(vec, val, N)
+            low, high = 0, N - 1
+            while low + 1 < high
+                mid = Oceananigans.Fields.middle_point(low, high)
+                vec[mid + 1] == val && return (mid + 1, mid + 1)
+                vec[mid + 1] < val ? (low = mid) : (high = mid)
+            end
+            return (low + 1, high + 1)
+        end
+
+        Random.seed!(1234)
+        for N in 1:64, vec in (cumsum(rand(N)), collect(1.0:N), sort(rand(1:5, N) .* 1.0))
+            for val in vcat(vec, vec .+ 1e-3, vec .- 1e-3, [-1e9, 1e9, NaN])
+                @test Oceananigans.Fields.index_binary_search(vec, val, N) == early_return_search(vec, val, N)
+            end
         end
     end
 

@@ -68,7 +68,7 @@ function materialize_radiation_storage(scheme::AbstractRadiationScheme, grid, lo
                         dim == 2 ? (connected_range(loc[1], topology(grid, 1), Sx, Hx), 1:Sz) :
                                    (1:Sx, 1:Sy)
 
-    buffer() = OffsetArray(zeros(arch, FT, map(length, tangential_ranges)...), map(r -> first(r) - 1, tangential_ranges)...)
+    buffer() = StaticStridesOffsetArray(zeros(arch, FT, map(length, tangential_ranges)...), map(r -> first(r) - 1, tangential_ranges)...)
     return radiation_storage(scheme, buffer)
 end
 
