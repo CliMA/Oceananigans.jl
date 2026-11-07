@@ -135,8 +135,11 @@ end
     return nothing
 end
 
-@inline update_tracer_bounds_preserving_limiter!(advection, model, ::Val{name}) where name =
-    update_bounds_preserving_limiter!(advection[name], model.grid, model.tracers[name])
+@inline function update_tracer_bounds_preserving_limiter!(advection, model, val_name::Val{name}) where name
+    scheme = advection[name]
+    update_bounds_preserving_limiter!(scheme, model.grid, model.tracers[name])
+    return update_outflow_limiter!(scheme, model, val_name)
+end
 
 @inline function update_advection!(scheme, model, tracer)
     update_adaptive_timestep!(scheme, model)

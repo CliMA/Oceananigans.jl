@@ -23,6 +23,7 @@ end
          time_discretization = ExplicitTimeDiscretization(),
          bounds = nothing,
          maximum_courant_number = 5//18,
+         outflow_limiter = false,
          minimum_buffer_upwind_order = 3)
 
 Construct a weighted essentially non-oscillatory advection scheme of order `order` with precision `FT`.
@@ -48,6 +49,12 @@ Keyword arguments
                            Default: `nothing`, which does not use a bounds-preserving scheme.
 - `maximum_courant_number`: The Courant number `ω̂₁ ∈ (0, 1/2)` up to which `bounds` is guaranteed. Raising it
                             admits a larger time step and limits more aggressively. Default: `5//18`.
+- `outflow_limiter` (experimental): Whether to also scale each cell's outgoing fluxes by the fraction of them the
+                                    coming update can afford, so that the tracer stays non-negative for any time
+                                    step and for the stages of a `SplitRungeKuttaTimeStepper`, which update the
+                                    step-start state with fluxes built from a later stage (see
+                                    [`OutflowLimiter`](@ref)). Requires `bounds` with a lower bound of `0`.
+                                    Default: `false`.
 - `minimum_buffer_upwind_order`: The minimum upwind order for buffer schemes. When the buffer
                                  scheme order reaches this value, subsequent buffers use
                                  `Centered(order=2)` instead of continuing to decrease the
@@ -103,6 +110,16 @@ WENO{5, Float64, Nothing}(order=9, bounds=(0.0, 1.0))
 └── advecting_velocity_scheme: Centered(order=2)
 ```
 
+To also limit each cell's outflow, so that the tracer stays non-negative for any time step:
+
+```jldoctest weno
+julia> WENO(order=5, bounds=(0, 1), outflow_limiter=true)
+WENO{3, Float64, Nothing}(order=5, bounds=(0.0, 1.0), outflow_limiter=true)
+├── buffer_scheme: WENO{2, Float64, Nothing}(order=3, bounds=(0.0, 1.0), outflow_limiter=true)
+│   └── buffer_scheme: Centered(order=2)
+└── advecting_velocity_scheme: Centered(order=2)
+```
+
 To build a WENO scheme that uses approximate division on a GPU to execute faster:
 ```jldoctest weno
 julia> WENO(;weight_computation=Oceananigans.Utils.BackendOptimizedDivision)
@@ -124,12 +141,18 @@ function WENO(FT::DataType=Oceananigans.defaults.FloatType;
               time_discretization = ExplicitTimeDiscretization(),
               bounds = nothing,
               maximum_courant_number = 5//18,
+              outflow_limiter = false,
               minimum_buffer_upwind_order = 3)
 
     mod(order, 2) == 0 && throw(ArgumentError("WENO reconstruction scheme is defined only for odd orders"))
 
     isnothing(bounds) || bounds isa NTuple{2} || throw(ArgumentError("bounds must be nothing or a tuple of two values"))
     0 < maximum_courant_number < 1//2 || throw(ArgumentError("maximum_courant_number must lie in (0, 1/2), found $maximum_courant_number"))
+
+    if outflow_limiter
+        isnothing(bounds) && throw(ArgumentError("outflow_limiter=true requires bounds"))
+        bounds[1] == 0 || throw(ArgumentError("outflow_limiter=true keeps the tracer non-negative, so the lower bound must be 0, found $(bounds[1])"))
+    end
 
     if order < 3
         # WENO(order=1) is equivalent to UpwindBiased(order=1)
@@ -142,13 +165,14 @@ function WENO(FT::DataType=Oceananigans.defaults.FloatType;
                 # At minimum order, switch to Centered scheme
                 buffer_scheme = Centered(FT; order=2)
             else
-                buffer_scheme = WENO(FT; order=order-2, bounds, maximum_courant_number, minimum_buffer_upwind_order, weight_computation)
+                buffer_scheme = WENO(FT; order=order-2, bounds, maximum_courant_number, outflow_limiter, minimum_buffer_upwind_order, weight_computation)
             end
         end
 
         N = Int((order + 1) ÷ 2)
+        limiter = outflow_limiter ? OutflowLimiter(nothing, nothing, nothing) : nothing
         preserved_bounds = isnothing(bounds) ? nothing :
-            BoundsPreservation(convert(FT, bounds[1]), convert(FT, bounds[2]), convert(FT, maximum_courant_number), nothing)
+            BoundsPreservation(convert(FT, bounds[1]), convert(FT, bounds[2]), convert(FT, maximum_courant_number), limiter)
 
         return WENO{N, FT, weight_computation}(preserved_bounds, buffer_scheme, advecting_velocity_scheme, time_discretization)
     end
