@@ -4,7 +4,7 @@ MPI.Init(threadlevel=:multiple)
 
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
-using Oceananigans.DistributedComputations: Distributed, Partition
+using Oceananigans.DistributedComputations: Distributed, Partition, all_reduce
 using Oceananigans.BoundaryConditions: BalancedTransport, NormalFlow
 using Oceananigans.Models: enforce_net_zero_transport!
 
@@ -26,7 +26,6 @@ balanced(value) = NormalFlowBoundaryCondition(value; scheme = BalancedTransport(
 imposed(value) = value == 0 ? NormalFlowBoundaryCondition(value) : balanced(value)
 
 @testset "Net-zero transport is global" begin
-    comm = MPI.COMM_WORLD
     Lx, Ly, Lz = 2.0, 1.0, 1.0
 
     # With zero south and north flow, the two middle ranks of Partition(x = 4) own no open face.
@@ -60,7 +59,34 @@ imposed(value) = value == 0 ? NormalFlowBoundaryCondition(value) : balanced(valu
 
         δ = Field(∂x(u) + ∂y(v) + ∂z(w))
         compute!(δ)
-        max_divergence = MPI.Allreduce(maximum(abs, Array(interior(δ))), max, comm)
-        @test max_divergence < 1e-10
+        @test maximum(abs, δ) < 1e-10
+    end
+end
+
+@testset "Targeted transport is reached on the whole boundary" begin
+    Lx, Ly, Lz = 2.0, 1.0, 1.0
+    target = 0.3
+
+    # Partition(x = 4) leaves two ranks with no open face; the others split the west and east boundaries.
+    for partition in (Partition(x = 4), Partition(y = 4), Partition(2, 2))
+        arch = Distributed(child_arch; partition)
+        grid = RectilinearGrid(arch; size = (16, 16, 4), x = (0, Lx), y = (0, Ly), z = (0, Lz),
+                               topology = (Bounded, Bounded, Bounded))
+
+        targeted = NormalFlowBoundaryCondition(1.0; scheme = PerturbationAdvection(; target_transport = target))
+        boundary_conditions = (; u = FieldBoundaryConditions(west = targeted, east = balanced(1.0)))
+
+        model = NonhydrostaticModel(grid; boundary_conditions, timestepper = :RungeKutta3)
+        u, v, w = model.velocities
+
+        fill_halo_regions!((u, v, w))
+        enforce_net_zero_transport!(model.velocities, model.boundary_transport)
+
+        # This rank's part of the west transport, summed over every rank
+        on_west = is_normal_flow(u.boundary_conditions.west)
+        west_transport = Field(Integral(view(u, 1, :, :), dims = (2, 3), locally = true))
+        compute!(west_transport)
+        local_transport = on_west ? Array(interior(west_transport))[1, 1, 1] : 0.0
+        @test all_reduce(+, local_transport, arch) ≈ target
     end
 end

@@ -5,7 +5,8 @@ using Statistics: mean
 
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields: Fields, ReducedAbstractField, condition_operand, conditional_length, filltype,
-                           get_neutral_mask, indices, initialize_reduced_field!, instantiated_location, local_dot!,
+                           get_neutral_mask, indices, initialize_reduced_field!, instantiated_location,
+                           local_all!, local_any!, local_dot!, local_maximum!, local_minimum!, local_prod!, local_sum!,
                            reduced_dimensions, reduced_location, reduction_operand, set!, set_to_array!, set_to_field!,
                            validate_boundary_conditions, validate_field_data, validate_indices
 using Oceananigans.Grids: topology
@@ -174,46 +175,25 @@ for (reduction, all_reduce_op) in zip((:sum, :maximum, :minimum, :all, :any, :pr
                                       (:+,   :max,     :min,     :&,   :|,   :*))
 
     reduction! = Symbol(reduction, '!')
+    local_reduction! = Symbol(:local_, reduction!)
 
     @eval begin
         # In-place
-        function Base.$(reduction!)(f::Function,
-                                    r::ReducedAbstractField,
-                                    a::DistributedAbstractField;
-                                    condition = nothing,
-                                    mask = get_neutral_mask(Base.$(reduction!)),
-                                    kwargs...)
-
-            operand = condition_operand(f, a, condition, mask)
-
-            Base.$(reduction!)(identity,
-                               interior(r),
-                               reduction_operand(operand);
-                               kwargs...)
-
+        function Base.$(reduction!)(f::Function, r::ReducedAbstractField, a::DistributedAbstractField; kwargs...)
+            $(local_reduction!)(f, r, a; kwargs...)
             return maybe_all_reduce!($(all_reduce_op), r)
         end
 
-        function Base.$(reduction!)(r::ReducedAbstractField,
-                                    a::DistributedAbstractField;
-                                    condition = nothing,
-                                    mask = get_neutral_mask(Base.$(reduction!)),
-                                    kwargs...)
-
-            Base.$(reduction!)(identity,
-                               interior(r),
-                               reduction_operand(condition_operand(a, condition, mask));
-                               kwargs...)
-
-            return maybe_all_reduce!($(all_reduce_op), r)
-        end
+        Base.$(reduction!)(r::ReducedAbstractField, a::DistributedAbstractField; kwargs...) =
+            Base.$(reduction!)(identity, r, a; kwargs...)
 
         # Allocating
         function Base.$(reduction)(f::Function,
                                    c::DistributedAbstractField;
                                    condition = nothing,
                                    mask = get_neutral_mask(Base.$(reduction!)),
-                                   dims = :)
+                                   dims = :,
+                                   locally = false)
 
             conditioned_c = condition_operand(f, c, condition, mask)
             T = filltype(Base.$(reduction!), c)
@@ -222,7 +202,7 @@ for (reduction, all_reduce_op) in zip((:sum, :maximum, :minimum, :all, :any, :pr
             initialize_reduced_field!(Base.$(reduction!), identity, r, conditioned_c)
             Base.$(reduction!)(identity, interior(r), reduction_operand(conditioned_c), init=false)
 
-            maybe_all_reduce!($(all_reduce_op), r)
+            locally || maybe_all_reduce!($(all_reduce_op), r)
 
             if dims isa Colon
                 return @allowscalar first(r)

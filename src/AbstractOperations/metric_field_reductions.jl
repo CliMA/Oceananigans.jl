@@ -1,7 +1,7 @@
 using Oceananigans.Utils: tupleit
 using Oceananigans.Grids: regular_dimensions, topology, Periodic, has_static_discretization
 using Oceananigans.Fields: Field, Scan, Reducing, ScannedComputedField, condition_operand, reverse_cumsum!,
-                          AbstractAccumulating, AbstractReducing
+                          AbstractAccumulating, AbstractReducing, local_sum!
 using Oceananigans.Fields: filter_nothing_dims, instantiated_location, interior
 
 #####
@@ -95,10 +95,13 @@ const Integral = Scan{<:Integrating}
 Base.summary(r::Integral) = string("Integral of ", summary(r.operand), " over dims ", r.dims)
 
 """
-    Integral(field::AbstractField; dims=:, condition=nothing, mask=0)
+    Integral(field::AbstractField; dims=:, condition=nothing, mask=0, locally=false)
 
 
 Return a `Reduction` representing a spatial integral of `field` over `dims`.
+
+On a distributed grid, `locally = true` integrates over this rank's portion of the domain only,
+without reducing across ranks. On other grids, `locally` has no effect.
 
 See [`ConditionalOperation`](@ref Oceananigans.AbstractOperations.ConditionalOperation)
 for information and examples using `condition` and `mask` kwargs.
@@ -138,12 +141,13 @@ julia> ∫f[1, 1, 1]
 0.125
 ```
 """
-function Integral(field::AbstractField; dims=:, condition=nothing, mask=0)
+function Integral(field::AbstractField; dims=:, condition=nothing, mask=0, locally=false)
     dims = dims isa Colon ? (1, 2, 3) : tupleit(dims)
     dims = filter_nothing_dims(dims, instantiated_location(field))
     dx = reduction_grid_metric(dims)
     operand = condition_operand(field * dx, condition, mask)
-    return Scan(Integrating(), sum!, operand, dims)
+    integrate! = locally ? local_sum! : sum!
+    return Scan(Integrating(), integrate!, operand, dims)
 end
 
 #####

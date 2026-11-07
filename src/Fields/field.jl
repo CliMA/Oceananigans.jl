@@ -856,20 +856,22 @@ end
 @inline conditional_length(c::AbstractField, dims::Int) = size(c, dims)
 @inline conditional_length(c::AbstractField, dims::Tuple) = prod(size(c, d) for d in dims)
 
-# Allocating and in-place reductions
+# Allocating and in-place reductions.
+# `local_$(reduction!)` reduces over this rank's portion of the domain only; on a distributed grid,
+# `Base.$(reduction!)` follows it with a reduction across ranks.
 for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
 
     reduction! = Symbol(reduction, '!')
+    local_reduction! = Symbol(:local_, reduction!)
 
     @eval begin
 
-        # In-place
-        function Base.$(reduction!)(f::Function,
-                                    r::ReducedAbstractField,
-                                    a::AbstractField;
-                                    condition = nothing,
-                                    mask = get_neutral_mask(Base.$(reduction!)),
-                                    kwargs...)
+        function $(local_reduction!)(f::Function,
+                                     r::ReducedAbstractField,
+                                     a::AbstractField;
+                                     condition = nothing,
+                                     mask = get_neutral_mask(Base.$(reduction!)),
+                                     kwargs...)
             mask = convert_mask(mapped_eltype(f, a), mask)
             operand = condition_operand(f, a, condition, mask)
 
@@ -879,26 +881,23 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
                                       kwargs...)
         end
 
-        function Base.$(reduction!)(r::ReducedAbstractField,
-                                    a::AbstractField;
-                                    condition = nothing,
-                                    mask = get_neutral_mask(Base.$(reduction!)),
-                                    kwargs...)
+        $(local_reduction!)(r::ReducedAbstractField, a::AbstractField; kwargs...) =
+            $(local_reduction!)(identity, r, a; kwargs...)
 
+        # In-place
+        Base.$(reduction!)(f::Function, r::ReducedAbstractField, a::AbstractField; kwargs...) =
+            $(local_reduction!)(f, r, a; kwargs...)
 
-            mask = convert_mask(eltype(a), mask)
-            return Base.$(reduction!)(identity,
-                                      interior(r),
-                                      reduction_operand(condition_operand(a, condition, mask));
-                                      kwargs...)
-        end
+        Base.$(reduction!)(r::ReducedAbstractField, a::AbstractField; kwargs...) =
+            $(local_reduction!)(identity, r, a; kwargs...)
 
         # Allocating
         function Base.$(reduction)(f::Function,
                                    c::AbstractField;
                                    condition = nothing,
                                    mask = get_neutral_mask(Base.$(reduction!)),
-                                   dims = :)
+                                   dims = :,
+                                   locally = false)
 
             mask = convert_mask(mapped_eltype(f, c), mask)
             conditioned_c = condition_operand(f, c, condition, mask)
