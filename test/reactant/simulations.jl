@@ -165,6 +165,39 @@ end
     end
 end
 
+@testset "Reactant Simulation: a compiled run! takes the stop_iteration set after compiling" begin
+    @info "Testing one compiled run! called with different stop_iterations..."
+    rectilinear_kw = (; size=(8, 8, 4), halo=(3, 3, 3), x=(0, 1), y=(0, 1), z=(0, 1))
+    chunks = (2, 0, 3)
+
+    for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
+        model_kw = (; free_surface=ExplicitFreeSurface(gravitational_acceleration=1), timestepper)
+        model = HydrostaticFreeSurfaceModel(RectilinearGrid(CPU(); rectilinear_kw...); model_kw...)
+        r_model = HydrostaticFreeSurfaceModel(RectilinearGrid(ReactantState(); rectilinear_kw...); model_kw...)
+
+        ui = randn(size(model.velocities.u)...)
+        set!(model, u=ui)
+        set!(r_model, u=ui)
+
+        # Each compiled call starts afresh: an Adams-Bashforth run takes a forward-Euler first step
+        Δt = 1e-3
+        euler = timestepper == :QuasiAdamsBashforth2
+        for n in chunks, step in 1:n
+            step == 1 && euler ? time_step!(model, Δt; euler) : time_step!(model, Δt)
+        end
+
+        r_simulation = Simulation(r_model; Δt, stop_iteration=first(chunks), verbose=false)
+        compiled_run! = @compile run!(r_simulation)
+        for n in chunks
+            r_simulation.stop_iteration = n
+            compiled_run!(r_simulation)
+        end
+
+        @test iteration(r_simulation) == sum(chunks)
+        @test Array(interior(r_model.velocities.u)) ≈ Array(interior(model.velocities.u))
+    end
+end
+
 @testset "Reactant Simulation: stop_time and TimeInterval" begin
     @info "Testing stop_time and TimeInterval conversion on a Reactant Simulation..."
     Nx, Ny, Nz = (10, 10, 10)
