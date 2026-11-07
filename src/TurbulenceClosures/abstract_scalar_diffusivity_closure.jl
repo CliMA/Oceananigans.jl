@@ -1,5 +1,6 @@
-using Oceananigans.Grids: node
-using Oceananigans.Operators: ℑxyᶠᶠᵃ, ℑxzᶠᵃᶠ, ℑyzᵃᶠᶠ
+using Oceananigans.Grids: node, peripheral_node
+using Oceananigans.ImmersedBoundaries: PCBIBG, XFlatPCBIBG, YFlatPCBIBG, XYFlatPCBIBG
+using Oceananigans.Operators: ℑxyᶠᶠᵃ, ℑxzᶠᵃᶠ, ℑyzᵃᶠᶠ, Δzᶜᶠᶜ, Δzᶠᶜᶜ
 
 """
     abstract type AbstractScalarDiffusivity <: AbstractTurbulenceClosure end
@@ -239,6 +240,42 @@ const C = Center
 # "Divergence damping"
 @inline viscous_flux_ux(i, j, k, grid, clo::ADD, K, clk, fields, b) = - νh_δᶜᶜᶜ(i, j, k, grid, clo, K, clk, fields, fields.u, fields.v)
 @inline viscous_flux_vy(i, j, k, grid, clo::ADD, K, clk, fields, b) = - νh_δᶜᶜᶜ(i, j, k, grid, clo, K, clk, fields, fields.u, fields.v)
+
+#####
+##### Horizontal viscosity on partial cells
+#####
+
+# With partial cells, Δz varies laterally, and the stresses above are not adjoint to the thickness-weighted outer
+# divergence ∂ⱼτᵢⱼ: `div_xyᶜᶜᶜ` weights the velocity by Δzᶠᶜᶜ and Δzᶜᶠᶜ, while the outer divergence weights δ by
+# Δzᶜᶜᶜ. So the viscous operator is not symmetric in the volume-weighted inner product and can add kinetic energy.
+#
+# On grids with partial cells the viscous operator is instead the thickness-weighted vector Laplacian
+#
+#     ν L(u),    L(u) = V⁻¹ [ ∇(Az Δzᵐⁱⁿ δ) - ẑ × ∇(Az Δzᶠᶠᶜ ζ) ],
+#
+# where δ and ζ are the unweighted horizontal divergence and vorticity and Δzᵐⁱⁿ is the thinnest velocity face of a
+# cell. L is symmetric and negative semi-definite in the volume-weighted inner product for any Δz, so Σ V u ⋅ ν L(u) ≤ 0.
+# Every stress is at most as thick as the faces it acts on, so the spectral radius is no larger than over a flat
+# bottom. The vorticity is zero on peripheral nodes (free slip), as `conditional_flux_ffc` already makes it at
+# immersed boundaries. The horizontal biharmonic viscosity on partial cells is -ν L(L(u)).
+@inline Δzᵐⁱⁿᶜᶜᶜ(i, j, k, grid) = min(Δzᶠᶜᶜ(i, j, k, grid), Δzᶠᶜᶜ(i+1, j, k, grid), Δzᶜᶠᶜ(i, j, k, grid), Δzᶜᶠᶜ(i, j+1, k, grid))
+@inline Δzᵐⁱⁿᶜᶜᶜ(i, j, k, grid::XFlatPCBIBG) = min(Δzᶜᶠᶜ(i, j, k, grid), Δzᶜᶠᶜ(i, j+1, k, grid))
+@inline Δzᵐⁱⁿᶜᶜᶜ(i, j, k, grid::YFlatPCBIBG) = min(Δzᶠᶜᶜ(i, j, k, grid), Δzᶠᶜᶜ(i+1, j, k, grid))
+@inline Δzᵐⁱⁿᶜᶜᶜ(i, j, k, grid::XYFlatPCBIBG) = Δzᶜᶜᶜ(i, j, k, grid)
+
+@inline Δzᵐⁱⁿδᶜᶜᶜ(i, j, k, grid, u, v) = Δzᵐⁱⁿᶜᶜᶜ(i, j, k, grid) * Az⁻¹ᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, u) + δyᵃᶜᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, v))
+
+@inline function free_slip_vorticityᶠᶠᶜ(i, j, k, grid, u, v)
+    ζ = Az⁻¹ᶠᶠᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, Δy_qᶜᶠᶜ, v) - δyᵃᶠᵃ(i, j, k, grid, Δx_qᶠᶜᶜ, u))
+    return ifelse(peripheral_node(i, j, k, grid, Face(), Face(), Center()), zero(grid), ζ)
+end
+
+# The outer divergence multiplies the centre stress by Δzᶜᶜᶜ, so it is rescaled to carry Δzᵐⁱⁿ instead
+@inline νh_δᶜᶜᶜ(i, j, k, grid::PCBIBG, closure, K, clock, fields, u, v) =
+    νhᶜᶜᶜ(i, j, k, grid, closure, K, clock, fields) * Δz⁻¹ᶜᶜᶜ(i, j, k, grid) * Δzᵐⁱⁿδᶜᶜᶜ(i, j, k, grid, u, v)
+
+@inline νh_ζᶠᶠᶜ(i, j, k, grid::PCBIBG, closure, K, clock, fields, u, v) =
+    νhᶠᶠᶜ(i, j, k, grid, closure, K, clock, fields) * free_slip_vorticityᶠᶠᶜ(i, j, k, grid, u, v)
 
 # Vertical viscous fluxes for vertical diffusivities
 @inline νz_σᶜᶜᶜ(i, j, k, grid, closure, K, clock, fields, σᶜᶜᶜ, args...) = νzᶜᶜᶜ(i, j, k, grid, closure, K, clock, fields) * σᶜᶜᶜ(i, j, k, grid, args...)
