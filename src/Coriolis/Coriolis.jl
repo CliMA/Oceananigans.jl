@@ -3,7 +3,8 @@ module Coriolis
 export
     FPlane, ConstantCartesianCoriolis, BetaPlane, NonTraditionalBetaPlane,
     SphericalCoriolis, HydrostaticSphericalCoriolis,
-    ActiveWeightedEnstrophyConserving, ActiveWeightedEnergyConserving, TriadScheme, DualGridScheme,
+    ActiveWeightedEnstrophyConserving, ActiveWeightedEnergyConserving, ThicknessWeightedEnergyConserving,
+    TriadScheme, DualGridScheme,
     x_f_cross_U, y_f_cross_U, z_f_cross_U
 
 using Printf: @sprintf
@@ -15,7 +16,8 @@ using Oceananigans.Operators: ℑxᶜᵃᵃ, ℑxᶠᵃᵃ,
                               ℑzᵃᵃᶜ, ℑzᵃᵃᶠ,
                               ℑxyᶜᶠᵃ, ℑxyᶠᶜᵃ, ℑxzᶜᵃᶠ,
                               Ay⁻¹ᶠᶜᶜ, Ax⁻¹ᶜᶠᶜ,
-                              Ax_qᶠᶜᶜ, Ay_qᶜᶠᶜ
+                              Ax_qᶠᶜᶜ, Ay_qᶜᶠᶜ,
+                              Δxᶠᶜᶜ, Δyᶜᶠᶜ, Δzᶠᶜᶜ, Δzᶜᶠᶜ
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 
 """
