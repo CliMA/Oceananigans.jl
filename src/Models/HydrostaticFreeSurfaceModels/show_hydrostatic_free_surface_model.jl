@@ -47,8 +47,8 @@ function Base.show(io::IO, model::HydrostaticFreeSurfaceModel)
     if isnothing(model.particles)
         print(io, "└── coriolis: $(typeof(model.coriolis))")
     else
-        particles = model.particles.properties
-        properties = propertynames(particles)
+        particles = model.particles
+        properties = propertynames(particles.properties)
         print(io, "├── coriolis: $(typeof(model.coriolis))\n")
         print(io, "└── particles: $(length(particles)) Lagrangian particles with $(length(properties)) properties: $properties")
     end

@@ -32,8 +32,8 @@ end
 
     particles = LagrangianParticles(x=[1.0], y=[1.0], z=[1.0], boundary_conditions=bcs)
     @test occursin("boundary conditions: $(summary(bcs))", sprint(show, particles))
-    @test isnothing(LagrangianParticles(x=[1.0], y=[1.0], z=[1.0]).removal)
-    @test !isnothing(particles.removal)
+    @test isnothing(LagrangianParticles(x=[1.0], y=[1.0], z=[1.0]).transfers)
+    @test !isnothing(particles.transfers)
 
     # Drogued particles store depths outside particle properties, which reordering would misalign
     dynamics = DroguedParticleDynamics([0.0])
