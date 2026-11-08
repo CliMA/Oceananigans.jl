@@ -1,7 +1,13 @@
 # Lagrangian particle tracking
 
 Models can keep track of the location and properties of neutrally buoyant particles. Particles are
-advected with the flow field using forward Euler time-stepping at every model iteration.
+advected with the flow field using the time-stepping scheme of the model: with `RungeKutta3TimeStepper`,
+particle positions are advanced at every stage with the same low-storage third-order Runge-Kutta scheme
+as the fields; with `QuasiAdamsBashforth2TimeStepper`, with the same quasi-second-order Adams-Bashforth
+scheme; and with `SplitRungeKuttaTimeStepper`, with the same split Runge-Kutta scheme.
+At each stage, the particle velocity is interpolated to the particle position from the velocity
+fields at the beginning of the stage. Custom `dynamics` are called once per time step, before
+particles are advanced, with the full time step.
 
 ## Simple particles
 
@@ -135,7 +141,7 @@ as the simulation runs. The remaining particles keep their order.
 
 Particle interactions (for example, collisions) and particle-to-grid operations are efficient
 when particles are stored in order of the grid cell they occupy. Pass a `sorting` algorithm to
-`LagrangianParticles` to sort particles by cell at the beginning of every particle step:
+`LagrangianParticles` to sort particles by cell at the beginning of every time step:
 
 ```jldoctest particles
 lagrangian_particles = LagrangianParticles(x=x₀, y=y₀, z=z₀, sorting=CountingSort())

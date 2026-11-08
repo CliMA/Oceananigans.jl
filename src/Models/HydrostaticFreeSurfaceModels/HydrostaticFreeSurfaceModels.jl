@@ -23,6 +23,7 @@ using Oceananigans.Operators: Δzᶜᶠᶜ, Δzᶠᶜᶜ
 using Oceananigans.Simulations: Simulations, timestepper
 using Oceananigans.TimeSteppers: TimeSteppers, QuasiAdamsBashforth2TimeStepper, SplitRungeKuttaName,
                                  SplitRungeKuttaTimeStepper, step_lagrangian_particles!,
+                                 substep_lagrangian_particles!,
                                  update_lagrangian_particle_state!
 using Oceananigans.TurbulenceClosures: TurbulenceClosures
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: TKEBasedVerticalDiffusivities
@@ -188,6 +189,7 @@ displacement(::Nothing) = nothing
 
 # Unpack model.particles to update particle properties. See Models/LagrangianParticleTracking/LagrangianParticleTracking.jl
 TimeSteppers.step_lagrangian_particles!(model::HydrostaticFreeSurfaceModel, Δt) = step_lagrangian_particles!(model.particles, model, Δt)
+TimeSteppers.substep_lagrangian_particles!(model::HydrostaticFreeSurfaceModel, Δt, stage) = substep_lagrangian_particles!(model.particles, model, Δt, stage)
 TimeSteppers.update_lagrangian_particle_state!(model::HydrostaticFreeSurfaceModel) = update_lagrangian_particle_state!(model.particles, model)
 
 include("boundary_targeted_transport.jl")
