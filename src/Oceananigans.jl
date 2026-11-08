@@ -37,7 +37,7 @@ export
     # Advection schemes
     Centered, UpwindBiased, WENO,
     VectorInvariant, WENOVectorInvariant, FluxFormAdvection,
-    AdaptiveImplicitVerticalAdvection,
+    AdaptiveImplicitVerticalAdvection, FluxLimiter, ColumnSweep,
 
     # Boundary conditions
     BoundaryCondition,

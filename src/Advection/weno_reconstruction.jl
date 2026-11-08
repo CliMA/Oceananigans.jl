@@ -52,9 +52,10 @@ Keyword arguments
 - `flux_limiter` (experimental): Whether to also scale each cell's outgoing fluxes by the fraction of them the
                                  coming update can afford, so that the tracer stays non-negative for any time
                                  step and for the stages of a `SplitRungeKuttaTimeStepper`, which update the
-                                 step-start state with fluxes built from a later stage (see
-                                 [`FluxLimiter`](@ref)). Requires `bounds` with a lower bound of `0`.
-                                 Default: `false`.
+                                 step-start state with fluxes built from a later stage. `true` for the default
+                                 [`FluxLimiter`](@ref), or a `FluxLimiter` such as
+                                 `FluxLimiter(credit=ColumnSweep())`, which a vertical Courant number above one
+                                 needs. Requires `bounds` with a lower bound of `0`. Default: `false`.
 - `minimum_buffer_upwind_order`: The minimum upwind order for buffer schemes. When the buffer
                                  scheme order reaches this value, subsequent buffers use
                                  `Centered(order=2)` instead of continuing to decrease the
@@ -114,8 +115,8 @@ To also limit each cell's outgoing fluxes, so that the tracer stays non-negative
 
 ```jldoctest weno
 julia> WENO(order=5, bounds=(0, 1), flux_limiter=true)
-WENO{3, Float64, Nothing}(order=5, bounds=(0.0, 1.0), flux_limiter=true)
-├── buffer_scheme: WENO{2, Float64, Nothing}(order=3, bounds=(0.0, 1.0), flux_limiter=true)
+WENO{3, Float64, Nothing}(order=5, bounds=(0.0, 1.0), flux_limiter=FluxLimiter())
+├── buffer_scheme: WENO{2, Float64, Nothing}(order=3, bounds=(0.0, 1.0), flux_limiter=FluxLimiter())
 │   └── buffer_scheme: Centered(order=2)
 └── advecting_velocity_scheme: Centered(order=2)
 ```
@@ -149,9 +150,13 @@ function WENO(FT::DataType=Oceananigans.defaults.FloatType;
     isnothing(bounds) || bounds isa NTuple{2} || throw(ArgumentError("bounds must be nothing or a tuple of two values"))
     0 < maximum_courant_number < 1//2 || throw(ArgumentError("maximum_courant_number must lie in (0, 1/2), found $maximum_courant_number"))
 
-    if flux_limiter
-        isnothing(bounds) && throw(ArgumentError("flux_limiter=true requires bounds"))
-        bounds[1] == 0 || throw(ArgumentError("flux_limiter=true keeps the tracer non-negative, so the lower bound must be 0, found $(bounds[1])"))
+    # `nothing` arrives from the recursive call that builds the buffer scheme
+    flux_limiter isa Union{Bool, Nothing, FluxLimiter} || throw(ArgumentError("flux_limiter must be a Bool or a FluxLimiter, found $flux_limiter"))
+    flux_limiter = flux_limiter === true ? FluxLimiter() : flux_limiter === false ? nothing : flux_limiter
+
+    if !isnothing(flux_limiter)
+        isnothing(bounds) && throw(ArgumentError("a flux_limiter requires bounds"))
+        bounds[1] == 0 || throw(ArgumentError("a flux_limiter keeps the tracer non-negative, so the lower bound must be 0, found $(bounds[1])"))
     end
 
     if order < 3
@@ -170,7 +175,6 @@ function WENO(FT::DataType=Oceananigans.defaults.FloatType;
         end
 
         N = Int((order + 1) ÷ 2)
-        flux_limiter = flux_limiter ? FluxLimiter(nothing, nothing) : nothing
         preserved_bounds = isnothing(bounds) ? nothing :
             BoundsPreservation(convert(FT, bounds[1]), convert(FT, bounds[2]), convert(FT, maximum_courant_number), nothing, flux_limiter)
 

@@ -129,6 +129,69 @@ end
     @testset "Flux limiter requires a lower bound of zero" begin
         @test_throws ArgumentError WENO(order=5, flux_limiter=true)
         @test_throws ArgumentError WENO(order=5, bounds=(-1, 1), flux_limiter=true)
+        @test_throws ArgumentError WENO(order=5, bounds=(-1, 1), flux_limiter=FluxLimiter(credit=ColumnSweep()))
+        @test_throws ArgumentError WENO(order=5, bounds=(0, 1), flux_limiter=:column_sweep)
+    end
+
+    # A pulse falling at a vertical Courant number above one: the single pass credits no incoming flux,
+    # so it caps the transport at one cell per update and withholds most of the pulse; the column sweep
+    # credits the cell above and lets the pulse fall. Both stay non-negative and conserve the tracer.
+    @testset "Column sweep at vertical Courant number 1.2" begin
+        Nz = 160
+        grid = RectilinearGrid(CPU(), size=Nz, z=(0, Nz), topology=(Flat, Flat, Periodic), halo=4)
+        pulse(z) = exp(-((z - 110.5) / 4)^2)
+        courant_number = 1.2
+        steps = 60
+        shift = round(Int, courant_number * steps)
+
+        function fall_with_split_rk3(flux_limiter)
+            scheme = materialize_advection(WENO(; order=5, bounds=(0, 1), flux_limiter), grid)
+            c = CenterField(grid)
+            set!(c, pulse)
+            parent(c) ./= sum(interior(c))
+            tracer_content = sum(interior(c))
+            U = (u = XFaceField(grid), v = YFaceField(grid), w = ZFaceField(grid))
+            set!(U.w, -courant_number)
+            fill_halo_regions!(U.w)
+            c⁰ = CenterField(grid)
+            tendency = CenterField(grid)
+            cᵐⁱⁿ = 0.0
+
+            for step in 1:steps
+                parent(c⁰) .= parent(c)
+                for β in (3, 2, 1) # Wicker–Skamarock stages from c⁰, with fluxes built from the previous stage
+                    Δτ = 1 / β
+                    fill_halo_regions!(c)
+                    update_advection!(scheme, (; grid), c)
+                    update_flux_limiter!(scheme, grid, c, c⁰, U, Δτ)
+                    for k in 1:Nz
+                        @inbounds tendency[1, 1, k] = - div_Uc(1, 1, k, grid, scheme, U, c)
+                    end
+                    interior(c) .= interior(c⁰) .+ Δτ .* interior(tendency)
+                    cᵐⁱⁿ = min(cᵐⁱⁿ, minimum(interior(c)))
+                end
+            end
+
+            return c, cᵐⁱⁿ, sum(interior(c)) - tracer_content
+        end
+
+        exact = CenterField(grid)
+        set!(exact, pulse)
+        parent(exact) ./= sum(interior(exact))
+        analytic = circshift(interior(exact)[1, 1, :], -shift)
+
+        c, cᵐⁱⁿ, drift = fall_with_split_rk3(true)
+        single_pass_error = sum(abs.(interior(c)[1, 1, :] .- analytic))
+        @test cᵐⁱⁿ ≥ -1e-12
+        @test abs(drift) < 1e-12
+
+        c, cᵐⁱⁿ, drift = fall_with_split_rk3(FluxLimiter(credit=ColumnSweep()))
+        column_sweep_error = sum(abs.(interior(c)[1, 1, :] .- analytic))
+        @test cᵐⁱⁿ ≥ -1e-12
+        @test abs(drift) < 1e-12
+
+        @test single_pass_error > 1.5    # the pulse is held back: no overlap with where it should be
+        @test column_sweep_error < 0.5   # the pulse falls, with the scheme's own error
     end
 
     # The stages of a split Runge-Kutta step update the step-start state with fluxes built from a later
