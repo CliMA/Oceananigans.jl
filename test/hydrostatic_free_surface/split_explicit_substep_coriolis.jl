@@ -19,8 +19,10 @@ function substep_coriolis_test_model(arch, timestepper, coriolis, scheme; H = 70
                                         momentum_advection = nothing, tracer_advection = nothing,
                                         tracers = (), buoyancy = nothing)
 
-    Random.seed!(20260927)
-    set!(model, u = (x, y, z) -> 1e-6 * randn(), v = (x, y, z) -> 1e-6 * randn())
+    rng = Xoshiro(20260927)
+    u₀ = 1e-6 * randn(rng, size(model.velocities.u))
+    v₀ = 1e-6 * randn(rng, size(model.velocities.v))
+    set!(model, u = u₀, v = v₀)
 
     return model
 end
