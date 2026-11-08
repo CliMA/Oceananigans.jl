@@ -11,7 +11,25 @@
 # A normal simulation creates a single, long-lived communicator and never hits this. The
 # hazard is specific to creating several communicators in one process (e.g. a test suite that
 # sweeps decompositions), which is exactly where the deadlock was observed.
+#
+# Left to their finalizers at process exit, the communicators are destroyed after MPI and CUDA
+# have shut down, and every rank segfaults after the simulation has finished. So the first
+# communicator registers an `atexit` hook that destroys them all on a clean exit. Julia runs
+# `atexit` hooks last-in first-out, and MPI is already initialized here, so the hook runs
+# before MPI's own finalizer.
 const _PERSISTENT_NCCL_COMMUNICATORS = Any[]
+const _DESTROY_AT_EXIT_REGISTERED = Ref(false)
+
+function destroy_persistent_nccl_communicators(exitcode)
+    exitcode == 0 || return nothing
+    CUDA.synchronize()
+    for (nccl_comm, mpi_comm) in _PERSISTENT_NCCL_COMMUNICATORS
+        MPI.Barrier(mpi_comm)
+        NCCL.destroy(nccl_comm)
+    end
+    empty!(_PERSISTENT_NCCL_COMMUNICATORS)
+    return nothing
+end
 
 """
     create_nccl_comm_from_mpi(mpi_subcomm)
@@ -55,7 +73,13 @@ function create_nccl_comm_from_mpi(mpi_subcomm)
         nccl_id_all = NCCL.UniqueID(nccl_internal)
 
         nccl_comm = NCCL.Communicator(nranks, my_rank; unique_id=nccl_id_all)
-        push!(_PERSISTENT_NCCL_COMMUNICATORS, nccl_comm)  # root it; never GC-finalized mid-collective
+        push!(_PERSISTENT_NCCL_COMMUNICATORS, (nccl_comm, mpi_subcomm))  # root it; never GC-finalized mid-collective
+
+        if !_DESTROY_AT_EXIT_REGISTERED[]
+            atexit(destroy_persistent_nccl_communicators)
+            _DESTROY_AT_EXIT_REGISTERED[] = true
+        end
+
         return nccl_comm
     finally
         GC.enable(gc_was_enabled)

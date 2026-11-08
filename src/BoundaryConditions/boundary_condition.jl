@@ -108,8 +108,22 @@ MultiRegionCommunicationBoundaryCondition() = BoundaryCondition(MultiRegionCommu
 
 ValueBoundaryCondition(val; scheme = nothing, kwargs...)      = BoundaryCondition(Value(scheme), val; kwargs...)
 GradientBoundaryCondition(val; kwargs...)                     = BoundaryCondition(Gradient(), val; kwargs...)
-NormalFlowBoundaryCondition(val; scheme = nothing, kwargs...) = BoundaryCondition(NormalFlow(scheme), val; kwargs...)
 MultiRegionCommunicationBoundaryCondition(val; kwargs...)     = BoundaryCondition(MultiRegionCommunication(), val; kwargs...)
+
+"""
+    NormalFlowBoundaryCondition(val; scheme = nothing, kwargs...)
+
+Return a [`NormalFlow`](@ref) `BoundaryCondition` that sets the boundary-normal velocity to `val`.
+
+With the default `scheme = nothing` the value is imposed as is. A radiation `scheme` such as
+[`PerturbationAdvection`](@ref) instead radiates the boundary-normal velocity out of the domain.
+
+With `scheme = BalancedTransport()` the net-zero transport correction may adjust the imposed
+value; see [`BalancedTransport`](@ref).
+
+`kwargs` (`parameters`, `discrete_form`, `field_dependencies`) apply to `val`.
+"""
+NormalFlowBoundaryCondition(val; scheme = nothing, kwargs...) = BoundaryCondition(NormalFlow(scheme), val; kwargs...)
 
             UPivotZipperBoundaryCondition(val; kwargs...) = BoundaryCondition(Zipper{UPivot}(), val; kwargs...)
             TPivotZipperBoundaryCondition(val; kwargs...) = BoundaryCondition(Zipper{TPivot}(), val; kwargs...)
@@ -252,6 +266,9 @@ validate_boundary_condition_topology(bc, ::TwoSided{L, R}, side) where {L, R} = 
 validate_boundary_condition_topology(bc::Union{VBC, NFBC}, ::Closed, side) =
     isnothing(bc.classification.scheme) ? nothing : throw(ArgumentError(
         "Cannot set $side $bc on a `Closed` side; open boundary schemes need an `Open` side."))
+
+# A balanced-transport normal flow reads no exterior state, so like any imposed normal flow it is allowed on a `Closed` side
+validate_boundary_condition_topology(::BoundaryCondition{<:NormalFlow{BalancedTransport}}, ::Closed, side) = nothing
 
 validate_boundary_condition_topology(bc::FBC, ::Open, side) =
     isnothing(bc.condition) ? nothing : throw(ArgumentError(

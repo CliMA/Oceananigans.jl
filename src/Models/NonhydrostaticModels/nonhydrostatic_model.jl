@@ -7,17 +7,18 @@ using Oceananigans.BoundaryConditions: MixedBoundaryCondition, needs_implicit_so
 using Oceananigans.BuoyancyFormulations: materialize_buoyancy, validate_buoyancy
 using Oceananigans.DistributedComputations: Distributed
 using Oceananigans.Fields: CenterField, Field, VelocityFields, ZFaceField, tracernames
-using Oceananigans.Forcings: model_forcing
+using Oceananigans.Forcings: model_forcing, penetrative_radiation
 using Oceananigans.Grids: architecture, topology
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models: AbstractModel, extract_boundary_conditions, materialize_free_surface, materialize_tracers,
                            timestepper_name, total_velocities, validate_model_halo, validate_tracer_advection
 using Oceananigans.Solvers: FFTBasedPoissonSolver
 using Oceananigans.TimeSteppers: AbstractLagrangianParticles, Clock, TimeStepper, materialize_clock!,
+                                 materialize_lagrangian_particles,
                                  time_discretization, update_state!
 using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization, build_closure_fields,
                                        implicit_diffusion_solver, initialize_closure_fields!, validate_closure,
-                                       with_tracers
+                                       with_penetrative_radiation, with_tracers
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE
 using Oceananigans.Utils: tupleit
 
@@ -347,8 +348,10 @@ function build_nonhydrostatic_model(grid, ::Val{tracer_names}, timestepper,
     advecting_vertical_velocity = needs_implicit_solver(advection) ? ZFaceField(grid) : nothing
 
     timestepper = TimeStepper(timestepper, grid, prognostic_fields; implicit_solver)
+    particles = materialize_lagrangian_particles(particles, timestepper)
 
     # Materialize forcing for model tracer and velocity fields.
+    closure = with_penetrative_radiation(closure, penetrative_radiation(forcing))
     forcing = model_forcing(forcing, model_fields, prognostic_fields)
 
     # Initialize boundary transport container

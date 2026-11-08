@@ -3,6 +3,8 @@ module OceananigansReactantExt
 using Reactant
 using Oceananigans
 using OffsetArrays
+using OffsetArrays: AbstractOffsetArray
+using Oceananigans.Utils: StaticStridesOffsetArray
 
 using Oceananigans: Distributed, DistributedComputations, ReactantState, CPU,
                     OrthogonalSphericalShellGrids
@@ -10,7 +12,7 @@ using Oceananigans.Architectures: on_architecture
 using Oceananigans.Grids: Bounded, Periodic
 
 deconcretize(obj) = obj # fallback
-deconcretize(a::OffsetArray) = OffsetArray(Array(a.parent), a.offsets...)
+deconcretize(a::AbstractOffsetArray) = StaticStridesOffsetArray(Array(parent(a)), OffsetArrays.offsets(a)...)
 
 include("Utils.jl")
 using .Utils
@@ -53,13 +55,14 @@ ConstructionBase.constructorof(::Type{<:VectorInvariant{N, FT, TD, Z, ZS, V, K, 
 
 # https://github.com/CliMA/Oceananigans.jl/blob/da9959f3e5d8ee7cf2fb42b74ecc892874ec1687/src/AbstractOperations/conditional_operations.jl#L8
 Base.@nospecializeinfer function Reactant.traced_type_inner(
-    @nospecialize(OA::Type{Oceananigans.AbstractOperations.ConditionalOperation{LX, LY, LZ, F, C, O, G, M, T}}),
+    @nospecialize(OA::Type{<:Oceananigans.AbstractOperations.ConditionalOperation}),
     seen,
     mode::Reactant.TraceMode,
     @nospecialize(track_numbers::Type),
     @nospecialize(sharding),
     @nospecialize(runtime)
-) where {LX, LY, LZ, F, C, O, G, M, T}
+)
+    LX, LY, LZ, F, C, O, G, M = OA.parameters
     LX2 = Reactant.traced_type_inner(LX, seen, mode, track_numbers, sharding, runtime)
     LY2 = Reactant.traced_type_inner(LY, seen, mode, track_numbers, sharding, runtime)
     LZ2 = Reactant.traced_type_inner(LZ, seen, mode, track_numbers, sharding, runtime)
@@ -74,13 +77,14 @@ end
 
 # https://github.com/CliMA/Oceananigans.jl/blob/c29939097a8d2f42966e930f2f2605803bf5d44c/src/AbstractOperations/binary_operations.jl#L5
 Base.@nospecializeinfer function Reactant.traced_type_inner(
-    @nospecialize(OA::Type{Oceananigans.AbstractOperations.BinaryOperation{LX, LY, LZ, O, A, B, IA, IB, G, T}}),
+    @nospecialize(OA::Type{<:Oceananigans.AbstractOperations.BinaryOperation}),
     seen,
     mode::Reactant.TraceMode,
     @nospecialize(track_numbers::Type),
     @nospecialize(sharding),
     @nospecialize(runtime)
-) where {LX, LY, LZ, O, A, B, IA, IB, G, T}
+)
+    LX, LY, LZ, O, A, B, IA, IB, G = OA.parameters
     LX2 = Reactant.traced_type_inner(LX, seen, mode, track_numbers, sharding, runtime)
     LY2 = Reactant.traced_type_inner(LY, seen, mode, track_numbers, sharding, runtime)
     LZ2 = Reactant.traced_type_inner(LZ, seen, mode, track_numbers, sharding, runtime)
@@ -100,32 +104,34 @@ end
 # https://github.com/CliMA/Oceananigans.jl/blob/da9959f3e5d8ee7cf2fb42b74ecc892874ec1687/src/AbstractOperations/kernel_function_operation.jl#L3
 # struct KernelFunctionOperation{LX, LY, LZ, G, T, K, D} <: AbstractOperation{LX, LY, LZ, G, T}
 Base.@nospecializeinfer function Reactant.traced_type_inner(
-        @nospecialize(OA::Type{Oceananigans.AbstractOperations.KernelFunctionOperation{LX, LY, LZ, G, T, K, D}}),
+    @nospecialize(OA::Type{<:Oceananigans.AbstractOperations.KernelFunctionOperation}),
     seen,
     mode::Reactant.TraceMode,
     @nospecialize(track_numbers::Type),
     @nospecialize(sharding),
     @nospecialize(runtime)
-) where {LX, LY, LZ, G, T, K, D}
+)
+    LX, LY, LZ, G, T, K, D = OA.parameters
     LX2 = Reactant.traced_type_inner(LX, seen, mode, track_numbers, sharding, runtime)
     LY2 = Reactant.traced_type_inner(LY, seen, mode, track_numbers, sharding, runtime)
     LZ2 = Reactant.traced_type_inner(LZ, seen, mode, track_numbers, sharding, runtime)
     G2 = Reactant.traced_type_inner(G, seen, mode, track_numbers, sharding, runtime)
     K2 = Reactant.traced_type_inner(K, seen, mode, track_numbers, sharding, runtime)
     D2 = Reactant.traced_type_inner(D, seen, mode, track_numbers, sharding, runtime)
-    T2 = eltype(G2)
+    T2 = Reactant.traced_type_inner(T, seen, mode, track_numbers, sharding, runtime)
     return Oceananigans.AbstractOperations.KernelFunctionOperation{LX2, LY2, LZ2, G2, T2, K2, D2}
 end
 
 # https://github.com/CliMA/Oceananigans.jl/blob/d9b3b142d8252e8e11382d1b3118ac2a092b38a2/src/Grids/orthogonal_spherical_shell_grid.jl#L14
 Base.@nospecializeinfer function Reactant.traced_type_inner(
-    @nospecialize(OA::Type{Oceananigans.Grids.OrthogonalSphericalShellGrid{FT, TX, TY, TZ, Z, Map, CC, FC, CF, FF, Arch, rFT, SZ}}),
+    @nospecialize(OA::Type{<:Oceananigans.Grids.OrthogonalSphericalShellGrid}),
     seen,
     mode::Reactant.TraceMode,
     @nospecialize(track_numbers::Type),
     @nospecialize(sharding),
     @nospecialize(runtime)
-) where {FT, TX, TY, TZ, Z, Map, CC, FC, CF, FF, Arch, rFT, SZ}
+)
+    FT, TX, TY, TZ, Z, Map, CC, FC, CF, FF, Arch, rFT, SZ = OA.parameters
     FT2 = Reactant.traced_type_inner(FT, seen, mode, track_numbers, sharding, runtime)
     TX2 = Reactant.traced_type_inner(TX, seen, mode, track_numbers, sharding, runtime)
     TY2 = Reactant.traced_type_inner(TY, seen, mode, track_numbers, sharding, runtime)
@@ -164,13 +170,14 @@ end
 
 # https://github.com/CliMA/Oceananigans.jl/blob/d9b3b142d8252e8e11382d1b3118ac2a092b38a2/src/ImmersedBoundaries/immersed_boundary_grid.jl#L8
 Base.@nospecializeinfer function Reactant.traced_type_inner(
-    @nospecialize(OA::Type{ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, S, Arch}}),
+    @nospecialize(OA::Type{<:ImmersedBoundaryGrid}),
     seen,
     mode::Reactant.TraceMode,
     @nospecialize(track_numbers::Type),
     @nospecialize(sharding),
     @nospecialize(runtime)
-) where {FT, TX, TY, TZ, G, I, M, S, Arch}
+)
+    _, TX, TY, TZ, G, I, M, S, Arch = OA.parameters
     TX2 = Reactant.traced_type_inner(TX, seen, mode, track_numbers, sharding, runtime)
     TY2 = Reactant.traced_type_inner(TY, seen, mode, track_numbers, sharding, runtime)
     TZ2 = Reactant.traced_type_inner(TZ, seen, mode, track_numbers, sharding, runtime)
@@ -190,14 +197,15 @@ end
     ) = Reactant.make_tracer_via_immutable_constructor(seen, prev, args...; kwargs...)
 
 Base.@nospecializeinfer function Reactant.traced_type_inner(
-    @nospecialize(OA::Type{LatitudeLongitudeGrid{FT, TX, TY, TZ, Z, DXF, DXC, XF, XC, DYF, DYC, YF, YC,
-                                                 DXCC, DXFC, DXCF, DXFF, DYFC, DYCF, Arch, I, SZ}}),
+    @nospecialize(OA::Type{<:LatitudeLongitudeGrid}),
     seen,
     mode::Reactant.TraceMode,
     @nospecialize(track_numbers::Type),
     @nospecialize(sharding),
     @nospecialize(runtime)
-) where {FT, TX, TY, TZ, Z, DXF, DXC, XF, XC, DYF, DYC, YF, YC, DXCC, DXFC, DXCF, DXFF, DYFC, DYCF, Arch, I, SZ}
+)
+    FT, TX, TY, TZ, Z, DXF, DXC, XF, XC, DYF, DYC, YF, YC,
+        DXCC, DXFC, DXCF, DXFF, DYFC, DYCF, Arch, I, SZ, SP, NP = OA.parameters
     TX2 = Reactant.traced_type_inner(TX, seen, mode, track_numbers, sharding, runtime)
     TY2 = Reactant.traced_type_inner(TY, seen, mode, track_numbers, sharding, runtime)
     TZ2 = Reactant.traced_type_inner(TZ, seen, mode, track_numbers, sharding, runtime)
@@ -228,31 +236,35 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
     end
 
     res = Oceananigans.Grids.LatitudeLongitudeGrid{FT2, TX2, TY2, TZ2, Z2, DXF2, DXC2, XF2, XC2, DYF2, DYC2, YF2, YC2,
-                                                   DXCC2, DXFC2, DXCF2, DXFF2, DYFC2, DYCF2, Arch, I2, SZ}
+                                                   DXCC2, DXFC2, DXCF2, DXFF2, DYFC2, DYCF2, Arch, I2, SZ, SP, NP}
 
     return res
 end
 
 Base.@nospecializeinfer function Reactant.traced_type_inner(
-        @nospecialize(OA::Type{RectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY, Arch, SZ}}),
+        @nospecialize(OA::Type{<:RectilinearGrid}),
         seen,
         mode::Reactant.TraceMode,
         @nospecialize(track_numbers::Type),
         @nospecialize(sharding),
         @nospecialize(runtime)
-    ) where {FT, TX, TY, TZ, CZ, FX, FY, VX, VY, Arch, SZ}
-
+    )
+    FT, TX, TY, TZ, CZ, DXF, DXC, XF, XC, DYF, DYC, YF, YC, Arch, SZ = OA.parameters
     TX2 = Reactant.traced_type_inner(TX, seen, mode, track_numbers, sharding, runtime)
     TY2 = Reactant.traced_type_inner(TY, seen, mode, track_numbers, sharding, runtime)
     TZ2 = Reactant.traced_type_inner(TZ, seen, mode, track_numbers, sharding, runtime)
     CZ2 = Reactant.traced_type_inner(CZ, seen, mode, track_numbers, sharding, runtime)
-    FX2 = Reactant.traced_type_inner(FX, seen, mode, track_numbers, sharding, runtime)
-    FY2 = Reactant.traced_type_inner(FY, seen, mode, track_numbers, sharding, runtime)
-    VX2 = Reactant.traced_type_inner(VX, seen, mode, track_numbers, sharding, runtime)
-    VY2 = Reactant.traced_type_inner(VY, seen, mode, track_numbers, sharding, runtime)
+    DXF2 = Reactant.traced_type_inner(DXF, seen, mode, track_numbers, sharding, runtime)
+    DXC2 = Reactant.traced_type_inner(DXC, seen, mode, track_numbers, sharding, runtime)
+    XF2 = Reactant.traced_type_inner(XF, seen, mode, track_numbers, sharding, runtime)
+    XC2 = Reactant.traced_type_inner(XC, seen, mode, track_numbers, sharding, runtime)
+    DYF2 = Reactant.traced_type_inner(DYF, seen, mode, track_numbers, sharding, runtime)
+    DYC2 = Reactant.traced_type_inner(DYC, seen, mode, track_numbers, sharding, runtime)
+    YF2 = Reactant.traced_type_inner(YF, seen, mode, track_numbers, sharding, runtime)
+    YC2 = Reactant.traced_type_inner(YC, seen, mode, track_numbers, sharding, runtime)
     FT2 = Reactant.traced_type_inner(FT, seen, mode, track_numbers, sharding, runtime)
 
-    for NF in (FX2, FY2, VX2, VY2)
+    for NF in (DXF2, DXC2, XF2, XC2, DYF2, DYC2, YF2, YC2)
         if NF === Nothing
             continue
         end
@@ -267,7 +279,7 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
         end
     end
 
-    res = Oceananigans.Grids.RectilinearGrid{FT2, TX2, TY2, TZ2, CZ2, FX2, FY2, VX2, VY2, Arch, SZ}
+    res = Oceananigans.Grids.RectilinearGrid{FT2, TX2, TY2, TZ2, CZ2, DXF2, DXC2, XF2, XC2, DYF2, DYC2, YF2, YC2, Arch, SZ}
 
     return res
 end
@@ -385,7 +397,7 @@ end
     return c
 end
 
-Base.getindex(array::OffsetVector{T, <:Reactant.AbstractConcreteArray{T, 1}}, ::Colon) where T = array
+Base.getindex(array::StaticStridesOffsetArray{T, 1, <:Any, <:Any, <:Reactant.AbstractConcreteArray{T, 1}}, ::Colon) where T = array
 
 
 # These are additional modules that may need to be Reactantified in the future:

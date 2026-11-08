@@ -1,5 +1,5 @@
 using Oceananigans.Architectures: architecture, child_architecture
-using Oceananigans.Grids: AbstractGrid
+using Oceananigans.Grids: AbstractGrid, reciprocal_metric
 using Oceananigans.OrthogonalSphericalShellGrids
 using Oceananigans.Grids: validate_lat_lon_grid_args, generate_coordinate, with_precomputed_metrics, validate_rectilinear_grid_args
 using Oceananigans.Grids: default_indices, validate_indices, offset_data, instantiate, halo_size, topology
@@ -157,7 +157,7 @@ function Oceananigans.LatitudeLongitudeGrid(arch::ShardedDistributed,
                                              Δx⁻¹ᶜᶜᵃ, Δx⁻¹ᶠᶜᵃ, Δx⁻¹ᶜᶠᵃ, Δx⁻¹ᶠᶠᵃ,
                                              Δy⁻¹ᶠᶜᵃ, Δy⁻¹ᶜᶠᵃ,
                                              Az⁻¹ᶜᶜᵃ, Az⁻¹ᶠᶜᵃ, Az⁻¹ᶜᶠᵃ, Az⁻¹ᶠᶠᵃ,
-                                             grid.radius)
+                                             grid.radius, grid.south_pole, grid.north_pole)
 end
 
 function Oceananigans.Grids.RectilinearGrid(arch::ShardedDistributed,
@@ -187,10 +187,10 @@ function Oceananigans.Grids.RectilinearGrid(arch::ShardedDistributed,
     xsharding = parent(xᶠᵃᵃ) isa StepRangeLen ? Sharding.NoSharding() : replicated
     ysharding = parent(yᵃᶠᵃ) isa StepRangeLen ? Sharding.NoSharding() : replicated
 
-    Δx⁻¹ᶠᵃᵃ = Reactant.to_rarray(1 ./ Δxᶠᵃᵃ, sharding=replicated)
-    Δx⁻¹ᶜᵃᵃ = Reactant.to_rarray(1 ./ Δxᶜᵃᵃ, sharding=replicated)
-    Δy⁻¹ᵃᶠᵃ = Reactant.to_rarray(1 ./ Δyᵃᶠᵃ, sharding=replicated)
-    Δy⁻¹ᵃᶜᵃ = Reactant.to_rarray(1 ./ Δyᵃᶜᵃ, sharding=replicated)
+    Δx⁻¹ᶠᵃᵃ = Reactant.to_rarray(reciprocal_metric(Δxᶠᵃᵃ), sharding=replicated)
+    Δx⁻¹ᶜᵃᵃ = Reactant.to_rarray(reciprocal_metric(Δxᶜᵃᵃ), sharding=replicated)
+    Δy⁻¹ᵃᶠᵃ = Reactant.to_rarray(reciprocal_metric(Δyᵃᶠᵃ), sharding=replicated)
+    Δy⁻¹ᵃᶜᵃ = Reactant.to_rarray(reciprocal_metric(Δyᵃᶜᵃ), sharding=replicated)
 
     Δxᶠᵃᵃ = Reactant.to_rarray(Δxᶠᵃᵃ, sharding=replicated)
     Δxᶜᵃᵃ = Reactant.to_rarray(Δxᶜᵃᵃ, sharding=replicated)
