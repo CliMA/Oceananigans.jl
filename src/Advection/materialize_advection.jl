@@ -48,10 +48,12 @@ materialize_bounds(bounds::BoundsPreservation, grid) =
 materialize_flux_limiter(::Nothing, grid) = nothing
 
 function materialize_flux_limiter(limiter::FluxLimiter, grid)
-    fraction = CenterField(grid)
-    fill!(fraction, 1)
+    outgoing_fraction = CenterField(grid)
+    incoming_fraction = CenterField(grid)
+    fill!(outgoing_fraction, 1)
+    fill!(incoming_fraction, 1)
     fluxes = (x = XFaceField(grid), y = YFaceField(grid), z = ZFaceField(grid))
-    return FluxLimiter(limiter.credit, fraction, fluxes)
+    return FluxLimiter(limiter.credit, outgoing_fraction, incoming_fraction, fluxes)
 end
 
 materialize_advection(weno::WENO{N, FT, WCT}, grid) where {N, FT, WCT} =

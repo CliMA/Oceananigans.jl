@@ -109,27 +109,50 @@ end
 
         @testset "Flux limiter" begin
             sharp_cube(x, y, z) = (0.25 < x < 0.6) && (0.25 < y < 0.6) && (0.25 < z < 0.6) ? 1.0 : 0.0
+            sharp_hole(x, y, z) = 1 - sharp_cube(x, y, z)
             courant_number = 0.5 # above ω̂₁ = 5//18, where the rescaling alone no longer guarantees the bounds
 
+            # The rescaling alone undershoots below the cube and, symmetrically, overshoots above the hole
             grid, scheme, c, U = periodic_advection_setup(5, (0, 1), N)
             set!(c, sharp_cube)
             cᵐⁱⁿ, cᵐᵃˣ = advect_forward_euler!(grid, scheme, c, U, N, 50, courant_number)
             @test cᵐⁱⁿ < -1e-6
 
-            grid, scheme, c, U = periodic_advection_setup(5, (0, 1), N; flux_limiter=true)
-            set!(c, sharp_cube)
+            grid, scheme, c, U = periodic_advection_setup(5, (0, 1), N)
+            set!(c, sharp_hole)
+            cᵐⁱⁿ, cᵐᵃˣ = advect_forward_euler!(grid, scheme, c, U, N, 50, courant_number)
+            @test cᵐᵃˣ > 1 + 1e-6
+
+            for initial_condition in (sharp_cube, sharp_hole)
+                grid, scheme, c, U = periodic_advection_setup(5, (0, 1), N; flux_limiter=true)
+                set!(c, initial_condition)
+                tracer_content = sum(interior(c))
+                cᵐⁱⁿ, cᵐᵃˣ = advect_forward_euler!(grid, scheme, c, U, N, 50, courant_number)
+                @test cᵐⁱⁿ ≥ -1e-12
+                @test cᵐᵃˣ ≤ 1 + 1e-12
+                @test sum(interior(c)) ≈ tracer_content
+            end
+
+            # A nonzero lower bound: the limiter acts on the fluxes of c - cᵐⁱⁿ
+            grid, scheme, c, U = periodic_advection_setup(5, (2, 3), N; flux_limiter=true)
+            set!(c, (x, y, z) -> 2 + sharp_cube(x, y, z))
             tracer_content = sum(interior(c))
             cᵐⁱⁿ, cᵐᵃˣ = advect_forward_euler!(grid, scheme, c, U, N, 50, courant_number)
-            @test cᵐⁱⁿ ≥ -1e-12
+            @test cᵐⁱⁿ ≥ 2 - 1e-12
+            @test cᵐᵃˣ ≤ 3 + 1e-12
             @test sum(interior(c)) ≈ tracer_content
+
+            grid, scheme, c, U = periodic_advection_setup(5, (2, 3), N)
+            set!(c, (x, y, z) -> 2 + sharp_cube(x, y, z))
+            cᵐⁱⁿ, cᵐᵃˣ = advect_forward_euler!(grid, scheme, c, U, N, 50, courant_number)
+            @test cᵐⁱⁿ < 2 - 1e-6
         end
     end
 
-    @testset "Flux limiter requires a lower bound of zero" begin
+    @testset "Flux limiter options" begin
         @test_throws ArgumentError WENO(order=5, flux_limiter=true) # no bounds
-        @test_throws ArgumentError WENO(order=5, bounds=(-1, 1), flux_limiter=true)
-        @test_throws ArgumentError WENO(order=5, bounds=(-1, 1), flux_limiter=FluxLimiter(credit=ColumnSweep()))
         @test_throws ArgumentError WENO(order=5, bounds=(0, 1), flux_limiter=:column_sweep)
+        @test WENO(order=5, bounds=(-1, 1), flux_limiter=true).bounds.minimum_value == -1
     end
 
     @testset "Grouped bounds constructor" begin
@@ -173,7 +196,7 @@ end
             fill_halo_regions!(U.w)
             update_advection!(scheme, (; grid), c)
             update_flux_limiter!(scheme, grid, c, U, 1)
-            r = copy(interior(scheme.bounds.flux_limiter.fraction)[1, 1, :])
+            r = copy(interior(scheme.bounds.flux_limiter.outgoing_fraction)[1, 1, :])
             tendency = [-div_Uc(1, 1, k, grid, scheme, U, c) for k in 1:Nz]
             return r, tendency
         end

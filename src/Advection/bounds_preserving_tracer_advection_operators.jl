@@ -10,15 +10,17 @@ using KernelAbstractions: @index, @kernel
 The interval a tracer is restricted to and the options of the limiters that keep it there, for the `bounds` of
 [`WENO`](@ref): the maximum-principle-satisfying rescaling of [Zhang and Shu (2010)](@cite ZhangShu2010), which
 guarantees the interval for a forward Euler or strong-stability-preserving update whose Courant numbers satisfy
-`λˣ + λʸ + λᶻ ≤ maximum_cfl`, and optionally a [`FluxLimiter`](@ref) that limits each cell's outgoing
-fluxes so that the tracer stays non-negative for any time step.
+`λˣ + λʸ + λᶻ ≤ maximum_cfl`, and optionally a [`FluxLimiter`](@ref) that limits the fluxes between cells so
+that the tracer stays within the interval for any time step.
 
 Keyword arguments
 =================
-- `maximum_cfl`: The Courant number `ω̂₁ ∈ (0, 1/2)` up to which the interval is guaranteed. Raising
-                            it admits a larger time step and limits more aggressively. Default: `5//18`.
+- `maximum_cfl`: The Courant number `ω̂₁ ∈ (0, 1/2)` up to which the rescaling alone guarantees the interval.
+                 Raising it admits a larger time step and rescales more aggressively. With a `flux_limiter` the
+                 interval is guaranteed for any time step, and `maximum_cfl` only sets how hard the rescaling
+                 clips the reconstructions. Default: `5//18`.
 - `flux_limiter`: `nothing` or `false` for none, `true` for the default `FluxLimiter()`, or a `FluxLimiter` such
-                  as `FluxLimiter(credit=ColumnSweep())`. Requires `minimum_value == 0`. Default: `nothing`.
+                  as `FluxLimiter(credit=ColumnSweep())`. Default: `nothing`.
 
 The materialized struct also holds the field `reconstruction_limiter` with the cell-wise rescaling factor ``θ``,
 which is `nothing` until the scheme is materialized on a grid, like the fields of `flux_limiter`.
@@ -37,9 +39,6 @@ function BoundsPreservation(minimum_value, maximum_value; maximum_cfl=5//18, flu
 
     flux_limiter isa Union{Bool, Nothing, FluxLimiter} || throw(ArgumentError("flux_limiter must be a Bool, nothing or a FluxLimiter, found $flux_limiter"))
     flux_limiter = flux_limiter === true ? FluxLimiter() : flux_limiter === false ? nothing : flux_limiter
-    if !isnothing(flux_limiter)
-        minimum_value == 0 || throw(ArgumentError("a flux_limiter keeps the tracer non-negative, so minimum_value must be 0, found $minimum_value"))
-    end
 
     minimum_value, maximum_value, maximum_cfl = promote(minimum_value, maximum_value, maximum_cfl)
     return BoundsPreservation(minimum_value, maximum_value, maximum_cfl, nothing, flux_limiter)

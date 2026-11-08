@@ -52,12 +52,12 @@ Keyword arguments
 - `maximum_cfl`: With a tuple `bounds`, the Courant number `ω̂₁ ∈ (0, 1/2)` up to which `bounds` is guaranteed.
                  Raising it admits a larger time step and limits more aggressively.
                  Default: `nothing`, for the `BoundsPreservation` default `5//18`.
-- `flux_limiter` (experimental): With a tuple `bounds`, whether to also scale each cell's outgoing fluxes by
-                                 the fraction of them the coming update can afford, so that the tracer stays
-                                 non-negative for any time step. `true` for the default [`FluxLimiter`](@ref),
-                                 or a `FluxLimiter` such as `FluxLimiter(credit=ColumnSweep())`, which a
-                                 vertical Courant number above one needs. Requires a lower bound of `0`.
-                                 Default: `nothing`, for none.
+- `flux_limiter` (experimental): With a tuple `bounds`, whether to also limit the fluxes between cells to what
+                                 the coming update can afford, so that the tracer stays within `bounds` for any
+                                 time step; `maximum_cfl` then only sets how hard the rescaling clips. `true`
+                                 for the default [`FluxLimiter`](@ref), or a `FluxLimiter` such as
+                                 `FluxLimiter(credit=ColumnSweep())`, which a vertical Courant number above
+                                 one needs. Default: `nothing`, for none.
 - `minimum_buffer_upwind_order`: The minimum upwind order for buffer schemes. When the buffer
                                  scheme order reaches this value, subsequent buffers use
                                  `Centered(order=2)` instead of continuing to decrease the
@@ -114,7 +114,7 @@ WENO{5, Float64, Nothing}(order=9, bounds=(0.0, 1.0))
 └── advecting_velocity_scheme: Centered(order=2)
 ```
 
-To also limit each cell's outgoing fluxes, so that the tracer stays non-negative for any time step:
+To also limit the fluxes between cells, so that the tracer stays within `bounds` for any time step:
 
 ```jldoctest weno
 julia> WENO(order=5, bounds=(0, 1), flux_limiter=true)
