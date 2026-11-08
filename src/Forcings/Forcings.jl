@@ -6,7 +6,11 @@ using Adapt: Adapt, adapt
 using DocStringExtensions: MethodSignatures, TYPEDSIGNATURES
 
 using Oceananigans: Oceananigans
+using Oceananigans.BuoyancyFormulations: BuoyancyForce, BuoyancyTracerFormulation, SeawaterBuoyancy,
+                                         get_temperature_and_salinity, thermal_expansionᶜᶜᶠ
 using Oceananigans.Fields: field, location
+using Oceananigans.Grids: Center, Face, inactive_cell, znode
+using Oceananigans.Operators: ∂zᶜᶜᶜ
 using Oceananigans.OutputReaders: FlavorOfFTS
 using Oceananigans.Units: Time
 using Oceananigans.Utils: named_tuple
@@ -21,5 +25,6 @@ include("forcing.jl")
 include("model_forcing.jl")
 include("compute_forcing.jl")
 include("tidal_forcing.jl")
+include("penetrative_radiation.jl")
 
 end # module

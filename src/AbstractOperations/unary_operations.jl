@@ -1,5 +1,5 @@
-using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Fields: AbstractField, instantiated_location
+using Oceananigans.Grids: AbstractGrid
 
 const unary_operators = Set()
 
@@ -27,7 +27,7 @@ end
 ##### UnaryOperation construction
 #####
 
-indices(υ::UnaryOperation) = indices(υ.arg)
+Fields.indices(υ::UnaryOperation) = indices(υ.arg)
 
 """Create a unary operation for `operator` acting on `arg` which interpolates the
 result from `Larg` to `L`."""
@@ -125,7 +125,7 @@ end
 ##### Nested computations
 #####
 
-compute_at!(υ::UnaryOperation, time) = compute_at!(υ.arg, time)
+Fields.compute_at!(υ::UnaryOperation, time) = compute_at!(υ.arg, time)
 
 #####
 ##### GPU capabilities

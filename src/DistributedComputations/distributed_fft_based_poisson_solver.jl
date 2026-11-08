@@ -1,11 +1,9 @@
 import FFTW
 
-using Oceananigans.Grids: XYZRegularRG, XYRegularRG, XZRegularRG, YZRegularRG
-
-import Oceananigans.Solvers: poisson_eigenvalues, solve!, compute_preconditioner_rhs!
-using Oceananigans.Solvers: _spectral_poisson_solve!
-import Oceananigans.Architectures: architecture
-import Oceananigans.Fields: interior
+using Oceananigans.Architectures: architecture
+using Oceananigans.Fields: interior
+using Oceananigans.Grids: XYRegularRG, XYZRegularRG, XZRegularRG, YZRegularRG
+using Oceananigans.Solvers: _spectral_poisson_solve!, compute_preconditioner_rhs!, poisson_eigenvalues, solve!
 
 struct DistributedFFTBasedPoissonSolver{P, F, L, λ, B, S}
     plan :: P
@@ -16,7 +14,7 @@ struct DistributedFFTBasedPoissonSolver{P, F, L, λ, B, S}
     storage :: S
 end
 
-architecture(solver::DistributedFFTBasedPoissonSolver) =
+Architectures.architecture(solver::DistributedFFTBasedPoissonSolver) =
     architecture(solver.global_grid)
 
 """
@@ -120,8 +118,8 @@ function DistributedFFTBasedPoissonSolver(global_grid, local_grid, planner_flag=
     plan = plan_distributed_transforms(global_grid, storage, planner_flag)
 
     # We need to permute indices to apply bounded transforms on the GPU (r2r of r2c with twiddling)
-    x_buffer_needed = child_arch isa GPU && TX == Bounded
-    z_buffer_needed = child_arch isa GPU && TZ == Bounded
+    x_buffer_needed = child_arch isa GPU && TX <: BoundaryTopology
+    z_buffer_needed = child_arch isa GPU && TZ <: BoundaryTopology
 
     # We cannot really batch anything, so on GPUs we always have to permute indices in the y direction
     y_buffer_needed = child_arch isa GPU
@@ -138,7 +136,7 @@ end
 # solve! requires that `b` in `A x = b` (the right hand side)
 # is copied in the solver storage
 # See: Models/NonhydrostaticModels/solve_for_pressure.jl
-function solve!(x, solver::DistributedFFTBasedPoissonSolver, m=0)
+function Solvers.solve!(x, solver::DistributedFFTBasedPoissonSolver, m=0)
     storage = solver.storage
     buffer  = solver.buffer
     arch    = architecture(storage.xfield.grid)
@@ -187,7 +185,7 @@ using Oceananigans.Operators: V⁻¹ᶜᶜᶜ
     @inbounds preconditioner_rhs[i, j, k] = rhs[i, j, k] * V⁻¹ᶜᶜᶜ(i, j, k, grid)
 end
 
-function compute_preconditioner_rhs!(solver::DistributedFFTBasedPoissonSolver, rhs)
+function Solvers.compute_preconditioner_rhs!(solver::DistributedFFTBasedPoissonSolver, rhs)
     grid = solver.local_grid
     arch = architecture(grid)
     launch!(arch, grid, :xyz, distributed_fft_preconditioner_rhs!,
@@ -202,7 +200,7 @@ validate_poisson_solver_distributed_grid(global_grid) =
 function validate_poisson_solver_distributed_grid(global_grid::RectilinearGrid)
     TX, TY, TZ = topology(global_grid)
 
-    if (TY == Bounded && TZ == Periodic) || (TX == Bounded && TY == Periodic) || (TX == Bounded && TZ == Periodic)
+    if (TY <: BoundaryTopology && TZ == Periodic) || (TX <: BoundaryTopology && TY == Periodic) || (TX <: BoundaryTopology && TZ == Periodic)
         throw("Distributed Poisson solvers do not support grids with topology ($TX, $TY, $TZ) at the moment.
                A Periodic z-direction requires also the y- and and x-directions to be Periodic, while a Periodic y-direction requires also
                the x-direction to be Periodic.")

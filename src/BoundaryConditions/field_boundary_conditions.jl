@@ -1,4 +1,3 @@
-using GPUArraysCore: GPUArraysCore, @allowscalar
 using Oceananigans.Grids: YFlatGrid
 using Oceananigans.Operators: assumed_field_location
 
@@ -15,20 +14,20 @@ DefaultBoundaryCondition() = DefaultBoundaryCondition(NoFluxBoundaryCondition())
 default_prognostic_bc(::Grids.Periodic, loc, default) = PeriodicBoundaryCondition()
 default_prognostic_bc(::Flat,           loc, default) = nothing
 
-default_prognostic_bc(::Sides,                       ::Center, default) = default.boundary_condition
-default_prognostic_bc(::Sides{Connected, Connected}, ::Center, default) = MultiRegionCommunicationBoundaryCondition()
+default_prognostic_bc(::TwoSided,                       ::Center, default) = default.boundary_condition
+default_prognostic_bc(::TwoSided{Connected, Connected}, ::Center, default) = MultiRegionCommunicationBoundaryCondition()
 
 # TODO: make model constructors enforce impenetrability on velocity components to simplify this code
-default_prognostic_bc(::Sides,                       ::Face, default) = ImpenetrableBoundaryCondition()
-default_prognostic_bc(::Sides{Connected, Connected}, ::Face, default) = MultiRegionCommunicationBoundaryCondition()
+default_prognostic_bc(::TwoSided,                       ::Face, default) = ImpenetrableBoundaryCondition()
+default_prognostic_bc(::TwoSided{Connected, Connected}, ::Face, default) = MultiRegionCommunicationBoundaryCondition()
 
 default_prognostic_bc(::Grids.Periodic, ::Nothing, default) = nothing
 default_prognostic_bc(::Flat,           ::Nothing, default) = nothing
-default_prognostic_bc(::Sides,          ::Nothing, default) = nothing
+default_prognostic_bc(::TwoSided,          ::Nothing, default) = nothing
 
 _default_auxiliary_bc(topo, loc) = default_prognostic_bc(topo, loc, DefaultBoundaryCondition())
-_default_auxiliary_bc(::Sides,                       ::Face) = nothing
-_default_auxiliary_bc(::Sides{Connected, Connected}, ::Face) = MultiRegionCommunicationBoundaryCondition()
+_default_auxiliary_bc(::TwoSided,                       ::Face) = nothing
+_default_auxiliary_bc(::TwoSided{Connected, Connected}, ::Face) = MultiRegionCommunicationBoundaryCondition()
 
 default_auxiliary_bc(grid, ::Val{:east},   loc) = _default_auxiliary_bc(topology(grid, 1)(), loc[1])
 default_auxiliary_bc(grid, ::Val{:west},   loc) = _default_auxiliary_bc(topology(grid, 1)(), loc[1])
@@ -321,34 +320,24 @@ regularize_field_boundary_conditions(boundary_conditions::NamedTuple, grid::Abst
 @inline regularize_south_boundary_condition(bc::DefaultBoundaryCondition, grid::LatitudeLongitudeGrid, loc, args...) =
     regularize_boundary_condition(default_prognostic_bc(grid, Val(:south), loc, bc), grid, loc, args...)
 
-function default_prognostic_bc(grid::LatitudeLongitudeGrid, ::Val{:north}, (ℓx, ℓy, ℓz), default)
-    φnorth = @allowscalar φnode(grid.Ny+1, grid, Face())
-    default_bc = default_prognostic_bc(topology(grid, 2)(), ℓy, default)
-    return φnorth ≈ 90 ? maybe_polar_boundary_condition(grid, :north, ℓy, ℓz) : default_bc
-end
+# `pole` is the grid's `south_pole` or `north_pole`: `Pole()` or `nothing`
+polar_or(default_bc, ::Nothing, grid, side, ℓy, ℓz) = default_bc
+polar_or(default_bc, ::Pole, grid, side, ℓy, ℓz) = maybe_polar_boundary_condition(grid, side, ℓy, ℓz)
 
-function default_prognostic_bc(grid::LatitudeLongitudeGrid, ::Val{:south}, (ℓx, ℓy, ℓz), default)
-    φsouth = @allowscalar φnode(1, grid, Face())
-    default_bc = default_prognostic_bc(topology(grid, 2)(), ℓy, default)
-    return φsouth ≈ -90 ? maybe_polar_boundary_condition(grid, :south, ℓy, ℓz) : default_bc
-end
+for side in (:south, :north)
+    S = Val{side}
+    pole = Symbol(side, :_pole)
+    @eval begin
+        default_prognostic_bc(grid::LatitudeLongitudeGrid, ::$S, (ℓx, ℓy, ℓz), default) =
+            polar_or(default_prognostic_bc(topology(grid, 2)(), ℓy, default), grid.$pole, grid, $(QuoteNode(side)), ℓy, ℓz)
 
-function default_auxiliary_bc(grid::LatitudeLongitudeGrid, ::Val{:north}, (ℓx, ℓy, ℓz))
-    φnorth = @allowscalar φnode(grid.Ny+1, grid, Face())
-    default_bc = _default_auxiliary_bc(topology(grid, 2)(), ℓy)
-    return φnorth ≈ 90 ? maybe_polar_boundary_condition(grid, :north, ℓy, ℓz) : default_bc
-end
+        default_auxiliary_bc(grid::LatitudeLongitudeGrid, ::$S, (ℓx, ℓy, ℓz)) =
+            polar_or(_default_auxiliary_bc(topology(grid, 2)(), ℓy), grid.$pole, grid, $(QuoteNode(side)), ℓy, ℓz)
 
-function default_auxiliary_bc(grid::LatitudeLongitudeGrid, ::Val{:south}, (ℓx, ℓy, ℓz))
-    φsouth = @allowscalar φnode(1, grid, Face())
-    default_bc = _default_auxiliary_bc(topology(grid, 2)(), ℓy)
-    return φsouth ≈ -90 ? maybe_polar_boundary_condition(grid, :south, ℓy, ℓz) : default_bc
+        default_prognostic_bc(::LatitudeLongitudeGrid{<:Any, <:Any, Flat}, ::$S, loc, default) = default
+        default_auxiliary_bc(::LatitudeLongitudeGrid{<:Any, <:Any, Flat}, ::$S, loc) = nothing
+    end
 end
-
-default_prognostic_bc(grid::LatitudeLongitudeGrid{<:Any, <:Any, Flat}, ::Val{:north}, loc, default) = default
-default_prognostic_bc(grid::LatitudeLongitudeGrid{<:Any, <:Any, Flat}, ::Val{:south}, loc, default) = default
- default_auxiliary_bc(grid::LatitudeLongitudeGrid{<:Any, <:Any, Flat}, ::Val{:north}, loc) = nothing
- default_auxiliary_bc(grid::LatitudeLongitudeGrid{<:Any, <:Any, Flat}, ::Val{:south}, loc) = nothing
 
 Oceananigans.prognostic_state(bcs::FieldBoundaryConditions) =
     Oceananigans.prognostic_state((; bcs.west, bcs.east, bcs.south, bcs.north, bcs.bottom, bcs.top))

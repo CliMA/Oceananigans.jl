@@ -41,8 +41,10 @@ end
 end
 
 @inline is_contained(value, ::Tuple{}) = false
-# `is_contained` verifies if an object is duplicated in the tuple, thus needing the equality `===` operator.
-@inline is_contained(value, accumulated::Tuple) = value === first(accumulated) || is_contained(value, Base.tail(accumulated))
+# Identity by type (folded at compile time) and `objectid`: `===` on large immutable Fields miscompiles on Julia ≥ 1.12
+@inline is_contained(value, accumulated::Tuple) =
+    (typeof(value) === typeof(first(accumulated)) && objectid(value) == objectid(first(accumulated))) ||
+    is_contained(value, Base.tail(accumulated))
 
 const FullField = Field{<:Any, <:Any, <:Any, <:Any, <:Any, <:Tuple{<:Colon, <:Colon, <:Colon}}
 
@@ -85,7 +87,7 @@ end
 
 const CenterOrFace = Union{Center, Face}
 const SerialGrid = AbstractGrid{<:Any, <:Any, <:Any, <:Any, <:Union{CPU, GPU}}
-const TupledFillField = Field{<:CenterOrFace, <:CenterOrFace, <:CenterOrFace, <:Any, <:SerialGrid, <:Tuple{Colon, Colon, Colon}, <:OffsetArray}
+const TupledFillField = Field{<:CenterOrFace, <:CenterOrFace, <:CenterOrFace, <:Any, <:SerialGrid, <:Tuple{Colon, Colon, Colon}, <:AbstractOffsetArray}
 
 # Whether the halos of `field` may be filled together with those of other fields
 @inline tupled_fillable(field) = false

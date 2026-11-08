@@ -1,13 +1,11 @@
 using Adapt: Adapt
 using Base: @propagate_inbounds
 using Dates: AbstractDateTime
-using Oceananigans: AbstractModel, defaults, instantiated_location
+using Oceananigans: AbstractModel, defaults, initialize!, instantiated_location, prognostic_state,
+                    restore_prognostic_state!
 using Oceananigans.AbstractOperations: AbstractOperation
-using Oceananigans.Fields: Fields, AbstractField, Scan
+using Oceananigans.Fields: Fields, AbstractField, Scan, indices, interior
 using Oceananigans.Utils: time_difference_seconds
-
-import Oceananigans: initialize!, prognostic_state, restore_prognostic_state!
-import Oceananigans.Fields: indices, interior
 
 """
     mutable struct TimeDerivative <: AbstractField
@@ -127,9 +125,9 @@ Base.size(derivative::TimeDerivative) = size(derivative.result)
 
 @propagate_inbounds Base.getindex(derivative::TimeDerivative, inds...) = getindex(derivative.result, inds...)
 
-indices(derivative::TimeDerivative) = indices(derivative.result)
-interior(derivative::TimeDerivative) = interior(derivative.result)
-interior(derivative::TimeDerivative, I...) = interior(derivative.result, I...)
+Fields.indices(derivative::TimeDerivative) = indices(derivative.result)
+Fields.interior(derivative::TimeDerivative) = interior(derivative.result)
+Fields.interior(derivative::TimeDerivative, I...) = interior(derivative.result, I...)
 
 "Inside kernels a `TimeDerivative` is its `result`."
 Adapt.adapt_structure(to, derivative::TimeDerivative) = Adapt.adapt(to, derivative.result)
@@ -145,7 +143,7 @@ $(TYPEDSIGNATURES)
 
 Record `derivative.operand` and the current time for the next update to difference against.
 """
-function initialize!(derivative::TimeDerivative, model::AbstractModel)
+function Oceananigans.initialize!(derivative::TimeDerivative, model::AbstractModel)
     if derivative.previous_time isa Number && model.clock.time isa AbstractDateTime
         T = typeof(model.clock.time)
         throw(ArgumentError("TimeDerivative must be constructed with the model when the clock keeps $T time"))
@@ -157,7 +155,7 @@ function initialize!(derivative::TimeDerivative, model::AbstractModel)
     return nothing
 end
 
-initialize!(derivative::TimeDerivative, sim) = initialize!(derivative, sim.model)
+Oceananigans.initialize!(derivative::TimeDerivative, sim) = initialize!(derivative, sim.model)
 
 """
 $(TYPEDSIGNATURES)
@@ -185,20 +183,20 @@ end
 ##### Checkpointing
 #####
 
-function prognostic_state(derivative::TimeDerivative)
+function Oceananigans.prognostic_state(derivative::TimeDerivative)
     return (result = prognostic_state(derivative.result),
             previous = prognostic_state(derivative.previous),
             previous_time = derivative.previous_time)
 end
 
-function restore_prognostic_state!(restored::TimeDerivative, from)
+function Oceananigans.restore_prognostic_state!(restored::TimeDerivative, from)
     restore_prognostic_state!(restored.result, from.result)
     restore_prognostic_state!(restored.previous, from.previous)
     restored.previous_time = from.previous_time
     return restored
 end
 
-restore_prognostic_state!(::TimeDerivative, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::TimeDerivative, ::Nothing) = nothing
 
 #####
 ##### Show

@@ -1,7 +1,6 @@
-using Oceananigans.Operators: intrinsic_vector, ℑxyᶠᶜᵃ, ℑxyᶜᶠᵃ
+using Oceananigans.Fields: set!
+using Oceananigans.Operators: intrinsic_vector, ℑxyᶜᶠᵃ, ℑxyᶠᶜᵃ
 using Oceananigans.Utils: @apply_regionally
-
-import Oceananigans.Fields: set!
 
 """
     set!(model::HydrostaticFreeSurfaceModel;
@@ -42,14 +41,14 @@ model.velocities.u
 ├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
-└── data: 22×22×22 OffsetArray(::Array{Float64, 3}, -2:19, -2:19, -2:19) with eltype Float64 with indices -2:19×-2:19×-2:19
+└── data: 22×22×22 StaticStridesOffsetArray(::Array{Float64, 3}, -2:19, -2:19, -2:19) with eltype Float64 with indices -2:19×-2:19×-2:19
     └── max=-0.0302734, min=-0.249023, mean=-0.166992
 ```
 """
-@inline function set!(model::HydrostaticFreeSurfaceModel;
-                      u=ZeroField(), v=ZeroField(), intrinsic_velocities=false,
-                      reconcile_state=true,
-                      kwargs...)
+@inline function Fields.set!(model::HydrostaticFreeSurfaceModel;
+                             u=ZeroField(), v=ZeroField(), intrinsic_velocities=false,
+                             reconcile_state=true,
+                             kwargs...)
 
     set_velocities!(model, u, v; intrinsic_velocities)
 

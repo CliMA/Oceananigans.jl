@@ -117,7 +117,7 @@ Fields.set!(mrf::MultiRegionField, a::Number)  = apply_regionally!(set!,  mrf, a
 Base.fill!(mrf::MultiRegionField, a::Number) = apply_regionally!(fill!, mrf, a)
 
 Fields.set!(mrf::MultiRegionField, f::Function, args...) = apply_regionally!(set!, mrf, f)
-Fields.set!(mrf::MultiRegionField, a::Union{Array, OffsetArray}) = apply_regionally!(set!, mrf, a)
+Fields.set!(mrf::MultiRegionField, a::Union{Array, AbstractOffsetArray}) = apply_regionally!(set!, mrf, a)
 Fields.set!(mrf::MultiRegionField, v::Field) = apply_regionally!(set!, mrf, v)
 Fields.set!(mrf::MultiRegionField, z::ZeroField) = apply_regionally!(set!, mrf, z)
 Fields.set!(::MultiRegionField, ::Nothing) = nothing
@@ -177,6 +177,9 @@ function BoundaryConditions.regularize_field_boundary_conditions(bcs::FieldBound
                                            top = reg_bcs.top,
                                            immersed = reg_bcs.immersed)
 end
+
+BoundaryConditions.regularize_field_boundary_conditions(bcs::MultiRegionObject, mrg::MultiRegionGrids, field_name::Symbol, prognostic_field_name=nothing) =
+    construct_regionally(regularize_field_boundary_conditions, bcs, mrg, field_name, prognostic_field_name)
 
 function inject_regional_bcs(grid, connectivity, loc, indices;
                              west = default_auxiliary_bc(grid, Val(:west), loc),

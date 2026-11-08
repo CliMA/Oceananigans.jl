@@ -1,4 +1,4 @@
-using Dates: Dates
+using Dates: Dates, AbstractTime
 using Oceananigans: AbstractModel, prognostic_state, restore_prognostic_state!
 using Oceananigans.Diagnostics: default_nan_checker
 using Oceananigans.DistributedComputations: Distributed, all_reduce
@@ -8,6 +8,9 @@ using Oceananigans.TimeSteppers: reset!
 using Oceananigans.Utils: period_to_seconds, prettytime
 
 default_progress(simulation) = nothing
+
+# The `stop_time` of a calendar clock that never stops
+const max_datetime = Dates.DateTime(9999, 12, 31, 23, 59, 59, 999)
 
 """
     AutomaticDifferentiation(; checkpointing, track_numbers = false, mincut = true)
@@ -56,10 +59,10 @@ Base.show(io::IO, ad::AutomaticDifferentiation) =
               ", mincut=", ad.mincut,
               ", checkpointing=", ad.checkpointing, ")")
 
-mutable struct Simulation{ML, DT, ST, DI, OW, CB, FT, BL, AD}
+mutable struct Simulation{ML, DT, SI, ST, DI, OW, CB, FT, BL, AD}
     model :: ML
     Δt :: DT
-    stop_iteration :: FT
+    stop_iteration :: SI
     stop_time :: ST
     wall_time_limit :: FT
     diagnostics :: DI
@@ -151,6 +154,11 @@ function Simulation(model;
    end
    Δt = Δt isa Number ? TT(Δt) : Δt
    stop_time = stop_time isa Number ? TT(stop_time) : stop_time
+   if model.clock.time isa AbstractTime && stop_time isa Number
+       isinf(stop_time) || throw(ArgumentError(string("stop_time must be a date for a model with a ",
+                                                      typeof(model.clock.time), " clock, not ", stop_time)))
+       stop_time = max_datetime
+   end
 
    return Simulation(model,
                      Δt,

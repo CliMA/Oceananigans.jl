@@ -119,7 +119,7 @@ apply_transform(::Val{S}, field) where S =
   throw(ArgumentError("unknown transform :$S; supported: :horizontal_average"))
 
 # Note `F<:AbstractArray` (not `F<:AbstractField`): `Adapt.adapt_structure(to, ::Field) = adapt(to, f.data)`
-# unwraps Field to its underlying OffsetArray on GPU, so an `<:AbstractField` constraint here
+# unwraps Field to its underlying StaticStridesOffsetArray on GPU, so an `<:AbstractField` constraint here
 # would prevent kernel dispatch on the device and the compiler would emit a MethodError.
 @inline function (r::Relaxation{R, F})(i, j, k, grid, clock, model_fields) where {R, F<:AbstractArray}
     ϕ  = @inbounds r.relaxed[i, j, k]
@@ -304,8 +304,13 @@ $(TYPEDSIGNATURES)
 Rate for `Relaxation` that nudges toward `target` at `inflow_rate` where the local horizontal
 normal velocity indicates inflow through the domain boundary in direction `D` (one of
 `:west`, `:east`, `:south`, `:north`), and at `outflow_rate` where it indicates outflow,
-following the ROMS/Marchesiello-et-al.-2001 nudging-layer convention. See [`Relaxation`](@ref)
-for the role of `mask` in shaping the nudging spatially.
+following the nudging-layer convention of ROMS ([Marchesiello et al., 2001](@cite marchesiello.ea2001)).
+See [`Relaxation`](@ref) for the role of `mask` in shaping the nudging spatially.
+
+References
+==========
+* Marchesiello, P., McWilliams, J. C., & Shchepetkin, A. (2001). "Open boundary conditions
+  for long-term integration of regional oceanic models." Ocean Modelling, 3(1-2), 1-20.
 
 Example
 =======

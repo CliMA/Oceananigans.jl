@@ -15,13 +15,18 @@ export
 
 using Adapt: Adapt
 using DocStringExtensions: MethodSignatures, TYPEDSIGNATURES
-using KernelAbstractions: @kernel, @index
+using KernelAbstractions: @index, @kernel
 
-using Oceananigans: Oceananigans, AbstractModel, initialize!, prognostic_fields
+using Oceananigans: Oceananigans, AbstractModel, fields, initialize!, prognostic_fields
 using Oceananigans.Architectures: architecture
-using Oceananigans.Utils: AbstractTimeDiscretization, ExplicitTimeDiscretization,
-                          VerticallyImplicitTimeDiscretization,
+using Oceananigans.BoundaryConditions: BoundaryConditions, cache_boundary_conditions!, initialize_boundary_conditions!
+using Oceananigans.Fields: Fields
+using Oceananigans.Units: Units
+using Oceananigans.Utils: @apply_regionally,
+                          AbstractTimeDiscretization,
                           AdaptiveVerticallyImplicitDiscretization,
+                          ExplicitTimeDiscretization,
+                          VerticallyImplicitTimeDiscretization,
                           kernel_time_step
 
 """
@@ -42,11 +47,19 @@ step_closure_prognostics!(model, Δt::Number) = nothing
 # Reconcile auxiliary state with prognostic fields (fallback is a no-op).
 reconcile_state!(model) = nothing
 
+# The exterior states of open boundaries are prognostic, like the fields they belong to
+BoundaryConditions.cache_boundary_conditions!(model::AbstractModel{<:AbstractTimeStepper}) = @apply_regionally cache_boundary_conditions!(prognostic_fields(model), model.clock, fields(model))
+BoundaryConditions.initialize_boundary_conditions!(model::AbstractModel{<:AbstractTimeStepper}) = @apply_regionally initialize_boundary_conditions!(prognostic_fields(model), model.clock, fields(model))
+
+# Models without a time stepper need not define `prognostic_fields` or `fields`
+BoundaryConditions.initialize_boundary_conditions!(model) = nothing
+
 # Prepare the model for the first time step, in case run! is not used.
 function maybe_prepare_first_time_step!(model, Δt, callbacks)
     if model.clock.iteration == 0
         model.clock.last_Δt = Δt
         reconcile_state!(model)
+        initialize_boundary_conditions!(model)
         update_state!(model, callbacks)
     end
     return nothing
@@ -54,8 +67,18 @@ end
 
 # Interface for time-stepping Lagrangian particles
 abstract type AbstractLagrangianParticles end
+
+# Advance the particles of `model` by `Δt` with a single forward Euler step.
 step_lagrangian_particles!(model, Δt) = nothing
+
+# Advance the particles of `model` through stage `stage` of `model.timestepper`, where `Δt` is the
+# full time step. Called at the beginning of each stage, before the fields are advanced.
+substep_lagrangian_particles!(model, Δt, stage) = nothing
+
 update_lagrangian_particle_state!(model) = nothing
+
+# Allocate the per-particle storage that `timestepper` needs to advance `particles`.
+materialize_lagrangian_particles(particles, timestepper) = particles
 
 # Materialize clock fields to avoid aliasing issues with Reactant.
 # For QAB2, last_Δt and last_stage_Δt must be distinct objects.
@@ -130,17 +153,17 @@ end
 ##### Checkpointing
 #####
 
-function prognostic_state(timestepper::AbstractTimeStepper)
+function Oceananigans.prognostic_state(timestepper::AbstractTimeStepper)
     return (Gⁿ = prognostic_state(timestepper.Gⁿ),
             G⁻ = prognostic_state(timestepper.G⁻))
 end
 
-function restore_prognostic_state!(restored::AbstractTimeStepper, from)
+function Oceananigans.restore_prognostic_state!(restored::AbstractTimeStepper, from)
     restore_prognostic_state!(restored.Gⁿ, from.Gⁿ)
     restore_prognostic_state!(restored.G⁻, from.G⁻)
     return restored
 end
 
-restore_prognostic_state!(::AbstractTimeStepper, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::AbstractTimeStepper, ::Nothing) = nothing
 
 end # module

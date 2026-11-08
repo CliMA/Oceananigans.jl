@@ -1,4 +1,4 @@
-import Oceananigans: prognostic_state, restore_prognostic_state!
+using Oceananigans: prognostic_state, restore_prognostic_state!
 
 struct TKEDissipationVerticalDiffusivity{TD, KE, ST, LMIN, FT, DT} <: AbstractScalarDiffusivity{TD, VerticalFormulation, 2}
     tke_dissipation_equations :: KE
@@ -160,7 +160,7 @@ Base.@constprop :aggressive function Utils.with_tracers(tracer_names, closure::F
 end
 
 # Required tracer names for TKEDissipation
-closure_required_tracers(::FlavorOfTD) = (:e, :ϵ)
+TurbulenceClosures.closure_required_tracers(::FlavorOfTD) = (:e, :ϵ)
 
 #####
 ##### Stratified displacement length scale limiter
@@ -209,7 +209,7 @@ function BoundaryConditions.fill_halo_regions!(tke_dissipation_closure_fields::T
     return fill_halo_regions!(fields_with_halos_to_fill, args...; kw...)
 end
 
-function build_closure_fields(grid, clock, tracer_names, bcs, closure::FlavorOfTD)
+function TurbulenceClosures.build_closure_fields(grid, clock, tracer_names, bcs, closure::FlavorOfTD)
 
     default_diffusivity_bcs = (κu = FieldBoundaryConditions(grid, (Center(), Center(), Face())),
                                κc = FieldBoundaryConditions(grid, (Center(), Center(), Face())),
@@ -250,10 +250,10 @@ function build_closure_fields(grid, clock, tracer_names, bcs, closure::FlavorOfT
                                            _ntupled_implicit_linear_coefficients)
 end
 
-@inline viscosity_location(::FlavorOfTD) = (c, c, f)
-@inline diffusivity_location(::FlavorOfTD) = (c, c, f)
+@inline TurbulenceClosures.viscosity_location(::FlavorOfTD) = (c, c, f)
+@inline TurbulenceClosures.diffusivity_location(::FlavorOfTD) = (c, c, f)
 
-function reset!(closure_fields, ::FlavorOfTD)
+function TimeSteppers.reset!(closure_fields, ::FlavorOfTD)
     fields = (closure_fields.κu, closure_fields.κc, closure_fields.κe, closure_fields.κϵ,
               closure_fields.previous_velocities...)
 
@@ -264,7 +264,7 @@ function reset!(closure_fields, ::FlavorOfTD)
     return nothing
 end
 
-function step_closure_prognostics!(closure_fields, closure::FlavorOfTD, model, Δt)
+function TurbulenceClosures.step_closure_prognostics!(closure_fields, closure::FlavorOfTD, model, Δt)
     # Step TKE/dissipation equations with the provided timestep
     time_step_tke_dissipation_equations!(model, Δt)
 
@@ -277,7 +277,7 @@ function step_closure_prognostics!(closure_fields, closure::FlavorOfTD, model, �
     return nothing
 end
 
-function compute_closure_fields!(closure_fields, closure::FlavorOfTD, model; parameters = :xyz)
+function TurbulenceClosures.compute_closure_fields!(closure_fields, closure::FlavorOfTD, model; parameters = :xyz)
     arch = model.architecture
     grid = model.grid
     velocities = model.velocities
@@ -389,8 +389,8 @@ end
     return min(κϵ, κϵ_max)
 end
 
-@inline viscosity(::FlavorOfTD, closure_fields) = closure_fields.κu
-@inline diffusivity(::FlavorOfTD, closure_fields, ::Val{id}) where id = closure_fields._tupled_tracer_diffusivities[id]
+@inline TurbulenceClosures.viscosity(::FlavorOfTD, closure_fields) = closure_fields.κu
+@inline TurbulenceClosures.diffusivity(::FlavorOfTD, closure_fields, ::Val{id}) where id = closure_fields._tupled_tracer_diffusivities[id]
 
 #####
 ##### Show
@@ -425,7 +425,7 @@ end
 ##### Checkpointing
 #####
 
-function prognostic_state(cf::TKEDissipationClosureFields)
+function Oceananigans.prognostic_state(cf::TKEDissipationClosureFields)
     return (previous_velocities = prognostic_state(cf.previous_velocities),
             κu = prognostic_state(cf.κu),
             κc = prognostic_state(cf.κc),
@@ -433,7 +433,7 @@ function prognostic_state(cf::TKEDissipationClosureFields)
             κϵ = prognostic_state(cf.κϵ))
 end
 
-function restore_prognostic_state!(restored::TKEDissipationClosureFields, from)
+function Oceananigans.restore_prognostic_state!(restored::TKEDissipationClosureFields, from)
     restore_prognostic_state!(restored.previous_velocities, from.previous_velocities)
     restore_prognostic_state!(restored.κu, from.κu)
     restore_prognostic_state!(restored.κc, from.κc)
@@ -442,4 +442,4 @@ function restore_prognostic_state!(restored::TKEDissipationClosureFields, from)
     return restored
 end
 
-restore_prognostic_state!(::TKEDissipationClosureFields, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::TKEDissipationClosureFields, ::Nothing) = nothing

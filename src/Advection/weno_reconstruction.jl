@@ -32,9 +32,10 @@ Keyword arguments
                         `materialize_advection`)
 - `order`: The order of the WENO advection scheme. Default: 5.
 - `bounds` (experimental): A tuple `(cᵐⁱⁿ, cᵐᵃˣ)` switching on the maximum-principle-satisfying limiter of
-                           Zhang and Shu (2010), which rescales the reconstruction of every cell towards the cell
-                           mean so that the advective update stays within `bounds`. One rescaling factor is
-                           shared by the three directions, so the bound is three-dimensional. It is guaranteed
+                           [Zhang and Shu (2010)](@cite ZhangShu2010), which rescales the reconstruction of
+                           every cell towards the cell mean so that the advective update stays within `bounds`.
+                           One rescaling factor is shared by the three directions, so the bound is
+                           three-dimensional. It is guaranteed
                            for a forward Euler or strong-stability-preserving update whose Courant numbers
                            satisfy `λˣ + λʸ + λᶻ ≤ maximum_courant_number`.
                            Default: `nothing`, which does not use a bounds-preserving scheme.
@@ -103,6 +104,11 @@ WENO{3, Float64, Oceananigans.Utils.BackendOptimizedDivision}(order=5)
 │   └── buffer_scheme: Centered(order=2)
 └── advecting_velocity_scheme: Centered(order=2)
 ```
+
+References
+==========
+* Zhang, X., & Shu, C.-W. (2010). "On maximum-principle-satisfying high order schemes for scalar
+  conservation laws." Journal of Computational Physics, 229(9), 3091-3120.
 """
 function WENO(FT::DataType=Oceananigans.defaults.FloatType;
               weight_computation::DataType=Nothing,

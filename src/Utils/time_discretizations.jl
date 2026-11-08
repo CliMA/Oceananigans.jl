@@ -41,7 +41,8 @@ end
 """
 $(MethodSignatures(; defaults = true))
 
-An adaptively implicit vertical discretization scheme following Shchepetkin (2015) / CROCO.
+An adaptively implicit vertical discretization scheme following [Shchepetkin (2015)](@cite Shchepetkin2015),
+as implemented in the [Coastal and Regional Ocean COmmunity model (CROCO)](https://www.croco-ocean.org).
 
 Splits vertical advection into explicit and implicit parts based on the local vertical Courant number
 `α = |w| Δt / Δz`. When `α ≤ cfl`, advection is fully explicit using `explicit_scheme`. When `α > cfl`,
@@ -69,6 +70,11 @@ julia> AdaptiveVerticallyImplicitDiscretization(cfl=0.3)
 AdaptiveVerticallyImplicitDiscretization:
 └── cfl: 0.3
 ```
+
+References
+==========
+* Shchepetkin, A. F. (2015). "An adaptive, Courant-number-dependent implicit scheme for vertical
+  advection in oceanic modeling." Ocean Modelling, 91, 38-69.
 """
 function AdaptiveVerticallyImplicitDiscretization(FT::DataType = Oceananigans.defaults.FloatType; cfl = 0.5)
     cfl = convert(FT, cfl)
@@ -77,7 +83,7 @@ function AdaptiveVerticallyImplicitDiscretization(FT::DataType = Oceananigans.de
 end
 
 Adapt.adapt_structure(to, a::AdaptiveVerticallyImplicitDiscretization) =
-    AdaptiveVerticallyImplicitDiscretization(a.cfl, a.Δt[])
+    AdaptiveVerticallyImplicitDiscretization(Adapt.adapt(to, a.cfl), Adapt.adapt(to, a.Δt[]))
 
 Base.summary(a::AdaptiveVerticallyImplicitDiscretization) =
     string("AdaptiveVerticallyImplicitDiscretization(cfl=$(a.cfl))")

@@ -11,7 +11,7 @@ export
     # Grids
     Center, Face,
     Periodic, Bounded, Flat,
-    CenterFolded, FaceFolded,
+    Closed, Open, CenterFolded, FaceFolded,
     slice,
     RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid,
     TripolarGrid, RotatedLatitudeLongitudeGrid, ConformalConicGrid, ConformalConic,
@@ -28,6 +28,7 @@ export
     # Immersed boundaries
     ImmersedBoundaryGrid,
     GridFittedBoundary, GridFittedBottom, PartialCellBottom,
+    GridFittedVerticalBoundaries, PartialCellVerticalBoundaries,
     ImmersedBoundaryCondition, bottom_height_field,
 
     # Distributed
@@ -42,7 +43,7 @@ export
     BoundaryCondition,
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, NormalFlowBoundaryCondition, GravityWaveRadiationBoundaryCondition,
     IMEXFluxTimeDiscretization, IMEXFluxBoundaryCondition,
-    PerturbationAdvection, GravityWaveRadiation, NormalRadiation, SurfaceWaveRadiation,
+    PerturbationAdvection, BalancedTransport, GravityWaveRadiation, NormalRadiation, SurfaceWaveRadiation,
     TidalHarmonics, tidal_forcing, tidal_boundary_conditions, tidal_atlas_constants,
     FieldBoundaryConditions,
 
@@ -63,7 +64,7 @@ export
     LinearEquationOfState,
 
     # Surface wave Stokes drift via Craik-Leibovich equations
-    UniformStokesDrift, StokesDrift,
+    UniformStokesDrift, StokesDrift, FieldStokesDrift,
 
     # Turbulence closures
     VerticalScalarDiffusivity,
@@ -85,7 +86,8 @@ export
     viscosity, diffusivity,
 
     # Lagrangian particle tracking
-    LagrangianParticles, DroguedParticleDynamics,
+    LagrangianParticles, DroguedParticleDynamics, CountingSort, ComparisonSort,
+    ParticleBoundaryConditions, ReflectingBoundary, AbsorbingBoundary,
 
     # Models
     NonhydrostaticModel, HydrostaticFreeSurfaceModel, ShallowWaterModel,
@@ -133,7 +135,7 @@ export
     # Plotting (methods provided by OceananigansMakieExt)
     quadmesh, quadmesh!
 
-using DocStringExtensions
+using DocStringExtensions: DocStringExtensions
 
 function __init__()
     Threads.nthreads() > 1 && @info "Oceananigans will use $(Threads.nthreads()) threads"
@@ -281,8 +283,8 @@ include("Simulations/Simulations.jl")
 include("Coriolis/Coriolis.jl")
 include("BuoyancyFormulations/BuoyancyFormulations.jl")
 include("StokesDrifts.jl")
-include("TurbulenceClosures/TurbulenceClosures.jl")
 include("Forcings/Forcings.jl")
+include("TurbulenceClosures/TurbulenceClosures.jl")
 include("Biogeochemistry.jl")
 
 # TODO: move above
