@@ -5,17 +5,20 @@ using Oceananigans.Utils: launch!
 using KernelAbstractions: @index, @kernel
 
 """
-    BoundsPreservation(minimum_value, maximum_value, maximum_courant_number, limiter)
+    BoundsPreservation(minimum_value, maximum_value, maximum_courant_number, reconstruction_limiter, flux_limiter)
 
-The interval a tracer is restricted to, the Courant number ``ω̂₁`` up to which the bound holds, and the field
-`limiter` holding the cell-wise rescaling factor ``θ``. `limiter` is `nothing` until the scheme is materialized
+The interval a tracer is restricted to, the Courant number ``ω̂₁`` up to which the bound holds, the field
+`reconstruction_limiter` holding the cell-wise rescaling factor ``θ`` of the reconstructions, and the
+`flux_limiter` that additionally limits each cell's outgoing fluxes (a [`FluxLimiter`](@ref), or `nothing`).
+`reconstruction_limiter` and the fields of `flux_limiter` are `nothing` until the scheme is materialized
 on a grid.
 """
-struct BoundsPreservation{FT, L}
+struct BoundsPreservation{FT, L, F}
     minimum_value :: FT
     maximum_value :: FT
     maximum_courant_number :: FT
-    limiter :: L
+    reconstruction_limiter :: L
+    flux_limiter :: F
 end
 
 Base.show(io::IO, bounds::BoundsPreservation) = print(io, "(", bounds.minimum_value, ", ", bounds.maximum_value, ")")
@@ -24,13 +27,15 @@ Adapt.adapt_structure(to, bounds::BoundsPreservation) =
     BoundsPreservation(Adapt.adapt(to, bounds.minimum_value),
                        Adapt.adapt(to, bounds.maximum_value),
                        Adapt.adapt(to, bounds.maximum_courant_number),
-                       Adapt.adapt(to, bounds.limiter))
+                       Adapt.adapt(to, bounds.reconstruction_limiter),
+                       Adapt.adapt(to, bounds.flux_limiter))
 
 Architectures.on_architecture(to, bounds::BoundsPreservation) =
     BoundsPreservation(on_architecture(to, bounds.minimum_value),
                        on_architecture(to, bounds.maximum_value),
                        on_architecture(to, bounds.maximum_courant_number),
-                       on_architecture(to, bounds.limiter))
+                       on_architecture(to, bounds.reconstruction_limiter),
+                       on_architecture(to, bounds.flux_limiter))
 
 const _ε₂ = 1e-20
 
@@ -116,15 +121,12 @@ only its bottom and top halos are filled afterwards and no halo is communicated.
 """
 function update_bounds_preserving_limiter!(scheme::BoundsPreservingWENO, grid, c)
     isnothing(c) && return nothing # the `momentum` entry has no tracer to limit
-    θ = rescaling_factor(scheme)
+    θ = scheme.bounds.reconstruction_limiter
     parameters = horizontally_extended_interior_kernel_parameters(grid)
     launch!(architecture(grid), grid, parameters, _compute_bounds_preserving_limiter!, θ, grid, scheme, c)
     fill_bottom_and_top_halo!(θ.data, θ.boundary_conditions, θ.indices, (Center(), Center(), Center()), grid)
     return nothing
 end
-
-# The field holding the cell-wise rescaling factor θ (an `OutflowLimiter` wraps it, see `outflow_limiter.jl`).
-@inline rescaling_factor(scheme::BoundsPreservingWENO) = scheme.bounds.limiter
 
 @inline function rescaled_reconstruction(ĉ, i, j, k, grid, θ, c)
     cᵢ = @inbounds c[i, j, k]
@@ -169,7 +171,7 @@ end
 # The advective flux of `c` through the face (i, j, k), weighted by the density `ρ` (`1` for `div_Uc`),
 # built from the reconstructions rescaled by θ on either side of the face.
 @inline function bounded_face_flux_x(i, j, k, grid, advection::BoundsPreservingWENO, ρ, u, c)
-    θ = rescaling_factor(advection)
+    θ = advection.bounds.reconstruction_limiter
     cᴸ = _biased_interpolate_xᶠᵃᵃ(i, j, k, grid, advection, LeftBias,  c)
     cᴿ = _biased_interpolate_xᶠᵃᵃ(i, j, k, grid, advection, RightBias, c)
     cᴸ = rescaled_reconstruction(cᴸ, i-1, j, k, grid, θ, c)
@@ -179,7 +181,7 @@ end
 end
 
 @inline function bounded_face_flux_y(i, j, k, grid, advection::BoundsPreservingWENO, ρ, v, c)
-    θ = rescaling_factor(advection)
+    θ = advection.bounds.reconstruction_limiter
     cᴸ = _biased_interpolate_yᵃᶠᵃ(i, j, k, grid, advection, LeftBias,  c)
     cᴿ = _biased_interpolate_yᵃᶠᵃ(i, j, k, grid, advection, RightBias, c)
     cᴸ = rescaled_reconstruction(cᴸ, i, j-1, k, grid, θ, c)
@@ -189,7 +191,7 @@ end
 end
 
 @inline function bounded_face_flux_z(i, j, k, grid, advection::BoundsPreservingWENO, ρ, w, c)
-    θ = rescaling_factor(advection)
+    θ = advection.bounds.reconstruction_limiter
     cᴸ = _biased_interpolate_zᵃᵃᶠ(i, j, k, grid, advection, LeftBias,  c)
     cᴿ = _biased_interpolate_zᵃᵃᶠ(i, j, k, grid, advection, RightBias, c)
     cᴸ = rescaled_reconstruction(cᴸ, i, j, k-1, grid, θ, c)

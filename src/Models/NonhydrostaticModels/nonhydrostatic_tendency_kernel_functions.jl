@@ -304,7 +304,7 @@ velocity components, tracer fields, and precalculated closure_fields where appli
              + forcing(i, j, k, grid, clock, model_fields))
 end
 
-# The velocities `tracer_tendency` advects the tracer `name` with, for the outflow limiter.
+# The velocities `tracer_tendency` advects the tracer `name` with, for the flux limiter.
 Advection.tracer_transport_velocities(model::NonhydrostaticModel, val_tracer_name::Val{name}) where name =
     with_advective_forcing(model.forcing[name],
                            sum_of_velocities(model.velocities, model.background_fields.velocities,

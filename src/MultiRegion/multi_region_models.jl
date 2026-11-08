@@ -1,5 +1,5 @@
 using Oceananigans.Advection: Advection, WENO, VectorInvariant, adapt_advection_order, cell_advection_timescale, materialize_advection,
-                              BoundsPreservation, OutflowLimiter
+                              BoundsPreservation, FluxLimiter
 using Oceananigans.BuoyancyFormulations: BuoyancyFormulations, BuoyancyForce, NegativeZDirection, AbstractBuoyancyFormulation, validate_unit_vector
 using Oceananigans.TimeSteppers: TimeSteppers, QuasiAdamsBashforth2TimeStepper, SplitRungeKuttaTimeStepper
 using Oceananigans.Models: Models, ExplicitFreeSurface, HydrostaticFreeSurfaceModel, ImplicitFreeSurface, PrescribedVelocityFields
@@ -60,7 +60,7 @@ Types = (HydrostaticFreeSurfaceModel,
          GridFittedVerticalBoundaries,
          PartialCellVerticalBoundaries,
          BoundsPreservation,
-         OutflowLimiter,
+         FluxLimiter,
          CATKEClosureFields,
          TKEDissipationClosureFields)
 

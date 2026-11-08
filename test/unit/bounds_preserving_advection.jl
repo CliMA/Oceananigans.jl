@@ -1,15 +1,15 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
-using Oceananigans.Advection: div_Uc, materialize_advection, update_advection!, update_outflow_limiter!, bounds_preserving_limiter
+using Oceananigans.Advection: div_Uc, materialize_advection, update_advection!, update_flux_limiter!, bounds_preserving_limiter
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: PrescribedVelocityFields
 using Oceananigans.Operators: Vᶜᶜᶜ
 using Random
 
-function periodic_advection_setup(order, bounds, N; maximum_courant_number=5//18, outflow_limiter=false)
+function periodic_advection_setup(order, bounds, N; maximum_courant_number=5//18, flux_limiter=false)
     grid = RectilinearGrid(CPU(), size=(N, N, N), x=(0, 1), y=(0, 1), z=(0, 1),
                            topology=(Periodic, Periodic, Periodic), halo=(6, 6, 6))
 
-    scheme = materialize_advection(WENO(; order, bounds, maximum_courant_number, outflow_limiter), grid)
+    scheme = materialize_advection(WENO(; order, bounds, maximum_courant_number, flux_limiter), grid)
 
     return grid, scheme, CenterField(grid), (u = XFaceField(grid), v = YFaceField(grid), w = ZFaceField(grid))
 end
@@ -29,7 +29,7 @@ function advect_forward_euler!(grid, scheme, c, U, N, steps, courant_number)
 
     for step in 1:steps
         update_advection!(scheme, (; grid), c)
-        update_outflow_limiter!(scheme, grid, c, c, U, Δt) # a no-op without the outflow limiter
+        update_flux_limiter!(scheme, grid, c, c, U, Δt) # a no-op without the flux limiter
         for k in 1:N, j in 1:N, i in 1:N
             @inbounds tendency[i, j, k] = - div_Uc(i, j, k, grid, scheme, U, c)
         end
@@ -108,7 +108,7 @@ end
             @test default_cᵐⁱⁿ < -1e-12 || default_cᵐᵃˣ > 1 + 1e-12
         end
 
-        @testset "Outflow limiter" begin
+        @testset "Flux limiter" begin
             sharp_cube(x, y, z) = (0.25 < x < 0.6) && (0.25 < y < 0.6) && (0.25 < z < 0.6) ? 1.0 : 0.0
             courant_number = 0.5 # above ω̂₁ = 5//18, where the rescaling alone no longer guarantees the bounds
 
@@ -117,7 +117,7 @@ end
             cᵐⁱⁿ, cᵐᵃˣ = advect_forward_euler!(grid, scheme, c, U, N, 50, courant_number)
             @test cᵐⁱⁿ < -1e-6
 
-            grid, scheme, c, U = periodic_advection_setup(5, (0, 1), N; outflow_limiter=true)
+            grid, scheme, c, U = periodic_advection_setup(5, (0, 1), N; flux_limiter=true)
             set!(c, sharp_cube)
             tracer_content = sum(interior(c))
             cᵐⁱⁿ, cᵐᵃˣ = advect_forward_euler!(grid, scheme, c, U, N, 50, courant_number)
@@ -126,14 +126,14 @@ end
         end
     end
 
-    @testset "Outflow limiter requires a lower bound of zero" begin
-        @test_throws ArgumentError WENO(order=5, outflow_limiter=true)
-        @test_throws ArgumentError WENO(order=5, bounds=(-1, 1), outflow_limiter=true)
+    @testset "Flux limiter requires a lower bound of zero" begin
+        @test_throws ArgumentError WENO(order=5, flux_limiter=true)
+        @test_throws ArgumentError WENO(order=5, bounds=(-1, 1), flux_limiter=true)
     end
 
     # The stages of a split Runge-Kutta step update the step-start state with fluxes built from a later
     # stage, so the rescaling alone does not keep the tracer non-negative even at small Courant numbers.
-    @testset "Outflow limiter with SplitRungeKutta3" begin
+    @testset "Flux limiter with SplitRungeKutta3" begin
         for arch in archs
             grid = RectilinearGrid(arch, size=(N, N, N), x=(0, 1), y=(0, 1), z=(-1, 0),
                                    topology=(Periodic, Periodic, Bounded), halo=(6, 6, 6))
@@ -157,7 +157,7 @@ end
             cᵐⁱⁿ, drift = advect_with_split_rk3(WENO(order=5, bounds=(0, 1)))
             @test cᵐⁱⁿ < -1e-8
 
-            cᵐⁱⁿ, drift = advect_with_split_rk3(WENO(order=5, bounds=(0, 1), outflow_limiter=true))
+            cᵐⁱⁿ, drift = advect_with_split_rk3(WENO(order=5, bounds=(0, 1), flux_limiter=true))
             @test cᵐⁱⁿ ≥ -1e-12
             @test abs(drift) < 1e-10
         end
@@ -186,12 +186,12 @@ end
             underlying_grid = RectilinearGrid(arch, size=(N, N, N), x=(0, 1), y=(0, 1), z=(0, 1),
                                               topology=(Periodic, Periodic, Bounded), halo=(6, 6, 6))
 
-            for model_type in (:nonhydrostatic, :hydrostatic), immersed in (false, true), outflow_limiter in (false, true)
+            for model_type in (:nonhydrostatic, :hydrostatic), immersed in (false, true), flux_limiter in (false, true)
                 grid = immersed ?
                     ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((x, y) -> x < 0.5 ? -0.5 : -1)) :
                     underlying_grid
 
-                advection = WENO(order=5, bounds=(0, 1), outflow_limiter=outflow_limiter)
+                advection = WENO(order=5, bounds=(0, 1), flux_limiter=flux_limiter)
 
                 model = if model_type === :nonhydrostatic
                     NonhydrostaticModel(grid; advection, tracers=:c)

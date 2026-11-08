@@ -138,7 +138,7 @@ end
 @inline function update_tracer_bounds_preserving_limiter!(advection, model, val_name::Val{name}) where name
     scheme = advection[name]
     update_bounds_preserving_limiter!(scheme, model.grid, model.tracers[name])
-    return update_outflow_limiter!(scheme, model, val_name)
+    return update_flux_limiter!(scheme, model, val_name)
 end
 
 @inline function update_advection!(scheme, model, tracer)
