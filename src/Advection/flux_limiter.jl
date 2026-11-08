@@ -8,16 +8,14 @@ using Oceananigans.Utils: KernelParameters
 #####
 #
 # The rescaling of Zhang and Shu (2010) keeps a forward Euler update within `bounds` only while the
-# Courant number stays below ω̂₁. A larger time step, or a Wicker–Skamarock stage that updates the
-# step-start state with fluxes built from a later stage, can remove more from a cell than it holds.
-# The flux limiter scales each cell's outgoing fluxes by a fraction `r ∈ [0, 1]` of them the coming
+# Courant number stays below ω̂₁; a larger one can remove more from a cell than it holds. The flux limiter scales each cell's outgoing fluxes by a fraction `r ∈ [0, 1]` of them the coming
 # update can afford: a conservative, zeroth-order flux-corrected transport limiter that keeps the
 # tracer non-negative for any time step, at first-order accuracy where it acts.
 #
 # Safety. With Oᵢ = Δt V⁻¹ Σ (outgoing fluxes of cell i) and Iᵢ(r) = Δt V⁻¹ Σ (incoming fluxes, each
-# scaled by the fraction of the cell it leaves), the limited update is cᵢ = c⁰ᵢ - rᵢ Oᵢ + Iᵢ(r), so
+# scaled by the fraction of the cell it leaves), the forward Euler update is c'ᵢ = cᵢ - rᵢ Oᵢ + Iᵢ(r), so
 #
-#     cᵢ ≥ 0  ⟺  rᵢ ≤ G(r)ᵢ := min(1, (c⁰ᵢ + Iᵢ(r)) / Oᵢ).
+#     c'ᵢ ≥ 0  ⟺  rᵢ ≤ G(r)ᵢ := min(1, (cᵢ + Iᵢ(r)) / Oᵢ).
 #
 # G is nondecreasing in r, and r = 0 satisfies r ≤ G(r). If r ≤ G(r) and some components are replaced
 # by G̃(r)ᵢ, where G̃ ≤ G credits a subset of the incoming fluxes (at their current fractions) and the
@@ -41,9 +39,9 @@ struct ColumnSweep end
     FluxLimiter(; credit=nothing)
 
 The `flux_limiter` of a [`BoundsPreservation`](@ref), which keeps the tracer non-negative by limiting each
-cell's outgoing fluxes to the fraction ``r = min(1, available / removed)`` of them the coming update can
-afford. `removed` is the tracer the unlimited outgoing fluxes take out of the cell, `available` the cell's
-content at the start of the update plus the incoming fluxes `credit` admits: nothing by default (one pass
+cell's outgoing fluxes to the fraction ``r = min(1, available / removed)`` of them the coming forward Euler
+update can afford. `removed` is the tracer the unlimited outgoing fluxes take out of the cell, `available`
+the cell's content plus the incoming fluxes `credit` admits: nothing by default (one pass
 over the grid), or [`ColumnSweep`](@ref) for the vertical ones, which a vertical Courant number above one
 needs.
 
@@ -180,11 +178,11 @@ end
     return ifelse(isfinite(removed) & (removed > available), available / removed, one(available))
 end
 
-# One pass with no incoming credit: r = min(1, c⁰ / removed)
-@kernel function _compute_flux_fraction!(r, grid, fluxes, c⁰, Δt)
+# One pass with no incoming credit: r = min(1, c / removed)
+@kernel function _compute_flux_fraction!(r, grid, fluxes, c, Δt)
     i, j, k = @index(Global, NTuple)
     removed = removed_tracer(i, j, k, grid, fluxes, Δt)
-    content = @inbounds max(0, c⁰[i, j, k])
+    content = @inbounds max(0, c[i, j, k])
     @inbounds r[i, j, k] = flux_fraction(removed, content, zero(removed))
 end
 
@@ -192,13 +190,13 @@ end
 # vertical neighbors. Each cell's credited set grows between its two updates and a neighbor beyond the
 # column's ends (not yet visited in the downward sweep, the stale halo otherwise) is credited at zero,
 # which the safety argument above allows.
-@kernel function _sweep_column_flux_fractions!(r, grid, fluxes, c⁰, Δt)
+@kernel function _sweep_column_flux_fractions!(r, grid, fluxes, c, Δt)
     i, j = @index(Global, NTuple)
     Nz = size(grid, 3)
 
     for k in Nz:-1:1
         removed = removed_tracer(i, j, k, grid, fluxes, Δt)
-        content = @inbounds max(0, c⁰[i, j, k])
+        content = @inbounds max(0, c[i, j, k])
         r⁺ = @inbounds ifelse(k < Nz, r[i, j, k+1], zero(content))
         credited = incoming_vertical_tracer(i, j, k, grid, fluxes, Δt, zero(content), r⁺)
         @inbounds r[i, j, k] = flux_fraction(removed, content, credited)
@@ -206,7 +204,7 @@ end
 
     for k in 1:Nz
         removed = removed_tracer(i, j, k, grid, fluxes, Δt)
-        content = @inbounds max(0, c⁰[i, j, k])
+        content = @inbounds max(0, c[i, j, k])
         r⁻ = @inbounds ifelse(k > 1,  r[i, j, k-1], zero(content))
         r⁺ = @inbounds ifelse(k < Nz, r[i, j, k+1], zero(content))
         credited = incoming_vertical_tracer(i, j, k, grid, fluxes, Δt, r⁻, r⁺)
@@ -214,33 +212,31 @@ end
     end
 end
 
-compute_flux_fractions!(::Nothing, r, grid, fluxes, c⁰, Δt) =
-    launch!(architecture(grid), grid, :xyz, _compute_flux_fraction!, r, grid, fluxes, c⁰, Δt)
+compute_flux_fractions!(::Nothing, r, grid, fluxes, c, Δt) =
+    launch!(architecture(grid), grid, :xyz, _compute_flux_fraction!, r, grid, fluxes, c, Δt)
 
-compute_flux_fractions!(::ColumnSweep, r, grid, fluxes, c⁰, Δt) =
-    launch!(architecture(grid), grid, :xy, _sweep_column_flux_fractions!, r, grid, fluxes, c⁰, Δt)
+compute_flux_fractions!(::ColumnSweep, r, grid, fluxes, c, Δt) =
+    launch!(architecture(grid), grid, :xy, _sweep_column_flux_fractions!, r, grid, fluxes, c, Δt)
 
 """
 $(TYPEDSIGNATURES)
 
-Refresh a flux-limited `scheme` (see [`FluxLimiter`](@ref)) for the coming update `c⁰ - Δt * div_Uc(c)`
-of a tracer: cache the bounded face fluxes of `c` and compute the fraction of each cell's outgoing fluxes
-the update applies. `c` is the field the fluxes are reconstructed from, `c⁰` the state the update adds the
-tendency to (`c` itself for a forward Euler update, the step-start tracer for a stage of a
-`SplitRungeKuttaTimeStepper`), `U` the velocities the fluxes transport with, and `ρ` the density weighting
-the fluxes, which `div_Uc` takes as `1`. `c⁰` is measured in the units of `ρ * c`.
+Refresh a flux-limited `scheme` (see [`FluxLimiter`](@ref)) for the coming forward Euler update
+`c - Δt * div_Uc(c)` of a tracer: cache the bounded face fluxes of `c` and compute the fraction of each
+cell's outgoing fluxes the update applies. `U` are the velocities the fluxes transport with and `ρ` the
+density weighting the fluxes, which `div_Uc` takes as `1`.
 
 A no-op for every other scheme.
 """
-update_flux_limiter!(scheme, grid, c, c⁰, U, Δt, ρ=1) = nothing
+update_flux_limiter!(scheme, grid, c, U, Δt, ρ=1) = nothing
 
-function update_flux_limiter!(scheme::FluxLimitedWENO, grid, c, c⁰, U, Δt, ρ=1)
+function update_flux_limiter!(scheme::FluxLimitedWENO, grid, c, U, Δt, ρ=1)
     limiter = scheme.bounds.flux_limiter
     fluxes = limiter.fluxes
     r = limiter.fraction
     parameters = face_flux_kernel_parameters(grid)
     launch!(architecture(grid), grid, parameters, _compute_bounded_face_fluxes!, fluxes, grid, scheme, ρ, U, c)
-    compute_flux_fractions!(limiter.credit, r, grid, fluxes, c⁰, Δt)
+    compute_flux_fractions!(limiter.credit, r, grid, fluxes, c, Δt)
     fill_halo_regions!(r)
     return nothing
 end
@@ -257,21 +253,12 @@ for instance with drift velocities or advective forcing.
 """
 tracer_transport_velocities(model, ::Val{name}) where name = model.velocities
 
-# The state the coming update adds the tendency to: between the stages of a `SplitRungeKuttaTimeStepper`
-# the step-start fields, which the stepper caches before its first stage; otherwise the current tracer.
-# (`clock.stage` is the stage that just finished.)
-stage_start_tracer(timestepper, clock, c, name) = c
-
-stage_start_tracer(timestepper::SplitRungeKuttaTimeStepper, clock, c, name) =
-    clock.stage < timestepper.Nstages ? timestepper.Ψ⁻[name] : c
-
 update_flux_limiter!(scheme, model, val_name) = nothing
 
-# `adaptive_advection_timestep` is the Δt of the coming stage.
+# `adaptive_advection_timestep` is the Δt of the coming stage, which the limiter takes as a forward Euler update.
 function update_flux_limiter!(scheme::FluxLimitedWENO, model, val_name::Val{name}) where name
     c = model.tracers[name]
-    c⁰ = stage_start_tracer(model.timestepper, model.clock, c, name)
     U = tracer_transport_velocities(model, val_name)
     Δt = adaptive_advection_timestep(model.timestepper, model.clock)
-    return update_flux_limiter!(scheme, model.grid, c, c⁰, U, Δt)
+    return update_flux_limiter!(scheme, model.grid, c, U, Δt)
 end

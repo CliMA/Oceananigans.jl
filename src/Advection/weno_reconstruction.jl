@@ -54,11 +54,9 @@ Keyword arguments
                  Default: `nothing`, for the `BoundsPreservation` default `5//18`.
 - `flux_limiter` (experimental): With a tuple `bounds`, whether to also scale each cell's outgoing fluxes by
                                  the fraction of them the coming update can afford, so that the tracer stays
-                                 non-negative for any time step and for the stages of a
-                                 `SplitRungeKuttaTimeStepper`, which update the step-start state with fluxes
-                                 built from a later stage. `true` for the default [`FluxLimiter`](@ref), or a
-                                 `FluxLimiter` such as `FluxLimiter(credit=ColumnSweep())`, which a vertical
-                                 Courant number above one needs. Requires a lower bound of `0`.
+                                 non-negative for any time step. `true` for the default [`FluxLimiter`](@ref),
+                                 or a `FluxLimiter` such as `FluxLimiter(credit=ColumnSweep())`, which a
+                                 vertical Courant number above one needs. Requires a lower bound of `0`.
                                  Default: `nothing`, for none.
 - `minimum_buffer_upwind_order`: The minimum upwind order for buffer schemes. When the buffer
                                  scheme order reaches this value, subsequent buffers use

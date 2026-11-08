@@ -1,7 +1,6 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Oceananigans.Advection: div_Uc, materialize_advection, update_advection!, update_flux_limiter!, bounds_preserving_limiter
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: PrescribedVelocityFields
 using Oceananigans.Operators: Vᶜᶜᶜ
 using Random
 
@@ -29,7 +28,7 @@ function advect_forward_euler!(grid, scheme, c, U, N, steps, courant_number)
 
     for step in 1:steps
         update_advection!(scheme, (; grid), c)
-        update_flux_limiter!(scheme, grid, c, c, U, Δt) # a no-op without the flux limiter
+        update_flux_limiter!(scheme, grid, c, U, Δt) # a no-op without the flux limiter
         for k in 1:N, j in 1:N, i in 1:N
             @inbounds tendency[i, j, k] = - div_Uc(i, j, k, grid, scheme, U, c)
         end
@@ -152,97 +151,44 @@ end
         @test deprecated.bounds.maximum_cfl === 0.25
     end
 
-    # A pulse falling at a vertical Courant number above one: the single pass credits no incoming flux,
-    # so it caps the transport at one cell per update and withholds most of the pulse; the column sweep
-    # credits the cell above and lets the pulse fall. Both stay non-negative and conserve the tracer.
-    @testset "Column sweep at vertical Courant number 1.2" begin
-        Nz = 160
-        grid = RectilinearGrid(CPU(), size=Nz, z=(0, Nz), topology=(Flat, Flat, Periodic), halo=4)
-        pulse(z) = exp(-((z - 110.5) / 4)^2)
-        courant_number = 1.2
-        steps = 60
-        shift = round(Int, courant_number * steps)
+    # In a uniform column falling at a vertical Courant number ν > 1 under forward Euler, the single pass
+    # credits no incoming flux and limits every cell with outflow to r = 1/ν, withholding tracer that the
+    # inflow from above replaces; the column sweep credits that inflow and recovers the exact fractions,
+    # 1/ν at the top cell, which has no inflow, and 1 elsewhere. Either way the update stays non-negative
+    # and conserves the tracer.
+    @testset "Column sweep fractions at vertical Courant number 1.5" begin
+        Nz = 16
+        grid = RectilinearGrid(CPU(), size=Nz, z=(0, Nz), topology=(Flat, Flat, Bounded), halo=4)
+        ν = 1.5
 
-        function fall_with_split_rk3(flux_limiter)
-            scheme = materialize_advection(WENO(; order=5, bounds=(0, 1), flux_limiter), grid)
+        function fractions_and_tendency(flux_limiter)
+            scheme = materialize_advection(WENO(; order=5, bounds=(0, 4), flux_limiter), grid)
             c = CenterField(grid)
-            set!(c, pulse)
-            parent(c) ./= sum(interior(c))
-            tracer_content = sum(interior(c))
+            set!(c, 1)
+            fill_halo_regions!(c)
             U = (u = XFaceField(grid), v = YFaceField(grid), w = ZFaceField(grid))
-            set!(U.w, -courant_number)
+            set!(U.w, -ν)
+            interior(U.w)[1, 1, 1] = 0    # impenetrable bottom
+            interior(U.w)[1, 1, Nz+1] = 0 # impenetrable top
             fill_halo_regions!(U.w)
-            c⁰ = CenterField(grid)
-            tendency = CenterField(grid)
-            cᵐⁱⁿ = 0.0
-
-            for step in 1:steps
-                parent(c⁰) .= parent(c)
-                for β in (3, 2, 1) # Wicker–Skamarock stages from c⁰, with fluxes built from the previous stage
-                    Δτ = 1 / β
-                    fill_halo_regions!(c)
-                    update_advection!(scheme, (; grid), c)
-                    update_flux_limiter!(scheme, grid, c, c⁰, U, Δτ)
-                    for k in 1:Nz
-                        @inbounds tendency[1, 1, k] = - div_Uc(1, 1, k, grid, scheme, U, c)
-                    end
-                    interior(c) .= interior(c⁰) .+ Δτ .* interior(tendency)
-                    cᵐⁱⁿ = min(cᵐⁱⁿ, minimum(interior(c)))
-                end
-            end
-
-            return c, cᵐⁱⁿ, sum(interior(c)) - tracer_content
+            update_advection!(scheme, (; grid), c)
+            update_flux_limiter!(scheme, grid, c, U, 1)
+            r = copy(interior(scheme.bounds.flux_limiter.fraction)[1, 1, :])
+            tendency = [-div_Uc(1, 1, k, grid, scheme, U, c) for k in 1:Nz]
+            return r, tendency
         end
 
-        exact = CenterField(grid)
-        set!(exact, pulse)
-        parent(exact) ./= sum(interior(exact))
-        analytic = circshift(interior(exact)[1, 1, :], -shift)
+        r, tendency = fractions_and_tendency(true)
+        @test all(r[2:Nz] .≈ 1 / ν) # every cell with outflow is limited by its content alone
+        @test r[1] == 1              # the bottom cell has no outflow
+        @test minimum(1 .+ tendency) ≥ -1e-12
+        @test abs(sum(tendency)) < 1e-12
 
-        c, cᵐⁱⁿ, drift = fall_with_split_rk3(true)
-        single_pass_error = sum(abs.(interior(c)[1, 1, :] .- analytic))
-        @test cᵐⁱⁿ ≥ -1e-12
-        @test abs(drift) < 1e-12
-
-        c, cᵐⁱⁿ, drift = fall_with_split_rk3(FluxLimiter(credit=ColumnSweep()))
-        column_sweep_error = sum(abs.(interior(c)[1, 1, :] .- analytic))
-        @test cᵐⁱⁿ ≥ -1e-12
-        @test abs(drift) < 1e-12
-
-        @test single_pass_error > 1.5    # the pulse is held back: no overlap with where it should be
-        @test column_sweep_error < 0.5   # the pulse falls, with the scheme's own error
-    end
-
-    # The stages of a split Runge-Kutta step update the step-start state with fluxes built from a later
-    # stage, so the rescaling alone does not keep the tracer non-negative even at small Courant numbers.
-    @testset "Flux limiter with SplitRungeKutta3" begin
-        for arch in archs
-            grid = RectilinearGrid(arch, size=(N, N, N), x=(0, 1), y=(0, 1), z=(-1, 0),
-                                   topology=(Periodic, Periodic, Bounded), halo=(6, 6, 6))
-            sharp_cube(x, y, z) = (0.25 < x < 0.6) && (0.25 < y < 0.6) && (-0.75 < z < -0.4) ? 1.0 : 0.0
-
-            function advect_with_split_rk3(tracer_advection)
-                velocities = PrescribedVelocityFields(u=1, v=0.7)
-                model = HydrostaticFreeSurfaceModel(grid; velocities, tracers=:c, buoyancy=nothing,
-                                                    tracer_advection, timestepper=:SplitRungeKutta3)
-                set!(model, c=sharp_cube)
-                tracer_content = sum(interior(model.tracers.c))
-                Δt = 0.6 / N / 1.7 # Courant number 0.6
-                cᵐⁱⁿ = zero(eltype(grid))
-                for step in 1:30
-                    time_step!(model, Δt)
-                    cᵐⁱⁿ = min(cᵐⁱⁿ, minimum(interior(model.tracers.c)))
-                end
-                return cᵐⁱⁿ, sum(interior(model.tracers.c)) - tracer_content
-            end
-
-            cᵐⁱⁿ, drift = advect_with_split_rk3(WENO(order=5, bounds=(0, 1)))
-            @test cᵐⁱⁿ < -1e-8
-
-            cᵐⁱⁿ, drift = advect_with_split_rk3(WENO(order=5, bounds=(0, 1), flux_limiter=true))
-            @test cᵐⁱⁿ ≥ -1e-12
-            @test abs(drift) < 1e-10
-        end
+        r, tendency = fractions_and_tendency(FluxLimiter(credit=ColumnSweep()))
+        @test r[Nz] ≈ 1 / ν          # the top cell has no inflow to credit
+        @test all(r[1:Nz-1] .≈ 1)    # every other cell's inflow replaces what it loses
+        @test minimum(1 .+ tendency) ≥ -1e-12
+        @test abs(sum(tendency)) < 1e-12
     end
 
     @testset "Limiter is finite when the undershoot equals the regularizer" begin
