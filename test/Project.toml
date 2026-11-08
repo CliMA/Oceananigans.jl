@@ -11,7 +11,6 @@ Distances = "b4f34e82-e78d-54a5-968a-f98e89d6e8f7"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
 ExplicitImports = "7d51a73a-1435-4ff3-83d9-f097790105c7"
-FFTA = "b86e33f2-c0db-4aa1-a6e0-ab43e668529e"
 FFTW = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
 GPUArraysCore = "46192b85-c4d5-4398-a991-12ede77f4527"
 Glob = "c27321d9-0574-5035-807b-f59d2c89b15c"
@@ -19,7 +18,6 @@ JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
 KernelAbstractions = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
-Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 MPI = "da04e1cc-30fd-572f-bb4f-1f8673147195"
 MPIPreferences = "3da0fdf6-3ccc-4f1b-acd9-58baa6c99267"
 Metal = "dde4c033-4e86-420c-a63e-0dd931031962"
@@ -46,8 +44,6 @@ Zarr = "0a941bbe-ad1d-11e8-39d9-ab76183a1d99"
 oneAPI = "8f75cd03-7ff8-4ecb-9b8f-daf728133b1b"
 
 [sources]
-FFTA = {url = "https://github.com/JuliaMath/FFTA.jl", rev = "7192ced0708f014a9fb80ae764d317aa4c7fe70e"}
-Makie = {url = "https://github.com/MakieOrg/Makie.jl", rev = "master", subdir = "Makie"}
 Oceananigans = {path = ".."}
 ParallelTestRunner = {rev = "kill-workers-with-manager", url = "https://github.com/JuliaTesting/ParallelTestRunner.jl.git"}
 TiffImages = {url = "https://github.com/navidcy/TiffImages.jl", rev = "patch-1"}
