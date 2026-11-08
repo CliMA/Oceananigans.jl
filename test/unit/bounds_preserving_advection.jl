@@ -5,11 +5,11 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: PrescribedVelocityFields
 using Oceananigans.Operators: Vᶜᶜᶜ
 using Random
 
-function periodic_advection_setup(order, bounds, N; maximum_courant_number=5//18, flux_limiter=false)
+function periodic_advection_setup(order, bounds, N; maximum_cfl=5//18, flux_limiter=false)
     grid = RectilinearGrid(CPU(), size=(N, N, N), x=(0, 1), y=(0, 1), z=(0, 1),
                            topology=(Periodic, Periodic, Periodic), halo=(6, 6, 6))
 
-    scheme = materialize_advection(WENO(; order, bounds, maximum_courant_number, flux_limiter), grid)
+    scheme = materialize_advection(WENO(; order, bounds, maximum_cfl, flux_limiter), grid)
 
     return grid, scheme, CenterField(grid), (u = XFaceField(grid), v = YFaceField(grid), w = ZFaceField(grid))
 end
@@ -90,11 +90,11 @@ end
             @test cᵐⁱⁿ < -1e-6
         end
 
-        @testset "maximum_courant_number" begin
+        @testset "maximum_cfl" begin
             sharp_cube(x, y, z) = (0.25 < x < 0.6) && (0.25 < y < 0.6) && (0.25 < z < 0.6) ? 1.0 : 0.0
             courant_number = 9//20
 
-            grid, scheme, c, U = periodic_advection_setup(5, (0, 1), N; maximum_courant_number=courant_number)
+            grid, scheme, c, U = periodic_advection_setup(5, (0, 1), N; maximum_cfl=courant_number)
             set!(c, sharp_cube)
             cᵐⁱⁿ, cᵐᵃˣ = advect_forward_euler!(grid, scheme, c, U, N, 100, courant_number)
 
@@ -127,10 +127,29 @@ end
     end
 
     @testset "Flux limiter requires a lower bound of zero" begin
-        @test_throws ArgumentError WENO(order=5, flux_limiter=true)
+        @test_throws ArgumentError WENO(order=5, flux_limiter=true) # no bounds
         @test_throws ArgumentError WENO(order=5, bounds=(-1, 1), flux_limiter=true)
         @test_throws ArgumentError WENO(order=5, bounds=(-1, 1), flux_limiter=FluxLimiter(credit=ColumnSweep()))
         @test_throws ArgumentError WENO(order=5, bounds=(0, 1), flux_limiter=:column_sweep)
+    end
+
+    @testset "Grouped bounds constructor" begin
+        grouped = WENO(order=5, bounds=BoundsPreservation(0, 1; maximum_cfl=1//4, flux_limiter=FluxLimiter(credit=ColumnSweep())))
+        flat = WENO(order=5, bounds=(0, 1), maximum_cfl=1//4, flux_limiter=FluxLimiter(credit=ColumnSweep()))
+        @test grouped.bounds == flat.bounds
+        @test grouped.bounds.maximum_cfl === 0.25
+        @test grouped.bounds.flux_limiter.credit isa ColumnSweep
+        @test grouped.buffer_scheme.bounds == flat.buffer_scheme.bounds
+        @test WENO(order=5, bounds=BoundsPreservation(0, 1; flux_limiter=true)).bounds == WENO(order=5, bounds=(0, 1), flux_limiter=true).bounds
+        @test WENO(Float32; order=5, bounds=BoundsPreservation(0, 1)).bounds.maximum_value isa Float32
+
+        @test_throws ArgumentError WENO(order=5, bounds=BoundsPreservation(0, 1), flux_limiter=true)
+        @test_throws ArgumentError WENO(order=5, bounds=BoundsPreservation(0, 1), maximum_cfl=1//4)
+        @test_throws ArgumentError BoundsPreservation(1, 0)
+        @test_throws ArgumentError BoundsPreservation(0, 1; maximum_cfl=1//2)
+
+        deprecated = @test_logs (:warn, r"maximum_courant_number") match_mode=:any WENO(order=5, bounds=(0, 1), maximum_courant_number=1//4)
+        @test deprecated.bounds.maximum_cfl === 0.25
     end
 
     # A pulse falling at a vertical Courant number above one: the single pass credits no incoming flux,

@@ -5,35 +5,65 @@ using Oceananigans.Utils: launch!
 using KernelAbstractions: @index, @kernel
 
 """
-    BoundsPreservation(minimum_value, maximum_value, maximum_courant_number, reconstruction_limiter, flux_limiter)
+    BoundsPreservation(minimum_value, maximum_value; maximum_cfl=5//18, flux_limiter=nothing)
 
-The interval a tracer is restricted to, the Courant number ``ω̂₁`` up to which the bound holds, the field
-`reconstruction_limiter` holding the cell-wise rescaling factor ``θ`` of the reconstructions, and the
-`flux_limiter` that additionally limits each cell's outgoing fluxes (a [`FluxLimiter`](@ref), or `nothing`).
-`reconstruction_limiter` and the fields of `flux_limiter` are `nothing` until the scheme is materialized
-on a grid.
+The interval a tracer is restricted to and the options of the limiters that keep it there, for the `bounds` of
+[`WENO`](@ref): the maximum-principle-satisfying rescaling of [Zhang and Shu (2010)](@cite ZhangShu2010), which
+guarantees the interval for a forward Euler or strong-stability-preserving update whose Courant numbers satisfy
+`λˣ + λʸ + λᶻ ≤ maximum_cfl`, and optionally a [`FluxLimiter`](@ref) that limits each cell's outgoing
+fluxes so that the tracer stays non-negative for any time step.
+
+Keyword arguments
+=================
+- `maximum_cfl`: The Courant number `ω̂₁ ∈ (0, 1/2)` up to which the interval is guaranteed. Raising
+                            it admits a larger time step and limits more aggressively. Default: `5//18`.
+- `flux_limiter`: `nothing` or `false` for none, `true` for the default `FluxLimiter()`, or a `FluxLimiter` such
+                  as `FluxLimiter(credit=ColumnSweep())`. Requires `minimum_value == 0`. Default: `nothing`.
+
+The materialized struct also holds the field `reconstruction_limiter` with the cell-wise rescaling factor ``θ``,
+which is `nothing` until the scheme is materialized on a grid, like the fields of `flux_limiter`.
 """
 struct BoundsPreservation{FT, L, F}
     minimum_value :: FT
     maximum_value :: FT
-    maximum_courant_number :: FT
+    maximum_cfl :: FT
     reconstruction_limiter :: L
     flux_limiter :: F
 end
+
+function BoundsPreservation(minimum_value, maximum_value; maximum_cfl=5//18, flux_limiter=nothing)
+    minimum_value < maximum_value || throw(ArgumentError("minimum_value must be below maximum_value, found ($minimum_value, $maximum_value)"))
+    0 < maximum_cfl < 1//2 || throw(ArgumentError("maximum_cfl must lie in (0, 1/2), found $maximum_cfl"))
+
+    flux_limiter isa Union{Bool, Nothing, FluxLimiter} || throw(ArgumentError("flux_limiter must be a Bool, nothing or a FluxLimiter, found $flux_limiter"))
+    flux_limiter = flux_limiter === true ? FluxLimiter() : flux_limiter === false ? nothing : flux_limiter
+    if !isnothing(flux_limiter)
+        minimum_value == 0 || throw(ArgumentError("a flux_limiter keeps the tracer non-negative, so minimum_value must be 0, found $minimum_value"))
+    end
+
+    minimum_value, maximum_value, maximum_cfl = promote(minimum_value, maximum_value, maximum_cfl)
+    return BoundsPreservation(minimum_value, maximum_value, maximum_cfl, nothing, flux_limiter)
+end
+
+# The bounds with their numbers converted to the float type of a scheme
+with_float_type(FT, ::Nothing) = nothing
+with_float_type(FT, bounds::BoundsPreservation) =
+    BoundsPreservation(convert(FT, bounds.minimum_value), convert(FT, bounds.maximum_value),
+                       convert(FT, bounds.maximum_cfl), bounds.reconstruction_limiter, bounds.flux_limiter)
 
 Base.show(io::IO, bounds::BoundsPreservation) = print(io, "(", bounds.minimum_value, ", ", bounds.maximum_value, ")")
 
 Adapt.adapt_structure(to, bounds::BoundsPreservation) =
     BoundsPreservation(Adapt.adapt(to, bounds.minimum_value),
                        Adapt.adapt(to, bounds.maximum_value),
-                       Adapt.adapt(to, bounds.maximum_courant_number),
+                       Adapt.adapt(to, bounds.maximum_cfl),
                        Adapt.adapt(to, bounds.reconstruction_limiter),
                        Adapt.adapt(to, bounds.flux_limiter))
 
 Architectures.on_architecture(to, bounds::BoundsPreservation) =
     BoundsPreservation(on_architecture(to, bounds.minimum_value),
                        on_architecture(to, bounds.maximum_value),
-                       on_architecture(to, bounds.maximum_courant_number),
+                       on_architecture(to, bounds.maximum_cfl),
                        on_architecture(to, bounds.reconstruction_limiter),
                        on_architecture(to, bounds.flux_limiter))
 
@@ -88,7 +118,7 @@ end
 
     cᵐⁱⁿ = scheme.bounds.minimum_value
     cᵐᵃˣ = scheme.bounds.maximum_value
-    ω̂₁ = scheme.bounds.maximum_courant_number
+    ω̂₁ = scheme.bounds.maximum_cfl
 
     cᵢ = @inbounds c[i, j, k]
 

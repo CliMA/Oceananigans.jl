@@ -42,7 +42,7 @@ end
 # Only the outermost scheme launches `div_Uc`, so only it carries a limiter field.
 materialize_bounds(bounds, grid) = bounds
 materialize_bounds(bounds::BoundsPreservation, grid) =
-    BoundsPreservation(bounds.minimum_value, bounds.maximum_value, bounds.maximum_courant_number,
+    BoundsPreservation(bounds.minimum_value, bounds.maximum_value, bounds.maximum_cfl,
                        CenterField(grid), materialize_flux_limiter(bounds.flux_limiter, grid))
 
 materialize_flux_limiter(::Nothing, grid) = nothing

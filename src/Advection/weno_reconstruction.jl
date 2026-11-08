@@ -22,9 +22,10 @@ end
          buffer_scheme = DecreasingOrderAdvectionScheme(),
          time_discretization = ExplicitTimeDiscretization(),
          bounds = nothing,
-         maximum_courant_number = 5//18,
-         flux_limiter = false,
-         minimum_buffer_upwind_order = 3)
+         maximum_cfl = nothing,
+         flux_limiter = nothing,
+         minimum_buffer_upwind_order = 3,
+         maximum_courant_number = nothing)
 
 Construct a weighted essentially non-oscillatory advection scheme of order `order` with precision `FT`.
 
@@ -39,27 +40,31 @@ Keyword arguments
                         Default: `Nothing` (deferred; a architecture-dependent default is assigned in
                         `materialize_advection`)
 - `order`: The order of the WENO advection scheme. Default: 5.
-- `bounds` (experimental): A tuple `(cᵐⁱⁿ, cᵐᵃˣ)` switching on the maximum-principle-satisfying limiter of
+- `bounds` (experimental): A [`BoundsPreservation`](@ref), or a tuple `(cᵐⁱⁿ, cᵐᵃˣ)` as shorthand for one with
+                           the options below, switching on the maximum-principle-satisfying limiter of
                            [Zhang and Shu (2010)](@cite ZhangShu2010), which rescales the reconstruction of
                            every cell towards the cell mean so that the advective update stays within `bounds`.
                            One rescaling factor is shared by the three directions, so the bound is
                            three-dimensional. It is guaranteed
                            for a forward Euler or strong-stability-preserving update whose Courant numbers
-                           satisfy `λˣ + λʸ + λᶻ ≤ maximum_courant_number`.
+                           satisfy `λˣ + λʸ + λᶻ ≤ maximum_cfl`.
                            Default: `nothing`, which does not use a bounds-preserving scheme.
-- `maximum_courant_number`: The Courant number `ω̂₁ ∈ (0, 1/2)` up to which `bounds` is guaranteed. Raising it
-                            admits a larger time step and limits more aggressively. Default: `5//18`.
-- `flux_limiter` (experimental): Whether to also scale each cell's outgoing fluxes by the fraction of them the
-                                 coming update can afford, so that the tracer stays non-negative for any time
-                                 step and for the stages of a `SplitRungeKuttaTimeStepper`, which update the
-                                 step-start state with fluxes built from a later stage. `true` for the default
-                                 [`FluxLimiter`](@ref), or a `FluxLimiter` such as
-                                 `FluxLimiter(credit=ColumnSweep())`, which a vertical Courant number above one
-                                 needs. Requires `bounds` with a lower bound of `0`. Default: `false`.
+- `maximum_cfl`: With a tuple `bounds`, the Courant number `ω̂₁ ∈ (0, 1/2)` up to which `bounds` is guaranteed.
+                 Raising it admits a larger time step and limits more aggressively.
+                 Default: `nothing`, for the `BoundsPreservation` default `5//18`.
+- `flux_limiter` (experimental): With a tuple `bounds`, whether to also scale each cell's outgoing fluxes by
+                                 the fraction of them the coming update can afford, so that the tracer stays
+                                 non-negative for any time step and for the stages of a
+                                 `SplitRungeKuttaTimeStepper`, which update the step-start state with fluxes
+                                 built from a later stage. `true` for the default [`FluxLimiter`](@ref), or a
+                                 `FluxLimiter` such as `FluxLimiter(credit=ColumnSweep())`, which a vertical
+                                 Courant number above one needs. Requires a lower bound of `0`.
+                                 Default: `nothing`, for none.
 - `minimum_buffer_upwind_order`: The minimum upwind order for buffer schemes. When the buffer
                                  scheme order reaches this value, subsequent buffers use
                                  `Centered(order=2)` instead of continuing to decrease the
                                  upwind order. Default: 3.
+- `maximum_courant_number`: Deprecated name of `maximum_cfl`.
 
 Examples
 ========
@@ -121,6 +126,16 @@ WENO{3, Float64, Nothing}(order=5, bounds=(0.0, 1.0), flux_limiter=FluxLimiter()
 └── advecting_velocity_scheme: Centered(order=2)
 ```
 
+The same, grouping the interval with its options in a `BoundsPreservation`:
+
+```jldoctest weno
+julia> WENO(order=5, bounds=BoundsPreservation(0, 1; maximum_cfl=1//4, flux_limiter=FluxLimiter(credit=ColumnSweep())))
+WENO{3, Float64, Nothing}(order=5, bounds=(0.0, 1.0), flux_limiter=FluxLimiter(credit=ColumnSweep()))
+├── buffer_scheme: WENO{2, Float64, Nothing}(order=3, bounds=(0.0, 1.0), flux_limiter=FluxLimiter(credit=ColumnSweep()))
+│   └── buffer_scheme: Centered(order=2)
+└── advecting_velocity_scheme: Centered(order=2)
+```
+
 To build a WENO scheme that uses approximate division on a GPU to execute faster:
 ```jldoctest weno
 julia> WENO(;weight_computation=Oceananigans.Utils.BackendOptimizedDivision)
@@ -141,22 +156,29 @@ function WENO(FT::DataType=Oceananigans.defaults.FloatType;
               buffer_scheme = DecreasingOrderAdvectionScheme(),
               time_discretization = ExplicitTimeDiscretization(),
               bounds = nothing,
-              maximum_courant_number = 5//18,
-              flux_limiter = false,
-              minimum_buffer_upwind_order = 3)
+              maximum_cfl = nothing,
+              flux_limiter = nothing,
+              minimum_buffer_upwind_order = 3,
+              maximum_courant_number = nothing)
 
     mod(order, 2) == 0 && throw(ArgumentError("WENO reconstruction scheme is defined only for odd orders"))
 
-    isnothing(bounds) || bounds isa NTuple{2} || throw(ArgumentError("bounds must be nothing or a tuple of two values"))
-    0 < maximum_courant_number < 1//2 || throw(ArgumentError("maximum_courant_number must lie in (0, 1/2), found $maximum_courant_number"))
+    if !isnothing(maximum_courant_number)
+        @warn "The WENO keyword argument `maximum_courant_number` is deprecated, use `maximum_cfl`" maxlog=1
+        maximum_cfl = something(maximum_cfl, maximum_courant_number)
+    end
 
-    # `nothing` arrives from the recursive call that builds the buffer scheme
-    flux_limiter isa Union{Bool, Nothing, FluxLimiter} || throw(ArgumentError("flux_limiter must be a Bool or a FluxLimiter, found $flux_limiter"))
-    flux_limiter = flux_limiter === true ? FluxLimiter() : flux_limiter === false ? nothing : flux_limiter
-
-    if !isnothing(flux_limiter)
-        isnothing(bounds) && throw(ArgumentError("a flux_limiter requires bounds"))
-        bounds[1] == 0 || throw(ArgumentError("a flux_limiter keeps the tracer non-negative, so the lower bound must be 0, found $(bounds[1])"))
+    # A tuple is shorthand for a `BoundsPreservation` with the flat keyword arguments as options
+    if bounds isa NTuple{2}
+        maximum_cfl = something(maximum_cfl, 5//18)
+        bounds = BoundsPreservation(bounds...; maximum_cfl, flux_limiter)
+    elseif bounds isa BoundsPreservation
+        isnothing(maximum_cfl) && isnothing(flux_limiter) ||
+            throw(ArgumentError("maximum_cfl and flux_limiter are options of the BoundsPreservation passed as bounds"))
+    elseif !isnothing(bounds)
+        throw(ArgumentError("bounds must be nothing, a tuple of two values or a BoundsPreservation"))
+    elseif !(isnothing(flux_limiter) || flux_limiter === false)
+        throw(ArgumentError("a flux_limiter requires bounds"))
     end
 
     if order < 3
@@ -170,13 +192,12 @@ function WENO(FT::DataType=Oceananigans.defaults.FloatType;
                 # At minimum order, switch to Centered scheme
                 buffer_scheme = Centered(FT; order=2)
             else
-                buffer_scheme = WENO(FT; order=order-2, bounds, maximum_courant_number, flux_limiter, minimum_buffer_upwind_order, weight_computation)
+                buffer_scheme = WENO(FT; order=order-2, bounds, minimum_buffer_upwind_order, weight_computation)
             end
         end
 
         N = Int((order + 1) ÷ 2)
-        preserved_bounds = isnothing(bounds) ? nothing :
-            BoundsPreservation(convert(FT, bounds[1]), convert(FT, bounds[2]), convert(FT, maximum_courant_number), nothing, flux_limiter)
+        preserved_bounds = with_float_type(FT, bounds)
 
         return WENO{N, FT, weight_computation}(preserved_bounds, buffer_scheme, advecting_velocity_scheme, time_discretization)
     end
