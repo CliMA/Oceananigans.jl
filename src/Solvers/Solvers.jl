@@ -1,7 +1,7 @@
 module Solvers
 
 export
-    BatchedTridiagonalSolver, solve!,
+    BatchedTridiagonalSolver, BatchedPentadiagonalSolver, solve!, factorize!, solve_factorized!,
     FFTBasedPoissonSolver,
     FourierTridiagonalPoissonSolver,
     ConjugateGradientSolver,
@@ -11,7 +11,7 @@ using DocStringExtensions: TYPEDSIGNATURES
 using FFTW: FFTW
 using KernelAbstractions: @kernel, @index
 
-using Oceananigans.Architectures: Architectures, CPU, GPU, architecture, on_architecture
+using Oceananigans.Architectures: Architectures, AbstractArchitecture, CPU, GPU, architecture, on_architecture
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields: AbstractField, CenterField, field, topology
 using Oceananigans.Grids: AbstractGrid, BoundaryTopology, Bounded, Flat, Periodic,
@@ -31,6 +31,7 @@ reshaped_size(N, dim) = dim == 1 ? (N, 1, 1) :
                         dim == 3 ? (1, 1, N) : nothing
 
 include("batched_tridiagonal_solver.jl")
+include("batched_pentadiagonal_solver.jl")
 include("conjugate_gradient_solver.jl")
 include("poisson_eigenvalues.jl")
 include("index_permutations.jl")
