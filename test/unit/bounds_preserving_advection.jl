@@ -151,16 +151,16 @@ end
 
     @testset "Flux limiter options" begin
         @test_throws ArgumentError WENO(order=5, flux_limiter=true) # no bounds
-        @test_throws ArgumentError WENO(order=5, bounds=(0, 1), flux_limiter=:column_sweep)
+        @test_throws ArgumentError WENO(order=5, bounds=(0, 1), flux_limiter=:limited)
         @test WENO(order=5, bounds=(-1, 1), flux_limiter=true).bounds.minimum_value == -1
     end
 
     @testset "Grouped bounds constructor" begin
-        grouped = WENO(order=5, bounds=BoundsPreservation(0, 1; maximum_cfl=1//4, flux_limiter=FluxLimiter(credit=ColumnSweep())))
-        flat = WENO(order=5, bounds=(0, 1), maximum_cfl=1//4, flux_limiter=FluxLimiter(credit=ColumnSweep()))
+        grouped = WENO(order=5, bounds=BoundsPreservation(0, 1; maximum_cfl=1//4, flux_limiter=FluxLimiter()))
+        flat = WENO(order=5, bounds=(0, 1), maximum_cfl=1//4, flux_limiter=FluxLimiter())
         @test grouped.bounds == flat.bounds
         @test grouped.bounds.maximum_cfl === 0.25
-        @test grouped.bounds.flux_limiter.credit isa ColumnSweep
+        @test grouped.bounds.flux_limiter isa FluxLimiter
         @test grouped.buffer_scheme.bounds == flat.buffer_scheme.bounds
         @test WENO(order=5, bounds=BoundsPreservation(0, 1; flux_limiter=true)).bounds == WENO(order=5, bounds=(0, 1), flux_limiter=true).bounds
         @test WENO(Float32; order=5, bounds=BoundsPreservation(0, 1)).bounds.maximum_value isa Float32
@@ -174,12 +174,10 @@ end
         @test deprecated.bounds.maximum_cfl === 0.25
     end
 
-    # In a uniform column falling at a vertical Courant number ν > 1 under forward Euler, the single pass
-    # credits no incoming flux and limits every cell with outflow to r = 1/ν, withholding tracer that the
-    # inflow from above replaces; the column sweep credits that inflow and recovers the exact fractions,
-    # 1/ν at the top cell, which has no inflow, and 1 elsewhere. Either way the update stays non-negative
+    # In a uniform column falling at a vertical Courant number ν > 1 under forward Euler, every cell with
+    # outflow is limited to the fraction r = 1/ν its content affords, and the update stays non-negative
     # and conserves the tracer.
-    @testset "Column sweep fractions at vertical Courant number 1.5" begin
+    @testset "Fractions of a uniform column at vertical Courant number 1.5" begin
         Nz = 16
         grid = RectilinearGrid(CPU(), size=Nz, z=(0, Nz), topology=(Flat, Flat, Bounded), halo=4)
         ν = 1.5
@@ -204,12 +202,6 @@ end
         r, tendency = fractions_and_tendency(true)
         @test all(r[2:Nz] .≈ 1 / ν) # every cell with outflow is limited by its content alone
         @test r[1] == 1              # the bottom cell has no outflow
-        @test minimum(1 .+ tendency) ≥ -1e-12
-        @test abs(sum(tendency)) < 1e-12
-
-        r, tendency = fractions_and_tendency(FluxLimiter(credit=ColumnSweep()))
-        @test r[Nz] ≈ 1 / ν          # the top cell has no inflow to credit
-        @test all(r[1:Nz-1] .≈ 1)    # every other cell's inflow replaces what it loses
         @test minimum(1 .+ tendency) ≥ -1e-12
         @test abs(sum(tendency)) < 1e-12
     end

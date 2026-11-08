@@ -53,7 +53,7 @@ function materialize_flux_limiter(limiter::FluxLimiter, grid)
     fill!(outgoing_fraction, 1)
     fill!(incoming_fraction, 1)
     fluxes = (x = XFaceField(grid), y = YFaceField(grid), z = ZFaceField(grid))
-    return FluxLimiter(limiter.credit, outgoing_fraction, incoming_fraction, fluxes)
+    return FluxLimiter(outgoing_fraction, incoming_fraction, fluxes)
 end
 
 materialize_advection(weno::WENO{N, FT, WCT}, grid) where {N, FT, WCT} =

@@ -15,7 +15,7 @@ export
     VectorInvariant, WENOVectorInvariant,
     FluxFormAdvection,
     AdaptiveImplicitVerticalAdvection,
-    BoundsPreservation, FluxLimiter, ColumnSweep,
+    BoundsPreservation, FluxLimiter,
     update_advection!,
     EnergyConserving,
     EnstrophyConserving

@@ -55,9 +55,7 @@ Keyword arguments
 - `flux_limiter` (experimental): With a tuple `bounds`, whether to also limit the fluxes between cells to what
                                  the coming update can afford, so that the tracer stays within `bounds` for any
                                  time step; `maximum_cfl` then only sets how hard the rescaling clips. `true`
-                                 for the default [`FluxLimiter`](@ref), or a `FluxLimiter` such as
-                                 `FluxLimiter(credit=ColumnSweep())`, which a vertical Courant number above
-                                 one needs. Default: `nothing`, for none.
+                                 for the default [`FluxLimiter`](@ref). Default: `nothing`, for none.
 - `minimum_buffer_upwind_order`: The minimum upwind order for buffer schemes. When the buffer
                                  scheme order reaches this value, subsequent buffers use
                                  `Centered(order=2)` instead of continuing to decrease the
@@ -127,9 +125,9 @@ WENO{3, Float64, Nothing}(order=5, bounds=(0.0, 1.0), flux_limiter=FluxLimiter()
 The same, grouping the interval with its options in a `BoundsPreservation`:
 
 ```jldoctest weno
-julia> WENO(order=5, bounds=BoundsPreservation(0, 1; maximum_cfl=1//4, flux_limiter=FluxLimiter(credit=ColumnSweep())))
-WENO{3, Float64, Nothing}(order=5, bounds=(0.0, 1.0), flux_limiter=FluxLimiter(credit=ColumnSweep()))
-├── buffer_scheme: WENO{2, Float64, Nothing}(order=3, bounds=(0.0, 1.0), flux_limiter=FluxLimiter(credit=ColumnSweep()))
+julia> WENO(order=5, bounds=BoundsPreservation(0, 1; maximum_cfl=1//4, flux_limiter=true))
+WENO{3, Float64, Nothing}(order=5, bounds=(0.0, 1.0), flux_limiter=FluxLimiter())
+├── buffer_scheme: WENO{2, Float64, Nothing}(order=3, bounds=(0.0, 1.0), flux_limiter=FluxLimiter())
 │   └── buffer_scheme: Centered(order=2)
 └── advecting_velocity_scheme: Centered(order=2)
 ```

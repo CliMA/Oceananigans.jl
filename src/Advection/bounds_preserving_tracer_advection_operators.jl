@@ -19,8 +19,7 @@ Keyword arguments
                  Raising it admits a larger time step and rescales more aggressively. With a `flux_limiter` the
                  interval is guaranteed for any time step, and `maximum_cfl` only sets how hard the rescaling
                  clips the reconstructions. Default: `5//18`.
-- `flux_limiter`: `nothing` or `false` for none, `true` for the default `FluxLimiter()`, or a `FluxLimiter` such
-                  as `FluxLimiter(credit=ColumnSweep())`. Default: `nothing`.
+- `flux_limiter`: `nothing` or `false` for none, `true` or a [`FluxLimiter`](@ref) for one. Default: `nothing`.
 
 The materialized struct also holds the field `reconstruction_limiter` with the cell-wise rescaling factor ``θ``,
 which is `nothing` until the scheme is materialized on a grid, like the fields of `flux_limiter`.

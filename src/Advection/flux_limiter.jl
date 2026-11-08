@@ -44,65 +44,48 @@ using Oceananigans.Utils: KernelParameters
 # components G̃(x)ᵢ ≤ G(x)ᵢ ≤ G(x')ᵢ and for the others xᵢ ≤ G(x)ᵢ ≤ G(x')ᵢ: x' ≤ G(x') again. Every such
 # process therefore ends with x ≤ G(x), that is, with a tracer in [m, M], for any time step and with no
 # Courant condition: the guarantee needs only a state c in [m, M] (so that the rescaled face values are) and
-# divergence-free transport. The limiters below are
-# two instances: `FluxLimiter()` credits nothing, `FluxLimiter(credit=ColumnSweep())` credits the vertical
-# neighbors in Gauss–Seidel order along each column.
+# divergence-free transport. The limiter below is the simplest instance, one pass crediting nothing, so it
+# withholds more than the least fixed point of G would where a cell's outgoing fluxes exceed its content
+# but its incoming fluxes would replace them; crediting them (Jacobi passes, or a Gauss–Seidel sweep along
+# each column) is a possible extension.
 
 """
-    ColumnSweep()
-
-The `credit` of a [`FluxLimiter`](@ref) that sweeps each column downward then upward, crediting a cell's
-vertical fluxes at the factors of its vertical neighbors as they stand (Gauss–Seidel), and nothing
-horizontally. Two sweeps give the exact fractions of any vertical Courant number, which the single pass
-of `FluxLimiter()` caps at one.
-"""
-struct ColumnSweep end
-
-"""
-    FluxLimiter(; credit=nothing)
+    FluxLimiter()
 
 The `flux_limiter` of a [`BoundsPreservation`](@ref), which keeps the tracer within the bounds `(cᵐⁱⁿ, cᵐᵃˣ)`
 for any time step by limiting the fluxes between cells (Zalesak, 1979). Each cell carries two fractions: the
 fraction ``r⁻ = min(1, available / removed)`` of its outgoing fluxes the coming forward Euler update can
 afford, where `removed` is the tracer above `cᵐⁱⁿ` the unlimited outgoing fluxes take out of the cell and
-`available` its content above `cᵐⁱⁿ` plus the incoming fluxes `credit` admits, and likewise the
-fraction ``r⁺ = min(1, room / supplied)`` of its incoming fluxes that fit below `cᵐᵃˣ`. A face flux is scaled
-by the smaller of the outgoing fraction of the cell it leaves and the incoming fraction of the cell it enters.
-`credit` is `nothing` by default (one pass over the grid), or [`ColumnSweep`](@ref) for crediting the vertical
-fluxes, which a vertical Courant number above one needs.
+`available` its content above `cᵐⁱⁿ`, and likewise the fraction ``r⁺ = min(1, room / supplied)`` of its
+incoming fluxes that fit below `cᵐᵃˣ`. A face flux is scaled by the smaller of the outgoing fraction of the
+cell it leaves and the incoming fraction of the cell it enters.
 
 The fractions and the face fluxes they are built from are computed by [`update_flux_limiter!`](@ref) before
 the fluxes are evaluated; the fields are `nothing` until the scheme is materialized on a grid.
 """
-struct FluxLimiter{C, R, F}
-    credit :: C             # how fluxes are credited: `nothing` or `ColumnSweep()`
+struct FluxLimiter{R, F}
     outgoing_fraction :: R  # r⁻, the fraction of each cell's outgoing fluxes its lower bound affords
     incoming_fraction :: R  # r⁺, the fraction of each cell's incoming fluxes its upper bound affords
     fluxes :: F             # the bounded face fluxes (x, y, z) of c - cᵐⁱⁿ the fractions are built from
 end
 
-FluxLimiter(; credit=nothing) = FluxLimiter(credit, nothing, nothing, nothing)
+FluxLimiter() = FluxLimiter(nothing, nothing, nothing)
 
 Adapt.adapt_structure(to, limiter::FluxLimiter) =
-    FluxLimiter(Adapt.adapt(to, limiter.credit),
-                Adapt.adapt(to, limiter.outgoing_fraction),
+    FluxLimiter(Adapt.adapt(to, limiter.outgoing_fraction),
                 Adapt.adapt(to, limiter.incoming_fraction),
                 Adapt.adapt(to, limiter.fluxes))
 
 Architectures.on_architecture(to, limiter::FluxLimiter) =
-    FluxLimiter(on_architecture(to, limiter.credit),
-                on_architecture(to, limiter.outgoing_fraction),
+    FluxLimiter(on_architecture(to, limiter.outgoing_fraction),
                 on_architecture(to, limiter.incoming_fraction),
                 on_architecture(to, limiter.fluxes))
 
 const FluxLimitedBounds = BoundsPreservation{<:Any, <:Any, <:FluxLimiter}
 const FluxLimitedWENO = WENO{<:Any, <:Any, <:Any, <:Any, <:FluxLimitedBounds}
 
-Base.summary(::FluxLimiter{Nothing}) = "FluxLimiter()"
-Base.summary(limiter::FluxLimiter) = string("FluxLimiter(credit=", nameof(typeof(limiter.credit)), "())")
-
 Base.show(io::IO, bounds::FluxLimitedBounds) =
-    print(io, "(", bounds.minimum_value, ", ", bounds.maximum_value, "), flux_limiter=", summary(bounds.flux_limiter))
+    print(io, "(", bounds.minimum_value, ", ", bounds.maximum_value, "), flux_limiter=FluxLimiter()")
 
 #####
 ##### Cached face fluxes of c - cᵐⁱⁿ
@@ -225,17 +208,6 @@ end
     return Δt * V⁻¹ᶜᶜᶜ(i, j, k, grid) * incoming
 end
 
-# The vertical fluxes of cell (i, j, k) through its lower face (k) and upper face (k+1), per unit volume
-# over Δt, each scaled by its factor `λ⁻` or `λ⁺`: those bringing tracer in, and those taking it out
-@inline incoming_vertical_tracer(i, j, k, grid::ZFlatGrid, fluxes, Δt, λ⁻, λ⁺) = zero(grid)
-@inline outgoing_vertical_tracer(i, j, k, grid::ZFlatGrid, fluxes, Δt, λ⁻, λ⁺) = zero(grid)
-
-@inline incoming_vertical_tracer(i, j, k, grid, fluxes, Δt, λ⁻, λ⁺) =
-    @inbounds Δt * V⁻¹ᶜᶜᶜ(i, j, k, grid) * (max(0, fluxes.z[i, j, k]) * λ⁻ - min(0, fluxes.z[i, j, k+1]) * λ⁺)
-
-@inline outgoing_vertical_tracer(i, j, k, grid, fluxes, Δt, λ⁻, λ⁺) =
-    @inbounds Δt * V⁻¹ᶜᶜᶜ(i, j, k, grid) * (-min(0, fluxes.z[i, j, k]) * λ⁻ + max(0, fluxes.z[i, j, k+1]) * λ⁺)
-
 # The density of cell (i, j, k): a field, or the number `1` of `div_Uc`
 @inline cell_density(i, j, k, ρ::Number) = ρ
 @inline cell_density(i, j, k, ρ) = @inbounds ρ[i, j, k]
@@ -249,62 +221,17 @@ end
     return content, room
 end
 
-# min(1, (available + credited) / transported), guarded against non-finite fluxes
-@inline function flux_fraction(transported, available, credited)
-    total = available + ifelse(isfinite(credited), credited, zero(credited))
-    return ifelse(isfinite(transported) & (transported > total), total / transported, one(total))
-end
+# min(1, available / transported), guarded against non-finite fluxes
+@inline flux_fraction(transported, available) =
+    ifelse(isfinite(transported) & (transported > available), available / transported, one(available))
 
-# One pass with no credit: r⁻ = min(1, content / removed) and r⁺ = min(1, room / supplied)
+# r⁻ = min(1, content / removed) and r⁺ = min(1, room / supplied)
 @kernel function _compute_flux_fractions!(r⁻, r⁺, grid, bounds, fluxes, c, ρ, Δt)
     i, j, k = @index(Global, NTuple)
     content, room = content_and_room(i, j, k, c, ρ, bounds)
-    @inbounds r⁻[i, j, k] = flux_fraction(removed_tracer(i, j, k, grid, fluxes, Δt), content, zero(content))
-    @inbounds r⁺[i, j, k] = flux_fraction(supplied_tracer(i, j, k, grid, fluxes, Δt), room, zero(room))
+    @inbounds r⁻[i, j, k] = flux_fraction(removed_tracer(i, j, k, grid, fluxes, Δt), content)
+    @inbounds r⁺[i, j, k] = flux_fraction(supplied_tracer(i, j, k, grid, fluxes, Δt), room)
 end
-
-# A downward sweep crediting the cell above, which it has visited, then an upward sweep crediting both
-# vertical neighbors; at each cell the incoming fraction is updated first and the outgoing fraction then
-# credits incoming fluxes at the factors it sets. Each fraction's credited set grows between its two
-# updates, and a neighbor beyond the column's ends (not yet visited in the downward sweep, the stale halo
-# otherwise) is credited at zero, which the safety argument above allows.
-@kernel function _sweep_column_flux_fractions!(r⁻, r⁺, grid, bounds, fluxes, c, ρ, Δt)
-    i, j = @index(Global, NTuple)
-    Nz = size(grid, 3)
-
-    for k in Nz:-1:1
-        content, room = content_and_room(i, j, k, c, ρ, bounds)
-        removed = removed_tracer(i, j, k, grid, fluxes, Δt)
-        supplied = supplied_tracer(i, j, k, grid, fluxes, Δt)
-        above = k < Nz
-        @inbounds r⁺[i, j, k] = flux_fraction(supplied, room, zero(room)) # its own outgoing fraction is not yet visited
-        @inbounds λ⁺ = ifelse(above, min(r⁻[i, j, k+1], r⁺[i, j, k]), zero(room))
-        credited = incoming_vertical_tracer(i, j, k, grid, fluxes, Δt, zero(room), λ⁺)
-        @inbounds r⁻[i, j, k] = flux_fraction(removed, content, credited)
-    end
-
-    for k in 1:Nz
-        content, room = content_and_room(i, j, k, c, ρ, bounds)
-        removed = removed_tracer(i, j, k, grid, fluxes, Δt)
-        supplied = supplied_tracer(i, j, k, grid, fluxes, Δt)
-        below = k > 1
-        above = k < Nz
-        @inbounds λ⁻ = ifelse(below, min(r⁻[i, j, k], r⁺[i, j, k-1]), zero(room))
-        @inbounds λ⁺ = ifelse(above, min(r⁻[i, j, k], r⁺[i, j, k+1]), zero(room))
-        credited = outgoing_vertical_tracer(i, j, k, grid, fluxes, Δt, λ⁻, λ⁺)
-        @inbounds r⁺[i, j, k] = flux_fraction(supplied, room, credited)
-        @inbounds λ⁻ = ifelse(below, min(r⁻[i, j, k-1], r⁺[i, j, k]), zero(room))
-        @inbounds λ⁺ = ifelse(above, min(r⁻[i, j, k+1], r⁺[i, j, k]), zero(room))
-        credited = incoming_vertical_tracer(i, j, k, grid, fluxes, Δt, λ⁻, λ⁺)
-        @inbounds r⁻[i, j, k] = flux_fraction(removed, content, credited)
-    end
-end
-
-compute_flux_fractions!(::Nothing, r⁻, r⁺, grid, bounds, fluxes, c, ρ, Δt) =
-    launch!(architecture(grid), grid, :xyz, _compute_flux_fractions!, r⁻, r⁺, grid, bounds, fluxes, c, ρ, Δt)
-
-compute_flux_fractions!(::ColumnSweep, r⁻, r⁺, grid, bounds, fluxes, c, ρ, Δt) =
-    launch!(architecture(grid), grid, :xy, _sweep_column_flux_fractions!, r⁻, r⁺, grid, bounds, fluxes, c, ρ, Δt)
 
 """
 $(TYPEDSIGNATURES)
@@ -326,7 +253,7 @@ function update_flux_limiter!(scheme::FluxLimitedWENO, grid, c, U, Δt, ρ=1)
     r⁺ = limiter.incoming_fraction
     parameters = face_flux_kernel_parameters(grid)
     launch!(architecture(grid), grid, parameters, _compute_excess_face_fluxes!, fluxes, grid, scheme, ρ, U, c)
-    compute_flux_fractions!(limiter.credit, r⁻, r⁺, grid, bounds, fluxes, c, ρ, Δt)
+    launch!(architecture(grid), grid, :xyz, _compute_flux_fractions!, r⁻, r⁺, grid, bounds, fluxes, c, ρ, Δt)
     fill_halo_regions!(r⁻)
     fill_halo_regions!(r⁺)
     return nothing
