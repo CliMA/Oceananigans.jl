@@ -5,7 +5,7 @@ using DocStringExtensions: TYPEDEF, TYPEDSIGNATURES
 using Oceananigans: restore_prognostic_state!
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Units: Time
-using Oceananigans.Utils: prettytime, seconds_to_nanosecond
+using Oceananigans.Utils: prettytime, seconds_to_nanosecond, time_difference_in_seconds
 
 """
 $(TYPEDEF)
@@ -48,13 +48,28 @@ end
 
 materialize_clock!(clock::Clock, timestepper) = nothing
 
-function reset!(clock::Clock{TT, KT, DT, IT, S}) where {TT, KT, DT, IT, S}
-    clock.time = zero(TT)
+"""
+$(TYPEDSIGNATURES)
+
+Reset `clock` to `t_init` at iteration 0 and stage 1, with no previous time step. Without
+`t_init` a numeric clock returns to zero; a calendar clock has no zero and must be given its
+initial time.
+"""
+function reset!(clock::Clock{TT, KT, DT, IT, S}, t_init::Union{Number, AbstractTime} = zero(TT)) where {TT, KT, DT, IT, S}
+    clock.time = t_init
     clock.iteration = zero(IT)
     clock.stage = 1
     clock.last_Δt = Inf
     clock.last_stage_Δt = Inf
     return nothing
+end
+
+reset!(clock::Clock, ::Nothing) = reset!(clock)
+
+# `zero(DateTime)` is year 0, so a calendar clock has no zero to return to.
+function reset!(clock::Clock{<:AbstractTime})
+    return throw(ArgumentError("Cannot reset! a clock keeping $(typeof(clock.time)) time: there is no zero " *
+                               "calendar instant. Pass the initial time, `reset!(clock, t_init)`."))
 end
 
 """
@@ -80,8 +95,13 @@ function Base.:(==)(clock1::Clock, clock2::Clock)
            clock1.stage == clock2.stage
 end
 
+approximately_equal_times(a, b; kw...) = isapprox(a, b; kw...)
+
+# Calendar instants have no magnitude for a relative tolerance, so only `atol` (seconds) applies.
+approximately_equal_times(a::AbstractTime, b::AbstractTime; atol=0, kw...) = abs(time_difference_in_seconds(a, b)) <= atol
+
 function Base.isapprox(a::Clock, b::Clock; kw...)
-    return isapprox(a.time, b.time; kw...) &&
+    return approximately_equal_times(a.time, b.time; kw...) &&
            isapprox(a.last_Δt, b.last_Δt; kw...) &&
            isapprox(a.last_stage_Δt, b.last_stage_Δt; kw...) &&
            a.iteration == b.iteration &&

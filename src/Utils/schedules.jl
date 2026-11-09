@@ -109,7 +109,7 @@ function schedule_aligned_time_step(schedule::TimeInterval, clock, Δt)
     t★ = next_actuation_time(schedule)
     t★ === Inf && return Δt
     t = clock.time
-    δt = time_difference_seconds(t★, t)
+    δt = time_difference_in_seconds(t★, t)
     return min(Δt, δt)
 end
 
@@ -278,7 +278,7 @@ Oceananigans.initialize!(st::SpecifiedTimes, model) = st(model)
 
 function schedule_aligned_time_step(schedule::SpecifiedTimes, clock, Δt)
     t★ = next_actuation_time(schedule)
-    δt = t★ == Inf ? Δt : time_difference_seconds(t★, clock.time)
+    δt = t★ == Inf ? Δt : time_difference_in_seconds(t★, clock.time)
     return min(Δt, δt)
 end
 
@@ -411,7 +411,7 @@ function actuates_next_iteration(schedule::Union{TimeInterval, SpecifiedTimes}, 
     t★ = next_actuation_time(schedule)
     t★ === Inf && return false
 
-    return time_difference_seconds(t★, clock.time) <= expected_max_time_step_growth * clock.last_Δt
+    return time_difference_in_seconds(t★, clock.time) <= expected_max_time_step_growth * clock.last_Δt
 end
 
 schedule_aligned_time_step(schedule::PrecedingIterations, clock, Δt) =
@@ -502,7 +502,7 @@ end
 function offset_reached(schedule::TimeOffset, t)
     t★ = offset_time(schedule)
     t★ === Inf && return false
-    return time_difference_seconds(t, t★) >= 0
+    return time_difference_in_seconds(t, t★) >= 0
 end
 
 function reset_offset!(schedule::TimeOffset, t, parent_actuated=true)
@@ -544,7 +544,7 @@ function schedule_aligned_time_step(schedule::TimeOffset, clock, Δt)
     schedule.offset_actuated && return Δt
     t★ = offset_time(schedule)
     t★ === Inf && return Δt
-    δt = time_difference_seconds(t★, clock.time)
+    δt = time_difference_in_seconds(t★, clock.time)
     δt > 0 || return Δt
     return min(Δt, δt)
 end

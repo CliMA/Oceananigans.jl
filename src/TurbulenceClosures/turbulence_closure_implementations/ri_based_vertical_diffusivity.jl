@@ -3,7 +3,7 @@ using Oceananigans.BuoyancyFormulations: top_buoyancy_flux, ∂z_b
 using Oceananigans.Grids: inactive_node
 using Oceananigans.Operators
 using Oceananigans.Operators: ℑzᵃᵃᶜ
-using Oceananigans.Utils: time_difference_seconds
+using Oceananigans.Utils: time_difference_in_seconds
 
 using Oceananigans: prognostic_state, restore_prognostic_state!
 
@@ -181,7 +181,7 @@ function build_closure_fields(grid, clock, tracer_names, bcs, closure::FlavorOfR
 end
 
 function update_previous_compute_time!(closure_fields, model)
-    Δt = time_difference_seconds(model.clock.time, closure_fields.previous_compute_time[])
+    Δt = time_difference_in_seconds(model.clock.time, closure_fields.previous_compute_time[])
     closure_fields.previous_compute_time[] = model.clock.time
     return Δt
 end
