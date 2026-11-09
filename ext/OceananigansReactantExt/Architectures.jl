@@ -123,10 +123,10 @@ end
 function Oceananigans.Architectures.on_architecture(arch::ReactantState, grid::LatitudeLongitudeGrid)
     TX, TY, TZ = topology(grid)
     props = Tuple(_to_reactant(getfield(grid, n)) for n in fieldnames(typeof(grid))
-                  if n ∉ (:architecture, :Nx, :Ny, :Nz, :Hx, :Hy, :Hz, :Lx, :Ly, :Lz, :radius))
+                  if n ∉ (:architecture, :Nx, :Ny, :Nz, :Hx, :Hy, :Hz, :Lx, :Ly, :Lz, :radius, :south_pole, :north_pole))
     return LatitudeLongitudeGrid{TX, TY, TZ}(arch,
         grid.Nx, grid.Ny, grid.Nz, grid.Hx, grid.Hy, grid.Hz,
-        grid.Lx, grid.Ly, grid.Lz, props..., grid.radius)
+        grid.Lx, grid.Ly, grid.Lz, props..., grid.radius, grid.south_pole, grid.north_pole)
 end
 
 function Oceananigans.Architectures.on_architecture(new_arch::Distributed{<:ReactantState}, old_grid::LatitudeLongitudeGrid)
@@ -151,7 +151,7 @@ function Oceananigans.Architectures.on_architecture(new_arch::Distributed{<:Reac
                                              old_grid.Hx, old_grid.Hy, old_grid.Hz,
                                              old_grid.Lx, old_grid.Ly, old_grid.Lz,
                                              new_properties...,
-                                             old_grid.radius)
+                                             old_grid.radius, old_grid.south_pole, old_grid.north_pole)
 end
 
 end # module

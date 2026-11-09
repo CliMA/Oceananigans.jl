@@ -157,7 +157,7 @@ function Oceananigans.LatitudeLongitudeGrid(arch::ShardedDistributed,
                                              Δx⁻¹ᶜᶜᵃ, Δx⁻¹ᶠᶜᵃ, Δx⁻¹ᶜᶠᵃ, Δx⁻¹ᶠᶠᵃ,
                                              Δy⁻¹ᶠᶜᵃ, Δy⁻¹ᶜᶠᵃ,
                                              Az⁻¹ᶜᶜᵃ, Az⁻¹ᶠᶜᵃ, Az⁻¹ᶜᶠᵃ, Az⁻¹ᶠᶠᵃ,
-                                             grid.radius)
+                                             grid.radius, grid.south_pole, grid.north_pole)
 end
 
 function Oceananigans.Grids.RectilinearGrid(arch::ShardedDistributed,

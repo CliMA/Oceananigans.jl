@@ -138,7 +138,7 @@ Adapt.adapt_structure(to, z::StructuredVerticalDiscretization) =
 
         for name in propertynames(llg)
             p = getproperty(llg, name)
-            if !(name ∈ (:architecture, :z))
+            if !(name ∈ (:architecture, :z, :south_pole, :north_pole))
                 @test (p isa Number) || (p isa StaticStridesOffsetArray{FT, <:Any, <:Any, <:Any, <:Reactant.AbstractConcreteArray})
             end
         end
@@ -153,7 +153,7 @@ Adapt.adapt_structure(to, z::StructuredVerticalDiscretization) =
 
         for name in propertynames(constant_llg)
             p = getproperty(constant_llg, name)
-            if !(name ∈ (:architecture, :z))
+            if !(name ∈ (:architecture, :z, :south_pole, :north_pole))
                 @test (p isa Number) || (p isa StaticStridesOffsetArray{FT, <:Any, <:Any, <:Any, <:Array})
             end
         end
@@ -555,6 +555,26 @@ end
                               topology = (Periodic, Flat, Bounded))
     δρᵢ  = CenterField(grid_ad)
     @test maximum(δρᵢ) == maximum(Array(interior(δρᵢ)))
+end
+
+@testset "Fields allocated inside a compiled function on a lat-lon grid" begin
+    # `c = λ`, so a polar halo (the zonal mean) differs from a zero-gradient one
+    doubled(c) = parent(compute!(Field(2c)))
+
+    for latitude in ((30, 40), (0, 90), (-90, 0), (-90, 90))
+        kw = (; size=(8, 8, 4), longitude=(0, 360), latitude, z=(0, 1000))
+        cpu_grid = LatitudeLongitudeGrid(CPU(); kw...)
+        grid = LatitudeLongitudeGrid(ReactantState(); kw...)
+        pole(reaches) = reaches ? Oceananigans.Grids.Pole() : nothing
+        @test (grid.south_pole, grid.north_pole) === (cpu_grid.south_pole, cpu_grid.north_pole) ===
+              (pole(latitude[1] == -90), pole(latitude[2] == 90))
+
+        cpu_c = CenterField(cpu_grid)
+        c = CenterField(grid)
+        set!(cpu_c, (λ, φ, z) -> λ)
+        set!(c, (λ, φ, z) -> λ)
+        @test Array(@jit doubled(c)) ≈ Array(doubled(cpu_c))
+    end
 end
 
 # A field set from another one on a different grid is interpolated on the CPU, with the source's halos
