@@ -306,7 +306,8 @@ function test_immersed_grid_reconstruction(original_grid)
         reconstructed_ib = PartialCellBottom(immersed_boundary_args[:bottom_height], immersed_boundary_args[:minimum_fractional_cell_height])
 
     elseif original_ib isa ShavedCellBottom
-        reconstructed_ib = ShavedCellBottom(immersed_boundary_args[:bottom_height]; minimum_fractional_cell_height=immersed_boundary_args[:minimum_fractional_cell_height])
+        reconstructed_ib = ShavedCellBottom(immersed_boundary_args[:bottom_height], nothing, nothing, immersed_boundary_args[:corner_bottom_height],
+                                            immersed_boundary_args[:minimum_fractional_cell_height])
 
     elseif original_ib isa GridFittedBoundary
         @test :mask in keys(immersed_boundary_args)

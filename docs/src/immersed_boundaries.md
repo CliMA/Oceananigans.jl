@@ -92,20 +92,22 @@ so a flow running along the slope squeezes through the steps of a staircase.
 With `ShavedCellBottom`, the bottom is a piecewise-bilinear surface defined by its heights at the cell corners. When `bottom_height` is a
 function it is evaluated at the corners, and when it is an array of cell-center values it is interpolated to the corners. Every lateral
 face of a bottom cell is cut by that surface where the face stands, so the faces of a cell have different heights. The height of the cell
-is the mean of the heights of its lateral faces, which in ``x, z`` reads
+is the mean of the openings its lateral faces leave in its level, which in ``x, z`` reads
 
 ```math
-\Delta z_{ccc}(i, k) = \frac{1}{2} \left[ \Delta z_{fcc}(i, k) + \Delta z_{fcc}(i+1, k) \right] \, ,
+\Delta z_{ccc}(i, k) = \frac{1}{2} \left[ o(i, k) + o(i+1, k) \right] \, ,
 ```
 
-where a face that is closed in the level of the cell counts with zero height. The faces therefore bound the volume of the cell, and every
-shaved column in the figure above is a trapezoid. In three dimensions, the height of the cell is the mean of the heights of its four
-lateral faces.
+where ``o(i, k)`` is the height of face ``i`` left open in level ``k``, zero where the face is closed. The faces therefore bound the volume
+of the cell, and every shaved column in the figure above is a trapezoid. In three dimensions, the height of the cell is the mean of the
+openings of its four lateral faces. A closed face is peripheral and carries no flux; its spacing ``\Delta z_{fcc}`` keeps the height of the
+level, so that the velocity cell on it keeps a finite volume.
 
-The surface shaves a single level in each column: the lowest level that is not immersed. Where the slope crosses from one level to the
-next, the face between the two columns is shaved in the upper level and closed in the lower one, so the shaved cell in the lower level
-is a triangle. A slope steeper than one level per cell is represented by a staircase of shaved cells.
+Where the slope crosses from one level to the next, the face between the two columns is shaved in the upper level and closed in the lower
+one, so the shaved cell in the lower level is a triangle. A slope steeper than one level per cell cuts the faces of a column in different
+levels, so shaved cells are stacked in a staircase.
 
-As for partial cells, a shaved cell is at least ``\epsilon \Delta z`` tall, and so is every lateral face that is open. A cell can have
-some of its lateral faces closed, like the triangles above, but when the mean of its face heights falls below ``\epsilon \Delta z`` the
-cell is immersed. `ShavedCellBottom` is inspired by the shaved cells of [Adcroft et al. (1997)](@cite AdcroftHillMarshall1997).
+The opening a face leaves in the lowest level it reaches is rounded to the nearest of zero and ``\epsilon \Delta z``: a sliver thinner than
+``\epsilon \Delta z / 2`` closes the face in that level, and a thicker opening is at least ``\epsilon \Delta z`` tall. As for partial cells,
+a shaved cell is at least ``\epsilon \Delta z`` tall: when the mean opening of its faces is shorter, the faces cut in its level are deepened
+until it is not, or until they leave the whole level open. `ShavedCellBottom` is inspired by the shaved cells of [Adcroft et al. (1997)](@cite AdcroftHillMarshall1997).

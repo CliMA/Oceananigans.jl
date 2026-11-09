@@ -1,4 +1,4 @@
-using Oceananigans.ImmersedBoundaries: immersed_peripheral_node, inactive_node
+using Oceananigans.ImmersedBoundaries: immersed_peripheral_node, inactive_node, closed_face_x, closed_face_y
 using Oceananigans.Fields: ZeroField
 using Oceananigans.Grids: Open
 
@@ -60,7 +60,7 @@ end
 """
     inside_immersed_boundary(buffer, shift, dir, side)
 
-Check if the stencil required for reconstruction contains immersed nodes
+Check if the stencil required for reconstruction contains immersed nodes, or a face closed between two of its cells.
 
 Example
 =======
@@ -72,13 +72,13 @@ julia> inside_immersed_boundary(2, :none, :z, :ᶜ)
  :(inactive_node(i, j, k + 0,  ibg, c, c, c))
  :(inactive_node(i, j, k + 1,  ibg, c, c, c))
 
-julia> inside_immersed_boundary(3, :left, :x, :ᶠ)
+julia> inside_immersed_boundary(2, :left, :x, :ᶠ)
 5-element Vector{Any}:
- :(inactive_node(i + -3, j, k, ibg, c, c, c))
  :(inactive_node(i + -2, j, k, ibg, c, c, c))
  :(inactive_node(i + -1, j, k, ibg, c, c, c))
  :(inactive_node(i + 0,  j, k, ibg, c, c, c))
- :(inactive_node(i + 1,  j, k, ibg, c, c, c))
+ :(closed_face_x(i + -1, j, k, ibg))
+ :(closed_face_x(i + 0,  j, k, ibg))
 ```
 """
 @inline function inside_immersed_boundary(buffer, shift, dir, side)
@@ -99,6 +99,7 @@ julia> inside_immersed_boundary(3, :left, :x, :ᶠ)
     # A stencil of faces is checked through the cells between its faces
     cells = side == :ᶜ ? rng[1:end-1] : rng
     inactive_cells  = Vector(undef, length(cells))
+    closed_faces = []
 
     for (idx, n) in enumerate(cells)
         offset = side == :ᶠ ? n - buffer - 1 : n - buffer
@@ -107,9 +108,12 @@ julia> inside_immersed_boundary(3, :left, :x, :ᶠ)
                                dir == :y ?
                                :(inactive_node(i, j + $offset, k, ibg, c, c, c)) :
                                :(inactive_node(i, j, k + $offset, ibg, c, c, c))
+
+        idx > 1 && dir == :x && push!(closed_faces, :(closed_face_x(i + $offset, j, k, ibg)))
+        idx > 1 && dir == :y && push!(closed_faces, :(closed_face_y(i, j + $offset, k, ibg)))
     end
 
-    return inactive_cells
+    return vcat(inactive_cells, closed_faces)
 end
 
 for side in (:ᶜ, :ᶠ)

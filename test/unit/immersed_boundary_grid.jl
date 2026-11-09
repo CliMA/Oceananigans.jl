@@ -358,7 +358,8 @@ function test_immersed_boundary_grid_show(FT, arch, boundary_type)
         bottom_height_prefix = "└── bottom_height: "
         ib_suffix = "\n"
     else
-        ib_summary = "PartialCellBottom(mean(zb)=-0.5, min(zb)=-0.5, max(zb)=-0.5, ϵ=0.2)"
+        name = boundary_type === ShavedCellBottom ? "ShavedCellBottom" : "PartialCellBottom"
+        ib_summary = "$name(mean(zb)=-0.5, min(zb)=-0.5, max(zb)=-0.5, ϵ=0.2)"
         bottom_height_prefix = "├── bottom_height: "
         ib_suffix = "\n└── minimum_fractional_cell_height: 0.2"
     end

@@ -120,8 +120,8 @@ function compact_data!(global_field, global_grid, data::MultiRegionObject, p::Eq
 
     for r = 1:length(p)
         init = Int(n * (r - 1) + 1)
-        fin  = Int(n * r)
-        interior(global_field)[init:fin, :, :] .= data[r][1:fin-init+1, :, :]
+        fin  = init + size(data[r], 1) - 1
+        interior(global_field)[init:fin, :, :] .= data[r]
     end
 
     fill_halo_regions!(global_field)

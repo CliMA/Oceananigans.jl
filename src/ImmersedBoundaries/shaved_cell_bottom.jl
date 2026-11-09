@@ -1,5 +1,5 @@
 using Oceananigans.Fields: Field, fill_halo_regions!, set!
-using Oceananigans.Grids: Grids, AbstractStaticGrid, constructor_arguments, XFlatGrid, YFlatGrid
+using Oceananigans.Grids: Grids, AbstractStaticGrid, constructor_arguments, XFlatGrid, YFlatGrid, XYFlatGrid
 using Oceananigans.Utils: prettysummary, KernelParameters
 
 import Oceananigans.Grids: peripheral_node
@@ -33,18 +33,19 @@ heights and the bottom slopes through the cell. The height of the cell is the me
 its lateral faces, so that the faces bound the cell volume. When `bottom_height` is sampled at cell
 centers, a column at or above the top of the grid stays dry and does not enter the surface of its neighbors.
 
-The surface shaves a single level in each column and in each lateral face: the lowest level that is not
-immersed. A slope steeper than one level per cell is therefore represented by a staircase of shaved cells.
-The height of a shaved cell, and of each of its open lateral faces, is greater than
+Each lateral face is cut in the lowest level it reaches, and the opening it leaves there is rounded to the nearest of
+zero and
 
 ```
 minimum_fractional_cell_height * Δz,
 ```
 
-where `Δz` is the original height of the bottom cell of the underlying grid. A cell is as tall as the mean of the
-openings its faces leave, so a cell whose faces are cut in different levels asks its open faces to leave more: with
-`n` of four faces open each leaves `4 * minimum_fractional_cell_height * Δz / n`, capped at `Δz`, so that the
-guarantee saturates at `n * Δz / 4` when `minimum_fractional_cell_height` exceeds `n / 4`.
+where `Δz` is the height of that level: an opening thinner than half of it closes the face in that level, a thicker
+one is at least that tall. A cell is as tall as the mean opening of its `N` lateral faces (four, or two in a grid with
+a `Flat` horizontal direction). When that mean is shorter than `minimum_fractional_cell_height * Δz`, the faces cut in
+the level of the cell are deepened until it is not, up to `Δz`, so that a cell with `n` open faces is at least as tall
+as the smaller of `minimum_fractional_cell_height * Δz` and `n * Δz / N`. A slope steeper than one level per cell cuts
+the faces of a column in different levels, so shaved cells are stacked in a staircase.
 """
 ShavedCellBottom(bottom_height; minimum_fractional_cell_height=0.2) = ShavedCellBottom(bottom_height, nothing, nothing, nothing, minimum_fractional_cell_height)
 
@@ -112,8 +113,8 @@ end
 set_corner_bottom_height!(corner_field, grid, ib::ShavedCellBottom, ::Nothing, parameters) = set_bottom_height!(corner_field, ib.bottom_height)
 set_corner_bottom_height!(corner_field, grid, ib::ShavedCellBottom, center_field, parameters) = launch!(architecture(grid), grid, parameters, _interpolate_bottom_height_to_corners!, corner_field, center_field, grid)
 
-# A materialized boundary is rebuilt from the interior of its own corners, so that rebuilding is idempotent on any halo.
-set_corner_bottom_height!(corner_field, grid, ib::ShavedCellBottom{<:Any, <:AbstractArray}, center_field::Field, parameters) = set_bottom_height!(corner_field, ib.corner_bottom_height)
+# A boundary that carries its corners is rebuilt from their interior, so that rebuilding is idempotent on any halo.
+set_corner_bottom_height!(corner_field, grid, ib::ShavedCellBottom{<:Any, <:Any, <:Any, <:AbstractArray}, center_field::Field, parameters) = set_bottom_height!(corner_field, ib.corner_bottom_height)
 
 @inline dry_column(i, j, grid, ::Nothing) = false
 @inline dry_column(i, j, grid, center_field) = @inbounds center_field[i, j, 1] ≥ rnode(i, j, grid.Nz+1, grid, c, c, f)
@@ -157,8 +158,7 @@ function materialize_immersed_boundary(grid, ib::ShavedCellBottom)
     west_field = Field{Face, Center, Nothing}(grid)
     south_field = Field{Center, Face, Nothing}(grid)
     previous_bottom_field = Field{Center, Center, Nothing}(grid)
-    floor_field = Field{Center, Center, Nothing}(grid)
-    top_field = Field{Center, Center, Nothing}(grid)
+    required_opening = Field{Center, Center, Center}(grid)
 
     compute_ib = ShavedCellBottom(bottom_field, nothing, nothing, nothing, ϵ)
 
@@ -182,12 +182,11 @@ function materialize_immersed_boundary(grid, ib::ShavedCellBottom)
         # the level a cell is cut in follows from its faces, so the requirement is posted against a boundary that carries them
         face_ib = ShavedCellBottom(bottom_field, west_field.data, south_field.data, corner_field.data, ϵ)
 
-        @apply_regionally launch!(arch, grid, :xy, _require_open_face_depths!, floor_field, top_field, west_field, south_field, grid, face_ib, ϵ)
+        @apply_regionally launch!(arch, grid, :xyz, _require_open_face_depths!, required_opening, west_field, south_field, grid, face_ib, ϵ, wˣ, wʸ)
 
-        fill_halo_regions!(floor_field)
-        fill_halo_regions!(top_field)
+        fill_halo_regions!(required_opening)
 
-        @apply_regionally launch!(arch, grid, parameters, _deepen_open_faces!, west_field, south_field, floor_field, top_field, grid)
+        @apply_regionally launch!(arch, grid, parameters, _deepen_open_faces!, west_field, south_field, required_opening, grid)
 
         fill_halo_regions!(west_field)
         fill_halo_regions!(south_field)
@@ -224,7 +223,7 @@ end
         r⁺ = rnode(i, j, k+1, grid, c, c, f)
         Δr = Δrᶜᶜᶜ(i, j, k, grid)
         bottom_cell = r⁻ ≤ rᵇ < r⁺
-        rᵇ = ifelse(bottom_cell, min(r⁺ - ϵ * Δr, rᵇ), rᵇ)
+        rᵇ = ifelse(bottom_cell, rounded_bottom_height(rᵇ, r⁻, r⁺, Δr, ϵ), rᵇ)
     end
 
     rᵗ = rnode(i, j, grid.Nz+1, grid, c, c, f)
@@ -240,19 +239,24 @@ end
     return kᵇ
 end
 
-# Snap a face bottom height into the lowest level the face leaves open, keeping it within [ϵ Δr, Δr]
-# of that level.
+# The opening left in a level is rounded to the nearest of zero and [ϵ Δr, Δr]
+@inline function rounded_bottom_height(rᵇ, r⁻, r⁺, Δr, ϵ)
+    sliver = r⁺ - rᵇ < ϵ * Δr / 2
+    return ifelse(sliver, r⁺, clamp(rᵇ, r⁻, r⁺ - ϵ * Δr))
+end
+
+# Round a face bottom height in the lowest level the face reaches; a face at or above the top of the grid stays closed
 @inline function shaved_face_bottom_height(i, j, kᵇ, grid, rᵇ, ϵ)
     k  = min(kᵇ, grid.Nz)
     r⁻ = rnode(i, j, k,   grid, c, c, f)
     r⁺ = rnode(i, j, k+1, grid, c, c, f)
     Δr = Δrᶜᶜᶜ(i, j, k, grid)
-    return clamp(rᵇ, r⁻, r⁺ - ϵ * Δr)
+    return ifelse(kᵇ > grid.Nz, r⁺, rounded_bottom_height(rᵇ, r⁻, r⁺, Δr, ϵ))
 end
 
-# The level a height falls in, or the top level when it lies above the grid
+# The level a height falls in, or Nz + 1 when it lies at or above the top of the grid
 @inline function bottom_level(i, j, grid, rᵇ)
-    k = 1
+    k = ifelse(rᵇ < rnode(i, j, grid.Nz+1, grid, c, c, f), 1, grid.Nz + 1)
     for kk in 1:grid.Nz
         k = ifelse(shaved_level(i, j, kk, grid, rᵇ), kk, k)
     end
@@ -265,77 +269,65 @@ end
 @kernel function _compute_shaved_face_bottom_heights!(west_field, south_field, corner_field, grid, ib)
     i, j = @index(Global, NTuple)
 
-    iᵂ = x_index(i, grid, -1)
     iᴱ = x_index(i, grid, +1)
-    jˢ = y_index(j, grid, -1)
     jᴺ = y_index(j, grid, +1)
 
     ϵ = ib.minimum_fractional_cell_height
 
-    kᶜ = bottom_active_index(i,  j,  grid, ib)
-    kᵂ = bottom_active_index(iᵂ, j,  grid, ib)
-    kˢ = bottom_active_index(i,  jˢ, grid, ib)
-
     rᶠᶜ = @inbounds (corner_field[i, j, 1] + corner_field[i, jᴺ, 1]) / 2
     rᶜᶠ = @inbounds (corner_field[i, j, 1] + corner_field[iᴱ, j, 1]) / 2
 
-    # Cap each face height inside the level it cuts, so that the opening it leaves is at least ϵ Δr tall and columns
-    # never become arbitrarily thin (which would wreck the conditioning of the free-surface solve).
+    # No face leaves an opening thinner than ϵ Δr, which would wreck the conditioning of the free-surface solve
     @inbounds west_field[i, j, 1]  = shaved_face_bottom_height(i, j, bottom_level(i, j, grid, rᶠᶜ), grid, rᶠᶜ, ϵ)
     @inbounds south_field[i, j, 1] = shaved_face_bottom_height(i, j, bottom_level(i, j, grid, rᶜᶠ), grid, rᶜᶠ, ϵ)
 end
 
-# A cell with n of its four faces open keeps n/4 of ϵ Δr, so each of its open faces must leave 4 ϵ Δr / n
-@kernel function _require_open_face_depths!(floor_field, top_field, west_field, south_field, grid, ib, ϵ)
-    i, j = @index(Global, NTuple)
+# A cell is ϵ Δr tall when each face cut in its level leaves (faces ϵ - full_faces) Δr / (open_faces - full_faces)
+@kernel function _require_open_face_depths!(required_opening, west_field, south_field, grid, ib, ϵ, wˣ, wʸ)
+    i, j, k = @index(Global, NTuple)
 
     iᴱ = x_index(i, grid, +1)
     jᴺ = y_index(j, grid, +1)
 
-    rᵗ = rnode(i, j, grid.Nz+1, grid, c, c, f)
-    kᶜ = bottom_active_index(i, j, grid, ib)
-    k  = min(kᶜ, grid.Nz)
     r⁺ = rnode(i, j, k+1, grid, c, c, f)
     Δr = Δrᶜᶜᶜ(i, j, k, grid)
 
-    oᵂ = @inbounds face_open_height(west_field[i, j, 1],   r⁺, Δr)
-    oᴱ = @inbounds face_open_height(west_field[iᴱ, j, 1],  r⁺, Δr)
-    oˢ = @inbounds face_open_height(south_field[i, j, 1],  r⁺, Δr)
-    oᴺ = @inbounds face_open_height(south_field[i, jᴺ, 1], r⁺, Δr)
+    oᵂ = @inbounds face_open_height( west_field[i,  j,  1], r⁺, Δr)
+    oᴱ = @inbounds face_open_height( west_field[iᴱ, j,  1], r⁺, Δr)
+    oˢ = @inbounds face_open_height(south_field[i,  j,  1], r⁺, Δr)
+    oᴺ = @inbounds face_open_height(south_field[i,  jᴺ, 1], r⁺, Δr)
 
-    n = ifelse(oᵂ > zero(Δr), 1, 0) + ifelse(oᴱ > zero(Δr), 1, 0) +
-        ifelse(oˢ > zero(Δr), 1, 0) + ifelse(oᴺ > zero(Δr), 1, 0)
+    # in a Flat direction the two faces are one phantom face, which the cell does not have
+    faces = 2 * (wˣ + wʸ)
+    open_faces = wˣ * ((oᵂ > zero(Δr)) + (oᴱ > zero(Δr))) + wʸ * ((oˢ > zero(Δr)) + (oᴺ > zero(Δr)))
+    full_faces = wˣ * ((oᵂ ≥ Δr) + (oᴱ ≥ Δr)) + wʸ * ((oˢ ≥ Δr) + (oᴺ ≥ Δr))
+    Σo = wˣ * (oᵂ + oᴱ) + wʸ * (oˢ + oᴺ)
 
-    opening = (oᵂ + oᴱ + oˢ + oᴺ) / 4
-    thin = (opening < ϵ * Δr) & (n > 0) & (kᶜ ≤ grid.Nz)
+    thin = (Σo < faces * ϵ * Δr) & !_immersed_cell(i, j, k, grid, ib)
 
-    # a face cannot leave more open than the level it sits in, so the guarantee saturates at n Δr / 4
-    target = min(4ϵ * Δr / max(n, 1), Δr)
+    # a face cannot leave more open than the level it sits in, so the guarantee saturates at open_faces * Δr / faces
+    opening = min((faces * ϵ - full_faces) * Δr / max(open_faces - full_faces, 1), Δr)
 
-    @inbounds floor_field[i, j, 1] = ifelse(thin, r⁺ - target, rᵗ)
-    @inbounds top_field[i, j, 1] = r⁺
+    @inbounds required_opening[i, j, k] = ifelse(thin, opening, zero(Δr))
 end
 
-# A face separates two cells and must satisfy both, but only where it is already open: pulling a face down into a
-# level it does not reach would carve a trench through the staircase it belongs to.
-@kernel function _deepen_open_faces!(west_field, south_field, floor_field, top_field, grid)
+# A face is deepened only in the level it is cut in, as far as the cell on either side of it requires.
+@inline function deepened_face_height(i, j, rᵇ, i⁻, j⁻, grid, required_opening)
+    k = min(bottom_level(i, j, grid, rᵇ), grid.Nz)
+    r⁻ = rnode(i, j, k,   grid, c, c, f)
+    r⁺ = rnode(i, j, k+1, grid, c, c, f)
+    opening = @inbounds max(required_opening[i⁻, j⁻, k], required_opening[i, j, k])
+    return ifelse(rᵇ < r⁺, min(rᵇ, max(r⁻, r⁺ - opening)), rᵇ)
+end
+
+@kernel function _deepen_open_faces!(west_field, south_field, required_opening, grid)
     i, j = @index(Global, NTuple)
 
     iᵂ = x_index(i, grid, -1)
     jˢ = y_index(j, grid, -1)
-    rᵗ = rnode(i, j, grid.Nz+1, grid, c, c, f)
 
-    @inbounds begin
-        rᵂ = west_field[i, j, 1]
-        capᵂ = ifelse(rᵂ < top_field[iᵂ, j, 1], floor_field[iᵂ, j, 1], rᵗ)
-        capᶜ = ifelse(rᵂ < top_field[i, j, 1],  floor_field[i, j, 1],  rᵗ)
-        west_field[i, j, 1] = min(rᵂ, capᵂ, capᶜ)
-
-        rˢ = south_field[i, j, 1]
-        capˢ = ifelse(rˢ < top_field[i, jˢ, 1], floor_field[i, jˢ, 1], rᵗ)
-        capᴺ = ifelse(rˢ < top_field[i, j, 1],  floor_field[i, j, 1],  rᵗ)
-        south_field[i, j, 1] = min(rˢ, capˢ, capᴺ)
-    end
+    @inbounds west_field[i, j, 1] = deepened_face_height(i, j, west_field[i, j, 1], iᵂ, j, grid, required_opening)
+    @inbounds south_field[i, j, 1] = deepened_face_height(i, j, south_field[i, j, 1], i, jˢ, grid, required_opening)
 end
 
 # A face shaved in a higher level is closed in this one, so clipping the faces into the level of the cell makes them bound its volume.
@@ -346,11 +338,8 @@ end
     jᴺ = y_index(j, grid, +1)
 
     kᶜ = bottom_active_index(i, j, grid, ib)
-    k  = min(kᶜ, grid.Nz)
-    r⁻ = rnode(i, j, k,   grid, c, c, f)
-    r⁺ = rnode(i, j, k+1, grid, c, c, f)
 
-    rˣ = @inbounds (west_field[i, j, 1]  + west_field[iᴱ, j, 1])  / 2
+    rˣ = @inbounds ( west_field[i, j, 1] +  west_field[iᴱ, j, 1]) / 2
     rʸ = @inbounds (south_field[i, j, 1] + south_field[i, jᴺ, 1]) / 2
     rᵇ = (wˣ * rˣ + wʸ * rʸ) / (wˣ + wʸ)
 
@@ -400,10 +389,12 @@ end
 @inline mean_face_opening(i, j, k, grid, ib, r⁺, Δr) = (opening_x(i, j, k, grid, ib, r⁺, Δr) + opening_y(i, j, k, grid, ib, r⁺, Δr)) / 2
 @inline mean_face_opening(i, j, k, grid::XFlatGrid, ib, r⁺, Δr) = opening_y(i, j, k, grid, ib, r⁺, Δr)
 @inline mean_face_opening(i, j, k, grid::YFlatGrid, ib, r⁺, Δr) = opening_x(i, j, k, grid, ib, r⁺, Δr)
+@inline mean_face_opening(i, j, k, grid::XYFlatGrid, ib, r⁺, Δr) = opening_x(i, j, k, grid, ib, r⁺, Δr)
 
 @inline mean_face_opening(i, j, k, grid, ib::ShavedCellBottom{<:Any, Nothing}, r⁺, Δr) = zero(grid)
 @inline mean_face_opening(i, j, k, grid::XFlatGrid, ib::ShavedCellBottom{<:Any, Nothing}, r⁺, Δr) = zero(grid)
 @inline mean_face_opening(i, j, k, grid::YFlatGrid, ib::ShavedCellBottom{<:Any, Nothing}, r⁺, Δr) = zero(grid)
+@inline mean_face_opening(i, j, k, grid::XYFlatGrid, ib::ShavedCellBottom{<:Any, Nothing}, r⁺, Δr) = zero(grid)
 
 @inline _immersed_cell(i, j, k, underlying_grid, ib::ShavedCellBottom) = first(shaved_cell_metrics(i, j, k, underlying_grid, ib))
 
@@ -442,11 +433,7 @@ end
     return ifelse(above_bottom, rᶜ - rᶠ + (rᶠ - rᵇ) / 2, full_Δr)
 end
 
-@inline function Δrᶜᶜᶠ(i, j, k, ibg::SCBIBG)
-    underlying_grid = ibg.underlying_grid
-    rᵇ = @inbounds ibg.immersed_boundary.bottom_height[i, j, 1]
-    return shaved_center_spacing(i, j, k, underlying_grid, rᵇ, Δrᶜᶜᶠ(i, j, k, underlying_grid))
-end
+@inline Δrᶜᶜᶠ(i, j, k, ibg::SCBIBG) = (Δrᶜᶜᶜ(i, j, k-1, ibg) + Δrᶜᶜᶜ(i, j, k, ibg)) / 2
 
 @inline function Δrᶠᶜᶠ(i, j, k, ibg::SCBIBG)
     underlying_grid = ibg.underlying_grid
@@ -498,10 +485,12 @@ VSSCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:AbstractStaticGrid
 @inline top_cell(i, j, grid, ::ShavedCellBottom) = size(grid, 3)
 @inline bottom_height(i, j, ibg::SCBIBG) = @inbounds ibg.immersed_boundary.bottom_height[i, j, 1]
 
-# A face column reaches down to the bottom height sampled at that face
+# A face column reaches down to the bottom height sampled at that face, and is dry next to a dry column
 @inline function face_column_depth(i, j, i⁻, j⁻, ibg, ib::ShavedCellBottom)
     rᵇ = @inbounds ifelse(i⁻ == i, ib.south_bottom_height[i, j, 1], ib.west_bottom_height[i, j, 1])
-    return rnode(i, j, ibg.Nz+1, ibg, c, c, f) - rᵇ
+    rᵗ = rnode(i, j, ibg.Nz+1, ibg, c, c, f)
+    dry = (bottom_height(i, j, ibg) ≥ rᵗ) | (bottom_height(i⁻, j⁻, ibg) ≥ rᵗ)
+    return ifelse(dry, zero(rᵗ), rᵗ - rᵇ)
 end
 
 @inline Operators.Δr⁻¹ᶜᶜᶜ(i, j, k, ibg::SCBIBG) = 1 / Δrᶜᶜᶜ(i, j, k, ibg)
@@ -528,7 +517,8 @@ end
 
 function Grids.constructor_arguments(grid::SCBIBG)
     underlying_grid_args, underlying_grid_kwargs = constructor_arguments(grid.underlying_grid)
-    shaved_cell_bottom_args = Dict(:bottom_height => Field{Face, Face, Nothing}(grid.underlying_grid; data=grid.immersed_boundary.corner_bottom_height),
+    shaved_cell_bottom_args = Dict(:bottom_height => grid.immersed_boundary.bottom_height,
+                                   :corner_bottom_height => grid.immersed_boundary.corner_bottom_height,
                                    :minimum_fractional_cell_height => grid.immersed_boundary.minimum_fractional_cell_height)
     return underlying_grid_args, underlying_grid_kwargs, shaved_cell_bottom_args
 end
@@ -564,3 +554,21 @@ end
 
 @inline peripheral_node(i, j, k, ibg::SCBIBG, ::Center, ::Face, ::Center) = inactive_cell(i, j, k, ibg) | inactive_cell(i, j-1, k, ibg) |
                                                                            closed_face_y(i, j, k, ibg)
+
+# A Flat direction has a single phantom face, which never closes, and only a shaved bottom closes a face between active cells
+@inline closed_face_x(i, j, k, grid) = false
+@inline closed_face_y(i, j, k, grid) = false
+@inline closed_face_x(i, j, k, ibg::XFlatSCBIBG) = false
+@inline closed_face_y(i, j, k, ibg::YFlatSCBIBG) = false
+
+# Nodes on the edges of a closed face are peripheral, as they are on the edges of a face next to an immersed cell
+@inline peripheral_node(i, j, k, ibg::SCBIBG, ::Face, ::Center, ::Face) = peripheral_node(i, j, k, ibg, f, c, c) | peripheral_node(i, j, k-1, ibg, f, c, c)
+
+@inline peripheral_node(i, j, k, ibg::SCBIBG, ::Face, ::Face, ::Center) = peripheral_node(i, j, k, ibg, f, c, c) | peripheral_node(i, j-1, k, ibg, f, c, c) |
+                                                                          peripheral_node(i, j, k, ibg, c, f, c) | peripheral_node(i-1, j, k, ibg, c, f, c)
+
+@inline peripheral_node(i, j, k, ibg::SCBIBG, ::Face, ::Face, ::Face) = peripheral_node(i, j, k, ibg, f, f, c) | peripheral_node(i, j, k-1, ibg, f, f, c)
+
+# No difference reaches across a closed face, as none reaches into an immersed cell
+@inline conditional_δx_f(::Center, ::Center, i, j, k, ibg::SCBIBG, δx, args...) = ifelse(immersed_peripheral_node(i, j, k, ibg, f, c, c), zero(ibg), δx(i, j, k, ibg, args...))
+@inline conditional_δy_f(::Center, ::Center, i, j, k, ibg::SCBIBG, δy, args...) = ifelse(immersed_peripheral_node(i, j, k, ibg, c, f, c), zero(ibg), δy(i, j, k, ibg, args...))

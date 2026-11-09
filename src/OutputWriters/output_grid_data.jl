@@ -233,7 +233,7 @@ end
 
 gather_grid_metrics(grid::ImmersedBoundaryGrid, args...; kw...) = gather_grid_metrics(grid.underlying_grid, args...; kw...)
 
-const PCBorGFBIBG = Union{GFBIBG, PCBIBG, SCBIBG}
+const PCBorGFBIBG = Union{GFBIBG, PCBIBG}
 
 # `peripheral_node` and `inactive_node` masks, at the four locations of the C-grid variables.
 function immersed_node_fields(grid, indices)
@@ -260,6 +260,15 @@ Gather immersed-boundary data for output and grid reconstruction.
 """
 function gather_immersed_boundary(grid::PCBorGFBIBG, indices, dim_name_generator; grid_index=nothing)
     ib_vars = merge(Dict("bottom_height" => Field(bottom_height_field(grid); indices)),
+                    immersed_node_fields(grid, indices))
+
+    return suffix_grid_keys(ib_vars, grid_index)
+end
+
+function gather_immersed_boundary(grid::SCBIBG, indices, dim_name_generator; grid_index=nothing)
+    corner_field = Field{Face, Face, Nothing}(grid.underlying_grid; data=grid.immersed_boundary.corner_bottom_height)
+    ib_vars = merge(Dict("bottom_height" => Field(bottom_height_field(grid); indices),
+                         "corner_bottom_height" => Field(corner_field; indices)),
                     immersed_node_fields(grid, indices))
 
     return suffix_grid_keys(ib_vars, grid_index)

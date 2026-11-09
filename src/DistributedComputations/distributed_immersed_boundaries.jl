@@ -42,6 +42,14 @@ end
 global_height_array(::Nothing, arch, global_size) = nothing
 global_height_array(height, arch, global_size) = construct_global_array(bottom_height_interior(height), arch, global_size)
 
+function reconstruct_global_immersed_boundary(ib::ShavedCellBottom, arch, grid)
+    Nx, Ny, _ = size(grid)
+    corner_field = Field{Face, Face, Nothing}(grid.underlying_grid; data=ib.corner_bottom_height)
+    global_bottom_height = global_height_array(ib.bottom_height, arch, (Nx, Ny, 1))
+    global_corner_bottom_height = construct_global_array(interior(corner_field), arch, size(corner_field))
+    return ShavedCellBottom(global_bottom_height, nothing, nothing, global_corner_bottom_height, ib.minimum_fractional_cell_height)
+end
+
 function reconstruct_global_immersed_boundary(ib::GridFittedBoundary, arch, grid)
     global_mask = construct_global_array(ib.mask, arch, size(grid))
     return GridFittedBoundary(global_mask)

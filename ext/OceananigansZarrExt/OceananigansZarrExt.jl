@@ -24,7 +24,8 @@ using Oceananigans.ImmersedBoundaries:
     ImmersedBoundaryGrid,
     GridFittedBoundary,
     GridFittedBottom,
-    PartialCellBottom
+    PartialCellBottom,
+    ShavedCellBottom
 using Oceananigans.OrthogonalSphericalShellGrids:
     Tripolar, LatitudeLongitudeRotation,
     conformal_mapping_info
