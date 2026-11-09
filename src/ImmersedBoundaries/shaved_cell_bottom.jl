@@ -285,9 +285,7 @@ end
     @inbounds south_field[i, j, 1] = shaved_face_bottom_height(i, j, bottom_level(i, j, grid, rᶜᶠ), grid, rᶜᶠ, ϵ)
 end
 
-# The height of a cell is the mean of the openings its faces leave, so a cell whose faces are cut in different
-# levels is thinner than any of them: with n of four faces open it keeps only n/4 of ϵ Δr. Each cell therefore asks
-# its open faces to leave 4 ϵ Δr / n, which restores the ϵ guarantee without moving a face out of the cell's level.
+# A cell with n of its four faces open keeps n/4 of ϵ Δr, so each of its open faces must leave 4 ϵ Δr / n
 @kernel function _require_open_face_depths!(floor_field, top_field, west_field, south_field, grid, ib, ϵ)
     i, j = @index(Global, NTuple)
 
@@ -378,9 +376,7 @@ Architectures.on_architecture(to, ib::ShavedCellBottom) = ShavedCellBottom(on_ar
 # Open height of a face in level k, from the bottom height sampled at that face
 @inline face_open_height(rᵇ, r⁺, Δr) = clamp(r⁺ - rᵇ, zero(Δr), Δr)
 
-# A cell is immersed when neither its centre nor any of its faces leaves an opening in this level: a cell whose centre is
-# below the shaved surface but whose faces are open still holds the wedge they leave, and masking it discards that flux.
-# Land, whose bottom reaches the surface, stays dry however deep the sea on the other side of its faces is.
+# A cell is immersed when neither its center nor any of its faces leaves an opening in this level; land stays dry
 @inline function shaved_cell_metrics(i, j, k, grid, ib)
     r⁺ = rnode(i, j, k + 1, grid, c, c, f)
     rᵗ = rnode(i, j, grid.Nz + 1, grid, c, c, f)
@@ -411,13 +407,7 @@ end
 
 @inline _immersed_cell(i, j, k, underlying_grid, ib::ShavedCellBottom) = first(shaved_cell_metrics(i, j, k, underlying_grid, ib))
 
-# A cell or a face keeps the full height of its level except in the level the surface cuts, where it
-# keeps the part above the surface. Levels below keep the full height: they are masked, and a
-# positive height keeps them out of denominators.
-
-# Cells kept active by their faces alone take the mean opening of those faces as their height, so that volume and face areas stay consistent.
-# A cell is as tall as the mean of the openings its faces leave: on a flat bottom this is the partial cell height, and
-# summing it over a column returns the depth the faces describe.
+# An active cell is as tall as the mean opening of its faces; immersed cells keep the full level height
 @inline function Δrᶜᶜᶜ(i, j, k, ibg::SCBIBG)
     grid = ibg.underlying_grid
     immersed, opening = shaved_cell_metrics(i, j, k, grid, ibg.immersed_boundary)
@@ -529,7 +519,7 @@ end
 
 
 #####
-##### Faces cut away by the shaved surface: the flux area vanishes even when both neighbouring cells stay active, so the
+##### Faces cut away by the shaved surface: the flux area vanishes even when both neighboring cells stay active, so the
 ##### face is peripheral and carries no velocity.
 #####
 
@@ -545,8 +535,8 @@ end
     return rnode(i, j, k+1, grid, c, c, f) ≤ rᵇ
 end
 
-@inline peripheral_node(i, j, k, ibg::SCBIBG, ::Face, ::Center, ::Center) =
-    inactive_cell(i, j, k, ibg) | inactive_cell(i-1, j, k, ibg) | closed_face_x(i, j, k, ibg)
+@inline peripheral_node(i, j, k, ibg::SCBIBG, ::Face, ::Center, ::Center) = inactive_cell(i, j, k, ibg) | inactive_cell(i-1, j, k, ibg) |
+                                                                           closed_face_x(i, j, k, ibg)
 
-@inline peripheral_node(i, j, k, ibg::SCBIBG, ::Center, ::Face, ::Center) =
-    inactive_cell(i, j, k, ibg) | inactive_cell(i, j-1, k, ibg) | closed_face_y(i, j, k, ibg)
+@inline peripheral_node(i, j, k, ibg::SCBIBG, ::Center, ::Face, ::Center) = inactive_cell(i, j, k, ibg) | inactive_cell(i, j-1, k, ibg) |
+                                                                           closed_face_y(i, j, k, ibg)
