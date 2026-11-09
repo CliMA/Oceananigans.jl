@@ -19,17 +19,17 @@
     return Σh / max(1, a₁ + a₂ + a₃ + a₄)
 end
 
-# Potential vorticity q = ζ / h at the corner, where ζ(i, j, k, grid, args...) is a vorticity (relative or planetary)
-@inline function corner_potential_vorticityᶠᶠᶜ(i, j, k, grid, ζ, args...)
+# Potential vorticity q = ω / h at the corner, where ω(i, j, k, grid, args...) is the relative vorticity ζ or the planetary vorticity f
+@inline function corner_potential_vorticityᶠᶠᶜ(i, j, k, grid, ω, args...)
     h = corner_thicknessᶠᶠᶜ(i, j, k, grid)
-    return ifelse(h == 0, zero(grid), ζ(i, j, k, grid, args...) / ifelse(h == 0, one(h), h))
+    return ifelse(h == 0, zero(grid), ω(i, j, k, grid, args...) / ifelse(h == 0, one(h), h))
 end
 
-@inline q_ℑx_Ay_vᶠᶠᶜ(i, j, k, grid, v, ζ, args...) = corner_potential_vorticityᶠᶠᶜ(i, j, k, grid, ζ, args...) * ℑxᶠᵃᵃ(i, j, k, grid, active_Ay_qᶜᶠᶜ, v)
-@inline q_ℑy_Ax_uᶠᶠᶜ(i, j, k, grid, u, ζ, args...) = corner_potential_vorticityᶠᶠᶜ(i, j, k, grid, ζ, args...) * ℑyᵃᶠᵃ(i, j, k, grid, active_Ax_qᶠᶜᶜ, u)
+@inline q_ℑx_Ay_vᶠᶠᶜ(i, j, k, grid, v, ω, args...) = corner_potential_vorticityᶠᶠᶜ(i, j, k, grid, ω, args...) * ℑxᶠᵃᵃ(i, j, k, grid, active_Ay_qᶜᶠᶜ, v)
+@inline q_ℑy_Ax_uᶠᶠᶜ(i, j, k, grid, u, ω, args...) = corner_potential_vorticityᶠᶠᶜ(i, j, k, grid, ω, args...) * ℑyᵃᶠᵃ(i, j, k, grid, active_Ax_qᶠᶜᶜ, u)
 
-# Sadourny (1975) energy-conserving flux of q = ζ / h for the transports 𝒰 = Aˣ u and 𝒱 = Aʸ v:
+# Sadourny (1975) energy-conserving flux of q = ω / h for the transports 𝒰 = Aˣ u and 𝒱 = Aʸ v:
 # the work Σ Δx Aˣ u ℑʸ(q ℑˣ𝒱) / Δx - Σ Δy Aʸ v ℑˣ(q ℑʸ𝒰) / Δy cancels corner by corner for any Δz.
-@inline potential_vorticity_flux_xᶠᶜᶜ(i, j, k, grid, v, ζ, args...) = ℑyᵃᶜᵃ(i, j, k, grid, q_ℑx_Ay_vᶠᶠᶜ, v, ζ, args...) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
+@inline potential_vorticity_flux_xᶠᶜᶜ(i, j, k, grid, v, ω, args...) = ℑyᵃᶜᵃ(i, j, k, grid, q_ℑx_Ay_vᶠᶠᶜ, v, ω, args...) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
 
-@inline potential_vorticity_flux_yᶜᶠᶜ(i, j, k, grid, u, ζ, args...) = ℑxᶜᵃᵃ(i, j, k, grid, q_ℑy_Ax_uᶠᶠᶜ, u, ζ, args...) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
+@inline potential_vorticity_flux_yᶜᶠᶜ(i, j, k, grid, u, ω, args...) = ℑxᶜᵃᵃ(i, j, k, grid, q_ℑy_Ax_uᶠᶠᶜ, u, ω, args...) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
