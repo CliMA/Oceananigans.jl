@@ -1,25 +1,27 @@
 using Oceananigans.Fields: FunctionField
 using Oceananigans.Grids: architecture
+using Oceananigans.Utils: prettysummary
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Coriolis: EnergyConserving
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel, VectorInvariant
 using Oceananigans.TurbulenceClosures: HorizontalScalarDiffusivity
 
 using Oceananigans.DistributedComputations: Distributed, DistributedGrid, DistributedComputations, all_reduce
-using Oceananigans.DistributedComputations: reconstruct_global_topology, partition, cpu_architecture
+using Oceananigans.Architectures: cpu_architecture
+using Oceananigans.DistributedComputations: reconstruct_global_topology, partition
 
 using JLD2
 
 ordered_indices(r, i) = i == 1 ? r : i == 2 ? (r[2], r[1], r[3]) : (r[3], r[2], r[1])
 
-global_topology(grid, i) = string(nameof(topology(grid, i)))
+global_topology(grid, i) = prettysummary(topology(grid, i))
 
 function global_topology(grid::DistributedGrid, i)
     arch = architecture(grid)
     R = arch.ranks[i]
     r = ordered_indices(arch.local_index, i)
     T = reconstruct_global_topology(topology(grid, i), R, r..., arch)
-    return string(nameof(T))
+    return prettysummary(T)
 end
 
 using Oceananigans.Grids: YRegLLGOTF
@@ -116,7 +118,7 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; reg
     )
 
     if !regenerate_data
-        datadep_path = "regression_truth_data_v2/" * output_filename
+        datadep_path = "regression_truth_data_v3/" * output_filename
         regression_data_path = @datadep_str datadep_path
         file = jldopen(regression_data_path)
 
@@ -132,8 +134,6 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; reg
         )
 
         close(file)
-
-        summarize_regression_test(test_fields, truth_fields)
 
         test_fields_equality(cpu_arch, test_fields, truth_fields)
     end

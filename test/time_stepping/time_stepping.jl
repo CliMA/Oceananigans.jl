@@ -5,11 +5,14 @@ using Dates: Millisecond
 using TimesDates: TimeDate
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Grids: topological_tuple_length
-using Oceananigans.TimeSteppers: Clock
+using Oceananigans.TimeSteppers: Clock, AbstractLagrangianParticles
+using Oceananigans.Utils: kernel_time_step
 using Oceananigans.Advection: EnergyConserving, EnstrophyConserving
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 using Oceananigans.TurbulenceClosures.Smagorinskys: LagrangianAveraging, DynamicSmagorinsky, Smagorinsky
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ImplicitFreeSurface
+
+import Oceananigans.TimeSteppers: step_lagrangian_particles!, update_lagrangian_particle_state!
 
 function time_stepping_works_with_flat_dimensions(arch, topology)
     size = Tuple(1 for i = 1:topological_tuple_length(topology...))
@@ -18,6 +21,25 @@ function time_stepping_works_with_flat_dimensions(arch, topology)
     model = NonhydrostaticModel(grid)
     time_step!(model, 1)
     return true # Test that no errors/crashes happen when time stepping.
+end
+
+# `LagrangianParticles` dynamics receive the same Δt that kernels do
+mutable struct ΔtTypeRecorder
+    Δt_type :: Any
+end
+
+(recorder::ΔtTypeRecorder)(particles, model, Δt) = (recorder.Δt_type = typeof(Δt); nothing)
+
+# Particles that advance their own state by `clock.last_stage_Δt` in `update_lagrangian_particle_state!`
+mutable struct ElapsedTimeParticles <: AbstractLagrangianParticles
+    elapsed_time :: Float64
+end
+
+step_lagrangian_particles!(::ElapsedTimeParticles, model, Δt) = nothing
+
+function update_lagrangian_particle_state!(particles::ElapsedTimeParticles, model)
+    particles.elapsed_time += model.clock.last_stage_Δt
+    return nothing
 end
 
 # ∂c/∂t = -c + t with c(0) = 0 has the exact solution c(t) = t - 1 + exp(-t).
@@ -64,7 +86,7 @@ end
 
 function time_step_nonhydrostatic_model_works(grid; coriolis = nothing)
     model = NonhydrostaticModel(grid; coriolis)
-    simulation = Simulation(model, Δt=1.0, stop_iteration=1)
+    simulation = Simulation(model; Δt=1.0, stop_iteration=1, verbose=false)
     run!(simulation)
     return model.clock.iteration == 1
 end
@@ -181,20 +203,15 @@ function incompressible_in_time(grid, Nt, timestepper)
     arch = architecture(grid)
     launch!(arch, grid, :xyz, divergence!, grid, u.data, v.data, w.data, div_U.data)
 
-    min_div = @allowscalar minimum(interior(div_U))
-    max_div = @allowscalar maximum(interior(div_U))
     max_abs_div = @allowscalar maximum(abs, interior(div_U))
-    sum_div = @allowscalar sum(interior(div_U))
-    sum_abs_div = @allowscalar sum(abs, interior(div_U))
-
-    @info "Velocity divergence after $Nt time steps [$(typeof(arch)), $(typeof(grid)), $timestepper]: " *
-          "min=$min_div, max=$max_div, max_abs_div=$max_abs_div, sum=$sum_div, abs_sum=$sum_abs_div"
 
     # We are comparing with 0 so we use absolute tolerances. They are a bit larger than eps(Float64) and eps(Float32)
     # because we are summing over the absolute value of many machine epsilons. A better atol value may be
     # Nx*Ny*Nz*eps(eltype(grid)) but it's much higher than the observed max_abs_div, so out of a general abundance of caution
     # we manually insert a smaller tolerance than we might need for this test.
-    return isapprox(max_abs_div, 0, atol=5e-8)
+    @test isapprox(max_abs_div, 0, atol=5e-8)
+
+    return nothing
 end
 
 """
@@ -233,10 +250,9 @@ function tracer_conserved_in_channel(arch, FT, Nt)
     end
 
     Tavg = @allowscalar mean(interior(model.tracers.T))
-    @info "Tracer conservation after $Nt time steps [$(typeof(arch)), $FT]: " *
-          "⟨T⟩-T₀=$(Tavg-Tavg0) °C"
+    @test isapprox(Tavg, Tavg0, atol=Nx*Ny*Nz*eps(FT))
 
-    return isapprox(Tavg, Tavg0, atol=Nx*Ny*Nz*eps(FT))
+    return nothing
 end
 
 function time_stepping_with_background_fields(arch)
@@ -279,7 +295,8 @@ end
 
 Planes = (FPlane, ConstantCartesianCoriolis, BetaPlane, NonTraditionalBetaPlane)
 
-BuoyancyModifiedAnisotropicMinimumDissipation(FT=Float64) = AnisotropicMinimumDissipation(FT, Cb=1.0)
+BuoyancyModifiedAnisotropicMinimumDissipation(FT=Float64) =
+    @test_logs (:warn, "AnisotropicMinimumDissipation with buoyancy modification is unvalidated.") AnisotropicMinimumDissipation(FT, Cb=1.0)
 
 ConstantSmagorinsky(FT=Float64) = Smagorinsky(FT, coefficient=0.16)
 DirectionallyAveragedDynamicSmagorinsky(FT=Float64) =
@@ -347,8 +364,6 @@ stokes_drifts = (UniformStokesDrift(),
 timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
 @testset "Time stepping" begin
-    @info "Testing time stepping..."
-
     @testset "Clock equality and isapprox" begin
         clock1 = Clock(time=1.0, last_Δt=1.0, last_stage_Δt=1.0, iteration=1, stage=1)
         clock2 = Clock(time=1.0, last_Δt=1.0, last_stage_Δt=1.0, iteration=1, stage=1)
@@ -399,6 +414,45 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
         @test Oceananigans.TimeSteppers.kernel_time_type(explicit_clock) == Float32
     end
 
+    @testset "kernel_time_step demotes Δt to the grid eltype" begin
+        for arch in archs, FT in float_types
+            grid = RectilinearGrid(arch, FT; size=(1, 1, 1), extent=(1, 1, 1))
+
+            @test kernel_time_step(arch, grid, 60.0) isa FT
+            @test kernel_time_step(arch, grid, 60.0f0) isa FT
+            @test kernel_time_step(arch, grid, 60) isa FT
+        end
+    end
+
+    # https://github.com/CliMA/Oceananigans.jl/issues/5939
+    @testset "time_step! demotes Δt to the kernel time type" begin
+        for arch in archs, FT in float_types
+            grid = RectilinearGrid(arch, FT; size=(2, 2, 2), extent=(1, 1, 1))
+
+            x = on_architecture(arch, FT[0.5])
+            y = on_architecture(arch, FT[0.5])
+            z = on_architecture(arch, FT[-0.5])
+
+            for timestepper in (:QuasiAdamsBashforth2, :RungeKutta3)
+                recorder = ΔtTypeRecorder(nothing)
+                particles = LagrangianParticles(; x, y, z, dynamics=recorder)
+                model = NonhydrostaticModel(grid; particles, timestepper)
+
+                time_step!(model, 1.0) # Float64, as `aligned_time_step` may return
+                @test recorder.Δt_type === FT
+            end
+
+            for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
+                recorder = ΔtTypeRecorder(nothing)
+                particles = LagrangianParticles(; x, y, z, dynamics=recorder)
+                model = HydrostaticFreeSurfaceModel(grid; particles, timestepper)
+
+                time_step!(model, 1.0)
+                @test recorder.Δt_type === FT
+            end
+        end
+    end
+
     @testset "Clock with integer time adapts to a kernel argument" begin
         # The default `last_Δt = Inf` cannot be represented by the integer time type.
         clock = Clock(time=1)
@@ -415,8 +469,6 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
     end
 
     @testset "Clock last_Δt tracks the most recent time step" begin
-        @info "  Testing that clock.last_Δt is updated by every time stepper..."
-
         for arch in archs
             grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 1, 1))
 
@@ -438,9 +490,27 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
         end
     end
 
-    @testset "SplitRungeKutta stages evaluate time-dependent forcing at the stage time" begin
-        @info "  Testing that SplitRungeKutta time steppers advance the clock to the stage times..."
+    @testset "Lagrangian particle state advances with the clock" begin
+        for arch in archs
+            grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 1, 1))
 
+            for timestepper in (:QuasiAdamsBashforth2, :RungeKutta3)
+                model = NonhydrostaticModel(grid; timestepper, particles=ElapsedTimeParticles(0))
+                time_step!(model, 1)
+                time_step!(model, 2)
+                @test model.particles.elapsed_time ≈ model.clock.time
+            end
+
+            for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta2, :SplitRungeKutta3, :SplitRungeKutta4, :SplitRungeKutta5)
+                model = HydrostaticFreeSurfaceModel(grid; timestepper, particles=ElapsedTimeParticles(0))
+                time_step!(model, 1)
+                time_step!(model, 2)
+                @test model.particles.elapsed_time ≈ model.clock.time
+            end
+        end
+    end
+
+    @testset "SplitRungeKutta stages evaluate time-dependent forcing at the stage time" begin
         split_runge_kutta_timesteppers = (:SplitRungeKutta2, :SplitRungeKutta3, :SplitRungeKutta4, :SplitRungeKutta5)
 
         for arch in archs, FT in float_types
@@ -504,12 +574,9 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
     FT₀ = Oceananigans.defaults.FloatType
     for arch in archs, FT in float_types
-        A = typeof(arch)
         Oceananigans.defaults.FloatType = FT
         try
-            @testset "Time stepping with DateTimes [$A, $FT]" begin
-                @info "  Testing NonhydrostaticModel time stepping with datetime clocks [$A, $FT]"
-
+            @testset "Time stepping with DateTimes [$(summary(arch)), $FT]" begin
                 grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
                 @test eltype(grid) == FT
 
@@ -532,17 +599,16 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                         # skip --- TKEDissipationVerticalDiffusivity may not work with Float32 yet
                         # and only supports :QuasiAdamsBashforth2
                     else
-                        C = nameof(typeof(closure))
-                        @info "  Testing HydrostaticFreeSurfaceModel time stepping with datetime clocks [$A, $FT, $C, $timestepper]"
+                        @testset "HydrostaticFreeSurfaceModel [$(nameof(typeof(closure))), $timestepper]" begin
+                            tracers = (:b, :c)
+                            clock = Clock(; time=DateTime(2020, 1, 1))
+                            grid = RectilinearGrid(arch; size=(2, 2, 2), extent=(1, 1, 1))
+                            @test eltype(grid) == FT
 
-                        tracers = (:b, :c)
-                        clock = Clock(; time=DateTime(2020, 1, 1))
-                        grid = RectilinearGrid(arch; size=(2, 2, 2), extent=(1, 1, 1))
-                        @test eltype(grid) == FT
-
-                        model = HydrostaticFreeSurfaceModel(grid; clock, closure, tracers, timestepper, buoyancy = BuoyancyTracer())
-                        time_step!(model, 1)
-                        @test model.clock.time == DateTime("2020-01-01T00:00:01")
+                            model = HydrostaticFreeSurfaceModel(grid; clock, closure, tracers, timestepper, buoyancy = BuoyancyTracer())
+                            time_step!(model, 1)
+                            @test model.clock.time == DateTime("2020-01-01T00:00:01")
+                        end
                     end
                 end
             end
@@ -552,22 +618,18 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
     end
 
     @testset "Flat dimensions" begin
-        for arch in archs
-            for topology in ((Flat, Periodic, Periodic),
-                             (Periodic, Flat, Periodic),
-                             (Periodic, Periodic, Flat),
-                             (Flat, Flat, Bounded))
+        topologies = ((Flat, Periodic, Periodic),
+                      (Periodic, Flat, Periodic),
+                      (Periodic, Periodic, Flat),
+                      (Flat, Flat, Bounded))
 
-                TX, TY, TZ = topology
-                @info "  Testing that time stepping works with flat dimensions [$(typeof(arch)), $TX, $TY, $TZ]..."
-                @test time_stepping_works_with_flat_dimensions(arch, topology)
-            end
+        @testset "[$(summary(arch)), $(join(nameof.(topology), ", "))]" for arch in archs, topology in topologies
+            @test time_stepping_works_with_flat_dimensions(arch, topology)
         end
     end
 
     @testset "Coriolis" begin
-        for arch in archs, FT in [Float64], Coriolis in Planes
-            @info "  Testing that time stepping works with Coriolis [$(typeof(arch)), $FT, $Coriolis]..."
+        @testset "[$(summary(arch)), $FT, $(nameof(Coriolis))]" for arch in archs, FT in [Float64], Coriolis in Planes
             @test time_stepping_works_with_coriolis(arch, FT, Coriolis)
         end
     end
@@ -584,8 +646,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                              SphericalCoriolis(FT, scheme=EnergyConserving()),
                              SphericalCoriolis(FT, scheme=EnstrophyConserving()))
 
-                @testset "Time-stepping NonhydrostaticModels [$arch, $(typeof(coriolis))]" begin
-                    @info "  Testing time-stepping NonhydrostaticModels [$arch, $(typeof(coriolis))]..."
+                @testset "Time-stepping NonhydrostaticModels [$(summary(arch)), $(summary(coriolis))]" begin
                     @test time_step_nonhydrostatic_model_works(lat_lon_sector_grid; coriolis)
                     @test time_step_nonhydrostatic_model_works(lat_lon_strip_grid; coriolis)
                 end
@@ -594,49 +655,43 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
     end
 
     @testset "NonhydrostaticModel with ImplicitFreeSurface" begin
-        for arch in archs, FT in float_types
-            @info "  Testing NonhydrostaticModel with ImplicitFreeSurface time stepping [$FT, $arch]..."
+        @testset "[$(summary(arch)), $FT]" for arch in archs, FT in float_types
             @test time_step_nonhydrostatic_model_with_implicit_free_surface_works(arch, FT)
         end
     end
 
     @testset "Advection schemes" begin
-        for arch in archs, advection_scheme in advection_schemes
-            @info "  Testing time stepping with advection schemes [$(typeof(arch)), $(typeof(advection_scheme))]"
+        @testset "[$(summary(arch)), $(summary(advection_scheme))]" for arch in archs, advection_scheme in advection_schemes
             @test time_stepping_works_with_advection_scheme(arch, advection_scheme)
         end
     end
 
     @testset "Stokes drift" begin
-        for arch in archs, stokes_drift in stokes_drifts
-            @info "  Testing time stepping with stokes drift schemes [$(typeof(arch)), $(typeof(stokes_drift))]"
+        @testset "[$(summary(arch)), $(nameof(typeof(stokes_drift)))]" for arch in archs, stokes_drift in stokes_drifts
             @test time_stepping_works_with_stokes_drift(arch, stokes_drift)
         end
     end
 
 
     @testset "BackgroundFields" begin
-        for arch in archs
-            @info "  Testing that time stepping works with background fields [$(typeof(arch))]..."
+        @testset "[$(summary(arch))]" for arch in archs
             @test time_stepping_with_background_fields(arch)
         end
     end
 
     @testset "Euler time stepping propagate NaNs in previous tendency G⁻" begin
-        for arch in archs
-            @info "  Testing that Euler time stepping doesn't propagate NaNs found in previous tendency G⁻ [$(typeof(arch))]..."
+        @testset "[$(summary(arch))]" for arch in archs
             @test euler_time_stepping_doesnt_propagate_NaNs(arch)
         end
     end
 
     @testset "Turbulence closures" begin
         for arch in archs, FT in [Float64]
+            @testset "[$(summary(arch)), $FT, nothing]" begin
+                @test time_stepping_works_with_nothing_closure(arch, FT)
+            end
 
-            @info "  Testing that time stepping works [$(typeof(arch)), $FT, nothing]..."
-            @test time_stepping_works_with_nothing_closure(arch, FT)
-
-            for Closure in Closures
-                @info "  Testing that time stepping works [$(typeof(arch)), $FT, $Closure]..."
+            @testset "[$(summary(arch)), $FT, $(nameof(Closure))]" for Closure in Closures
                 if Closure === CATKEVerticalDiffusivity || Closure === IsopycnalSkewSymmetricDiffusivity
                     # CATKE isn't supported with NonhydrostaticModel yet
                     @test time_stepping_works_with_closure(arch, FT, Closure; Model=HydrostaticFreeSurfaceModel)
@@ -665,16 +720,13 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
     @testset "Idealized nonlinear equation of state" begin
         for arch in archs, FT in [Float64]
-            for eos_type in (SeawaterPolynomials.RoquetEquationOfState, SeawaterPolynomials.TEOS10EquationOfState)
-                @info "  Testing that time stepping works with " *
-                        "RoquetIdealizedNonlinearEquationOfState [$(typeof(arch)), $FT, $eos_type]"
+            @testset "[$(summary(arch)), $FT, $(nameof(eos_type))]" for eos_type in (SeawaterPolynomials.RoquetEquationOfState, SeawaterPolynomials.TEOS10EquationOfState)
                 @test time_stepping_works_with_nonlinear_eos(arch, FT, eos_type)
             end
         end
     end
 
     @testset "2nd-order Adams-Bashforth" begin
-        @info "  Testing 2nd-order Adams-Bashforth..."
         for arch in archs, FT in float_types
             run_first_AB2_time_step_tests(arch, FT)
         end
@@ -700,24 +752,19 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                                                 y = (0, 1),
                                                 z = collect(range(0, stop=1, length=Nz+1)))
 
-            for grid in (regular_grid, hyperbolic_vs_grid, regular_vs_grid)
-                @info "  Testing incompressibility [$FT, $(typeof(grid).name.wrapper)]..."
-
+            @testset "[$(summary(arch)), $FT, $(nameof(typeof(grid)))]" for grid in (regular_grid, hyperbolic_vs_grid, regular_vs_grid)
                 # The pressure projection removes the divergence of the full predictor velocity every time step,
                 # so the divergence left after a step is set by that step's Poisson solve and does not accumulate.
                 # Nt=1 covers the first (Euler) step of QuasiAdamsBashforth2 and one full RungeKutta3 step;
                 # Nt=10 covers the multi-step Adams-Bashforth combination and repeated solves.
                 for Nt in [1, 10], timestepper in timesteppers
-                    @test incompressible_in_time(grid, Nt, timestepper)
+                    incompressible_in_time(grid, Nt, timestepper)
                 end
             end
         end
     end
 
-    @testset "Tracer conservation in channel" begin
-        @info "  Testing tracer conservation in channel..."
-        for arch in archs, FT in float_types
-            @test tracer_conserved_in_channel(arch, FT, 10)
-        end
+    @testset "Tracer conservation in channel [$(summary(arch)), $FT]" for arch in archs, FT in float_types
+        tracer_conserved_in_channel(arch, FT, 10)
     end
 end

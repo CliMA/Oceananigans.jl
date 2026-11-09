@@ -4,7 +4,8 @@ $(TYPEDSIGNATURES)
 Confirm that `a` and `b` are on the same grid if both are fields and return `a.grid`.
 """
 function validate_grid(a::AbstractField, b::AbstractField)
-    a.grid == b.grid || throw(ArgumentError("Fields in an AbstractOperation must be on the same grid."))
+    # `==` compares the bottom heights of immersed grids, which on a GPU makes the host wait for the device
+    a.grid === b.grid || a.grid == b.grid || throw(ArgumentError("Fields in an AbstractOperation must be on the same grid."))
     return a.grid
 end
 

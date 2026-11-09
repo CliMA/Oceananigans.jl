@@ -6,7 +6,7 @@ using KernelAbstractions: @kernel, @index
 using JLD2: JLD2, jldopen
 using Glob: Glob, glob
 using GPUArraysCore: GPUArraysCore, @allowscalar
-using OffsetArrays: OffsetArrays, OffsetArray
+using OffsetArrays: OffsetArrays
 using Statistics: Statistics, mean
 
 using Oceananigans.Architectures: Architectures, CPU, GPU, on_architecture
@@ -78,8 +78,11 @@ end
 $(TYPEDSIGNATURES)
 
 Return `(filepath, local_index)` for global time index `n`.
+Time `time` and reader keyword arguments `reader_kw` are passed
+to allow for case where field time series times and times in file(s)
+are non-aligned.
 """
-function file_and_local_index(sfp::SplitFilePath, n)
+function file_and_local_index(sfp::SplitFilePath, n, time, reader_kw)
     if n < 1 || n > last(sfp.cumulative_length)
         throw(BoundsError(sfp, n))
     end
@@ -89,7 +92,24 @@ function file_and_local_index(sfp::SplitFilePath, n)
     return sfp.paths[i], n - prev
 end
 
-file_and_local_index(path::AbstractString, n) = (path, n)
+file_and_local_index(path::AbstractString, n, ::Nothing, reader_kw) = path, n
+
+function file_and_local_index(path::AbstractString, n, time, reader_kw)
+    local_n::Int = jldopen(path; reader_kw...) do file
+        file_times = file["timeseries/t"]
+        iter = keys(file_times)[n]
+        if file_times[iter] == time
+            n
+        else
+            # times in fts not aligned with those in file so search for match
+            file_n = findfirst(k -> file_times[k] == time, keys(file_times))
+            isnothing(file_n) && error("No data for time $(time) (local time index $(n)) found at $(path).")
+            file_n
+        end
+    end
+
+    return path, local_n
+end
 
 #####
 ##### Time indexing modes for FieldTimeSeries
@@ -106,6 +126,11 @@ t = fts.times
 Δt = t[end] - t[end-1]
 period = t[end] - t[1] + Δt
 ```
+
+For calendar times (e.g. `DateTime`), `period` can be a whole number of `Dates.Year`s:
+times are then folded into the series by calendar years, so that a climatology repeats
+on the same calendar dates every year. A 29 February that falls outside a leap year
+reads 28 February.
 """
 struct Cyclical{FT}
     period :: FT
@@ -451,7 +476,7 @@ fts[4]
 ├── grid: 4×4×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
-└── data: 10×10×10 OffsetArray(view(::Array{Float64, 4}, :, :, :, 4), -2:7, -2:7, -2:7) with eltype Float64 with indices -2:7×-2:7×-2:7
+└── data: 10×10×10 StaticStridesOffsetArray(view(::Array{Float64, 4}, :, :, :, 4), -2:7, -2:7, -2:7) with eltype Float64 with indices -2:7×-2:7×-2:7
     └── max=0.0, min=0.0, mean=0.0
 ```
 
@@ -468,7 +493,7 @@ fts[Time(0.3)]
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
 ├── operand: BinaryOperation at (Center, Center, Center)
 ├── status: Oceananigans.Fields.FixedTime{Float64}
-└── data: 10×10×10 OffsetArray(::Array{Float64, 3}, -2:7, -2:7, -2:7) with eltype Float64 with indices -2:7×-2:7×-2:7
+└── data: 10×10×10 StaticStridesOffsetArray(::Array{Float64, 3}, -2:7, -2:7, -2:7) with eltype Float64 with indices -2:7×-2:7×-2:7
     └── max=0.0, min=0.0, mean=0.0
 ```
 
@@ -538,7 +563,7 @@ fts[5]
 ├── grid: 4×4×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
-└── data: 10×10×10 OffsetArray(::Array{Float64, 3}, -2:7, -2:7, -2:7) with eltype Float64 with indices -2:7×-2:7×-2:7
+└── data: 10×10×10 StaticStridesOffsetArray(::Array{Float64, 3}, -2:7, -2:7, -2:7) with eltype Float64 with indices -2:7×-2:7×-2:7
     └── max=5.0, min=5.0, mean=5.0
 ```
 """

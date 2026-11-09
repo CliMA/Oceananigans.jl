@@ -1,11 +1,16 @@
 module Forcings
 
-export Forcing, ContinuousForcing, DiscreteForcing, Relaxation, GaussianMask, PiecewiseLinearMask, CosineRampMask, LinearTarget, AdvectiveForcing, compute_forcing!
+export Forcing, ContinuousForcing, DiscreteForcing, Relaxation, InflowOutflowRate, GaussianMask, PiecewiseLinearMask, CosineRampMask, LinearTarget, AdvectiveForcing, compute_forcing!, tidal_forcing
 
 using Adapt: Adapt, adapt
 using DocStringExtensions: TYPEDSIGNATURES
 
+using Oceananigans: Oceananigans
+using Oceananigans.BuoyancyFormulations: BuoyancyForce, BuoyancyTracerFormulation, SeawaterBuoyancy,
+                                         get_temperature_and_salinity, thermal_expansionᶜᶜᶠ
 using Oceananigans.Fields: field, location
+using Oceananigans.Grids: Center, Face, inactive_cell, znode
+using Oceananigans.Operators: ∂zᶜᶜᶜ
 using Oceananigans.OutputReaders: FlavorOfFTS
 using Oceananigans.Units: Time
 using Oceananigans.Utils: named_tuple
@@ -19,5 +24,7 @@ include("advective_forcing.jl")
 include("forcing.jl")
 include("model_forcing.jl")
 include("compute_forcing.jl")
+include("tidal_forcing.jl")
+include("penetrative_radiation.jl")
 
 end # module

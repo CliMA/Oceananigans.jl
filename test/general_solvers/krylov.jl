@@ -61,8 +61,7 @@ end
 
 @testset "KrylovSolver" begin
     for method in (:cg, )  # :gmres
-        for arch in archs
-            @info "Testing KrylovSolver [$(typeof(arch))] with the Krylov method $method..."
+        @testset "Krylov method $(method) [$(typeof(arch))]" for arch in archs
             grid = RectilinearGrid(arch, size=(4, 8, 4), extent=(1, 3, 1))
             run_identity_operator_test(grid, method)
             run_poisson_equation_test(grid, method)

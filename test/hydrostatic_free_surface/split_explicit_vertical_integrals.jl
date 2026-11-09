@@ -145,7 +145,7 @@ barotropic_boundary_conditions(grid) =
             set!(V, set_V̅)
             set!(v_corrected, set_v_corrected)
 
-            barotropic_split_explicit_corrector!(u, v, sefs, grid, 1)
+            barotropic_split_explicit_corrector!(u, v, sefs, grid)
             @test all(Array((interior(u) .- interior(u_corrected))) .< 1e-14)
             @test all(Array((interior(v) .- interior(v_corrected))) .< 1e-14)
         end

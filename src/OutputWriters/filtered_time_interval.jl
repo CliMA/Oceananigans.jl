@@ -3,7 +3,7 @@ using Oceananigans.Diagnostics: AbstractDiagnostic
 using Oceananigans.Fields: Fields, indices, location
 using Oceananigans.Grids: Grids, grid
 using Oceananigans.OutputWriters: fetch_output, output_time, has_initial_output
-using Oceananigans.Utils: AbstractSchedule, IterationInterval, prettytime
+using Oceananigans.Utils: AbstractSchedule, IterationInterval, prettytime, unparameterized_type
 
 """
     AbstractFilterKernel
@@ -22,6 +22,11 @@ Lanczos filter weights [Duchon (1979)](@cite duchon1979lanczos) over `window`,
     w(τ) = sinc(2τ / cutoff) sinc(2τ / window),
 
 which pass periods longer than `cutoff` and remove shorter ones.
+
+References
+==========
+* Duchon, C. E. (1979). "Lanczos filtering in one and two dimensions." Journal of Applied
+  Meteorology, 18(8), 1016-1022.
 """
 struct LanczosKernel{FT} <: AbstractFilterKernel
     window :: FT
@@ -196,7 +201,7 @@ end
 function time_average_outputs(filter::FilteredTimeInterval, outputs::AbstractDict, model)
     # `NetCDFWriter`/`ZarrWriter` pass an `OrderedDict`, not a `Dict`; build the same concrete
     # dictionary type back so their output order is preserved.
-    DictType = Base.typename(typeof(outputs)).wrapper
+    DictType = unparameterized_type(typeof(outputs))
     filtered_outputs = DictType(name => TimeFilteredOutput(output, filter, model) for (name, output) in outputs)
     return filter, filtered_outputs
 end

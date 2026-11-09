@@ -1,5 +1,5 @@
 using Printf: @sprintf
-using JLD2: JLD2, jldopen
+using JLD2: JLD2, jldopen, Shuffle, ZstdFilter
 
 using Oceananigans: initialize!
 using Oceananigans.Fields: indices
@@ -38,7 +38,7 @@ ext(::Type{JLD2Writer}) = ".jld2"
                including = default_included_properties(model),
                verbose = false,
                part = 1,
-               compress = true,
+               compress = [Shuffle(), ZstdFilter(1)],
                jld2_kw = Dict{Symbol, Any}())
 
 Construct a `JLD2Writer` for an Oceananigans `model` that writes `label, output` pairs
@@ -109,9 +109,11 @@ Keyword arguments
           Default: 1.
 
 - `compress`: Determines whether and how to compress data when writing to the file, forwarded
-              to `JLD2.jldopen`. Can be a `Bool` or any compressor supported by JLD2.jl; see the
-              [JLD2.jl documentation](https://juliaio.github.io/JLD2.jl/stable/compression/)
-              for the available options. Default: `true` (compression enabled, using the `Deflate` filter).
+              to `JLD2.jldopen`. Can be a `Bool` (`true` uses the `Deflate` filter), any
+              compression filter supported by JLD2.jl, or a vector of filters applied in order;
+              see the [JLD2.jl documentation](https://juliaio.github.io/JLD2.jl/stable/compression/)
+              for the available options. Default: `[JLD2.Shuffle(), JLD2.ZstdFilter(1)]` (byte
+              shuffling followed by Zstandard compression at level 1, which is lossless).
 
 - `jld2_kw`: Dict of kwargs to be passed to `JLD2.jldopen` when data is written.
              A `:compress` entry here takes precedence over the `compress` keyword argument.
@@ -185,7 +187,7 @@ function JLD2Writer(model, outputs; filename, schedule,
                     including = default_included_properties(model),
                     verbose = false,
                     part = 1,
-                    compress = true,
+                    compress = [Shuffle(), ZstdFilter(1)],
                     jld2_kw = Dict{Symbol, Any}())
 
     jld2_kw = Dict{Symbol, Any}(pairs(jld2_kw))
@@ -215,17 +217,24 @@ end
 
 # Inferring this for a concrete model type means inferring `serializeproperty!` for the
 # union of all the model's property types, which takes seconds and is never needed
-Base.@nospecializeinfer function save_and_serialize_properties!(file, @nospecialize(model), including)
+Base.@nospecializeinfer function save_and_serialize_properties!(file, @nospecialize(model), including, serialized)
     saveproperties!(file, model, including)
 
-    for property in including
+    for property in serialized
         serializeproperty!(file, "serialized/$property", getproperty(model, property))
     end
 
     return nothing
 end
 
-function initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, model)
+# Initialization runs once, so we specialize neither on the model nor on the outputs, which
+# can be large immutable structs (for example, fields of a `KernelFunctionOperation` whose
+# kernel function holds many fields).
+Base.@nospecializeinfer function initialize_jld2_file!(filepath, init, jld2_kw, including,
+                                                      @nospecialize(outputs), @nospecialize(model))
+    # Output is appended to an existing file, which already holds the metadata
+    isfile(filepath) && return nothing
+
     try
         jldopen(filepath, "a+"; jld2_kw...) do file
             init(file, model)
@@ -234,18 +243,21 @@ function initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, mode
         @warn """Failed to execute user `init` for $filepath because $(typeof(err)): $(sprint(showerror, err))"""
     end
 
-    try
-        jldopen(filepath, "a+"; jld2_kw...) do file
-            save_and_serialize_properties!(file, model, including)
-        end
-    catch err
-        @warn """Failed to save and serialize $including in $filepath because $(typeof(err)): $(sprint(showerror, err))"""
-    end
-
     # Extract grids from outputs, falling back to `nothing` for non-field outputs
     output_grids = Dict(string(name) => (try grid(output) catch; nothing end) for (name, output) in pairs(outputs))
     unique_grids = unique(objectid, filter(!isnothing, collect(values(output_grids))))
     single_grid  = length(unique_grids) == 1
+
+    # A single output grid is serialized at `serialized/grid` below, in place of `model.grid`
+    serialized = single_grid ? filter(!=(:grid), including) : including
+
+    try
+        jldopen(filepath, "a+"; jld2_kw...) do file
+            save_and_serialize_properties!(file, model, including, serialized)
+        end
+    catch err
+        @warn """Failed to save and serialize $including in $filepath because $(typeof(err)): $(sprint(showerror, err))"""
+    end
 
     # Serialize the unique grids. With a single grid it is stored at `serialized/grid`
     # (no suffix); with multiple grids they are stored at `serialized/grid_1`, `grid_2`, ...
@@ -262,8 +274,11 @@ function initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, mode
     end
 
     # Serialize the grid index, location, indices, and boundary conditions of each output.
+    # The file is opened without a `do` block: a closure would capture, and so specialize
+    # on, each output.
     for (name, field) in pairs(outputs)
-        jldopen(filepath, "a+"; jld2_kw...) do file
+        file = jldopen(filepath, "a+"; jld2_kw...)
+        try
             # Only write a grid index when we actually have multiple grids to choose from;
             # otherwise all outputs use the single grid at `serialized/grid`.
             if !single_grid && !isnothing(output_grids[string(name)])
@@ -280,6 +295,8 @@ function initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, mode
                 serializeproperty!(file, "timeseries/$name/serialized/boundary_conditions", boundary_conditions(field))
             catch
             end
+        finally
+            close(file)
         end
     end
 

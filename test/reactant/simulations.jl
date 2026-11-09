@@ -140,6 +140,64 @@ end
     @test total[1] > 0
 end
 
+@testset "Reactant Simulation: compiled run! with and without a peeled first step" begin
+    @info "Testing a compiled run! for Adams-Bashforth, which peels its first step, and for RK3, which does not..."
+    rectilinear_kw = (; size=(8, 8, 4), halo=(3, 3, 3), x=(0, 1), y=(0, 1), z=(0, 1))
+
+    for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
+        model_kw = (; free_surface=ExplicitFreeSurface(gravitational_acceleration=1), timestepper)
+        model = HydrostaticFreeSurfaceModel(RectilinearGrid(CPU(); rectilinear_kw...); model_kw...)
+        r_model = HydrostaticFreeSurfaceModel(RectilinearGrid(ReactantState(); rectilinear_kw...); model_kw...)
+
+        ui = randn(size(model.velocities.u)...)
+        set!(model, u=ui)
+        set!(r_model, u=ui)
+
+        Δt = 1e-3
+        simulation = Simulation(model; Δt, stop_iteration=5, verbose=false)
+        r_simulation = Simulation(r_model; Δt, stop_iteration=5, verbose=false)
+        run!(simulation)
+        compiled_run! = @compile run!(r_simulation)
+        compiled_run!(r_simulation)
+
+        @test iteration(r_simulation) == 5
+        @test Array(interior(r_model.velocities.u)) ≈ Array(interior(model.velocities.u))
+    end
+end
+
+@testset "Reactant Simulation: a compiled run! takes the stop_iteration set after compiling" begin
+    @info "Testing one compiled run! called with different stop_iterations..."
+    rectilinear_kw = (; size=(8, 8, 4), halo=(3, 3, 3), x=(0, 1), y=(0, 1), z=(0, 1))
+    chunks = (2, 0, 3)
+
+    for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
+        model_kw = (; free_surface=ExplicitFreeSurface(gravitational_acceleration=1), timestepper)
+        model = HydrostaticFreeSurfaceModel(RectilinearGrid(CPU(); rectilinear_kw...); model_kw...)
+        r_model = HydrostaticFreeSurfaceModel(RectilinearGrid(ReactantState(); rectilinear_kw...); model_kw...)
+
+        ui = randn(size(model.velocities.u)...)
+        set!(model, u=ui)
+        set!(r_model, u=ui)
+
+        # Each compiled call starts afresh: an Adams-Bashforth run takes a forward-Euler first step
+        Δt = 1e-3
+        euler = timestepper == :QuasiAdamsBashforth2
+        for n in chunks, step in 1:n
+            step == 1 && euler ? time_step!(model, Δt; euler) : time_step!(model, Δt)
+        end
+
+        r_simulation = Simulation(r_model; Δt, stop_iteration=first(chunks), verbose=false)
+        compiled_run! = @compile run!(r_simulation)
+        for n in chunks
+            r_simulation.stop_iteration = n
+            compiled_run!(r_simulation)
+        end
+
+        @test iteration(r_simulation) == sum(chunks)
+        @test Array(interior(r_model.velocities.u)) ≈ Array(interior(model.velocities.u))
+    end
+end
+
 @testset "Reactant Simulation: stop_time and TimeInterval" begin
     @info "Testing stop_time and TimeInterval conversion on a Reactant Simulation..."
     Nx, Ny, Nz = (10, 10, 10)
@@ -218,6 +276,59 @@ end
     @test_throws ArgumentError add_callback!(r_simulation, TimeDerivativeCallback(r_model.velocities.u))
 end
 
+@testset "Reactant Simulation: SpecifiedTimes" begin
+    @info "Testing a SpecifiedTimes callback on a Reactant Simulation..."
+    Nx, Ny, Nz = (10, 10, 10)
+    halo = (7, 7, 7)
+    rectilinear_kw = (; size=(Nx, Ny, Nz), halo, x=(0, 1), y=(0, 1), z=(0, 1))
+    model_kw = (; free_surface=ExplicitFreeSurface(gravitational_acceleration=1))
+
+    grid = RectilinearGrid(CPU(); rectilinear_kw...)
+    r_grid = RectilinearGrid(ReactantState(); rectilinear_kw...)
+    model = HydrostaticFreeSurfaceModel(grid; model_kw...)
+    r_model = HydrostaticFreeSurfaceModel(r_grid; model_kw...)
+    ui = randn(size(model.velocities.u)...)
+    vi = randn(size(model.velocities.v)...)
+    set!(model, u=ui, v=vi)
+    set!(r_model, u=ui, v=vi)
+
+    accumulate_u²!(sim, p) = (p.total .+= sum(interior(sim.model.velocities.u) .^ 2); nothing)
+
+    Δt = 1e-6 * minimum_xspacing(model.grid)
+
+    # One time on the step grid and one off it: both runs fire at iteration 0 (every callback does,
+    # at initialization), at step 1, and at step 3, the first step at or after 2.5Δt.
+    times = SpecifiedTimes(Δt, 2.5Δt)
+    simulation = Simulation(model; Δt, stop_time=4Δt, verbose=false)
+    total = zeros(1)
+    add_callback!(simulation, accumulate_u²!, times; parameters=(; total), name=:energy)
+    run!(simulation)
+    @test simulation.callbacks[:energy].schedule.previous_actuation == 2
+
+    r_simulation = Simulation(r_model; Δt, stop_time=4Δt, verbose=false)
+    r_total = Reactant.to_rarray(zeros(1))
+    add_callback!(r_simulation, accumulate_u²!, times; parameters=(; total=r_total), name=:energy)
+
+    # The schedule keeps its type; its times move to the device, where its call needs no counter.
+    r_schedule = r_simulation.callbacks[:energy].schedule
+    @test r_schedule isa SpecifiedTimes
+    @test r_schedule isa OceananigansReactantExt.Simulations.DeviceSpecifiedTimes
+    @test Array(r_schedule.times) == times.times
+    @test times.times isa Vector   # the eager schedule was copied, not moved
+
+    compiled_run! = @compile run!(r_simulation)
+    compiled_run!(r_simulation)
+
+    @test iteration(r_simulation) == 4
+    @test Reactant.to_number(r_model.clock.time) ≈ 4Δt
+    @test Array(interior(r_model.velocities.u)) ≈ Array(interior(model.velocities.u))
+    @test Array(r_total)[1] ≈ total[1]
+
+    # Times must be numbers: the traced clock is one.
+    DateTime = Oceananigans.Utils.Dates.DateTime
+    @test_throws ArgumentError add_callback!(r_simulation, accumulate_u²!, SpecifiedTimes(DateTime(2020, 1, 1)); parameters=(; total=r_total))
+end
+
 # A callback whose function type records the initial and final Σu² through the `initialize!` and
 # `finalize!` hooks, which run once each outside the traced loop. It carries its own buffers, since
 # the hooks receive the function, not the callback's parameters. Each is a length-one array written
@@ -268,4 +379,61 @@ Oceananigans.Simulations.finalize!(bookends::EnergyBookends, sim) = (bookends.fi
     @test r_final ≈ bookends.final[1]               # finalize!: the final state
     @test r_final ≈ sum(Array(interior(r_model.velocities.u)) .^ 2)
     @test r_initial != r_final
+end
+
+@testset "Reactant Simulation: automatic differentiation options" begin
+    Nx, Ny, Nz = (8, 8, 4)
+    halo = (5, 5, 5)
+    rectilinear_kw = (; size=(Nx, Ny, Nz), halo, x=(0, 1), y=(0, 1), z=(0, 1))
+    model_kw = (; free_surface=ExplicitFreeSurface(gravitational_acceleration=1), tracers=:T)
+
+    Random.seed!(123)
+    ui = randn(Nx, Ny, Nz)
+    vi = randn(Nx, Ny, Nz)
+    Ti = randn(Nx, Ny, Nz)
+
+    function fresh_model(arch)
+        grid = RectilinearGrid(arch; rectilinear_kw...)
+        model = HydrostaticFreeSurfaceModel(grid; model_kw...)
+        set!(model, u=ui, v=vi, T=Ti)
+        return model
+    end
+
+    model = fresh_model(CPU())
+    Δt = 1e-6 * minimum_xspacing(model.grid)
+    stop_iteration = 5
+
+    # Checkpointing has to be chosen, mincut is on by default, and a NamedTuple converts.
+    @test_throws UndefKeywordError AutomaticDifferentiation()
+    @test sprint(show, AutomaticDifferentiation(checkpointing=false)) == "AutomaticDifferentiation(track_numbers=false, mincut=true, checkpointing=false)"
+    @test convert(AutomaticDifferentiation, (; checkpointing=false, mincut=false)) == AutomaticDifferentiation(checkpointing=false, mincut=false)
+
+    # Only a Simulation on ReactantState takes them.
+    @test isnothing(Simulation(model; Δt, stop_iteration, verbose=false).automatic_differentiation)
+    @test_throws ArgumentError Simulation(model; Δt, stop_iteration, verbose=false, automatic_differentiation=AutomaticDifferentiation(checkpointing=false))
+
+    r_model = fresh_model(ReactantState())
+    @test Simulation(r_model; Δt, stop_iteration, verbose=false).automatic_differentiation == AutomaticDifferentiation(checkpointing=false)
+    @test_throws UndefKeywordError Simulation(r_model; Δt, stop_iteration, verbose=false, automatic_differentiation=(; mincut=true))
+    ad = AutomaticDifferentiation(checkpointing=Reactant.Periodic(2), mincut=false)
+    @test Simulation(r_model; Δt, stop_iteration, verbose=false, automatic_differentiation=ad).automatic_differentiation == ad
+    @test Simulation(r_model; Δt, stop_iteration, verbose=false, automatic_differentiation=(; checkpointing=Reactant.Binomial(2))).automatic_differentiation ==
+        AutomaticDifferentiation(checkpointing=Reactant.Binomial(2))
+    @test_throws ArgumentError Simulation(r_model; Δt, stop_iteration, verbose=false, automatic_differentiation=(; checkpointing=2))
+    @test_throws ArgumentError Simulation(r_model; Δt, stop_iteration, verbose=false, automatic_differentiation=(; checkpointing=true))
+
+    # The forward program does not depend on the options.
+    simulation = Simulation(model; Δt, stop_iteration, verbose=false)
+    run!(simulation)
+
+    for automatic_differentiation in (AutomaticDifferentiation(checkpointing=Reactant.Periodic(2), mincut=false),
+                                      AutomaticDifferentiation(checkpointing=Reactant.Binomial(2)))
+        r_model = fresh_model(ReactantState())
+        r_simulation = Simulation(r_model; Δt, stop_iteration, verbose=false, automatic_differentiation)
+        compiled_run! = @compile run!(r_simulation)
+        compiled_run!(r_simulation)
+        @test iteration(r_simulation) == stop_iteration
+        @test Array(interior(r_model.velocities.u)) ≈ Array(interior(model.velocities.u))
+        @test Array(interior(r_model.tracers.T)) ≈ Array(interior(model.tracers.T))
+    end
 end

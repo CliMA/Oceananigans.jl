@@ -1,20 +1,18 @@
-using GPUArraysCore
-using Oceananigans.Grids: stretched_dimensions
-using Oceananigans.Grids: XDirection, YDirection, ZDirection
-using Oceananigans.Operators: Δxᶠᵃᵃ, Δyᵃᶠᵃ, Δzᵃᵃᶠ
+using Statistics: mean
 
+using Oceananigans.Grids: XDirection, YDirection, ZDirection, stretched_dimensions
+using Oceananigans.Operators: V⁻¹ᶜᶜᶜ, Δxᶜᶜᶜ, Δxᶠᵃᵃ, Δyᵃᶠᵃ, Δyᶜᶜᶜ, Δzᵃᵃᶠ, Δzᶜᶜᶜ
 using Oceananigans.Solvers: BatchedTridiagonalSolver,
-                            stretched_direction,
-                            tridiagonal_direction,
-                            dimension,
                             HomogeneousNeumannFormulation,
-                            ZTridiagonalSolver,
-                            YTridiagonalSolver,
                             XTridiagonalSolver,
+                            YTridiagonalSolver,
+                            ZTridiagonalSolver,
+                            compute_lower_diagonal!,
                             compute_main_diagonal!,
-                            compute_lower_diagonal!
-
-import Oceananigans.Solvers: compute_preconditioner_rhs!
+                            compute_preconditioner_rhs!,
+                            dimension,
+                            stretched_direction,
+                            tridiagonal_direction
 
 struct DistributedFourierTridiagonalPoissonSolver{G, L, B, P, R, S, β}
     plan :: P
@@ -31,7 +29,7 @@ const XStretchedDistributedSolver = DistributedFourierTridiagonalPoissonSolver{<
 const YStretchedDistributedSolver = DistributedFourierTridiagonalPoissonSolver{<:Any, <:Any, <:YTridiagonalSolver}
 const ZStretchedDistributedSolver = DistributedFourierTridiagonalPoissonSolver{<:Any, <:Any, <:ZTridiagonalSolver}
 
-architecture(solver::DistributedFourierTridiagonalPoissonSolver) =
+Architectures.architecture(solver::DistributedFourierTridiagonalPoissonSolver) =
     architecture(solver.global_grid)
 
 @inline Δξᶠ(i, grid, ::Val{1}) = Δxᶠᵃᵃ(i, 1, 1, grid)
@@ -168,8 +166,8 @@ function DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid, pla
 
     tridiagonal_dim = dimension(tridiagonal_dir)
 
-    topology(global_grid, tridiagonal_dim) != Bounded &&
-        error("`DistributedFourierTridiagonalPoissonSolver` requires that the stretched direction (dimension $tridiagonal_dim) is `Bounded`.")
+    topology(global_grid, tridiagonal_dim) <: BoundaryTopology ||
+        error("`DistributedFourierTridiagonalPoissonSolver` requires that the stretched direction (dimension $tridiagonal_dim) is bounded.")
 
     T = Complex{eltype(local_grid)}
     child_arch = child_architecture(local_grid)
@@ -229,8 +227,8 @@ function DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid, pla
                                         tridiagonal_direction = tridiagonal_dir)
 
     # We need to permute indices to apply bounded transforms on the GPU (r2r or r2c with twiddling)
-    x_buffer_needed = child_arch isa GPU && TX == Bounded
-    z_buffer_needed = child_arch isa GPU && TZ == Bounded
+    x_buffer_needed = child_arch isa GPU && TX <: BoundaryTopology
+    z_buffer_needed = child_arch isa GPU && TZ <: BoundaryTopology
 
     # Y-buffer is needed on GPU for permutedims before/after the y-FFT.
     # All GPU y-FFTs now use dim-1 layout with permutedims (both Periodic and Bounded).
@@ -271,10 +269,17 @@ function DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid, pla
     return DistributedFourierTridiagonalPoissonSolver(plan, global_grid, local_grid, btsolver, source_term, storage, buffer)
 end
 
+# The solution of the homogeneous Neumann problem is unique up to a constant; return the zero-mean one.
+function copy_and_zero_mean!(x, solver)
+    launch!(architecture(solver), solver.local_grid, :xyz, _copy_real_component!, x, parent(solver.storage.zfield))
+    x .-= mean(x)
+    return x
+end
+
 # solve! requires that `b` in `A x = b` (the right hand side)
 # is copied in the solver storage
 # See: Models/NonhydrostaticModels/solve_for_pressure.jl
-function solve!(x, solver::ZStretchedDistributedSolver)
+function Solvers.solve!(x, solver::ZStretchedDistributedSolver)
     storage = solver.storage
 
     # Detect slab-x optimization: if tridiag solver grid matches xfield grid,
@@ -290,7 +295,6 @@ end
 # In slab-x, z is always fully local. After forward FFTs and one transpose
 # to x-local space, we can solve the tridiagonal directly without transposing back.
 function _slab_x_solve!(x, solver::ZStretchedDistributedSolver)
-    arch    = architecture(solver)
     storage = solver.storage
     buffer  = solver.buffer
 
@@ -308,16 +312,11 @@ function _slab_x_solve!(x, solver::ZStretchedDistributedSolver)
     transpose_x_to_y!(storage)
     solver.plan.backward.y!(parent(storage.yfield), buffer.y)
 
-    # Copy the real component (yfield aliases zfield for slab-x)
-    launch!(arch, solver.local_grid, :xyz,
-            _copy_real_component!, x, parent(storage.zfield))
-
-    return x
+    return copy_and_zero_mean!(x, solver)
 end
 
 # General Z-stretched solve (pencil decomposition): 4+ MPI transposes.
 function _general_z_solve!(x, solver::ZStretchedDistributedSolver)
-    arch    = architecture(solver)
     storage = solver.storage
     buffer  = solver.buffer
 
@@ -338,15 +337,10 @@ function _general_z_solve!(x, solver::ZStretchedDistributedSolver)
     solver.plan.backward.y!(parent(storage.yfield), buffer.y)
     transpose_y_to_z!(storage)
 
-    # Copy the real component of xc to x.
-    launch!(arch, solver.local_grid, :xyz,
-            _copy_real_component!, x, parent(storage.zfield))
-
-    return x
+    return copy_and_zero_mean!(x, solver)
 end
 
-function solve!(x, solver::YStretchedDistributedSolver)
-    arch    = architecture(solver)
+function Solvers.solve!(x, solver::YStretchedDistributedSolver)
     storage = solver.storage
     buffer  = solver.buffer
 
@@ -369,15 +363,10 @@ function solve!(x, solver::YStretchedDistributedSolver)
     transpose_y_to_z!(storage) # copy data from storage.yfield to storage.zfield
     solver.plan.backward.z!(parent(storage.zfield), buffer.z)
 
-    # Copy the real component of xc to x.
-    launch!(arch, solver.local_grid, :xyz,
-            _copy_real_component!, x, parent(storage.zfield))
-
-    return x
+    return copy_and_zero_mean!(x, solver)
 end
 
-function solve!(x, solver::XStretchedDistributedSolver)
-    arch    = architecture(solver)
+function Solvers.solve!(x, solver::XStretchedDistributedSolver)
     storage = solver.storage
     buffer  = solver.buffer
 
@@ -399,35 +388,29 @@ function solve!(x, solver::XStretchedDistributedSolver)
     transpose_y_to_z!(storage) # copy data from storage.yfield to storage.zfield
     solver.plan.backward.z!(parent(storage.zfield), buffer.z) # last backwards transform is in z
 
-    # Copy the real component of xc to x.
-    launch!(arch, solver.local_grid, :xyz,
-            _copy_real_component!, x, parent(storage.zfield))
-
-    return x
+    return copy_and_zero_mean!(x, solver)
 end
 
 #####
 ##### Preconditioning support for ConjugateGradientPoissonSolver
 #####
 
-using Oceananigans.Operators: V⁻¹ᶜᶜᶜ
-
 @kernel function distributed_fourier_tridiagonal_preconditioner_rhs!(preconditioner_rhs, ::XDirection, grid, rhs)
     i, j, k = @index(Global, NTuple)
-    @inbounds preconditioner_rhs[i, j, k] = rhs[i, j, k] * V⁻¹ᶜᶜᶜ(i, j, k, grid)
+    @inbounds preconditioner_rhs[i, j, k] = rhs[i, j, k] * V⁻¹ᶜᶜᶜ(i, j, k, grid) * Δxᶜᶜᶜ(i, j, k, grid)
 end
 
 @kernel function distributed_fourier_tridiagonal_preconditioner_rhs!(preconditioner_rhs, ::YDirection, grid, rhs)
     i, j, k = @index(Global, NTuple)
-    @inbounds preconditioner_rhs[i, j, k] = rhs[i, j, k] * V⁻¹ᶜᶜᶜ(i, j, k, grid)
+    @inbounds preconditioner_rhs[i, j, k] = rhs[i, j, k] * V⁻¹ᶜᶜᶜ(i, j, k, grid) * Δyᶜᶜᶜ(i, j, k, grid)
 end
 
 @kernel function distributed_fourier_tridiagonal_preconditioner_rhs!(preconditioner_rhs, ::ZDirection, grid, rhs)
     i, j, k = @index(Global, NTuple)
-    @inbounds preconditioner_rhs[i, j, k] = rhs[i, j, k] * V⁻¹ᶜᶜᶜ(i, j, k, grid)
+    @inbounds preconditioner_rhs[i, j, k] = rhs[i, j, k] * V⁻¹ᶜᶜᶜ(i, j, k, grid) * Δzᶜᶜᶜ(i, j, k, grid)
 end
 
-function compute_preconditioner_rhs!(solver::DistributedFourierTridiagonalPoissonSolver, rhs)
+function Solvers.compute_preconditioner_rhs!(solver::DistributedFourierTridiagonalPoissonSolver, rhs)
     grid = solver.local_grid
     arch = architecture(grid)
     tridiagonal_dir = solver.batched_tridiagonal_solver.tridiagonal_direction

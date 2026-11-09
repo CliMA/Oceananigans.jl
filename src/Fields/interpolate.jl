@@ -19,26 +19,28 @@ Return indices `low, high` of `vec`tor for which
 vec[low] ≤ val && vec[high] ≥ val
 ```
 
-using a binary search. The input array `vec` has to be monotonically increasing.
+using a binary search. The input array `vec` has to be monotonically increasing. When `val` equals a
+node that the search visits, both indices are that node's.
+
 
 Code credit: https://gist.github.com/cuongld2/8e4fed9ba44ea2b4598f90e7d5b6c612/155f9cb595314c8db3a266c3316889443b068017
 """
 @inline function index_binary_search(vec, val::Number, N)
     low = 0
     high = N - 1
+    hit = 0
 
-    while low + 1 < high
+    for _ in 1:(8 * sizeof(N) - leading_zeros(N))
+        searching = (low + 1 < high) & (hit == 0)
         mid = middle_point(low, high)
-        if @inbounds vec[mid + 1] == val
-            return (mid + 1, mid + 1)
-        elseif @inbounds vec[mid + 1] < val
-            low = mid
-        else
-            high = mid
-        end
+        x = @inbounds vec[mid + 1]
+        found = searching & (x == val)
+        hit = ifelse(found, mid + 1, hit)
+        low = ifelse(searching & (x < val), mid, low)
+        high = ifelse(searching & !found & !(x < val), mid, high)
     end
 
-    return (low + 1, high + 1)
+    return ifelse(hit == 0, (low + 1, high + 1), (hit, hit))
 end
 
 @inline function fractional_index(val, vec, N)
@@ -91,7 +93,9 @@ end
 @inline convert_to_0_360(x::Integer) = ((x % 360) + 360) % 360
 
 # Find n for which 360 * n ≤ λ ≤ 360 * (n + 1)
-@inline find_λ_range(λ) = ifelse((λ < 0) & (mod(λ, 360) != 0), λ ÷ 360 - 1, λ ÷ 360)
+# TODO: use `fld(λ, 360)` once Oceananigans can use a Metal release with JuliaGPU/Metal.jl#975.
+# On Julia ≥ 1.12, `fld(::Float32, ::Float32)` compiles to Float64 instructions, which Metal rejects: JuliaGPU/Metal.jl#972.
+@inline find_λ_range(λ) = floor(λ / 360)
 
 # Convert x to lie in the λ₀ : λ₀ + 360 range by accounting for the cyclic
 # nature of the longitude coordinate.
@@ -445,6 +449,13 @@ end
     @inbounds to_field[i, j, k] = interpolate(to_node, from_field, from_location, from_grid)
 end
 
+# Interpolation to a Flat dimension is supported only from a Flat dimension
+validate_flat_interpolation(to_topology, from_topology, dim) = nothing
+validate_flat_interpolation(::Type{Flat}, ::Type{Flat}, dim) = nothing
+validate_flat_interpolation(::Type{Flat}, from_topology, dim) =
+    throw(ArgumentError("Cannot interpolate! to a grid that is Flat in dimension $dim " *
+                        "from a grid that is $from_topology in dimension $dim."))
+
 """
 $(TYPEDSIGNATURES)
 
@@ -472,6 +483,8 @@ function interpolate!(to_field::Field, from_field::AbstractField, args...)
     # Make locations
     from_location = Tuple(L() for L in location(from_field))
     to_location   = Tuple(L() for L in location(to_field))
+
+    map(validate_flat_interpolation, topology(to_grid), topology(from_grid), (1, 2, 3))
 
     params = KernelParameters(interior_indices(to_field))
 

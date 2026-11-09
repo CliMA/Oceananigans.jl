@@ -1,5 +1,6 @@
 using Oceananigans.Operators: ℑyᵃᶠᵃ, ℑxᶠᵃᵃ
 using Oceananigans.Utils: newton_div
+using BFloat16s: BFloat16
 
 # WENO reconstruction of order `M` entails reconstructions of order `N`
 # on `N` different stencils, where `N = (M + 1) / 2`.
@@ -155,7 +156,8 @@ for buffer in advection_buffers[2:end] # WENO{<:Any, 1} does not exist
 
             where ``dᵢ`` is computed from the function `coeff_p`
             """
-            @inline biased_p(scheme::WENO{$buffer}, ::Val{$stencil}, δ) = @inbounds sum(coeff_p(scheme, Val($stencil)) .* δ)
+            @inline biased_p(scheme::WENO{$buffer}, ::Val{$stencil}, δ) =
+                @inbounds @muladd $(Expr(:call, :+, (:(coeff_p(scheme, Val($stencil))[$i] * δ[$i]) for i in 1:buffer-1)...))
         end
     end
 end
@@ -171,7 +173,7 @@ const reference_smoothness_normalization = (1, 3, 6//25, 63//1250, 189//15625)
 """
     exact_smoothness_matrix(buffer, stencil)
 
-Return the `buffer × buffer` matrix `Q` of the Jiang & Shu smoothness indicator
+Return the `buffer × buffer` matrix `Q` of the [Jiang and Shu (1996)](@cite Jiang96) smoothness indicator
 
 ```math
 β = ∑ₗ₌₁ᵇᵘᶠᶠᵉʳ⁻¹ ∫ (dˡpᵣ / dxˡ)² dx = ψᵀ Q ψ
@@ -181,6 +183,11 @@ of the stencil number `stencil` of a WENO reconstruction of order `2buffer - 1`,
 arithmetic. `pᵣ` is the polynomial that reconstructs the cell averages `ψ` of the stencil (ordered from left to
 right), the integral spans the cell whose right face is reconstructed (of unit width), and `Q` is multiplied by
 the normalization of the reference tables.
+
+References
+==========
+* Jiang, G.-S., & Shu, C.-W. (1996). "Efficient implementation of weighted ENO schemes." Journal of
+  Computational Physics, 126(1), 202-228.
 """
 function exact_smoothness_matrix(buffer, stencil)
     R = Rational{BigInt}
@@ -365,14 +372,27 @@ stencil_differences(buffer, stencil) = Expr(:tuple, (:(δ[$i]) for i in (buffer 
     return :($(elem...),)
 end
 
-# ZWENO α weights C★ᵣ * (1 + (τ₂ᵣ₋₁ / (βᵣ + ϵ))ᵖ)
+# ZWENO α weights C★ᵣ * (1 + (τ₂ᵣ₋₁ / (βᵣ + ϵ★))ᵖ), with the regularization ϵ★ = zweno_regularization(scheme, τ)
 @inline function metaprogrammed_zweno_alpha_loop(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(C★(scheme, Val($(stencil-1))) * (1 + (newton_div(WCT, τ, β[$stencil] + ϵ))^2))
+        elem[stencil] = :(C★(scheme, Val($(stencil-1))) * zweno_ratio_term(newton_div(WCT, τ, β[$stencil] + ϵ★)))
     end
 
-    return :($(elem...),)
+    return quote
+        ϵ★ = zweno_regularization(scheme, τ)
+        ($(elem...),)
+    end
+end
+
+# 1 + r², fused
+@inline zweno_ratio_term(r) = muladd(r, r, 1)
+
+@inline zweno_regularization(scheme, τ) = oftype(τ, ϵ)
+
+# Float32 for BFloat16 schemes too, so that their weights use the fast approximate reciprocal of Float32
+for FT in (Float32, BFloat16)
+    @eval @inline zweno_regularization(::WENO{N, $FT}, τ) where N = max(ϵ, Float32(τ) * $(inv(Float32(2)^62)))
 end
 
 for buffer in advection_buffers[2:end]
@@ -386,9 +406,24 @@ end
 # Global smoothness indicator τ₂ᵣ₋₁ from "Accuracy of the weighted essentially non-oscillatory conservative finite difference schemes", Don & Borges, 2013
 @inline global_smoothness_indicator(::Val{2}, β) = @inbounds abs(β[1] - β[2])
 @inline global_smoothness_indicator(::Val{3}, β) = @inbounds abs(β[1] - β[3])
-@inline global_smoothness_indicator(::Val{4}, β) = @inbounds abs(β[1] +  3β[2] -   3β[3] -    β[4])
-@inline global_smoothness_indicator(::Val{5}, β) = @inbounds abs(β[1] +  2β[2] -   6β[3] +   2β[4] + β[5])
-@inline global_smoothness_indicator(::Val{6}, β) = @inbounds abs(β[1] + 36β[2] + 135β[3] - 135β[4] - 36β[5] - β[6])
+@inline global_smoothness_indicator(::Val{4}, β) = @inbounds @muladd abs(β[1] +  3β[2] -   3β[3] -    β[4])
+@inline global_smoothness_indicator(::Val{5}, β) = @inbounds @muladd abs(β[1] +  2β[2] -   6β[3] +   2β[4] + β[5])
+@inline global_smoothness_indicator(::Val{6}, β) = @inbounds @muladd abs(β[1] + 36β[2] + 135β[3] - 135β[4] - 36β[5] - β[6])
+
+# 1 / ∑α. Ordinary division by default: the approximate reciprocal slows the Float64 tracer kernels on CUDA.
+@inline function weight_normalization(scheme, α)
+    Σα = sum(α)
+    return one(Σα) / Σα
+end
+
+# In Float32 and BFloat16, the division method of the weight computation is faster. ∑α ≲ 2¹²⁴
+# (see `zweno_regularization`), so its approximate reciprocal cannot flush to zero.
+for FT in (Float32, BFloat16)
+    @eval @inline function weight_normalization(::WENO{N, $FT, WCT}, α) where {N, WCT}
+        Σα = sum(α)
+        return newton_div(WCT, one(Σα), Σα)
+    end
+end
 
 """
 $(TYPEDSIGNATURES)
@@ -397,14 +432,15 @@ Biased weno weights ω used to weight the WENO reconstruction of the different s
 We use here a Z-WENO formulation where
 
 ```math
-    α = C★ ⋅ (1 + τ² / (β + ϵ)²)
+    α = C★ ⋅ (1 + τ² / (β + ϵ★)²)
 ```
 
 where
 - ``C★`` is the optimal weight that leads to an upwind reconstruction of order `N * 2 - 1`,
 - ``β`` is the smoothness indicator calculated by the `smoothness_indicator` function
 - ``τ`` is a global smoothness indicator, function of the ``β`` values, calculated by the `global_smoothness_indicator` function
-- ``ϵ`` is a regularization constant, typically equal to 1e-8
+- ``ϵ★`` is the regularization computed by `zweno_regularization`: the constant ``ϵ = 10⁻⁸``, which grows with
+  ``τ`` beside large jumps in Float32 and BFloat16 so that ``α`` cannot overflow
 
 The ``α`` values are normalized before returning
 """
@@ -412,7 +448,7 @@ The ``α`` values are normalized before returning
     β = beta_loop(scheme, δ)
     τ = global_smoothness_indicator(Val(N), β)
     α = zweno_alpha_loop(scheme, β, τ)
-    Σα⁻¹ =  1 / sum(α)
+    Σα⁻¹ = weight_normalization(scheme, α)
     return α .* Σα⁻¹
 end
 
@@ -427,7 +463,7 @@ end
 
     τ = global_smoothness_indicator(Val(N), β)
     α = zweno_alpha_loop(scheme, β, τ)
-    Σα⁻¹ =  1 / sum(α)
+    Σα⁻¹ = weight_normalization(scheme, α)
     return α .* Σα⁻¹
 end
 

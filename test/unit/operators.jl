@@ -2,6 +2,7 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Oceananigans.Operators: Δxᶠᵃᵃ, Δxᶜᵃᵃ, Δxᶠᶠᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶜᶜᵃ
 using Oceananigans.Operators: Δyᵃᶠᵃ, Δyᵃᶜᵃ, Δyᶠᶠᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶜᶜᵃ
+using Oceananigans.BoundaryConditions: UPivot, TPivot, FPivot, regularize_field_boundary_conditions
 
 
 function test_three_dimensional_differences(T=Float64)
@@ -44,6 +45,10 @@ function test_three_dimensional_differences(T=Float64)
         @test δz(2, 2, 2, grid, f, ϕ) == δz_ϕ_f
     end
 
+    # the x-face between the active cell 2 and the immersed cell 3 is active
+    mirrored_grid = ImmersedBoundaryGrid(grid.underlying_grid, GridFittedBoundary((x, y, z) -> x > 2))
+    @test δyᶠᶠᶜ(3, 2, 2, mirrored_grid, f, ϕ) == ϕ²[3, 2, 2] - ϕ²[3, 1, 2]
+
     return nothing
 end
 
@@ -85,7 +90,7 @@ function test_function_differentiation(T=Float64)
     end
 
     stretched_f = [0, 1, 3, 6]
-    stretched_c = OffsetArray([-0.5, 0.5, 2, 4.5, 7.5], -1)
+    stretched_c = StaticStridesOffsetArray([-0.5, 0.5, 2, 4.5, 7.5], -1)
 
     dc(i) = stretched_f[i+1] - stretched_f[i]
     df(i) = stretched_c[i] - stretched_c[i-1]
@@ -250,12 +255,12 @@ end
         Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
         Tx, Ty, Tz = Nx+2Hx, Ny+2Hy, Nz+2Hz
 
-        A3 = OffsetArray(zeros(Tx, Ty, Tz), 1-Hx:Nx+Hx, 1-Hy:Ny+Hy, 1-Hz:Nz+Hz)
+        A3 = StaticStridesOffsetArray(zeros(Tx, Ty, Tz), -Hx, -Hy, -Hz)
         @. @views A3[1:Nx, 1:Ny, 1:Nz] = rand()
         fill_halo_regions!(A3, bcs, (:, :, :), (Center(), Center(), Center()), grid)
 
         # A yz-slice with Nx==1.
-        A2yz = OffsetArray(zeros(1+2Hx, Ty, Tz), 1-Hx:1+Hx, 1-Hy:Ny+Hy, 1-Hz:Nz+Hz)
+        A2yz = StaticStridesOffsetArray(zeros(1+2Hx, Ty, Tz), -Hx, -Hy, -Hz)
         grid_yz = RectilinearGrid(CPU(), size=(1, Ny, Nz), extent=(Lx, Ly, Lz))
 
         # Manually fill in halos for the slice.
@@ -264,7 +269,7 @@ end
         A2yz[:, :, Nz+1] .= A2yz[:, :, Nz]
 
         # An xz-slice with Ny==1.
-        A2xz = OffsetArray(zeros(Tx, 1+2Hy, Tz), 1-Hx:Nx+Hx, 1-Hy:1+Hy, 1-Hz:Nz+Hz)
+        A2xz = StaticStridesOffsetArray(zeros(Tx, 1+2Hy, Tz), -Hx, -Hy, -Hz)
         grid_xz = RectilinearGrid(CPU(), size=(Nx, 1, Nz), extent=(Lx, Ly, Lz))
 
         # Manually fill in halos for the slice.
@@ -301,6 +306,29 @@ end
             @test δyᵃᶠᵃ(idx..., grid_xz, A2xz) ≈ 0
             @test δzᵃᵃᶜ(idx..., grid_xz, A2xz) ≈ δzᵃᵃᶜ(idx..., grid_xz, A3)
             @test δzᵃᵃᶠ(idx..., grid_xz, A2xz) ≈ δzᵃᵃᶠ(idx..., grid_xz, A3)
+        end
+    end
+
+    @testset "Topology-aware operators on tripolar grids" begin
+        for (fold_topology, pivot) in ((CenterFolded, UPivot), (CenterFolded, TPivot), (FaceFolded, FPivot))
+            grid = TripolarGrid(CPU(); size = (16, 10, 1), z = (-1, 0), fold_topology, pivot)
+            Nx, Ny, _ = size(grid)
+            northernmost_row = fold_topology === FaceFolded ? Ny + 1 : Ny
+
+            U = Field{Face, Center, Nothing}(grid; boundary_conditions = regularize_field_boundary_conditions(FieldBoundaryConditions(), grid, :U))
+            V = Field{Center, Face, Nothing}(grid; boundary_conditions = regularize_field_boundary_conditions(FieldBoundaryConditions(), grid, :V))
+            c = Field{Center, Center, Nothing}(grid)
+
+            for f in (U, V, c)
+                set!(f, rand(size(f)...))
+                fill_halo_regions!(f)
+            end
+
+            # A topology-aware operator equals the plain operator applied to a halo-filled field
+            @test all(δxTᶜᵃᵃ(i, j, 1, grid, U) ≈ δxᶜᵃᵃ(i, j, 1, grid, U) for i in 1:Nx, j in 1:Ny)
+            @test all(δxTᶠᵃᵃ(i, j, 1, grid, c) ≈ δxᶠᵃᵃ(i, j, 1, grid, c) for i in 1:Nx, j in 1:Ny)
+            @test all(δyTᵃᶜᵃ(i, j, 1, grid, V) ≈ δyᵃᶜᵃ(i, j, 1, grid, V) for i in 1:Nx, j in 1:northernmost_row)
+            @test all(δyTᵃᶠᵃ(i, j, 1, grid, c) ≈ δyᵃᶠᵃ(i, j, 1, grid, c) for i in 1:Nx, j in 1:northernmost_row)
         end
     end
 end

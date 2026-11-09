@@ -1,6 +1,6 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
-using Oceananigans.Advection: div_Uc, materialize_advection, update_advection!
+using Oceananigans.Advection: div_Uc, materialize_advection, update_advection!, bounds_preserving_limiter
 using Oceananigans.Operators: Vᶜᶜᶜ
 using Random
 
@@ -105,6 +105,24 @@ end
 
             @test default_cᵐⁱⁿ < -1e-12 || default_cᵐᵃˣ > 1 + 1e-12
         end
+    end
+
+    @testset "Limiter is finite when the undershoot equals the regularizer" begin
+        grid = RectilinearGrid(CPU(), Float32, size=16, x=(0, 1), topology=(Periodic, Flat, Flat))
+        scheme = materialize_advection(WENO(Float32; order=5, bounds=(0, 1)), grid)
+        c = CenterField(grid)
+        c[9, 1, 1] = 4.615384f-20 # cell 8 rests on the lower bound and undershoots by ε₂ = 1e-20
+        @test isfinite(bounds_preserving_limiter(8, 1, 1, grid, scheme, c))
+    end
+
+    @testset "Halo covers the limiter's extended range" begin
+        @test Oceananigans.Grids.required_halo_size_x(WENO(order=5, bounds=(0, 1))) == 4
+        @test Oceananigans.Grids.required_halo_size_z(WENO(order=5, bounds=(0, 1))) == 3
+
+        grid = RectilinearGrid(CPU(), size=(4, 4, 4), extent=(1, 1, 1), halo=(3, 3, 3))
+        @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid; tracers=:c, tracer_advection=WENO(order=5, bounds=(0, 1)))
+        @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid; tracers=:c, tracer_advection=(; c=WENO(order=5, bounds=(0, 1))))
+        @test_throws ArgumentError NonhydrostaticModel(grid; advection=WENO(order=5, bounds=(0, 1)), tracers=:c)
     end
 
     @testset "Model integration" begin

@@ -17,6 +17,11 @@ struct BenchmarkResult
     steps_per_second::Float64
     grid_points_per_second::Float64
     gpu_memory_used::Int64
+    gc_time_seconds::Float64
+    allocated_bytes_per_step::Float64
+    allocations_per_step::Float64
+    host_time_per_step_seconds::Float64
+    pressure_solver_iterations::Int
     metadata::BenchmarkMetadata
 end
 
@@ -38,6 +43,11 @@ function Base.show(io::IO, ::MIME"text/plain", r::BenchmarkResult)
     println(io, "├── steps_per_second: ", @sprintf("%.6f/s", r.steps_per_second))
     println(io, "├── grid_points_per_second: ", @sprintf("%.2e", r.grid_points_per_second))
     println(io, "├── gpu_memory_used: ", Base.format_bytes(r.gpu_memory_used))
+    println(io, "├── gc_time: ", @sprintf("%.3f s", r.gc_time_seconds))
+    println(io, "├── host allocations per step: ", Base.format_bytes(r.allocated_bytes_per_step),
+                " in ", round(Int, r.allocations_per_step), " allocations")
+    println(io, "├── host_time_per_step: ", @sprintf("%.6f s", r.host_time_per_step_seconds))
+    println(io, "├── pressure_solver_iterations: ", r.pressure_solver_iterations)
     print(io,   "└── metadata: ", r.metadata.architecture, " @ ", r.metadata.timestamp)
 end
 

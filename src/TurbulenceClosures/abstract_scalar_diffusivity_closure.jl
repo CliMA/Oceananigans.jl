@@ -57,7 +57,7 @@ Return the scalar viscosity associated with `closure`, or with `model.closure` w
 is supplied.
 
 Closures with a prescribed viscosity return what was passed to their `ν` keyword argument:
-a number, a function, or a `Field`. Closures that compute an eddy viscosity, such as
+a number, a function, a `Field`, or `nothing`. Closures that compute an eddy viscosity, such as
 `SmagorinskyLilly` or [`CATKEVerticalDiffusivity`](@ref), return a `Field` held in
 `closure_fields`, which reflects the current model state only after the closure fields have
 been computed. For a `Tuple` of closures, a `Tuple` of viscosities is returned.
@@ -76,8 +76,8 @@ For closures whose diffusivity does not depend on tracer identity, `tracer_index
 `closure_fields` are the fields computed by `closure` and correspond to
 `model.closure_fields`.
 
-As for [`viscosity`](@ref), what is returned depends on the closure: a number, function, or
-`Field` for closures with prescribed diffusivities, and a `Field` held in `closure_fields`
+As for [`viscosity`](@ref), what is returned depends on the closure: a number, function,
+`Field`, or `nothing` for closures with prescribed diffusivities, and a `Field` held in `closure_fields`
 for closures that compute an eddy diffusivity.
 """
 function diffusivity end
@@ -211,17 +211,17 @@ const C = Center
 @inline ν_σᶠᶜᶠ(i, j, k, grid, closure, K, clock, fields, σᶠᶜᶠ, args...) = νᶠᶜᶠ(i, j, k, grid, closure, K, clock, fields) * σᶠᶜᶠ(i, j, k, grid, args...)
 @inline ν_σᶜᶠᶠ(i, j, k, grid, closure, K, clock, fields, σᶜᶠᶠ, args...) = νᶜᶠᶠ(i, j, k, grid, closure, K, clock, fields) * σᶜᶠᶠ(i, j, k, grid, args...)
 
-@inline viscous_flux_ux(i, j, k, grid, clo::AID, K, clk, fields, b) = - 2 * ν_σᶜᶜᶜ(i, j, k, grid, clo, K, clk, fields, Σ₁₁, fields.u, fields.v, fields.w)
-@inline viscous_flux_vx(i, j, k, grid, clo::AID, K, clk, fields, b) = - 2 * ν_σᶠᶠᶜ(i, j, k, grid, clo, K, clk, fields, Σ₂₁, fields.u, fields.v, fields.w)
-@inline viscous_flux_wx(i, j, k, grid, clo::AID, K, clk, fields, b) = - 2 * ν_σᶠᶜᶠ(i, j, k, grid, clo, K, clk, fields, Σ₃₁, fields.u, fields.v, fields.w)
-@inline viscous_flux_uy(i, j, k, grid, clo::AID, K, clk, fields, b) = - 2 * ν_σᶠᶠᶜ(i, j, k, grid, clo, K, clk, fields, Σ₁₂, fields.u, fields.v, fields.w)
-@inline viscous_flux_vy(i, j, k, grid, clo::AID, K, clk, fields, b) = - 2 * ν_σᶜᶜᶜ(i, j, k, grid, clo, K, clk, fields, Σ₂₂, fields.u, fields.v, fields.w)
-@inline viscous_flux_wy(i, j, k, grid, clo::AID, K, clk, fields, b) = - 2 * ν_σᶜᶠᶠ(i, j, k, grid, clo, K, clk, fields, Σ₃₂, fields.u, fields.v, fields.w)
+@inline viscous_flux_ux(i, j, k, grid, clo::AID, K, clk, fields, b) = - ν_σᶜᶜᶜ(i, j, k, grid, clo, K, clk, fields, stress_ux, stencil_order(clo), fields.u, fields.v, fields.w)
+@inline viscous_flux_vx(i, j, k, grid, clo::AID, K, clk, fields, b) = - ν_σᶠᶠᶜ(i, j, k, grid, clo, K, clk, fields, stress_vx, stencil_order(clo), fields.u, fields.v, fields.w)
+@inline viscous_flux_wx(i, j, k, grid, clo::AID, K, clk, fields, b) = - ν_σᶠᶜᶠ(i, j, k, grid, clo, K, clk, fields, stress_wx, stencil_order(clo), fields.u, fields.v, fields.w)
+@inline viscous_flux_uy(i, j, k, grid, clo::AID, K, clk, fields, b) = - ν_σᶠᶠᶜ(i, j, k, grid, clo, K, clk, fields, stress_uy, stencil_order(clo), fields.u, fields.v, fields.w)
+@inline viscous_flux_vy(i, j, k, grid, clo::AID, K, clk, fields, b) = - ν_σᶜᶜᶜ(i, j, k, grid, clo, K, clk, fields, stress_vy, stencil_order(clo), fields.u, fields.v, fields.w)
+@inline viscous_flux_wy(i, j, k, grid, clo::AID, K, clk, fields, b) = - ν_σᶜᶠᶠ(i, j, k, grid, clo, K, clk, fields, stress_wy, stencil_order(clo), fields.u, fields.v, fields.w)
 
 # Vertical viscous fluxes for isotropic diffusivities
-@inline viscous_flux_uz(i, j, k, grid, clo::AID, K, clk, fields, b) = - 2 * ν_σᶠᶜᶠ(i, j, k, grid, clo, K, clk, fields, Σ₁₃, fields.u, fields.v, fields.w)
-@inline viscous_flux_vz(i, j, k, grid, clo::AID, K, clk, fields, b) = - 2 * ν_σᶜᶠᶠ(i, j, k, grid, clo, K, clk, fields, Σ₂₃, fields.u, fields.v, fields.w)
-@inline viscous_flux_wz(i, j, k, grid, clo::AID, K, clk, fields, b) = - 2 * ν_σᶜᶜᶜ(i, j, k, grid, clo, K, clk, fields, Σ₃₃, fields.u, fields.v, fields.w)
+@inline viscous_flux_uz(i, j, k, grid, clo::AID, K, clk, fields, b) = - ν_σᶠᶜᶠ(i, j, k, grid, clo, K, clk, fields, stress_uz, stencil_order(clo), fields.u, fields.v, fields.w)
+@inline viscous_flux_vz(i, j, k, grid, clo::AID, K, clk, fields, b) = - ν_σᶜᶠᶠ(i, j, k, grid, clo, K, clk, fields, stress_vz, stencil_order(clo), fields.u, fields.v, fields.w)
+@inline viscous_flux_wz(i, j, k, grid, clo::AID, K, clk, fields, b) = - ν_σᶜᶜᶜ(i, j, k, grid, clo, K, clk, fields, stress_wz, stencil_order(clo), fields.u, fields.v, fields.w)
 
 # Horizontal viscous fluxes for horizontal diffusivities
 @inline νh_δᶜᶜᶜ(i, j, k, grid, closure, K, clock, fields, u, v) = νhᶜᶜᶜ(i, j, k, grid, closure, K, clock, fields) * div_xyᶜᶜᶜ(i, j, k, grid, u, v)
@@ -246,9 +246,9 @@ const C = Center
 @inline νz_σᶠᶜᶠ(i, j, k, grid, closure, K, clock, fields, σᶠᶜᶠ, args...) = νzᶠᶜᶠ(i, j, k, grid, closure, K, clock, fields) * σᶠᶜᶠ(i, j, k, grid, args...)
 @inline νz_σᶜᶠᶠ(i, j, k, grid, closure, K, clock, fields, σᶜᶠᶠ, args...) = νzᶜᶠᶠ(i, j, k, grid, closure, K, clock, fields) * σᶜᶠᶠ(i, j, k, grid, args...)
 
-@inline viscous_flux_uz(i, j, k, grid, clo::AVD, K, clk, fields, b) = - νz_σᶠᶜᶠ(i, j, k, grid, clo, K, clk, fields, ∂zᶠᶜᶠ, fields.u)
-@inline viscous_flux_vz(i, j, k, grid, clo::AVD, K, clk, fields, b) = - νz_σᶜᶠᶠ(i, j, k, grid, clo, K, clk, fields, ∂zᶜᶠᶠ, fields.v)
-@inline viscous_flux_wz(i, j, k, grid, clo::AVD, K, clk, fields, b) = - νz_σᶜᶜᶜ(i, j, k, grid, clo, K, clk, fields, ∂zᶜᶜᶜ, fields.w)
+@inline viscous_flux_uz(i, j, k, grid, clo::AVD, K, clk, fields, b) = - νz_σᶠᶜᶠ(i, j, k, grid, clo, K, clk, fields, diffusive_∂z_uᶠᶜᶠ, stencil_order(clo), fields.u)
+@inline viscous_flux_vz(i, j, k, grid, clo::AVD, K, clk, fields, b) = - νz_σᶜᶠᶠ(i, j, k, grid, clo, K, clk, fields, diffusive_∂z_vᶜᶠᶠ, stencil_order(clo), fields.v)
+@inline viscous_flux_wz(i, j, k, grid, clo::AVD, K, clk, fields, b) = - νz_σᶜᶜᶜ(i, j, k, grid, clo, K, clk, fields, diffusive_∂zᶜᶜᶜ, stencil_order(clo), fields.w)
 
 #####
 ##### Diffusive fluxes
@@ -257,9 +257,9 @@ const C = Center
 const AIDorAHD = Union{AID, AHD}
 const AIDorAVD = Union{AID, AVD}
 
-@inline diffusive_flux_x(i, j, k, grid, cl::AIDorAHD, K, id, c, clk, fields, b) = - κhᶠᶜᶜ(i, j, k, grid, cl, K, id, clk, fields) * ∂xᵣᶠᶜᶜ(i, j, k, grid, c)
-@inline diffusive_flux_y(i, j, k, grid, cl::AIDorAHD, K, id, c, clk, fields, b) = - κhᶜᶠᶜ(i, j, k, grid, cl, K, id, clk, fields) * ∂yᵣᶜᶠᶜ(i, j, k, grid, c)
-@inline diffusive_flux_z(i, j, k, grid, cl::AIDorAVD, K, id, c, clk, fields, b) = - κzᶜᶜᶠ(i, j, k, grid, cl, K, id, clk, fields) * ∂zᶜᶜᶠ(i, j, k, grid, c)
+@inline diffusive_flux_x(i, j, k, grid, cl::AIDorAHD, K, id, c, clk, fields, b) = - κhᶠᶜᶜ(i, j, k, grid, cl, K, id, clk, fields) * diffusive_∂xᶠᶜᶜ(i, j, k, grid, stencil_order(cl), c)
+@inline diffusive_flux_y(i, j, k, grid, cl::AIDorAHD, K, id, c, clk, fields, b) = - κhᶜᶠᶜ(i, j, k, grid, cl, K, id, clk, fields) * diffusive_∂yᶜᶠᶜ(i, j, k, grid, stencil_order(cl), c)
+@inline diffusive_flux_z(i, j, k, grid, cl::AIDorAVD, K, id, c, clk, fields, b) = - κzᶜᶜᶠ(i, j, k, grid, cl, K, id, clk, fields) * diffusive_∂zᶜᶜᶠ(i, j, k, grid, stencil_order(cl), c)
 
 #####
 ##### Support for VerticallyImplicit
@@ -341,6 +341,18 @@ end
 @inline κᶠᶜᶠ(i, j, k, grid, loc::Tuple, κ::Number, clk, fields) = κ
 @inline κᶜᶠᶠ(i, j, k, grid, loc::Tuple, κ::Number, clk, fields) = κ
 
+@inline νᶜᶜᶜ(i, j, k, grid, loc::Tuple, ν::Nothing, clk, fields) = zero(grid)
+@inline νᶠᶜᶠ(i, j, k, grid, loc::Tuple, ν::Nothing, clk, fields) = zero(grid)
+@inline νᶜᶠᶠ(i, j, k, grid, loc::Tuple, ν::Nothing, clk, fields) = zero(grid)
+@inline νᶠᶠᶜ(i, j, k, grid, loc::Tuple, ν::Nothing, clk, fields) = zero(grid)
+
+@inline κᶜᶜᶜ(i, j, k, grid, loc::Tuple, κ::Nothing, clk, fields) = zero(grid)
+@inline κᶠᶜᶜ(i, j, k, grid, loc::Tuple, κ::Nothing, clk, fields) = zero(grid)
+@inline κᶜᶠᶜ(i, j, k, grid, loc::Tuple, κ::Nothing, clk, fields) = zero(grid)
+@inline κᶜᶜᶠ(i, j, k, grid, loc::Tuple, κ::Nothing, clk, fields) = zero(grid)
+@inline κᶠᶜᶠ(i, j, k, grid, loc::Tuple, κ::Nothing, clk, fields) = zero(grid)
+@inline κᶜᶠᶠ(i, j, k, grid, loc::Tuple, κ::Nothing, clk, fields) = zero(grid)
+
 # Array / Field at `Center, Center, Center`
 const Lᶜᶜᶜ = Tuple{Center, Center, Center}
 @inline νᶜᶜᶜ(i, j, k, grid, ::Lᶜᶜᶜ, ν::AbstractArray, clk, fields) = @inbounds ν[i, j, k]
@@ -361,8 +373,8 @@ const Lᶜᶜᶠ = Tuple{Center, Center, Face}
 @inline νᶜᶠᶠ(i, j, k, grid, ::Lᶜᶜᶠ, ν::AbstractArray, clk, fields) = ℑyᵃᶠᵃ(i, j, k, grid, ν)
 @inline νᶠᶠᶜ(i, j, k, grid, ::Lᶜᶜᶠ, ν::AbstractArray, clk, fields) = ℑxyzᶠᶠᶜ(i, j, k, grid, ν)
 
-@inline κᶠᶜᶜ(i, j, k, grid, ::Lᶜᶜᶠ, κ::AbstractArray, clk, fields) = ℑxzᶠᵃᶠ(i, j, k, grid, κ)
-@inline κᶜᶠᶜ(i, j, k, grid, ::Lᶜᶜᶠ, κ::AbstractArray, clk, fields) = ℑyzᵃᶠᶠ(i, j, k, grid, κ)
+@inline κᶠᶜᶜ(i, j, k, grid, ::Lᶜᶜᶠ, κ::AbstractArray, clk, fields) = ℑxzᶠᵃᶜ(i, j, k, grid, κ)
+@inline κᶜᶠᶜ(i, j, k, grid, ::Lᶜᶜᶠ, κ::AbstractArray, clk, fields) = ℑyzᵃᶠᶜ(i, j, k, grid, κ)
 @inline κᶜᶜᶠ(i, j, k, grid, ::Lᶜᶜᶠ, κ::AbstractArray, clk, fields) = @inbounds κ[i, j, k]
 @inline κᶠᶜᶠ(i, j, k, grid, ::Lᶜᶜᶠ, κ::AbstractArray, clk, fields) = ℑxᶠᵃᵃ(i, j, k, grid, κ)
 @inline κᶜᶠᶠ(i, j, k, grid, ::Lᶜᶜᶠ, κ::AbstractArray, clk, fields) = ℑyᵃᶠᵃ(i, j, k, grid, κ)

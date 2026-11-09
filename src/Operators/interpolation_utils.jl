@@ -100,7 +100,8 @@ $(TYPEDSIGNATURES)
 Return a tuple of indices and interpolation functions to the location `X, Y, Z`
 for each name in `dependencies`.
 
-The indices correspond to the position of each dependency within `model_field_names`.
+The indices correspond to the position of each dependency within `model_field_names`,
+and are wrapped in `Val` so that indexing a heterogeneous `model_fields` with them is type-stable.
 
 The interpolation functions interpolate the dependent field to `X, Y, Z`.
 """
@@ -115,7 +116,7 @@ function index_and_interp_dependencies(X, Y, Z, dependencies, model_field_names)
 
     !any(isnothing.(indices)) || error("$dependencies are required to be model fields but only $model_field_names are present")
 
-    return indices, interps
+    return map(Val, indices), interps
 end
 
 # Adds an interpolate function which takes i, j, k, grid, from, and, to as an argument

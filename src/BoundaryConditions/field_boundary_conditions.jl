@@ -1,4 +1,3 @@
-using GPUArraysCore: GPUArraysCore, @allowscalar
 using Oceananigans.Grids: YFlatGrid
 using Oceananigans.Operators: assumed_field_location
 
@@ -12,42 +11,23 @@ end
 
 DefaultBoundaryCondition() = DefaultBoundaryCondition(NoFluxBoundaryCondition())
 
-default_prognostic_bc(::Grids.Periodic,         loc, default) = PeriodicBoundaryCondition()
-default_prognostic_bc(::FullyConnected,         loc, default) = MultiRegionCommunicationBoundaryCondition()
-default_prognostic_bc(::Flat,                   loc, default) = nothing
-default_prognostic_bc(::Bounded,           ::Center, default) = default.boundary_condition
-default_prognostic_bc(::LeftConnected,     ::Center, default) = default.boundary_condition
-default_prognostic_bc(::RightConnected,    ::Center, default) = default.boundary_condition
-default_prognostic_bc(::RightFaceFolded,   ::Center, default) = default.boundary_condition
-default_prognostic_bc(::RightCenterFolded, ::Center, default) = default.boundary_condition
+default_prognostic_bc(::Grids.Periodic, loc, default) = PeriodicBoundaryCondition()
+default_prognostic_bc(::Flat,           loc, default) = nothing
 
-default_prognostic_bc(::DistributedFoldedTopology, ::Center, default) = default.boundary_condition
+default_prognostic_bc(::TwoSided,                       ::Center, default) = default.boundary_condition
+default_prognostic_bc(::TwoSided{Connected, Connected}, ::Center, default) = MultiRegionCommunicationBoundaryCondition()
 
 # TODO: make model constructors enforce impenetrability on velocity components to simplify this code
-default_prognostic_bc(::Bounded,                   ::Face, default) = ImpenetrableBoundaryCondition()
-default_prognostic_bc(::LeftConnected,             ::Face, default) = ImpenetrableBoundaryCondition()
-default_prognostic_bc(::RightConnected,            ::Face, default) = ImpenetrableBoundaryCondition()
-default_prognostic_bc(::RightFaceFolded,           ::Face, default) = ImpenetrableBoundaryCondition()
-default_prognostic_bc(::RightCenterFolded,         ::Face, default) = ImpenetrableBoundaryCondition()
-default_prognostic_bc(::DistributedFoldedTopology, ::Face, default) = ImpenetrableBoundaryCondition()
+default_prognostic_bc(::TwoSided,                       ::Face, default) = ImpenetrableBoundaryCondition()
+default_prognostic_bc(::TwoSided{Connected, Connected}, ::Face, default) = MultiRegionCommunicationBoundaryCondition()
 
-default_prognostic_bc(::Bounded,                   ::Nothing, default) = nothing
-default_prognostic_bc(::Flat,                      ::Nothing, default) = nothing
-default_prognostic_bc(::Grids.Periodic,            ::Nothing, default) = nothing
-default_prognostic_bc(::FullyConnected,            ::Nothing, default) = nothing
-default_prognostic_bc(::LeftConnected,             ::Nothing, default) = nothing
-default_prognostic_bc(::RightConnected,            ::Nothing, default) = nothing
-default_prognostic_bc(::RightFaceFolded,           ::Nothing, default) = nothing
-default_prognostic_bc(::RightCenterFolded,         ::Nothing, default) = nothing
-default_prognostic_bc(::DistributedFoldedTopology, ::Nothing, default) = nothing
+default_prognostic_bc(::Grids.Periodic, ::Nothing, default) = nothing
+default_prognostic_bc(::Flat,           ::Nothing, default) = nothing
+default_prognostic_bc(::TwoSided,          ::Nothing, default) = nothing
 
 _default_auxiliary_bc(topo, loc) = default_prognostic_bc(topo, loc, DefaultBoundaryCondition())
-_default_auxiliary_bc(::Bounded,                   ::Face) = nothing
-_default_auxiliary_bc(::RightConnected,            ::Face) = nothing
-_default_auxiliary_bc(::LeftConnected,             ::Face) = nothing
-_default_auxiliary_bc(::RightFaceFolded,           ::Face) = nothing
-_default_auxiliary_bc(::RightCenterFolded,         ::Face) = nothing
-_default_auxiliary_bc(::DistributedFoldedTopology, ::Face) = nothing
+_default_auxiliary_bc(::TwoSided,                       ::Face) = nothing
+_default_auxiliary_bc(::TwoSided{Connected, Connected}, ::Face) = MultiRegionCommunicationBoundaryCondition()
 
 default_auxiliary_bc(grid, ::Val{:east},   loc) = _default_auxiliary_bc(topology(grid, 1)(), loc[1])
 default_auxiliary_bc(grid, ::Val{:west},   loc) = _default_auxiliary_bc(topology(grid, 1)(), loc[1])
@@ -263,6 +243,12 @@ end
     return MixedCondition(coefficient, inhomogeneity)
 end
 
+function regularize_boundary_condition(c::IMEXFlux, grid, args...)
+    explicit_flux = regularize_boundary_condition(c.explicit_flux, grid, args...)
+    implicit_coefficient = regularize_boundary_condition(c.implicit_coefficient, grid, args...)
+    return IMEXFlux(explicit_flux, implicit_coefficient)
+end
+
 """
     regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
                                          grid::AbstractGrid,
@@ -344,31 +330,33 @@ regularize_field_boundary_conditions(boundary_conditions::NamedTuple, grid::Abst
 @inline regularize_south_boundary_condition(bc::DefaultBoundaryCondition, grid::LatitudeLongitudeGrid, loc, args...) =
     regularize_boundary_condition(default_prognostic_bc(grid, Val(:south), loc, bc), grid, loc, args...)
 
-function default_prognostic_bc(grid::LatitudeLongitudeGrid, ::Val{:north}, (ℓx, ℓy, ℓz), default)
-    φnorth = @allowscalar φnode(grid.Ny+1, grid, Face())
-    default_bc = default_prognostic_bc(topology(grid, 2)(), ℓy, default)
-    return φnorth ≈ 90 ? maybe_polar_boundary_condition(grid, :north, ℓy, ℓz) : default_bc
+# `pole` is the grid's `south_pole` or `north_pole`: `Pole()` or `nothing`
+polar_or(default_bc, ::Nothing, grid, side, ℓy, ℓz) = default_bc
+polar_or(default_bc, ::Pole, grid, side, ℓy, ℓz) = maybe_polar_boundary_condition(grid, side, ℓy, ℓz)
+
+for side in (:south, :north)
+    S = Val{side}
+    pole = Symbol(side, :_pole)
+    @eval begin
+        default_prognostic_bc(grid::LatitudeLongitudeGrid, ::$S, (ℓx, ℓy, ℓz), default) =
+            polar_or(default_prognostic_bc(topology(grid, 2)(), ℓy, default), grid.$pole, grid, $(QuoteNode(side)), ℓy, ℓz)
+
+        default_auxiliary_bc(grid::LatitudeLongitudeGrid, ::$S, (ℓx, ℓy, ℓz)) =
+            polar_or(_default_auxiliary_bc(topology(grid, 2)(), ℓy), grid.$pole, grid, $(QuoteNode(side)), ℓy, ℓz)
+
+        default_prognostic_bc(::LatitudeLongitudeGrid{<:Any, <:Any, Flat}, ::$S, loc, default) = default
+        default_auxiliary_bc(::LatitudeLongitudeGrid{<:Any, <:Any, Flat}, ::$S, loc) = nothing
+    end
 end
 
-function default_prognostic_bc(grid::LatitudeLongitudeGrid, ::Val{:south}, (ℓx, ℓy, ℓz), default)
-    φsouth = @allowscalar φnode(1, grid, Face())
-    default_bc = default_prognostic_bc(topology(grid, 2)(), ℓy, default)
-    return φsouth ≈ -90 ? maybe_polar_boundary_condition(grid, :south, ℓy, ℓz) : default_bc
+Oceananigans.prognostic_state(bcs::FieldBoundaryConditions) =
+    Oceananigans.prognostic_state((; bcs.west, bcs.east, bcs.south, bcs.north, bcs.bottom, bcs.top))
+
+function Oceananigans.restore_prognostic_state!(bcs::FieldBoundaryConditions, from)
+    for side in keys(from)
+        Oceananigans.restore_prognostic_state!(getproperty(bcs, side), from[side])
+    end
+    return bcs
 end
 
-function default_auxiliary_bc(grid::LatitudeLongitudeGrid, ::Val{:north}, (ℓx, ℓy, ℓz))
-    φnorth = @allowscalar φnode(grid.Ny+1, grid, Face())
-    default_bc = _default_auxiliary_bc(topology(grid, 2)(), ℓy)
-    return φnorth ≈ 90 ? maybe_polar_boundary_condition(grid, :north, ℓy, ℓz) : default_bc
-end
-
-function default_auxiliary_bc(grid::LatitudeLongitudeGrid, ::Val{:south}, (ℓx, ℓy, ℓz))
-    φsouth = @allowscalar φnode(1, grid, Face())
-    default_bc = _default_auxiliary_bc(topology(grid, 2)(), ℓy)
-    return φsouth ≈ -90 ? maybe_polar_boundary_condition(grid, :south, ℓy, ℓz) : default_bc
-end
-
-default_prognostic_bc(grid::LatitudeLongitudeGrid{<:Any, <:Any, Flat}, ::Val{:north}, loc, default) = default
-default_prognostic_bc(grid::LatitudeLongitudeGrid{<:Any, <:Any, Flat}, ::Val{:south}, loc, default) = default
- default_auxiliary_bc(grid::LatitudeLongitudeGrid{<:Any, <:Any, Flat}, ::Val{:north}, loc) = nothing
- default_auxiliary_bc(grid::LatitudeLongitudeGrid{<:Any, <:Any, Flat}, ::Val{:south}, loc) = nothing
+Oceananigans.restore_prognostic_state!(::FieldBoundaryConditions, ::Nothing) = nothing

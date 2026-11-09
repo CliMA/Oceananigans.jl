@@ -1,6 +1,6 @@
 module Utils
 
-export configure_kernel, launch!, KernelParameters
+export configure_kernel, launch!, KernelParameters, kernel_time_step
 export prettytime, pretty_filesize
 export tupleit, parenttuple, datatuple, datatuples, named_tuple
 export ordered_dict_show
@@ -13,11 +13,16 @@ export TimeInterval, IterationInterval, WallTimeInterval, SpecifiedTimes, AndSch
 export apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject
 export isregional, getregion, _getregion, regions, sync_device!
 export newton_div, NormalDivision, ConvertingDivision, BackendOptimizedDivision
+export f32_safe_cbrt
 export TabulatedFunction
 export interpolator, _interpolate
 export ϕ₁, ϕ₂, ϕ₃, ϕ₄, ϕ₅, ϕ₆, ϕ₇, ϕ₈
 
+using Adapt: Adapt
 using DocStringExtensions: TYPEDSIGNATURES
+using KernelAbstractions: KernelAbstractions
+using Oceananigans: Oceananigans
+using Oceananigans.Architectures: Architectures
 
 #####
 ##### Misc. small utils
@@ -26,7 +31,11 @@ using DocStringExtensions: TYPEDSIGNATURES
 instantiate(T::Type) = T()
 instantiate(t) = t
 
-getnamewrapper(type) = typeof(type).name.wrapper
+# Return the type `T` stripped of its type parameters, e.g. `RectilinearGrid`
+# for `RectilinearGrid{Float64, Periodic, Periodic, Bounded, ...}`. Relies on
+# `T` being bound to its name in the module that defines it, as every `struct`
+# definition does.
+unparameterized_type(T::Type) = getglobal(parentmodule(T), nameof(T))
 
 function get_active_cells_map end
 
@@ -49,7 +58,9 @@ include("user_function_arguments.jl")
 include("multi_region_transformation.jl")
 include("sum_of_arrays.jl")
 include("newton_div.jl")
+include("f32_safe_cbrt.jl")
 include("interpolation.jl")
 include("tabulated_function.jl")
+include("static_strides_offset_array.jl")
 
 end # module

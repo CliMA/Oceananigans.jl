@@ -1,8 +1,7 @@
 using Oceananigans.Architectures: architecture
+using Oceananigans.BoundaryConditions: step_boundary_conditions!
+using Oceananigans.TimeSteppers: _rk3_substep_field!, stage_Δt
 using Oceananigans.Utils: configure_kernel
-using Oceananigans.TimeSteppers: _rk3_substep_field!
-
-import Oceananigans.TimeSteppers: rk3_substep!
 
 """
 $(TYPEDSIGNATURES)
@@ -14,15 +13,14 @@ Advances the solution fields (`uh`, `vh`, `h`) and any tracers using the RK3 sch
 
 where `Gⁿ` and `G⁻` are the current and previous tendencies.
 """
-function rk3_substep!(model::ShallowWaterModel, Δt, γⁿ, ζⁿ, callbacks)
+function TimeSteppers.rk3_substep!(model::ShallowWaterModel, Δt, γⁿ, ζⁿ, callbacks)
 
     compute_tendencies!(model, callbacks)
     grid = model.grid
-    kernel_Δt = convert(eltype(grid), Δt)
 
     launch!(architecture(grid), grid, :xyz, _rk_substep_solution!,
             model.solution,
-            kernel_Δt, γⁿ, ζⁿ,
+            Δt, γⁿ, ζⁿ,
             model.timestepper.Gⁿ,
             model.timestepper.G⁻)
 
@@ -33,8 +31,10 @@ function rk3_substep!(model::ShallowWaterModel, Δt, γⁿ, ζⁿ, callbacks)
         @inbounds Gcⁿ = model.timestepper.Gⁿ[i+3]
         @inbounds Gc⁻ = model.timestepper.G⁻[i+3]
 
-        _tracer_kernel!(c, kernel_Δt, γⁿ, ζⁿ, Gcⁿ, Gc⁻)
+        _tracer_kernel!(c, Δt, γⁿ, ζⁿ, Gcⁿ, Gc⁻)
     end
+
+    step_boundary_conditions!(prognostic_fields(model), model.clock, fields(model), stage_Δt(Δt, γⁿ, ζⁿ))
 
     return nothing
 end

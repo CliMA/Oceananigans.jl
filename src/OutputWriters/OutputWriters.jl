@@ -9,7 +9,7 @@ export
     FilteredTimeInterval, AbstractFilterKernel, LanczosKernel, BoxcarKernel, HanningKernel
 
 using DocStringExtensions: TYPEDSIGNATURES
-using OffsetArrays: OffsetArrays, OffsetArray
+using OffsetArrays: OffsetArrays, AbstractOffsetArray
 using OrderedCollections: OrderedDict
 
 using Oceananigans: Oceananigans, AbstractOutputWriter, boundary_conditions, write_output!
@@ -18,11 +18,9 @@ using Oceananigans.Architectures: Architectures, CPU, GPU, architecture, on_arch
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields: Fields, Field, AbstractField, location, reduced_dimensions, set!, instantiated_location
 using Oceananigans.Grids: Grids, AbstractGrid, Center, Face, Flat, LatitudeLongitudeGrid,
-                          RectilinearGrid, StaticVerticalDiscretization, AbstractVerticalCoordinate,
-                          ColumnEnsembleSize, Periodic, Bounded, FullyConnected,
-                          LeftConnected, RightConnected, RightFaceFolded, RightCenterFolded,
-                          LeftConnectedRightCenterFolded, LeftConnectedRightFaceFolded,
-                          LeftConnectedRightCenterConnected, LeftConnectedRightFaceConnected,
+                          RectilinearGrid, StaticVerticalDiscretization, MutableVerticalDiscretization, AbstractVerticalCoordinate,
+                          ColumnEnsembleSize, Periodic, TwoSided, Bounded, Closed, Open, Connected,
+                          CenterFolded, FaceFolded, CenterFoldConnected, FaceFoldConnected,
                           grid, topology, halo_size, xspacings, yspacings, rspacings,
                           λspacings, φspacings, λnodes, φnodes, ξnodes, ηnodes,
                           ξname, ηname, validate_index, peripheral_node, inactive_node,
@@ -30,17 +28,18 @@ using Oceananigans.Grids: Grids, AbstractGrid, Center, Face, Flat, LatitudeLongi
 import Oceananigans.Grids: new_data as allocate_grid_data
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary,
                                         GridFittedBottom, PartialCellBottom, ShavedCellBottom,
+                                        GridFittedVerticalBoundaries, PartialCellVerticalBoundaries,
                                         CenterImmersedCondition, InterfaceImmersedCondition,
                                         GFBIBG, PCBIBG, SCBIBG, bottom_height_field
 using Oceananigans.OrthogonalSphericalShellGrids: OrthogonalSphericalShellGrid,
                                                    TripolarGrid, RotatedLatitudeLongitudeGrid,
                                                    ConformalCubedSpherePanelGrid,
-                                                   LambertConformalConicGrid,
+                                                   ConformalConicGrid,
                                                    Tripolar, LatitudeLongitudeRotation,
                                                    CubedSphereConformalMapping,
-                                                   LambertConformalConic
+                                                   ConformalConic
 using Oceananigans.Solvers: iteration
-using Oceananigans.Utils: Utils, TimeInterval, IterationInterval, WallTimeInterval, instantiate,
+using Oceananigans.Utils: Utils, StaticStridesOffsetArray, TimeInterval, IterationInterval, WallTimeInterval, instantiate,
                           pretty_filesize
 
 const c = Center()

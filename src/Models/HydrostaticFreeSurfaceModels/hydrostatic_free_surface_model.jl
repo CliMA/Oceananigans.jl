@@ -1,25 +1,27 @@
-using Oceananigans.Advection: AbstractAdvectionScheme, Centered, VectorInvariant, WENOVectorInvariant, adapt_advection_order, materialize_advection, weno_order
+using Oceananigans: prognostic_state, restore_prognostic_state!
+using Oceananigans.Advection: AbstractAdvectionScheme, Centered, VectorInvariant, WENOVectorInvariant,
+                              adapt_advection_order, materialize_advection, weno_order
 using Oceananigans.Architectures: AbstractArchitecture, ReactantState
-using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
-using Oceananigans.BoundaryConditions: FieldBoundaryConditions, needs_implicit_solver, regularize_field_boundary_conditions, validate_implicit_explicit_flux_locations
-using Oceananigans.BuoyancyFormulations: validate_buoyancy, materialize_buoyancy
+using Oceananigans.Biogeochemistry: AbstractBiogeochemistry, biogeochemical_auxiliary_fields, validate_biogeochemistry
+using Oceananigans.BoundaryConditions: FieldBoundaryConditions, needs_implicit_solver,
+                                       regularize_field_boundary_conditions, validate_implicit_explicit_flux_locations
+using Oceananigans.BuoyancyFormulations: materialize_buoyancy, validate_buoyancy
 using Oceananigans.DistributedComputations: Distributed
-using Oceananigans.Fields: Field, CenterField, ZeroField, tracernames, TracerFields
-using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: AbstractHorizontallyCurvilinearGrid, architecture, halo_size, MutableVerticalDiscretization, Face, Center
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
-using Oceananigans.Models: AbstractModel, validate_model_halo, validate_tracer_advection, extract_boundary_conditions, materialize_tracers, timestepper_name
-using Oceananigans.TimeSteppers: Clock, TimeStepper, AbstractLagrangianParticles, materialize_clock!, time_discretization
-using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_closure_fields, add_closure_specific_boundary_conditions,
-                                       implicit_diffusion_solver, VerticallyImplicitTimeDiscretization,
-                                       closure_required_tracers, initialize_closure_fields!
+using Oceananigans.Fields: CenterField, Field, TracerFields, ZeroField, tracernames
+using Oceananigans.Forcings: model_forcing, penetrative_radiation
+using Oceananigans.Grids: AbstractHorizontallyCurvilinearGrid, Center, Face, MutableVerticalDiscretization,
+                          architecture, halo_size
+using Oceananigans.ImmersedBoundaries: GridFittedBoundary, ImmersedBoundaryGrid
+using Oceananigans.Models: AbstractModel, extract_boundary_conditions, materialize_tracers, timestepper_name,
+                           validate_model_halo, validate_tracer_advection
+using Oceananigans.TimeSteppers: AbstractLagrangianParticles, Clock, TimeStepper, materialize_clock!,
+                                 materialize_lagrangian_particles, reconcile_state!,
+                                 time_discretization, update_state!
+using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization, add_closure_specific_boundary_conditions,
+                                       build_closure_fields, closure_required_tracers, implicit_diffusion_solver,
+                                       initialize_closure_fields!, validate_closure, with_penetrative_radiation,
+                                       with_tracers
 using Oceananigans.Utils: tupleit
-
-import Oceananigans
-import Oceananigans: initialize!, prognostic_state, restore_prognostic_state!
-import Oceananigans.Models: total_velocities
-import Oceananigans.TimeSteppers: update_state!, reconcile_state!, materialize_clock!
-import Oceananigans.TurbulenceClosures: buoyancy_force, buoyancy_tracers
 
 PressureField(grid) = (; pHY′ = CenterField(grid))
 
@@ -331,6 +333,7 @@ function build_hydrostatic_free_surface_model(grid, ::Val{tracer_names}, timeste
     G⁻ = previous_hydrostatic_tendency_fields(timestepper, velocities, free_surface, grid, tracer_names, boundary_conditions)
     cached_state = previous_hydrostatic_state_fields(timestepper, velocities, free_surface, tracers)
     timestepper = TimeStepper(timestepper, grid, prognostic_fields; implicit_solver, Gⁿ, G⁻, cached_state...)
+    particles = materialize_lagrangian_particles(particles, timestepper)
     materialize_clock!(clock, timestepper)
 
     # Materialize forcing for model tracer and velocity fields.
@@ -338,6 +341,7 @@ function build_hydrostatic_free_surface_model(grid, ::Val{tracer_names}, timeste
     # constructed inside tendency kernels, ensuring field dependency indices
     # are consistent between materialization and tendency computation.
     model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
+    closure = with_penetrative_radiation(closure, penetrative_radiation(forcing))
     forcing = model_forcing(forcing, model_fields, prognostic_fields)
     transport_velocities = transport_velocity_fields(velocities)
 
@@ -391,9 +395,9 @@ copy_velocity(c) = c
 # A generic free surface transports with the stashed pre-step velocity, so there is nothing left to do
 compute_transport_velocities!(model, free_surface) = nothing
 
-# Not if `transport === velocities`
+# Identity is tested on the data: `===` on large immutable Fields miscompiles on Julia ≥ 1.12 and skips the copy
 function update_transport_velocities!(transport_velocities, velocities, free_surface)
-    transport_velocities === velocities && return nothing
+    parent(transport_velocities.u) === parent(velocities.u) && return nothing
     update_transport_velocity_data!(transport_velocities.u, velocities.u)
     update_transport_velocity_data!(transport_velocities.v, velocities.v)
     stash_vertical_velocity!(transport_velocities, velocities, free_surface)
@@ -405,7 +409,7 @@ stash_vertical_velocity!(transport_velocities, velocities, free_surface) = updat
 stash_vertical_velocity!(transport_velocities, velocities, ::Union{SplitExplicitFreeSurface, ImplicitFreeSurface}) = nothing
 
 # Only concrete Field types are duplicated (see `copy_velocity` above)
-update_transport_velocity_data!(dst::Field, src::Field) = parent(dst) .= parent(src)
+update_transport_velocity_data!(dst::Field, src::Field) = copyto!(parent(dst), parent(src))
 update_transport_velocity_data!(dst, src) = nothing
 
 validate_velocity_boundary_conditions(grid, velocities) = validate_vertical_velocity_boundary_conditions(velocities.w)
@@ -428,7 +432,7 @@ validate_momentum_advection(momentum_advection::Nothing,         grid::Orthogona
 validate_momentum_advection(momentum_advection::VectorInvariant, grid::OrthogonalSphericalShellGrid) = momentum_advection
 validate_momentum_advection(momentum_advection, grid::OrthogonalSphericalShellGrid) = error("$(typeof(momentum_advection)) is not supported with $(typeof(grid))")
 
-function reconcile_state!(model::HydrostaticFreeSurfaceModel)
+function TimeSteppers.reconcile_state!(model::HydrostaticFreeSurfaceModel)
     mask_immersed_horizontal_velocities!(model.velocities)
     fill_halo_regions!(prognostic_fields(model), model.clock, fields(model))
     reconcile_free_surface!(model.free_surface, model.grid, model.clock, model.velocities)
@@ -436,23 +440,23 @@ function reconcile_state!(model::HydrostaticFreeSurfaceModel)
     return nothing
 end
 
-function initialize!(model::HydrostaticFreeSurfaceModel)
+function Oceananigans.initialize!(model::HydrostaticFreeSurfaceModel)
     reconcile_state!(model)
     initialize_closure_fields!(model.closure_fields, model.closure, model)
     return nothing
 end
 
 # return the total advective velocities
-@inline total_velocities(model::HydrostaticFreeSurfaceModel) = model.velocities
-timestepper(model::HydrostaticFreeSurfaceModel) = model.timestepper
-buoyancy_force(model::HydrostaticFreeSurfaceModel) = model.buoyancy
-buoyancy_tracers(model::HydrostaticFreeSurfaceModel) = model.tracers
+@inline Models.total_velocities(model::HydrostaticFreeSurfaceModel) = model.velocities
+Simulations.timestepper(model::HydrostaticFreeSurfaceModel) = model.timestepper
+TurbulenceClosures.buoyancy_force(model::HydrostaticFreeSurfaceModel) = model.buoyancy
+TurbulenceClosures.buoyancy_tracers(model::HydrostaticFreeSurfaceModel) = model.tracers
 
 #####
 ##### Checkpointing
 #####
 
-function prognostic_state(model::HydrostaticFreeSurfaceModel)
+function Oceananigans.prognostic_state(model::HydrostaticFreeSurfaceModel)
     return (clock = prognostic_state(model.clock),
             particles = prognostic_state(model.particles),
             velocities = prognostic_state(model.velocities),
@@ -460,21 +464,25 @@ function prognostic_state(model::HydrostaticFreeSurfaceModel)
             closure_fields = prognostic_state(model.closure_fields),
             timestepper = prognostic_state(model.timestepper),
             free_surface = prognostic_state(model.free_surface),
+            coriolis = prognostic_state(model.coriolis),
             auxiliary_fields = prognostic_state(model.auxiliary_fields),
-            vertical_coordinate = prognostic_state(model.vertical_coordinate, model.grid))
+            vertical_coordinate = prognostic_state(model.vertical_coordinate, model.grid),
+            biogeochemistry = prognostic_state(model.biogeochemistry))
 end
 
-function restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel, from)
+function Oceananigans.restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel, from)
     restore_prognostic_state!(restored.clock, from.clock)
     restore_prognostic_state!(restored.particles, from.particles)
     restore_prognostic_state!(restored.velocities, from.velocities)
     restore_prognostic_state!(restored.timestepper, from.timestepper)
     restore_prognostic_state!(restored.free_surface, from.free_surface)
+    restore_prognostic_state!(restored.coriolis, from.coriolis)
     restore_prognostic_state!(restored.tracers, from.tracers)
     restore_prognostic_state!(restored.closure_fields, from.closure_fields)
     restore_prognostic_state!(restored.auxiliary_fields, from.auxiliary_fields)
     restore_prognostic_state!(restored.vertical_coordinate, restored.grid, from.vertical_coordinate)
+    restore_prognostic_state!(restored.biogeochemistry, from.biogeochemistry)
     return restored
 end
 
-restore_prognostic_state!(::HydrostaticFreeSurfaceModel, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::HydrostaticFreeSurfaceModel, ::Nothing) = nothing

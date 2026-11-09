@@ -1,24 +1,15 @@
 using Oceananigans.AbstractOperations: Average
 using Oceananigans.Fields: FieldBoundaryConditions
-using Oceananigans.Utils: Utils, launch!, IterationInterval
+using Oceananigans.Utils: Utils, IterationInterval, launch!
 
 using Adapt: Adapt, adapt
 
 using ..TurbulenceClosures:
     AbstractScalarDiffusivity,
-    ThreeDimensionalFormulation,
     ExplicitTimeDiscretization,
+    ThreeDimensionalFormulation,
     closure_coefficient,
-    convert_diffusivity
-
-import ..TurbulenceClosures:
-    viscosity,
-    diffusivity,
-    κᶠᶜᶜ,
-    κᶜᶠᶜ,
-    κᶜᶜᶠ,
-    compute_closure_fields!,
-    build_closure_fields,
+    convert_diffusivity,
     tracer_diffusivities
 
 #####
@@ -38,8 +29,8 @@ struct Smagorinsky{TD, C, P} <: AbstractScalarDiffusivity{TD, ThreeDimensionalFo
     end
 end
 
-@inline viscosity(::Smagorinsky, K) = K.νₑ
-@inline diffusivity(closure::Smagorinsky, K, ::Val{id}) where id = K.νₑ / closure.Pr[id]
+@inline TurbulenceClosures.viscosity(::Smagorinsky, K) = K.νₑ
+@inline TurbulenceClosures.diffusivity(closure::Smagorinsky, K, ::Val{id}) where id = K.νₑ / closure.Pr[id]
 
 Adapt.adapt_structure(to, smag::Smagorinsky{TD}) where TD =
     Smagorinsky{TD}(adapt(to, smag.coefficient), adapt(to, smag.Pr))
@@ -73,6 +64,15 @@ number modification to the eddy viscosity.
 `Cˢ` is the Smagorinsky coefficient and the default value is 0.16, according
 to the analysis by [Lilly66](@citet). For other options, see `LillyCoefficient`
 and `DynamicCoefficient`.
+
+References
+==========
+* Smagorinsky, J. (1958). "On the numerical integration of the primitive equations of motion for
+  baroclinic flow in a closed region." Monthly Weather Review, 86(12), 457-466.
+* Smagorinsky, J. (1963). "General circulation experiments with the primitive equations: I. The basic
+  experiment." Monthly Weather Review, 91(3), 99-164.
+* Lilly, D. K. (1966). "The representation of small-scale turbulence in numerical simulation
+  experiments." NCAR Manuscript No. 281.
 """
 function Smagorinsky(time_discretization::TD = ExplicitTimeDiscretization(), FT=Oceananigans.defaults.FloatType;
                      coefficient = 0.16, Pr = 1.0) where TD
@@ -95,7 +95,7 @@ end
 
     # Filter width
     Δ³ = Δxᶜᶜᶜ(i, j, k, grid) * Δyᶜᶜᶜ(i, j, k, grid) * Δzᶜᶜᶜ(i, j, k, grid)
-    Δᶠ = cbrt(Δ³)
+    Δᶠ = f32_safe_cbrt(Δ³)
     cˢ² = square_smagorinsky_coefficient(i, j, k, grid, closure, closure_fields, Σ², buoyancy, tracers)
 
     νₑ = closure_fields.νₑ
@@ -108,7 +108,7 @@ end
 
 compute_coefficient_fields!(closure_fields, closure, model; parameters) = nothing
 
-function compute_closure_fields!(closure_fields, closure::Smagorinsky, model; parameters = :xyz)
+function TurbulenceClosures.compute_closure_fields!(closure_fields, closure::Smagorinsky, model; parameters = :xyz)
     arch = model.architecture
     grid = model.grid
     tracers = buoyancy_tracers(model)
@@ -125,7 +125,7 @@ end
 
 allocate_coefficient_fields(closure, grid, clock) = NamedTuple()
 
-function build_closure_fields(grid, clock, tracer_names, bcs, closure::Smagorinsky)
+function TurbulenceClosures.build_closure_fields(grid, clock, tracer_names, bcs, closure::Smagorinsky)
     coefficient_fields = allocate_coefficient_fields(closure, grid, clock)
 
     default_eddy_viscosity_bcs = (; νₑ = FieldBoundaryConditions(grid, (Center(), Center(), Center())))
@@ -136,9 +136,9 @@ function build_closure_fields(grid, clock, tracer_names, bcs, closure::Smagorins
     return merge(viscosity_nt, coefficient_fields)
 end
 
-@inline κᶠᶜᶜ(i, j, k, grid, c::Smagorinsky, K, ::Val{id}, args...) where id = ℑxᶠᵃᵃ(i, j, k, grid, K.νₑ) / c.Pr[id]
-@inline κᶜᶠᶜ(i, j, k, grid, c::Smagorinsky, K, ::Val{id}, args...) where id = ℑyᵃᶠᵃ(i, j, k, grid, K.νₑ) / c.Pr[id]
-@inline κᶜᶜᶠ(i, j, k, grid, c::Smagorinsky, K, ::Val{id}, args...) where id = ℑzᵃᵃᶠ(i, j, k, grid, K.νₑ) / c.Pr[id]
+@inline TurbulenceClosures.κᶠᶜᶜ(i, j, k, grid, c::Smagorinsky, K, ::Val{id}, args...) where id = ℑxᶠᵃᵃ(i, j, k, grid, K.νₑ) / c.Pr[id]
+@inline TurbulenceClosures.κᶜᶠᶜ(i, j, k, grid, c::Smagorinsky, K, ::Val{id}, args...) where id = ℑyᵃᶠᵃ(i, j, k, grid, K.νₑ) / c.Pr[id]
+@inline TurbulenceClosures.κᶜᶜᶠ(i, j, k, grid, c::Smagorinsky, K, ::Val{id}, args...) where id = ℑzᵃᵃᶠ(i, j, k, grid, K.νₑ) / c.Pr[id]
 
 Base.summary(closure::Smagorinsky) = string("Smagorinsky with coefficient = ", summary(closure.coefficient), ", Pr=$(closure.Pr)")
 function Base.show(io::IO, closure::Smagorinsky)

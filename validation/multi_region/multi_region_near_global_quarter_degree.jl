@@ -317,6 +317,6 @@ run!(simulation, pickup = pickup_file)
 
 @info """
     Simulation took $(prettytime(simulation.run_wall_time))
-    Free surface: $(typeof(model.free_surface).name.wrapper)
+    Free surface: $(nameof(typeof(model.free_surface)))
     Time step: $(prettytime(Δt))
 """

@@ -77,8 +77,6 @@ end
     return dst
 end
 
-@inline AC.unsafe_free!(a::ROCArray) = AMDGPU.unsafe_free!(a)
-
 @inline convert_to_device(::ROCGPU, args) = AMDGPU.rocconvert(args)
 @inline convert_to_device(::ROCGPU, args::Tuple) = map(AMDGPU.rocconvert, args)
 
@@ -87,7 +85,7 @@ BC.validate_boundary_condition_architecture(::ROCArray, ::AC.GPU, bc, side) = no
 BC.validate_boundary_condition_architecture(::ROCArray, ::AC.CPU, bc, side) =
     throw(ArgumentError("$side $bc must use `Array` rather than `ROCArray` on CPU architectures!"))
 
-function SO.plan_forward_transform(A::ROCArray, ::Union{GD.Bounded, GD.Periodic}, dims, planner_flag)
+function SO.plan_forward_transform(A::ROCArray, ::Union{GD.BoundaryTopology, GD.Periodic}, dims, planner_flag)
     length(dims) == 0 && return nothing
     return plan_fft!(A, dims)
 end
@@ -96,7 +94,7 @@ FD.set!(v::Field, a::ROCArray) = FD.set_to_array!(v, a)
 DC.set!(v::DC.DistributedField, a::ROCArray) = DC.set_to_array!(v, a)
 FD.set!(v::MR.MultiRegionField, a::ROCArray) = apply_regionally!(FD.set!, v, a)
 
-function SO.plan_backward_transform(A::ROCArray, ::Union{GD.Bounded, GD.Periodic}, dims, planner_flag)
+function SO.plan_backward_transform(A::ROCArray, ::Union{GD.BoundaryTopology, GD.Periodic}, dims, planner_flag)
     length(dims) == 0 && return nothing
     return plan_ifft!(A, dims)
 end

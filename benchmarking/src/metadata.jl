@@ -32,7 +32,7 @@ function BenchmarkMetadata(arch)
     gpu_name = nothing
     cuda_version = nothing
 
-    if arch isa GPU
+    if child_architecture(arch) isa GPU
         try
             gpu_name = CUDA.name(CUDA.device())
             cuda_version = string(CUDA.runtime_version())

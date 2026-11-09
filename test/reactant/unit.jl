@@ -1,8 +1,11 @@
 include(joinpath(@__DIR__, "..", "setup", "reactant_test_utils.jl"))
 
 using CUDA
+using KernelAbstractions: get_backend
 using Statistics: mean
-using Oceananigans.OutputReaders: cpu_interpolating_time_indices
+using Oceananigans.OutputReaders: cpu_interpolating_time_indices, Clamp, Cyclical, update_field_time_series!, InMemory,
+                                  TimeSeriesInterpolation
+using Oceananigans.Units: Time
 
 arch = ReactantState()
 
@@ -114,8 +117,8 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
 
         for name in propertynames(llg)
             p = getproperty(llg, name)
-            if !(name ∈ (:architecture, :z))
-                @test (p isa Number) || (p isa OffsetArray{FT, <:Any, <:Reactant.AbstractConcreteArray})
+            if !(name ∈ (:architecture, :z, :south_pole, :north_pole))
+                @test (p isa Number) || (p isa StaticStridesOffsetArray{FT, <:Any, <:Any, <:Any, <:Reactant.AbstractConcreteArray})
             end
         end
 
@@ -129,8 +132,8 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
 
         for name in propertynames(constant_llg)
             p = getproperty(constant_llg, name)
-            if !(name ∈ (:architecture, :z))
-                @test (p isa Number) || (p isa OffsetArray{FT, <:Any, <:Array})
+            if !(name ∈ (:architecture, :z, :south_pole, :north_pole))
+                @test (p isa Number) || (p isa StaticStridesOffsetArray{FT, <:Any, <:Any, <:Any, <:Array})
             end
         end
 
@@ -145,6 +148,11 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
         @test architecture(constant_ibg) isa ReactantState
         @test architecture(constant_ibg.immersed_boundary.bottom_height) isa CPU
 
+        top_ibg = ImmersedBoundaryGrid(llg, GridFittedVerticalBoundaries(bottom_height=ridge, top_height=0.9))
+        top_ib′ = OceananigansReactantExt.deconcretize(top_ibg.immersed_boundary)
+        @test parent(top_ib′.bottom_height) isa Array
+        @test parent(top_ib′.top_height) isa Array
+
         @info "  Testing constantified OrthogonalSphericalShellGrid construction [$FT]..."
         rllg = RotatedLatitudeLongitudeGrid(arch, FT; size = (4, 4, 4),
                                             north_pole = (0, 0),
@@ -157,7 +165,7 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
         for name in propertynames(rllg)
             p = getproperty(rllg, name)
             if !(name ∈ (:architecture, :z, :conformal_mapping))
-                @test (p isa Number) || (p isa OffsetArray{FT, <:Any, <:Reactant.AbstractConcreteArray})
+                @test (p isa Number) || (p isa StaticStridesOffsetArray{FT, <:Any, <:Any, <:Any, <:Reactant.AbstractConcreteArray})
             end
         end
 
@@ -175,7 +183,7 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
         for name in propertynames(constant_rllg)
             p = getproperty(constant_rllg, name)
             if !(name ∈ (:architecture, :z, :conformal_mapping))
-                @test (p isa Number) || (p isa OffsetArray{FT, <:Any, <:Array})
+                @test (p isa Number) || (p isa StaticStridesOffsetArray{FT, <:Any, <:Any, <:Any, <:Array})
             end
         end
 
@@ -227,6 +235,16 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
         @test minimum_xspacing(grid) ≈ minimum(xspacings(grid))
         @test minimum_yspacing(grid) ≈ minimum(yspacings(grid))
         @test minimum_zspacing(grid) ≈ minimum(zspacings(grid))
+    end
+
+    @testset "KernelFunctionOperation as a kernel argument on LatitudeLongitudeGrid" begin
+        grid = LatitudeLongitudeGrid(arch; size=(4, 4, 2), longitude=(0, 1), latitude=(0, 1), z=(-1, 0))
+        c = CenterField(grid)
+        out = CenterField(grid)
+        set!(c, 1)
+
+        @jit compute_doubled!(out, c)
+        @test all(Array(interior(out)) .== 2)
     end
 
     @testset "Field reductions on LatitudeLongitudeGrid" begin
@@ -295,6 +313,50 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
         compiled_set_column!(u, v)
 
         @test Array(interior(u)) == repeat(column, outer=(4, 4, 1))
+    end
+
+    @testset "Indexing fields with a traced element type" begin
+        grid = RectilinearGrid(arch; size = (4, 4, 4), extent = (1, 1, 1))
+        u = CenterField(grid)
+        values = reshape(collect(1.0:64.0), 4, 4, 4)
+        set!(u, values)
+
+        # Fields allocated inside a compiled function have a traced element type. Indexing them must not
+        # be ambiguous with Reactant's methods for arrays of traced numbers, and must drop the index along
+        # reduced dimensions.
+        function index_traced_fields!(u)
+            full = CenterField(u.grid)
+            interior(full) .= interior(u)
+            column = Field{Nothing, Nothing, Center}(u.grid)
+            interior(column) .= 3
+            @allowscalar begin
+                column[1, 1, 2] = 2 * column[3, 4, 2]
+                u[1, 1, 1] = full[2, 2, 1] + column[2, 3, 2]
+            end
+            return nothing
+        end
+
+        compiled_index_traced_fields! = @compile sync=true index_traced_fields!(u)
+        compiled_index_traced_fields!(u)
+
+        @test Array(interior(u))[1, 1, 1] ≈ values[2, 2, 1] + 6
+    end
+
+    @testset "LatitudeLongitudeGrid with a non-static vertical coordinate" begin
+        # `on_architecture(::ReactantState, ::LatitudeLongitudeGrid)` rebuilds the grid field by
+        # field. Vertical coordinates other than `StaticVerticalDiscretization` used to hit a
+        # MethodError there.
+        @info "  Testing LatitudeLongitudeGrid with MutableVerticalDiscretization..."
+        grid = LatitudeLongitudeGrid(arch; size = (4, 4, 4),
+                                     longitude = [0, 1, 2, 3, 4],
+                                     latitude = [0, 1, 2, 3, 4],
+                                     z = MutableVerticalDiscretization((0, 1)))
+
+        @test architecture(grid) isa ReactantState
+        @test grid.z isa MutableVerticalDiscretization
+        @test grid.z.cᵃᵃᶠ isa StaticStridesOffsetArray{Float64, 1, <:Any, <:Any, <:Reactant.AbstractConcreteArray}
+        @test architecture(grid.z.σᶜᶜⁿ) isa ReactantState
+        @test architecture(grid.z.ηⁿ) isa ReactantState
     end
 
     @testset "Computed fields on a grid with an array-valued vertical coordinate" begin
@@ -396,6 +458,9 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
     end
 end
 
+select_snapshot!(c, fts, n) = set!(c, fts[n])
+interpolate_in_time!(c, fts, t) = set!(c, fts[Time(t)])
+
 @testset "Reactant FieldTimeSeries tests" begin
     @info "Testing the use of a `FieldTimeSeries` on a `ReactantState` arch..."
 
@@ -406,6 +471,33 @@ end
 
     # Test I can index into a Reactant FieldTimeSeries
     @test fts[5] isa Field
+
+    # Index and interpolate in time with a traced index and time, as a compiled model does
+    # with `clock.time`, and compare with the CPU
+    cpu_grid = on_architecture(CPU(), grid)
+    for times in (0:3600.0:7200.0, [0.0, 1000.0, 7200.0]), time_indexing in (Clamp(), Cyclical())
+        fts     = FieldTimeSeries{Center, Center, Center}(grid, times; time_indexing)
+        cpu_fts = FieldTimeSeries{Center, Center, Center}(cpu_grid, times; time_indexing)
+        for (n, value) in enumerate((1, 4, 2))
+            set!(fts[n], value)
+            set!(cpu_fts[n], value)
+        end
+
+        c = CenterField(grid)
+        cpu_c = CenterField(cpu_grid)
+
+        r_select! = @compile select_snapshot!(c, fts, Reactant.ConcreteRNumber(1))
+        r_select!(c, fts, Reactant.ConcreteRNumber(2))
+        select_snapshot!(cpu_c, cpu_fts, 2)
+        @test Array(interior(c)) == Array(interior(cpu_c))
+
+        r_interpolate! = @compile interpolate_in_time!(c, fts, Reactant.ConcreteRNumber(0.0))
+        for t in (-1800.0, 900.0, 3600.0, 5400.0, 9000.0)
+            r_interpolate!(c, fts, Reactant.ConcreteRNumber(t))
+            interpolate_in_time!(cpu_c, cpu_fts, t)
+            @test Array(interior(c)) ≈ Array(interior(cpu_c))
+        end
+    end
 end
 
 @testset "Field materialize traced" begin
@@ -416,4 +508,126 @@ end
                               topology = (Periodic, Flat, Bounded))
     δρᵢ  = CenterField(grid_ad)
     @test maximum(δρᵢ) == maximum(Array(interior(δρᵢ)))
+end
+
+@testset "Fields allocated inside a compiled function on a lat-lon grid" begin
+    # `c = λ`, so a polar halo (the zonal mean) differs from a zero-gradient one
+    doubled(c) = parent(compute!(Field(2c)))
+
+    for latitude in ((30, 40), (0, 90), (-90, 0), (-90, 90))
+        kw = (; size=(8, 8, 4), longitude=(0, 360), latitude, z=(0, 1000))
+        cpu_grid = LatitudeLongitudeGrid(CPU(); kw...)
+        grid = LatitudeLongitudeGrid(ReactantState(); kw...)
+        pole(reaches) = reaches ? Oceananigans.Grids.Pole() : nothing
+        @test (grid.south_pole, grid.north_pole) === (cpu_grid.south_pole, cpu_grid.north_pole) ===
+              (pole(latitude[1] == -90), pole(latitude[2] == 90))
+
+        cpu_c = CenterField(cpu_grid)
+        c = CenterField(grid)
+        set!(cpu_c, (λ, φ, z) -> λ)
+        set!(c, (λ, φ, z) -> λ)
+        @test Array(@jit doubled(c)) ≈ Array(doubled(cpu_c))
+    end
+end
+
+# A field set from another one on a different grid is interpolated on the CPU, with the source's halos
+# filled: the cells next to a boundary read them
+@testset "set! between ReactantState fields on different grids" begin
+    function coarse_to_fine(arch)
+        coarse = CenterField(RectilinearGrid(arch; size = (2, 1, 1), x = (0, 1), y = (0, 1), z = (0, 1)))
+        fine = CenterField(RectilinearGrid(arch; size = (4, 1, 1), x = (0, 1), y = (0, 1), z = (0, 1)))
+        set!(coarse, (x, y, z) -> x)
+        set!(fine, coarse)
+        return Array(interior(fine))
+    end
+
+    @test coarse_to_fine(ReactantState()) ≈ coarse_to_fine(CPU())
+end
+
+# Host data with missing values (a NetCDF read) reaches ReactantState as a float array with NaN, plain, viewed or
+# reshaped, and reshaped host data keeps its shape
+@testset "on_architecture of host data with missing values and reshaped host data" begin
+    data = Union{Missing, Float32}[1, missing, 1, 2]
+    for (host, expected) in ((data, Float32[1, NaN, 1, 2]),
+                             (view(data, 1:3), Float32[1, NaN, 1]),
+                             (reshape(data, 2, 2), Float32[1 1; NaN 2]),
+                             (reshape(view(data, 1:4), 2, 2), Float32[1 1; NaN 2]),
+                             (reshape(view(Float32[1, 2, 3, 4], 1:4), 1, 4), Float32[1 2 3 4]))
+        device = on_architecture(ReactantState(), host)
+        @test device isa Reactant.AbstractConcreteArray{Float32}
+        @test size(device) == size(host)
+        @test isequal(Array(device), expected)
+    end
+end
+
+@testset "Updating a FieldTimeSeries whose window holds every snapshot, at a traced time" begin
+    times = [0.0, 1.0, 2.0, 3.0]
+    grid = RectilinearGrid(ReactantState(); size = (2, 2, 2), extent = (1, 1, 1))
+    fts = FieldTimeSeries{Center, Center, Center}(grid, times; backend = InMemory(length(times)))
+    refresh!(fts, t) = (update_field_time_series!(fts, Time(t)); nothing)
+
+    t = Reactant.ConcreteRNumber(1.5)
+    @jit refresh!(fts, t)
+    @test fts.backend.start == 1
+    @test length(fts.backend) == length(times)
+end
+
+@testset "A Field of a TimeSeriesInterpolation on a device clock, at a traced time" begin
+    grid = RectilinearGrid(ReactantState(); size = (2, 2, 2), extent = (1, 1, 1))
+    fts = FieldTimeSeries{Center, Center, Center}(grid, [0.0, 10.0])
+    set!(fts[1], 1)
+    set!(fts[2], 3)
+    clock = Clock(grid)
+    interpolated = Field(TimeSeriesInterpolation(fts, grid; clock))
+
+    refresh!(field, clock, t) = (clock.time = t; compute!(field); nothing)
+    @jit raise = true refresh!(interpolated, clock, Reactant.ConcreteRNumber(5.0))
+    @test all(Array(interior(interpolated)) .≈ 2)
+end
+
+@kernel function _bracket!(low, high, column, z, N)
+    n = @index(Global, Linear)
+    i₁, i₂ = Oceananigans.Fields.index_binary_search(column, z[n], N)
+    @inbounds low[n] = i₁
+    @inbounds high[n] = i₂
+end
+
+bracket!(low, high, column, z) = _bracket!(get_backend(low), 16)(low, high, column, z, length(column); ndrange=length(low))
+
+# A search with an early `return` inside its loop cannot be raised ("cannot raise op to stablehlo")
+@testset "index_binary_search inside a raised kernel" begin
+    column = Float32.(cumsum(1:16))
+    midpoints = (column[1:end-1] .+ column[2:end]) ./ 2
+    points = vcat(column, midpoints, column[1] - 1, column[end] + 1)
+
+    low = Reactant.to_rarray(zeros(Int, length(points)))
+    high = Reactant.to_rarray(zeros(Int, length(points)))
+    reactant_column, reactant_points = Reactant.to_rarray(column), Reactant.to_rarray(points)
+    raised_bracket! = @compile raise_first=true raise=true bracket!(low, high, reactant_column, reactant_points)
+    raised_bracket!(low, high, reactant_column, reactant_points)
+
+    expected = [Oceananigans.Fields.index_binary_search(column, z, length(column)) for z in points]
+    @test Array(low) == first.(expected)
+    @test Array(high) == last.(expected)
+end
+
+@kernel function _store_adaptive_Δt!(c, td)
+    i, j, k = @index(Global, NTuple)
+    @inbounds c[i, j, k] = td.Δt
+end
+
+function store_adaptive_Δt!(c, td, Δt)
+    td.Δt[] = Δt
+    grid = c.grid
+    launch!(architecture(grid), grid, :xyz, _store_adaptive_Δt!, c, td)
+    return nothing
+end
+
+# A traced Δt held by AdaptiveVerticallyImplicitDiscretization must be adapted when it is passed to a kernel
+@testset "AdaptiveVerticallyImplicitDiscretization with a traced Δt in a kernel" begin
+    grid = RectilinearGrid(ReactantState(); size = (2, 2, 2), extent = (1, 1, 1))
+    c = CenterField(grid)
+    td = Oceananigans.TimeSteppers.AdaptiveVerticallyImplicitDiscretization(0.5, Ref(Reactant.ConcreteRNumber(0.0)))
+    @jit store_adaptive_Δt!(c, td, Reactant.ConcreteRNumber(3.0))
+    @test all(Array(interior(c)) .== 3)
 end

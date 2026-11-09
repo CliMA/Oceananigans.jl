@@ -10,6 +10,30 @@ using Oceananigans.OutputWriters: time_average_outputs
 using Oceananigans.BoundaryConditions: PBC, FBC, ZFBC, ContinuousBoundaryFunction
 using Oceananigans.TimeSteppers: update_state!
 
+initialization_logs = ((:info, "Initializing simulation..."),
+                       (:info, r"^    \.\.\. simulation initialization complete \("))
+
+initial_time_step_logs = ((:info, "Executing initial time step..."),
+                          (:info, r"^    \.\.\. initial time step complete \("))
+
+stop_logs(reason) = ((:info, r"^Simulation is stopping after running for "), (:info, reason))
+
+writing_done_log = (:info, r"^Writing done: time=.+, size=.+, Δsize=.+$")
+
+# Messages logged by a verbose `writer` writing at time index `n`
+writing_logs(writer::NetCDFWriter, n::Integer) =
+    ((:info, "Writing to NetCDF: $(writer.filepath)..."),
+     (:info, "Writing NetCDF outputs at time index $n: $(keys(writer.outputs))..."),
+     writing_done_log)
+
+writing_logs(writer::JLD2Writer, n::Integer) =
+    ((:info, "Fetching JLD2 output $(keys(writer.outputs))..."),
+     (:info, r"^Fetching time: "),
+     (:info, "Writing JLD2 output $(keys(writer.outputs)) to $(writer.filepath)..."),
+     writing_done_log)
+
+writing_logs(writer, time_indices) = [log for n in time_indices for log in writing_logs(writer, n)]
+
 #####
 ##### WindowedTimeAverage tests
 #####
@@ -38,7 +62,7 @@ function time_step_with_windowed_time_average(model)
 
     wta = WindowedTimeAverage(model.velocities.u, schedule=AveragedTimeInterval(4, window=2))
 
-    simulation = Simulation(model, Δt=1.0, stop_time=4.0)
+    simulation = Simulation(model; Δt=1.0, stop_time=4.0, verbose=false)
     simulation.diagnostics[:u_avg] = wta
     run!(simulation)
 
@@ -54,7 +78,7 @@ function dependencies_added_correctly!(model, windowed_time_average, output_writ
     model.clock.iteration = 0
     model.clock.time = 0.0
 
-    simulation = Simulation(model, Δt=1.0, stop_iteration=1)
+    simulation = Simulation(model; Δt=1.0, stop_iteration=1, verbose=false)
     simulation.output_writers[:ow1] = output_writer
     run!(simulation)
 
@@ -106,7 +130,14 @@ function test_creating_and_appending(model, output_writer)
                                                                 filename = filename,
                                                                 schedule = IterationInterval(1),
                                                                 overwrite_files = true, verbose=true)
-    run!(simulation)
+
+    # Output is written during initialization, and once more after the stop criterion is met
+    @test_logs(initialization_logs[1], writing_logs(writer, 1)..., initialization_logs[2],
+               initial_time_step_logs[1], writing_logs(writer, 2)..., initial_time_step_logs[2],
+               writing_logs(writer, 3:5)...,
+               stop_logs("Model iteration 5 equals or exceeds stop iteration 5.")...,
+               writing_logs(writer, 6)...,
+               run!(simulation))
 
     # Test if file was crated
     filepath = writer.filepath
@@ -115,7 +146,14 @@ function test_creating_and_appending(model, output_writer)
     # Extend simulation and run it with `overwrite_files = false`
     simulation.stop_iteration = 10
     simulation.output_writers[:writer].overwrite_files = false
-    run!(simulation)
+
+    # The writer is already initialized, so it appends without warning
+    @test_logs(initialization_logs...,
+               initial_time_step_logs[1], writing_logs(writer, 7)..., initial_time_step_logs[2],
+               writing_logs(writer, 8:10)...,
+               stop_logs("Model iteration 10 equals or exceeds stop iteration 10.")...,
+               writing_logs(writer, 11)...,
+               run!(simulation))
 
     # Test that length is what we expected
     if output_writer === NetCDFWriter
@@ -143,7 +181,7 @@ function test_windowed_time_averaging_simulation(model)
     jld_filename2 = "test_windowed_time_averaging2.jld2"
 
     model.clock.iteration = model.clock.time = 0
-    simulation = Simulation(model, Δt=1.0, stop_iteration=0)
+    simulation = Simulation(model; Δt=1.0, stop_iteration=0, verbose=false)
 
     jld2_output_writer = JLD2Writer(model, model.velocities,
                                     schedule = AveragedTimeInterval(π, window=1),
@@ -254,13 +292,10 @@ end
 #####
 
 @testset "Output writers" begin
-    @info "Testing output writers..."
-
     topo = (Periodic, Periodic, Bounded)
     for arch in archs
 
-        @info "Testing that writers create file and append to it properly"
-        for output_writer in (NetCDFWriter, JLD2Writer)
+        @testset "Creating and appending with $output_writer [$(typeof(arch))]" for output_writer in (NetCDFWriter, JLD2Writer)
             grid = RectilinearGrid(arch, topology=topo, size=(1, 1, 1), extent=(1, 1, 1))
             model = NonhydrostaticModel(grid)
             test_creating_and_appending(model, output_writer)
@@ -273,7 +308,6 @@ end
                                     tracers = (:T, :S))
 
         @testset "WindowedTimeAverage [$(typeof(arch))]" begin
-            @info "  Testing WindowedTimeAverage [$(typeof(arch))]..."
             run_instantiate_windowed_time_average_tests(model)
             @test time_step_with_windowed_time_average(model)
             @test_throws ArgumentError AveragedTimeInterval(1.0, window=1.1)
@@ -289,12 +323,10 @@ end
                                     tracers = (:T, :S))
 
         @testset "Dependency adding [$(typeof(arch))]" begin
-            @info "    Testing dependency adding [$(typeof(arch))]..."
             test_dependency_adding(model)
         end
 
         @testset "Time averaging of output [$(typeof(arch))]" begin
-            @info "    Testing time averaging of output [$(typeof(arch))]..."
             test_windowed_time_averaging_simulation(model)
             test_time_average_outputs_containers(model)
         end

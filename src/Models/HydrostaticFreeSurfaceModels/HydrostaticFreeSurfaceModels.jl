@@ -9,23 +9,28 @@ using Adapt: Adapt
 using DocStringExtensions: TYPEDFIELDS, TYPEDSIGNATURES
 using KernelAbstractions: @index, @kernel
 
-using Oceananigans.Architectures: architecture
-using Oceananigans.Fields: ZFaceField
-using Oceananigans.Grids: AbstractGrid, StaticVerticalDiscretization, OrthogonalSphericalShellGrid, Periodic, RectilinearGrid
+using Oceananigans: Oceananigans, fields, prognostic_fields
+using Oceananigans.Advection: Advection, cell_advection_timescale
+using Oceananigans.Architectures: Architectures, architecture, on_architecture
+using Oceananigans.BoundaryConditions: fill_halo_regions!, step_boundary_conditions!
+using Oceananigans.Coriolis: Coriolis
+using Oceananigans.DistributedComputations: DistributedComputations
+using Oceananigans.Fields: Fields, ZFaceField
+using Oceananigans.Grids: Grids, AbstractGrid, OrthogonalSphericalShellGrid, Periodic, RectilinearGrid,
+                          StaticVerticalDiscretization
+using Oceananigans.Models: Models, default_free_surface_boundary_conditions, materialize_free_surface
 using Oceananigans.Operators: Δzᶜᶠᶜ, Δzᶠᶜᶜ
-using Oceananigans.TimeSteppers: TimeSteppers, SplitRungeKuttaTimeStepper, SplitRungeKuttaName, QuasiAdamsBashforth2TimeStepper
-using Oceananigans.Utils: Utils, launch!, @apply_regionally
-
-import Oceananigans: fields, prognostic_fields, initialize!
-import Oceananigans.Advection: cell_advection_timescale
-import Oceananigans.Architectures: Architectures, on_architecture
-import Oceananigans.BoundaryConditions: fill_halo_regions!
-import Oceananigans.Models: materialize_free_surface, default_free_surface_boundary_conditions
-import Oceananigans.Simulations: timestepper
-import Oceananigans.TimeSteppers: step_lagrangian_particles!, update_lagrangian_particle_state!
+using Oceananigans.Simulations: Simulations, timestepper
+using Oceananigans.TimeSteppers: TimeSteppers, QuasiAdamsBashforth2TimeStepper, SplitRungeKuttaName,
+                                 SplitRungeKuttaTimeStepper, step_lagrangian_particles!,
+                                 substep_lagrangian_particles!,
+                                 update_lagrangian_particle_state!
+using Oceananigans.TurbulenceClosures: TurbulenceClosures
+using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: TKEBasedVerticalDiffusivities
+using Oceananigans.Utils: Utils, @apply_regionally, foreach_name, launch!
 
 # The only grid type that can support an FFT implicit free-surface solver
-const XYRegularStaticRG = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:StaticVerticalDiscretization, <:Number, <:Number}
+const XYRegularStaticRG = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:StaticVerticalDiscretization, <:Number, <:Any, <:Any, <:Any, <:Number}
 
 abstract type AbstractFreeSurface{E, G} end
 
@@ -108,7 +113,7 @@ include("explicit_free_surface.jl")
 
 # Split-Explicit free-surface solver functionality
 include("SplitExplicitFreeSurfaces/SplitExplicitFreeSurfaces.jl")
-using .SplitExplicitFreeSurfaces
+using .SplitExplicitFreeSurfaces: SplitExplicitFreeSurfaces, SplitExplicitFreeSurface
 
 # Implicit free-surface solver functionality
 include("fft_based_implicit_free_surface_solver.jl")
@@ -127,7 +132,7 @@ include("set_hydrostatic_free_surface_model.jl")
 ##### AbstractModel interface
 #####
 
-cell_advection_timescale(model::HydrostaticFreeSurfaceModel) = cell_advection_timescale(model.grid, model.velocities)
+Advection.cell_advection_timescale(model::HydrostaticFreeSurfaceModel) = cell_advection_timescale(model.grid, model.velocities)
 
 """
 $(TYPEDSIGNATURES)
@@ -135,7 +140,7 @@ $(TYPEDSIGNATURES)
 Return a flattened `NamedTuple` of the fields in `model.velocities`, `model.free_surface`,
 `model.tracers`, and any auxiliary fields for a `HydrostaticFreeSurfaceModel` model.
 """
-@inline fields(model::HydrostaticFreeSurfaceModel) =
+@inline Oceananigans.fields(model::HydrostaticFreeSurfaceModel) =
     merge(hydrostatic_fields(model.velocities, model.free_surface, model.tracers),
           model.auxiliary_fields,
           biogeochemical_auxiliary_fields(model.biogeochemistry))
@@ -154,7 +159,7 @@ $(TYPEDSIGNATURES)
 
 Return a flattened `NamedTuple` of the prognostic fields associated with `HydrostaticFreeSurfaceModel`.
 """
-@inline prognostic_fields(model::HydrostaticFreeSurfaceModel) =
+@inline Oceananigans.prognostic_fields(model::HydrostaticFreeSurfaceModel) =
     hydrostatic_prognostic_fields(model.velocities, model.free_surface, model.tracers)
 
 @inline horizontal_velocities(velocities) = (u=velocities.u, v=velocities.v)
@@ -184,6 +189,7 @@ displacement(::Nothing) = nothing
 
 # Unpack model.particles to update particle properties. See Models/LagrangianParticleTracking/LagrangianParticleTracking.jl
 TimeSteppers.step_lagrangian_particles!(model::HydrostaticFreeSurfaceModel, Δt) = step_lagrangian_particles!(model.particles, model, Δt)
+TimeSteppers.substep_lagrangian_particles!(model::HydrostaticFreeSurfaceModel, Δt, stage) = substep_lagrangian_particles!(model.particles, model, Δt, stage)
 TimeSteppers.update_lagrangian_particle_state!(model::HydrostaticFreeSurfaceModel) = update_lagrangian_particle_state!(model.particles, model)
 
 include("boundary_targeted_transport.jl")

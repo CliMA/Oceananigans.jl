@@ -69,10 +69,8 @@ EquationsOfState = (LinearEquationOfState, SeawaterPolynomials.RoquetEquationOfS
 buoyancy_kwargs = (Dict(), Dict(:constant_salinity=>35.0), Dict(:constant_temperature=>20.0))
 
 @testset "BuoyancyFormulations" begin
-    @info "Testing buoyancy..."
 
     @testset "Equations of State" begin
-        @info "  Testing equations of state..."
         for FT in float_types
             @test instantiate_linear_equation_of_state(FT, 0.1, 0.3)
 

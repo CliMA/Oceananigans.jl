@@ -133,7 +133,8 @@ errors; see [Hu et al. (1996)](@cite Hu19996lowdissipation).
 
 A tuple of low-storage coefficients `(β₁, β₂, ..., βₙ)` where `βᵢ = cₙ₋ᵢ / cₙ₋ᵢ₊₁` for `i < n` and `βₙ = 1`.
 
-# References
+References
+==========
 * Hu, F. Q., Hussaini, M. Y., & Manthey, J. L. (1996). Low-dissipation and low-dispersion Runge–Kutta
     schemes for computational acoustics. Journal of Computational Physics, 124(1), 177-191.
 """
@@ -157,18 +158,24 @@ The split Runge-Kutta scheme advances the model state through `n` substeps, wher
 fields are cached. Then, for each stage `m`:
 
 1. Compute the `m`-th substep time increment: `Δτ = Δt / βᵐ` (where `β = model.timestepper.β`)
-2. Advance the state: `Uᵐ⁺¹ = U⁰ + Δτ * Gᵐ` (where `U⁰` is the cached initial state)
-3. Advance the clock to the stage time `tⁿ + Δτ`, which is the time that `Uᵐ⁺¹` approximates
+2. Advance Lagrangian particles to `Xᵐ⁺¹ = X⁰ + Δτ * Uᵐ`, where `Uᵐ` is the particle velocity
+   at the beginning of the stage (see `substep_lagrangian_particles!`)
+3. Advance the state: `Uᵐ⁺¹ = U⁰ + Δτ * Gᵐ` (where `U⁰` is the cached initial state)
+4. Advance the clock to the stage time `tⁿ + Δτ`, which is the time that `Uᵐ⁺¹` approximates
    (the last stage, with `βⁿ = 1`, lands on `tⁿ + Δt`)
-4. Update the `model` state (fill halos, compute diagnostics, etc.)
+5. Update the `model` state (fill halos, compute diagnostics, etc.)
 
-After all substeps, Lagrangian particles are stepped and the `model.clock` iteration is incremented.
+After all substeps, the `model.clock` iteration is incremented and the Lagrangian particle state
+(for example, tracked fields) is updated.
 """
 function time_step!(model::AbstractModel{<:SplitRungeKuttaTimeStepper}, Δt; callbacks=[])
+
+    kernel_Δt = kernel_time_step(architecture(model.grid), model.grid, Δt)
 
     maybe_prepare_first_time_step!(model, Δt, callbacks)
 
     cache_current_fields!(model)
+    cache_boundary_conditions!(model)
     grid = model.grid
 
     # Every stage restarts from the state cached at tⁿ, so the state after stage m approximates
@@ -186,14 +193,18 @@ function time_step!(model::AbstractModel{<:SplitRungeKuttaTimeStepper}, Δt; cal
 
         # Update the clock stage
         Δτ = Δt / β
+        kernel_Δτ = kernel_Δt / β
         model.clock.stage = stage
         model.clock.last_stage_Δt = Δτ
 
+        # Advance particles with the velocities at the beginning of the stage
+        substep_lagrangian_particles!(model, kernel_Δt, stage)
+
         # Perform the substep
-        rk_substep!(model, Δτ, callbacks)
+        rk_substep!(model, kernel_Δτ, callbacks)
 
         # Step closure prognostics
-        step_closure_prognostics!(model, Δτ)
+        step_closure_prognostics!(model, kernel_Δτ)
 
         # Advance the clock to the stage time before evaluating time-dependent terms
         model.clock.time = stage_times[stage]
@@ -206,10 +217,10 @@ function time_step!(model::AbstractModel{<:SplitRungeKuttaTimeStepper}, Δt; cal
         update_state!(model, callbacks)
     end
 
-    # Step particles
-    step_lagrangian_particles!(model, Δt)
-
     model.clock.iteration += 1
+
+    # Once per time step: the particle state is not reset to tⁿ between stages, so per-stage updates would compound
+    update_lagrangian_particle_state!(model)
 
     return nothing
 end
@@ -250,6 +261,7 @@ function maybe_prepare_first_time_step!(model::AbstractModel{<:SplitRungeKuttaTi
         model.clock.last_Δt = Δt
         model.clock.last_stage_Δt = Δt / model.timestepper.β[1]
         reconcile_state!(model)
+        initialize_boundary_conditions!(model)
         update_state!(model, callbacks)
     end
     return nothing
@@ -260,8 +272,8 @@ end
 #####
 
 # SplitRungeKuttaTimeStepper is self-starting!
-prognostic_state(ts::SplitRungeKuttaTimeStepper) = nothing
-restore_prognostic_state!(restored::SplitRungeKuttaTimeStepper, ::Nothing) = restored
+Oceananigans.prognostic_state(ts::SplitRungeKuttaTimeStepper) = nothing
+Oceananigans.restore_prognostic_state!(restored::SplitRungeKuttaTimeStepper, ::Nothing) = restored
 
 #####
 ##### Show methods

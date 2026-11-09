@@ -5,7 +5,7 @@
 #####
 
 using MPI
-MPI.Init()
+MPI.Init(threadlevel=:multiple)
 
 using Oceananigans
 using Zarr

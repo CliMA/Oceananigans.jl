@@ -8,6 +8,7 @@ using Oceananigans.Fields: reduced_location
 using Oceananigans.Fields: FractionalIndices, interpolator, instantiate
 using Oceananigans.Fields: convert_to_0_360, convert_to_λ₀_λ₀_plus360
 using Oceananigans.Fields: ZeroField, OneField, ConstantField, prognostic_state, restore_prognostic_state!
+using Oceananigans.Fields: dot!
 using Oceananigans.Grids: ξnode, ηnode, rnode
 using Oceananigans.Grids: total_length
 using Oceananigans.Grids: λnode
@@ -125,6 +126,10 @@ function run_field_reduction_tests(grid)
             positional = argmax(windowed_values)
             @test value == maximum(windowed_values)
             @test index == CartesianIndex(Tuple(positional) .+ first.(axes(w)) .- 1)
+
+            # Reductions of operations on windowed fields cover only the window
+            @test sum(2 * w) ≈ 2 * sum(windowed_values)
+            @test dot(w, w) ≈ sum(abs2, windowed_values)
         end
 
         for dims in dims_to_test
@@ -390,6 +395,27 @@ end
 
 @testset "Fields" begin
     @info "Testing Fields..."
+
+    @testset "StaticStridesOffsetArray constructor" begin
+        underlying_data = reshape(collect(1.0:12.0), 4, 3)
+        array = StaticStridesOffsetArray(underlying_data, Int32(-1), -2)
+        @test parent(array) === underlying_data
+        @test OffsetArrays.offsets(array) === (-1, -2)
+        @test_throws OverflowError StaticStridesOffsetArray(underlying_data, typemax(Int), 0)
+
+        wrapped_array = StaticStridesOffsetArray(array, 1, 1)
+        @test parent(wrapped_array) === underlying_data
+        @test OffsetArrays.offsets(wrapped_array) === (0, -1)
+
+        # slicing along one dimension returns an OffsetArray that retains the offsets of the others
+        array_slice = array[1:2, :]
+        @test array_slice isa OffsetArray
+        sliced_array = StaticStridesOffsetArray(array_slice, 3, 0)
+        @test parent(sliced_array) isa Array
+        @test OffsetArrays.offsets(sliced_array) === (3, -2)
+        @test sliced_array[4, -1] == array_slice[1, -1] == underlying_data[2, 1]
+        @test_throws OverflowError StaticStridesOffsetArray(array_slice, typemax(Int), 0)
+    end
 
     @testset "Field initialization" begin
         @info "  Testing Field initialization..."
@@ -759,6 +785,49 @@ end
         end
     end
 
+    @testset "Setting fields with any Julia function [$(summary(arch))]" for arch in archs
+        grid = RectilinearGrid(arch, size=(4, 6, 8), extent=(1, 2, 3))
+
+        # Values of `func` at the nodes of `field`, computed on the CPU
+        function expected_values(func, field)
+            xs, ys, zs = map(Array, nodes(field))
+            return [func(x, y, z) for x in xs, y in ys, z in zs]
+        end
+
+        # None of these functions can be compiled into a kernel
+        FT = Float32
+        captures_type(x, y, z) = FT(x + y + z)
+        table = collect(1.0:3.0)
+        captures_array(x, y, z) = table[end] * x + y * z
+        shift = 1
+        shift = 2 # assigned twice, so closures capture it in a `Core.Box`
+        captures_box(x, y, z) = x + shift * z
+        scale = 3
+        refers_to_itself(x, z) = scale * x * z
+        refers_to_itself(x, y, z) = refers_to_itself(x, z) + y
+        allocates(x, y, z) = sum([x, 2y, 3z])
+
+        for func in (captures_type, captures_array, captures_box, refers_to_itself, allocates)
+            c = CenterField(grid)
+            set!(c, func)
+            @test Array(interior(c)) ≈ expected_values(func, c)
+        end
+
+        # Windowed and reduced fields are evaluated at their own nodes
+        windowed = Field{Center, Center, Center}(grid; indices=(:, :, 8))
+        set!(windowed, captures_array)
+        @test Array(interior(windowed)) ≈ expected_values(captures_array, windowed)
+
+        reduced = Field{Center, Center, Nothing}(grid)
+        set!(reduced, (x, y) -> table[2] * x + y)
+        xs, ys = map(Array, nodes(reduced))
+        @test Array(interior(reduced))[:, :, 1] ≈ [table[2] * x + y for x in xs, y in ys]
+
+        # The error thrown by the function is reported, not the threads' wrapper around it
+        c = CenterField(grid)
+        @test_logs (:warn, r"^An error was encountered within set!") @test_throws MethodError set!(c, (x, y) -> x)
+    end
+
     @testset "isapprox on Fields" begin
         for arch in archs, FT in float_types
             # Make sure this doesn't require scalar indexing
@@ -825,6 +894,41 @@ end
                 @test values[argmin(c)] == minimum(c)
                 @test findmax(c) == (maximum(c), argmax(c))
             end
+
+            @testset "Conditional index reductions of reduced fields [$(typeof(arch)), $FT]" begin
+                r = Field{Center, Center, Nothing}(regular_grid)
+                set!(r, (x, y) -> (x - 1/3)^2 + (y - 2)^2)
+                reduced_values = Array(interior(r))
+                everywhere(i, j, k, grid, r) = true
+                @test findmin(r; condition = everywhere) == findmin(reduced_values)
+                @test argmin(r; condition = everywhere) == argmin(reduced_values)
+                @test argmax(-r; condition = everywhere) == argmin(reduced_values)
+
+                # Adapted operations drop their indices but keep their size
+                conditioned_r = Oceananigans.Fields.condition_operand(r, everywhere, zero(FT))
+                @test Base.size(Adapt.adapt(Array, conditioned_r)) == Base.size(r)
+            end
+
+            @testset "Coordinates at extrema [$(typeof(arch)), $FT]" begin
+                c = CenterField(regular_grid)
+                set!(c, (x, y, z) -> - (x - 1/3)^2 - (y - 2)^2 - (z + 1/2)^2)
+                i, j, k = Tuple(argmax(c))
+                xᶜ = Array(xnodes(c))
+                yᶜ = Array(ynodes(c))
+                zᶜ = Array(znodes(c))
+                @test at_maximum(c, :x) == xᶜ[i]
+                @test at_maximum(c, (:y, :z)) == (yᶜ[j], zᶜ[k])
+                @test at_minimum(c, :z) == zᶜ[last(Tuple(argmin(c)))]
+                @test at_maximum(abs, c, :z) == zᶜ[last(Tuple(argmin(c)))]
+                @test findmax(abs, c) == (abs(minimum(c)), argmin(c))
+                @test_throws ArgumentError at_maximum(c, :q)
+
+                # Fields at other locations are interpolated to the location of the extremum
+                w = ZFaceField(regular_grid)
+                set!(w, (x, y, z) -> z)
+                @test at_maximum(c, w) ≈ zᶜ[k]
+                @test at_maximum(c, c) == maximum(c)
+            end
         end
 
         @testset "Boolean reductions [$(typeof(arch))]" for arch in archs
@@ -863,6 +967,15 @@ end
             wet_pattern = copy(pattern)
             wet_pattern[:, :, 1] .= false
             @test Array(interior(any(bᵢ; dims=(1, 2)))) == any(wet_pattern; dims=(1, 2))
+
+            # Boolean functions of a floating-point field, where immersed cells are masked
+            for c in (CenterField(grid), CenterField(immersed_grid))
+                set!(c, 1)
+                @test !any(isnan, c)
+                @test all(isfinite, c)
+                @test maximum(isnan, c) == 0
+                @test !any(Array(interior(any(isnan, c; dims=1))))
+            end
         end
 
         for arch in archs, FT in float_types
@@ -882,6 +995,25 @@ end
 
             @test mean(c) ≈ @allowscalar mean(interior(c))
             @test mean(windowed_c) ≈ @allowscalar mean(interior(windowed_c))
+        end
+    end
+
+    @testset "index_binary_search matches the early-return search it replaces" begin
+        function early_return_search(vec, val, N)
+            low, high = 0, N - 1
+            while low + 1 < high
+                mid = Oceananigans.Fields.middle_point(low, high)
+                vec[mid + 1] == val && return (mid + 1, mid + 1)
+                vec[mid + 1] < val ? (low = mid) : (high = mid)
+            end
+            return (low + 1, high + 1)
+        end
+
+        Random.seed!(1234)
+        for N in 1:64, vec in (cumsum(rand(N)), collect(1.0:N), sort(rand(1:5, N) .* 1.0))
+            for val in vcat(vec, vec .+ 1e-3, vec .- 1e-3, [-1e9, 1e9, NaN])
+                @test Oceananigans.Fields.index_binary_search(vec, val, N) == early_return_search(vec, val, N)
+            end
         end
     end
 
@@ -1020,8 +1152,8 @@ end
                 @test all(interior(interpolated_field) .≈ interior(reference_field))
             end
 
-            # 3D source → 1D column target: the column's specified (x, y) must drive
-            # horizontal sampling of the source.
+            # 3D source → 1D column target: interpolate! requires matching Flat-ness,
+            # so interpolating from a non-Flat source to a Flat destination must throw.
             source_3d_grid = RectilinearGrid(arch, FT; size=(4, 4, 4), x=(0,1), y=(0,1), z=(0,1))
             source_3d = CenterField(source_3d_grid)
             set!(source_3d, (x, y, z) -> x + 2y + 3z)
@@ -1031,9 +1163,7 @@ end
                                           topology=(Flat, Flat, Bounded),
                                           x=x_col, y=y_col, z=(0,1))
             column = CenterField(column_grid)
-            interpolate!(column, source_3d)
-            expected = [x_col + 2y_col + 3z for z in znodes(column)]
-            @test all(Array(interior(column))[1, 1, :] .≈ expected)
+            @test_throws ArgumentError interpolate!(column, source_3d)
 
             grid = RectilinearGrid(arch, FT; size=(), topology=(Flat, Flat, Flat))
             for ℓ in (nothing, Center(), Face())
@@ -1204,7 +1334,7 @@ end
 
 
         # Test OrthogonalSphericalShellGrid (TripolarGrid)
-        fold_topologies = (RightCenterFolded, RightFaceFolded)
+        fold_topologies = (CenterFolded, FaceFolded)
         for arch in archs, FT in float_types
             @testset "$fold_topology TripolarGrid" for fold_topology in fold_topologies
                 grid = TripolarGrid(arch, FT, size = (8, 10, 4), fold_topology = fold_topology)
@@ -1310,6 +1440,38 @@ end
             @test norm(Φ) ≈ sqrt(2 * 9 * 64)
             # dot: 2 · 3 · 3 · 4³ = 1152
             @test dot(Φ, Ψ) ≈ 2 * 3 * 3 * 64
+        end
+    end
+
+    @testset "In-place dot product" begin
+        for arch in archs, FT in float_types
+            grid = RectilinearGrid(arch, FT, size=(4, 4, 4), extent=(1, 1, 1))
+            a = CenterField(grid)
+            b = CenterField(grid)
+            set!(a, 2)
+            set!(b, 3)
+
+            # `dot!` overwrites `r` rather than accumulating into it
+            r = zeros(grid, 1)
+            fill!(r, 7)
+            @test dot!(r, a, b) === r
+            @test Array(r)[1] == 2 * 3 * 64
+            @test dot(a, b) == 2 * 3 * 64
+
+            # Immersed cells, here the bottom half of the domain, are excluded
+            immersed_grid = ImmersedBoundaryGrid(grid, GridFittedBottom(-1/2))
+            c = CenterField(immersed_grid)
+            d = CenterField(immersed_grid)
+            set!(c, 2)
+            set!(d, 3)
+            @test Array(dot!(r, c, d))[1] == 2 * 3 * 32
+            @test dot(c, d) == 2 * 3 * 32
+
+            # A windowed field, like the free surface displacement at the top face
+            η = ZFaceField(grid, indices=(:, :, grid.Nz+1))
+            set!(η, 5)
+            @test Array(dot!(r, η, η))[1] == 5 * 5 * 16
+            @test dot(η, η) == 5 * 5 * 16
         end
     end
 end

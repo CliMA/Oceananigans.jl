@@ -10,11 +10,11 @@ import Oceananigans.Operators: Δrᶜᶜᶜ, Δrᶜᶜᶠ, Δrᶜᶠᶜ, Δrᶜ�
 ##### ShavedCellBottom
 #####
 
-struct ShavedCellBottom{H, F, E} <: AbstractGridFittedBottom{H}
+struct ShavedCellBottom{H, W, S, C, E} <: AbstractGridFittedBottom{H}
     bottom_height :: H
-    west_bottom_height :: F
-    south_bottom_height :: F
-    corner_bottom_height :: F
+    west_bottom_height :: W
+    south_bottom_height :: S
+    corner_bottom_height :: C
     minimum_fractional_cell_height :: E
 end
 
@@ -492,11 +492,35 @@ VSSCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:AbstractStaticGrid
 @inline Δzᶠᶠᶠ(i, j, k, ibg::VSSCBIBG) = Δrᶠᶠᶠ(i, j, k, ibg)
 
 #####
-##### Column depths
+##### Column depths and reciprocal spacings
 #####
 
-@inline staggered_column_depthᶠᶜᵃ(i, j, ibg, ib::ShavedCellBottom) = @inbounds rnode(i, j, ibg.Nz+1, ibg, c, c, f) - ib.west_bottom_height[i, j, 1]
-@inline staggered_column_depthᶜᶠᵃ(i, j, ibg, ib::ShavedCellBottom) = @inbounds rnode(i, j, ibg.Nz+1, ibg, c, c, f) - ib.south_bottom_height[i, j, 1]
+@inline top_cell(i, j, grid, ::ShavedCellBottom) = size(grid, 3)
+@inline bottom_height(i, j, ibg::SCBIBG) = @inbounds ibg.immersed_boundary.bottom_height[i, j, 1]
+
+# A face column reaches down to the bottom height sampled at that face
+@inline function face_column_depth(i, j, i⁻, j⁻, ibg, ib::ShavedCellBottom)
+    rᵇ = @inbounds ifelse(i⁻ == i, ib.south_bottom_height[i, j, 1], ib.west_bottom_height[i, j, 1])
+    return rnode(i, j, ibg.Nz+1, ibg, c, c, f) - rᵇ
+end
+
+@inline Operators.Δr⁻¹ᶜᶜᶜ(i, j, k, ibg::SCBIBG) = 1 / Δrᶜᶜᶜ(i, j, k, ibg)
+@inline Operators.Δr⁻¹ᶜᶜᶠ(i, j, k, ibg::SCBIBG) = 1 / Δrᶜᶜᶠ(i, j, k, ibg)
+@inline Operators.Δr⁻¹ᶠᶜᶜ(i, j, k, ibg::SCBIBG) = 1 / Δrᶠᶜᶜ(i, j, k, ibg)
+@inline Operators.Δr⁻¹ᶜᶠᶜ(i, j, k, ibg::SCBIBG) = 1 / Δrᶜᶠᶜ(i, j, k, ibg)
+@inline Operators.Δr⁻¹ᶠᶠᶜ(i, j, k, ibg::SCBIBG) = 1 / Δrᶠᶠᶜ(i, j, k, ibg)
+@inline Operators.Δr⁻¹ᶠᶜᶠ(i, j, k, ibg::SCBIBG) = 1 / Δrᶠᶜᶠ(i, j, k, ibg)
+@inline Operators.Δr⁻¹ᶜᶠᶠ(i, j, k, ibg::SCBIBG) = 1 / Δrᶜᶠᶠ(i, j, k, ibg)
+@inline Operators.Δr⁻¹ᶠᶠᶠ(i, j, k, ibg::SCBIBG) = 1 / Δrᶠᶠᶠ(i, j, k, ibg)
+
+@inline Operators.Δz⁻¹ᶜᶜᶜ(i, j, k, ibg::VSSCBIBG) = Δr⁻¹ᶜᶜᶜ(i, j, k, ibg)
+@inline Operators.Δz⁻¹ᶜᶜᶠ(i, j, k, ibg::VSSCBIBG) = Δr⁻¹ᶜᶜᶠ(i, j, k, ibg)
+@inline Operators.Δz⁻¹ᶠᶜᶜ(i, j, k, ibg::VSSCBIBG) = Δr⁻¹ᶠᶜᶜ(i, j, k, ibg)
+@inline Operators.Δz⁻¹ᶜᶠᶜ(i, j, k, ibg::VSSCBIBG) = Δr⁻¹ᶜᶠᶜ(i, j, k, ibg)
+@inline Operators.Δz⁻¹ᶠᶠᶜ(i, j, k, ibg::VSSCBIBG) = Δr⁻¹ᶠᶠᶜ(i, j, k, ibg)
+@inline Operators.Δz⁻¹ᶠᶜᶠ(i, j, k, ibg::VSSCBIBG) = Δr⁻¹ᶠᶜᶠ(i, j, k, ibg)
+@inline Operators.Δz⁻¹ᶜᶠᶠ(i, j, k, ibg::VSSCBIBG) = Δr⁻¹ᶜᶠᶠ(i, j, k, ibg)
+@inline Operators.Δz⁻¹ᶠᶠᶠ(i, j, k, ibg::VSSCBIBG) = Δr⁻¹ᶠᶠᶠ(i, j, k, ibg)
 
 #####
 ##### Reconstruction and comparison

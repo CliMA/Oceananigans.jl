@@ -36,12 +36,16 @@ invoke_callback(callback, sim) = callback(sim)
 
 Add `callback` to `sim.callbacks`, with its schedule converted to one a program can evaluate.
 
-A schedule fires inside the compiled loop as a traced predicate on the clock, so it must be a
-pure function of the clock. `IterationInterval` is. `TimeInterval` mutates a host-side
+A schedule fires inside the compiled loop as a traced predicate on the clock, so it must be
+evaluable there. `IterationInterval` is as it stands. `TimeInterval` mutates a host-side
 actuation counter when it fires, so it is converted here to the `IterationInterval` it equals
 under a fixed `Δt`, counted from the simulation's current iteration; an interval that is not a
-whole number of steps is an error, since a schedule has no remainder step to take. Other
-schedules are refused. The `add_callback!(sim, func, schedule; kw...)` form routes through here.
+whole number of steps is an error, since a schedule has no remainder step to take.
+`SpecifiedTimes` remembers which time comes next in a host `Int`, so it is rebuilt with its times
+on the device, where its call needs no memory: with a fixed step, "the first step at or after
+`t`" is the step whose `(time − Δt, time]` contains `t` (see [`DeviceSpecifiedTimes`](@ref)).
+Other schedules are refused. The `add_callback!(sim, func, schedule; kw...)` form routes through
+here.
 
 The callback's function is checked too. Of the functions Oceananigans itself puts in callbacks,
 four cannot run inside a program and are refused here with the reason, rather than failing inside
@@ -52,7 +56,7 @@ four cannot run inside a program and are refused here with the reason, rather th
 and stores it. Neither check sees a callback assigned into `sim.callbacks` directly, as
 `conjure_time_step_wizard!` does.
 """
-function add_callback!(sim::ReactantSimulation, callback::Callback; name = GenericName())
+function Oceananigans.Simulations.add_callback!(sim::ReactantSimulation, callback::Callback; name = GenericName())
     check_traceable(callback.func)
     schedule = traced_schedule(callback.schedule, sim)
     callback = Callback(callback.func, schedule, callback.callsite, callback.parameters)
@@ -70,9 +74,40 @@ function traced_schedule(schedule::TimeInterval, sim)
     return IterationInterval(m; offset = iteration(sim))
 end
 
+"""
+    DeviceSpecifiedTimes
+
+A `SpecifiedTimes` whose times live on the device: what `traced_schedule` makes of an eager one,
+before and during tracing. The eager schedule remembers which of its times comes next in
+`previous_actuation` and advances it inside an `if`, neither of which can live inside a program.
+Inside one the step is fixed, so no memory is needed: time `t` fires on exactly the step whose
+interval `(time − last_Δt, time]` contains it, which is the eager "first step at or after `t`".
+The call below is one comparison of the traced clock against the times, reduced with `|`, and
+returns the traced `Bool` that `time_step!`'s traced `if` consumes. Keeping the times on the
+device rather than in the program lets a run with different times reuse the compiled program.
+"""
+const DeviceSpecifiedTimes = SpecifiedTimes{<:Any, <:Union{AnyConcreteReactantArray, Reactant.AnyTracedRArray}}
+
+function traced_schedule(schedule::SpecifiedTimes, sim)
+    eltype(schedule.times) <: Number || throw(ArgumentError(
+        "SpecifiedTimes with $(eltype(schedule.times)) times cannot fire inside a compiled run: the clock " *
+        "is a number there. Give the times in simulation seconds."))
+    FT = eltype(schedule.times)
+    times = Reactant.to_rarray(copy(schedule.times))
+    return SpecifiedTimes{FT, typeof(times)}(times, schedule.previous_actuation)   # FT is the times' float type, not the device array's traced eltype
+end
+
+function (schedule::DeviceSpecifiedTimes)(model)
+    times = schedule.times
+    t = model.clock.time
+    t₋ = t - model.clock.last_Δt                           # the step just taken is (t₋, t]
+    in_step = (times .> t₋) .& (times .<= t)
+    return any(in_step)   # a `|` over the times, as a traced Bool
+end
+
 traced_schedule(schedule, sim) = throw(ArgumentError(
-    "$(typeof(schedule)) cannot fire inside a compiled run: a schedule there must be a pure function " *
-    "of the clock. Use IterationInterval, or a TimeInterval that Δt divides."))
+    "$(typeof(schedule)) cannot fire inside a compiled run: a schedule there must be evaluable on the " *
+    "traced clock. Use IterationInterval, a TimeInterval that Δt divides, or SpecifiedTimes."))
 
 # Callback functions that cannot run inside a program. Anything else is admitted on trust: the
 # rule it must follow (device work only) is in the `time_step!` docstring.
@@ -110,9 +145,10 @@ callback's function type specializes it. It runs here outside the traced loop, o
 state, so it may read or write device arrays freely; its counterpart at the end of the run is
 `finalize!`, see [`run!`](@ref).
 """
-function initialize!(sim::ReactantSimulation)
+function Oceananigans.initialize!(sim::ReactantSimulation)
     model = sim.model
     initialize!(model)
+    initialize_boundary_conditions!(model)
     update_state!(model, callbacks_at(sim, ModelCallsite))
     foreach(callback -> initialize!(callback, sim), values(sim.callbacks))
     foreach(callback -> callback(sim), callbacks_at(sim, TimeStepCallsite))
@@ -143,9 +179,9 @@ a traced `if` rather than the eager `schedule(model) && callback(sim)`. A callba
 here must do only device work (kernel launches, broadcasts, reductions into arrays reachable
 from `sim`). Printing, IO, and data-dependent errors belong between programs.
 """
-time_step!(sim::ReactantSimulation; euler = false) = time_step!(sim, sim.Δt; euler)
+Oceananigans.TimeSteppers.time_step!(sim::ReactantSimulation; euler = false) = time_step!(sim, sim.Δt; euler)
 
-function time_step!(sim::ReactantSimulation, Δt; euler = false)
+function Oceananigans.TimeSteppers.time_step!(sim::ReactantSimulation, Δt; euler = false)
     model = sim.model
     reactant_model_time_step!(model, Δt, callbacks_at(sim, ModelCallsite), euler)
 
@@ -167,9 +203,26 @@ end
 
 `Nsteps` calls to `time_step!(sim)` as one traced loop: one `stablehlo.while` body rather than
 `Nsteps` copies of the step. Does not initialize; see [`run!`](@ref).
+
+The loop is traced with the `track_numbers`, `mincut` and `checkpointing` options of
+`sim.automatic_differentiation`, which only matter when the program is differentiated in
+reverse mode. See [`AutomaticDifferentiation`](@ref).
 """
-function time_step_for!(sim::ReactantSimulation, Nsteps)
-    @trace track_numbers = false for _ = 1:Nsteps
+time_step_for!(sim::ReactantSimulation, Nsteps) =
+    time_step_for!(sim, Nsteps, Val(sim.automatic_differentiation.track_numbers))
+
+# `@trace` needs `track_numbers` as a literal: it picks the promotion type at macro expansion.
+function time_step_for!(sim::ReactantSimulation, Nsteps, ::Val{false})
+    ad = sim.automatic_differentiation
+    @trace track_numbers = false mincut = ad.mincut checkpointing = ad.checkpointing for _ = 1:Nsteps
+        time_step!(sim)
+    end
+    return nothing
+end
+
+function time_step_for!(sim::ReactantSimulation, Nsteps, ::Val{true})
+    ad = sim.automatic_differentiation
+    @trace track_numbers = true mincut = ad.mincut checkpointing = ad.checkpointing for _ = 1:Nsteps
         time_step!(sim)
     end
     return nothing
@@ -183,10 +236,11 @@ remainder_step!(sim, step::RemainderStep) = time_step!(sim, step.Δt; euler = tr
 """
     run!(sim::ReactantSimulation)
 
-`initialize!(sim)`, a first step (forward Euler for an Adams-Bashforth stepper, as eagerly),
-the remaining whole steps through [`time_step_for!`](@ref), one remainder step when the
+`initialize!(sim)`, the whole steps through [`time_step_for!`](@ref), one remainder step when the
 simulation was given a `stop_time` that `Δt` does not divide, and then `finalize!(callback, sim)`
-on every callback.
+on every callback. An Adams-Bashforth model takes its first step before the loop, as a forward-Euler
+step as eagerly; for every other stepper the first step is a loop iteration exactly, so all of them
+run in the loop and the program holds the step body once.
 
 `finalize!(callback, sim)` forwards to `finalize!(callback.func, sim)`, a no-op unless the
 callback's function type specializes it. It runs once, after the traced loop, on the final
@@ -194,21 +248,41 @@ state: the place for a terminal quantity such as a loss or an end-of-run error n
 needs neither a schedule nor a traced branch. Like everything inside the program it must do only
 device work; printing and IO belong after the compiled call returns.
 
-`stop_iteration` is a plain number on the `Simulation`, so under `@compile` it is a static loop
-bound. It counts steps from the state the simulation was constructed in: a run continued from
-iteration `n` steps `stop_iteration` more times.
+`stop_iteration` is a device number on the `Simulation`, so under `@compile` it is an input of
+the program, read at each call: set `sim.stop_iteration = n` to run `n` steps with the same
+compiled `run!`. It counts steps from wherever the model is: each call steps `stop_iteration`
+more times.
 """
-function run!(sim::ReactantSimulation)
-    isfinite(sim.stop_iteration) || throw(ArgumentError(
-        "run! on a ReactantState model needs `stop_iteration` or `stop_time`: they bound the compiled loop."))
-
-    N = Int(sim.stop_iteration)
+function Oceananigans.Simulations.run!(sim::ReactantSimulation)
+    check_stop_iteration(sim)
 
     initialize!(sim)
-    N ≥ 1 && time_step!(sim; euler = true)
-    time_step_for!(sim, N - 1)
+    time_step_for!(sim, sim.stop_iteration)
     remainder_step!(sim, sim.stop_time)
     foreach(callback -> finalize!(callback, sim), values(sim.callbacks))
 
     return nothing
 end
+
+function Oceananigans.Simulations.run!(sim::Simulation{<:ReactantModel{<:QuasiAdamsBashforth2TimeStepper}})
+    check_stop_iteration(sim)
+    N = sim.stop_iteration
+
+    initialize!(sim)
+    first_step = N ≥ 1
+    @trace track_numbers = false if first_step
+        euler_step!(sim)
+    end
+    # Never a negative trip count: Enzyme-JAX folds the loop's iteration increments into one add of it
+    time_step_for!(sim, N - first_step)
+    remainder_step!(sim, sim.stop_time)
+    foreach(callback -> finalize!(callback, sim), values(sim.callbacks))
+
+    return nothing
+end
+
+check_stop_iteration(sim) = isnothing(sim.stop_iteration) && throw(ArgumentError(
+    "run! on a ReactantState model needs `stop_iteration` or `stop_time`: they bound the compiled loop."))
+
+# Called with `sim` as an argument inside the traced `if`, so the branch captures it (see `invoke_callback`)
+euler_step!(sim) = time_step!(sim; euler = true)
