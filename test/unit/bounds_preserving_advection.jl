@@ -1,14 +1,15 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
-using Oceananigans.Advection: div_Uc, materialize_advection, update_advection!, update_flux_limiter!, bounds_preserving_limiter
+using Oceananigans.Advection: div_Uc, materialize_advection, update_advection!, update_flux_limiter!,
+                              update_bounds_preserving_limiter!, bounds_preserving_limiter
 using Oceananigans.Operators: Vᶜᶜᶜ
 using Random
 
-function periodic_advection_setup(order, bounds, N; maximum_cfl=5//18, flux_limiter=false)
+function periodic_advection_setup(order, bounds, N; maximum_cfl=nothing, flux_limiter=false, adaptive_weight=false)
     grid = RectilinearGrid(CPU(), size=(N, N, N), x=(0, 1), y=(0, 1), z=(0, 1),
                            topology=(Periodic, Periodic, Periodic), halo=(6, 6, 6))
 
-    scheme = materialize_advection(WENO(; order, bounds, maximum_cfl, flux_limiter), grid)
+    scheme = materialize_advection(WENO(; order, bounds, maximum_cfl, flux_limiter, adaptive_weight), grid)
 
     return grid, scheme, CenterField(grid), (u = XFaceField(grid), v = YFaceField(grid), w = ZFaceField(grid))
 end
@@ -27,8 +28,8 @@ function advect_forward_euler!(grid, scheme, c, U, N, steps, courant_number)
     cᵐⁱⁿ, cᵐᵃˣ = minimum(interior(c)), maximum(interior(c))
 
     for step in 1:steps
-        update_advection!(scheme, (; grid), c)
-        update_flux_limiter!(scheme, grid, c, U, Δt) # a no-op without the flux limiter
+        update_bounds_preserving_limiter!(scheme, grid, c, U, Δt) # a no-op without bounds
+        update_flux_limiter!(scheme, grid, c, U, Δt)              # a no-op without the flux limiter
         for k in 1:N, j in 1:N, i in 1:N
             @inbounds tendency[i, j, k] = - div_Uc(i, j, k, grid, scheme, U, c)
         end
@@ -39,6 +40,53 @@ function advect_forward_euler!(grid, scheme, c, U, N, steps, courant_number)
     end
 
     return cᵐⁱⁿ, cᵐᵃˣ
+end
+
+# The L1 error of the cell averages of sin²(πx), which touch both bounds of [0, 1], after one period of
+# advection at `u = 1` on a periodic unit interval with SSP-RK3 steps at the given Courant number.
+cell_averaged_sin²(x, Δx) = 1/2 - (sin(2π * (x + Δx/2)) - sin(2π * (x - Δx/2))) / (4π * Δx)
+
+function one_period_error(N, courant_number; order=5, bounds=(0, 1), kwargs...)
+    grid = RectilinearGrid(CPU(), size=N, x=(0, 1), topology=(Periodic, Flat, Flat), halo=6)
+    scheme = materialize_advection(WENO(; order, bounds, kwargs...), grid)
+
+    Δx = 1 / N
+    c = CenterField(grid)
+    set!(c, x -> cell_averaged_sin²(x, Δx))
+    c⁰ = copy(interior(c, :, 1, 1))
+
+    U = (u = XFaceField(grid), v = YFaceField(grid), w = ZFaceField(grid))
+    set!(U.u, 1)
+    fill_halo_regions!(U.u)
+
+    steps = round(Int, 1 / (courant_number * Δx))
+    Δt = 1 / steps
+    cⁿ = similar(c⁰)
+    tendency = similar(c⁰)
+    cᵐⁱⁿ, cᵐᵃˣ = extrema(c⁰)
+
+    function forward_euler_stage!()
+        fill_halo_regions!(c)
+        update_bounds_preserving_limiter!(scheme, grid, c, U, Δt)
+        for i in 1:N
+            tendency[i] = - div_Uc(i, 1, 1, grid, scheme, U, c)
+        end
+        interior(c, :, 1, 1) .+= Δt .* tendency
+    end
+
+    for step in 1:steps
+        cⁿ .= interior(c, :, 1, 1)
+        forward_euler_stage!()
+        forward_euler_stage!()
+        interior(c, :, 1, 1) .= 3/4 .* cⁿ .+ 1/4 .* interior(c, :, 1, 1)
+        forward_euler_stage!()
+        interior(c, :, 1, 1) .= 1/3 .* cⁿ .+ 2/3 .* interior(c, :, 1, 1)
+        cᵐⁱⁿ = min(cᵐⁱⁿ, minimum(interior(c)))
+        cᵐᵃˣ = max(cᵐᵃˣ, maximum(interior(c)))
+    end
+
+    L1 = sum(abs, interior(c, :, 1, 1) .- c⁰) * Δx
+    return L1, cᵐⁱⁿ, cᵐᵃˣ
 end
 
 @testset "Bounds-preserving WENO advection" begin
@@ -147,6 +195,40 @@ end
             cᵐⁱⁿ, cᵐᵃˣ = advect_forward_euler!(grid, scheme, c, U, N, 50, courant_number)
             @test cᵐⁱⁿ < 2 - 1e-6
         end
+
+        # The adaptive weight ω̂₁ = clamp(Λ, minimum_weight, maximum_cfl) guarantees the bounds for a forward
+        # Euler update at Courant numbers Λ ≤ maximum_cfl, both where Λ lies between the clamps and at the
+        # upper clamp, with the flux limiter off.
+        @testset "Adaptive weight bounds" begin
+            sharp_cube(x, y, z) = (0.25 < x < 0.6) && (0.25 < y < 0.6) && (0.25 < z < 0.6) ? 1.0 : 0.0
+
+            for order in (5, 7, 9), courant_number in (0.1, 1/6)
+                grid, scheme, c, U = periodic_advection_setup(order, (0, 1), N; adaptive_weight=true)
+                @test scheme.bounds.minimum_weight < courant_number ≤ scheme.bounds.maximum_cfl
+                set!(c, sharp_cube)
+                tracer_content = sum(interior(c))
+
+                cᵐⁱⁿ, cᵐᵃˣ = advect_forward_euler!(grid, scheme, c, U, N, 100, courant_number)
+
+                @test cᵐⁱⁿ ≥ -1e-12
+                @test cᵐᵃˣ ≤ 1 + 1e-12
+                @test sum(interior(c)) ≈ tracer_content
+            end
+        end
+
+        # At a smooth extremum touching a bound the fixed weight 5//18 clips the reconstruction, while the
+        # adaptive weight, at a small Courant number, leaves it to the WENO reconstruction's own accuracy.
+        @testset "Adaptive weight accuracy" begin
+            courant_number = 0.05
+            fixed_L1, fixed_cᵐⁱⁿ, fixed_cᵐᵃˣ = one_period_error(64, courant_number; adaptive_weight=false, maximum_cfl=5//18)
+            adaptive_L1, adaptive_cᵐⁱⁿ, adaptive_cᵐᵃˣ = one_period_error(64, courant_number; adaptive_weight=true)
+            unlimited_L1, unlimited_cᵐⁱⁿ, unlimited_cᵐᵃˣ = one_period_error(64, courant_number; bounds=nothing)
+
+            @test fixed_L1 > 10 * adaptive_L1
+            @test adaptive_L1 < 2 * unlimited_L1
+            @test adaptive_cᵐⁱⁿ ≥ -1e-12
+            @test adaptive_cᵐᵃˣ ≤ 1 + 1e-12
+        end
     end
 
     @testset "Flux limiter options" begin
@@ -172,6 +254,35 @@ end
 
         deprecated = @test_logs (:warn, r"maximum_courant_number") match_mode=:any WENO(order=5, bounds=(0, 1), maximum_courant_number=1//4)
         @test deprecated.bounds.maximum_cfl === 0.25
+    end
+
+    @testset "Adaptive weight options" begin
+        # The lower clamp is the Gauss–Lobatto end weight 4 / ((N + 1) (N + 3)) of WENO order N
+        for (order, minimum_weight) in ((3, 1//6), (5, 1//12), (7, 1//20), (9, 1//30))
+            bounds = WENO(; order, bounds=(0, 1), adaptive_weight=true).bounds
+            @test bounds.minimum_weight ≈ minimum_weight
+            @test bounds.maximum_cfl ≈ 1//6
+            @test WENO(Float32; order, bounds=(0, 1), adaptive_weight=true).bounds.minimum_weight isa Float32
+        end
+
+        @test WENO(order=5, bounds=(0, 1)).bounds.minimum_weight === nothing
+        @test WENO(order=5, bounds=(0, 1)).bounds.maximum_cfl ≈ 5//18
+
+        # The lower clamp cannot exceed the upper one
+        @test WENO(order=5, bounds=(0, 1), adaptive_weight=true, maximum_cfl=1//20).bounds.minimum_weight ≈ 1//20
+
+        # A `BoundsPreservation` knows the order only once it is passed to `WENO`
+        grouped = BoundsPreservation(0, 1; adaptive_weight=true)
+        @test grouped.minimum_weight === true
+        @test WENO(order=7, bounds=grouped).bounds == WENO(order=7, bounds=(0, 1), adaptive_weight=true).bounds
+
+        @test sprint(show, WENO(order=5, bounds=grouped).bounds) == "(0.0, 1.0), adaptive_weight=true"
+        @test sprint(show, WENO(order=5, bounds=(0, 1), adaptive_weight=true, flux_limiter=true).bounds) == "(0.0, 1.0), adaptive_weight=true, flux_limiter=FluxLimiter()"
+        @test sprint(show, WENO(order=5, bounds=(0, 1)).bounds) == "(0.0, 1.0)"
+
+        @test_throws ArgumentError BoundsPreservation(0, 1; adaptive_weight=:yes)
+        @test_throws ArgumentError WENO(order=5, adaptive_weight=true) # no bounds
+        @test_throws ArgumentError WENO(order=5, bounds=BoundsPreservation(0, 1), adaptive_weight=true)
     end
 
     # In a uniform column falling at a vertical Courant number ν > 1 under forward Euler, every cell with
@@ -211,7 +322,7 @@ end
         scheme = materialize_advection(WENO(Float32; order=5, bounds=(0, 1)), grid)
         c = CenterField(grid)
         c[9, 1, 1] = 4.615384f-20 # cell 8 rests on the lower bound and undershoots by ε₂ = 1e-20
-        @test isfinite(bounds_preserving_limiter(8, 1, 1, grid, scheme, c))
+        @test isfinite(bounds_preserving_limiter(8, 1, 1, grid, scheme, c, nothing, nothing))
     end
 
     @testset "Halo covers the limiter's extended range" begin
@@ -229,12 +340,12 @@ end
             underlying_grid = RectilinearGrid(arch, size=(N, N, N), x=(0, 1), y=(0, 1), z=(0, 1),
                                               topology=(Periodic, Periodic, Bounded), halo=(6, 6, 6))
 
-            for model_type in (:nonhydrostatic, :hydrostatic), immersed in (false, true), flux_limiter in (false, true)
+            for model_type in (:nonhydrostatic, :hydrostatic), immersed in (false, true), flux_limiter in (false, true), adaptive_weight in (false, true)
                 grid = immersed ?
                     ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((x, y) -> x < 0.5 ? -0.5 : -1)) :
                     underlying_grid
 
-                advection = WENO(order=5, bounds=(0, 1), flux_limiter=flux_limiter)
+                advection = WENO(order=5, bounds=(0, 1), flux_limiter=flux_limiter, adaptive_weight=adaptive_weight)
 
                 model = if model_type === :nonhydrostatic
                     NonhydrostaticModel(grid; advection, tracers=:c)

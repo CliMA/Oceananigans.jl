@@ -81,11 +81,10 @@ Architectures.on_architecture(to, limiter::FluxLimiter) =
                 on_architecture(to, limiter.incoming_fraction),
                 on_architecture(to, limiter.fluxes))
 
-const FluxLimitedBounds = BoundsPreservation{<:Any, <:Any, <:FluxLimiter}
+const FluxLimitedBounds = BoundsPreservation{<:Any, <:Any, <:Any, <:FluxLimiter}
 const FluxLimitedWENO = WENO{<:Any, <:Any, <:Any, <:Any, <:FluxLimitedBounds}
 
-Base.show(io::IO, bounds::FluxLimitedBounds) =
-    print(io, "(", bounds.minimum_value, ", ", bounds.maximum_value, "), flux_limiter=FluxLimiter()")
+flux_limiter_summary(::FluxLimitedBounds) = ", flux_limiter=FluxLimiter()"
 
 #####
 ##### Cached face fluxes of c - cᵐⁱⁿ
@@ -257,26 +256,4 @@ function update_flux_limiter!(scheme::FluxLimitedWENO, grid, c, U, Δt, ρ=1)
     fill_halo_regions!(r⁻)
     fill_halo_regions!(r⁺)
     return nothing
-end
-
-#####
-##### Model interface
-#####
-
-"""
-$(TYPEDSIGNATURES)
-
-The velocities that advect the tracer `name` of `model`: its `velocities` unless the model extends this,
-for instance with drift velocities or advective forcing.
-"""
-tracer_transport_velocities(model, ::Val{name}) where name = model.velocities
-
-update_flux_limiter!(scheme, model, val_name) = nothing
-
-# `adaptive_advection_timestep` is the Δt of the coming stage, which the limiter takes as a forward Euler update.
-function update_flux_limiter!(scheme::FluxLimitedWENO, model, val_name::Val{name}) where name
-    c = model.tracers[name]
-    U = tracer_transport_velocities(model, val_name)
-    Δt = adaptive_advection_timestep(model.timestepper, model.clock)
-    return update_flux_limiter!(scheme, model.grid, c, U, Δt)
 end

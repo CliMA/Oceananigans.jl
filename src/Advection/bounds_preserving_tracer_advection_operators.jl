@@ -5,7 +5,7 @@ using Oceananigans.Utils: launch!
 using KernelAbstractions: @index, @kernel
 
 """
-    BoundsPreservation(minimum_value, maximum_value; maximum_cfl=5//18, flux_limiter=nothing)
+    BoundsPreservation(minimum_value, maximum_value; adaptive_weight=false, maximum_cfl=nothing, flux_limiter=nothing)
 
 The interval a tracer is restricted to and the options of the limiters that keep it there, for the `bounds` of
 [`WENO`](@ref): the maximum-principle-satisfying rescaling of [Zhang and Shu (2010)](@cite ZhangShu2010), which
@@ -13,48 +13,87 @@ guarantees the interval for a forward Euler or strong-stability-preserving updat
 `λˣ + λʸ + λᶻ ≤ maximum_cfl`, and optionally a [`FluxLimiter`](@ref) that limits the fluxes between cells so
 that the tracer stays within the interval for any time step.
 
+The rescaling splits each cell mean into its two face values and a remainder, `c̄ = ω̂₁ c⁻ + ω̂₁ c⁺ + (1 - 2ω̂₁) p̃`,
+with the quadrature weight `ω̂₁ ∈ (0, 1/2)` on the face values, and scales the face values towards `c̄` until all
+three lie in the interval. A forward Euler update then stays in the interval wherever the cell's outgoing Courant
+number `Λ`, summed over the three directions, satisfies `Λ ≤ ω̂₁`. The weight can be fixed at `maximum_cfl`, or
+adapt to each cell as `ω̂₁ = clamp(Λ, minimum_weight, maximum_cfl)`, the smallest weight that guarantees the
+interval there, which spares smooth extrema that touch a bound from being clipped.
+
 Keyword arguments
 =================
-- `maximum_cfl`: The Courant number `ω̂₁ ∈ (0, 1/2)` up to which the rescaling alone guarantees the interval.
-                 Raising it admits a larger time step and rescales more aggressively. With a `flux_limiter` the
-                 interval is guaranteed for any time step, and `maximum_cfl` only sets how hard the rescaling
-                 clips the reconstructions. Default: `5//18`.
+- `adaptive_weight`: Whether the weight adapts to each cell's outgoing Courant number `Λ`. Below the lower clamp
+                     `minimum_weight = 4 / ((N + 1) (N + 3))` of WENO order `N` (the end weight of the Gauss–Lobatto
+                     quadrature that is exact for the reconstruction) the rescaling clips smooth profiles, so the
+                     weight is held there; [`WENO`](@ref) sets it from the order. Default: `false`.
+- `maximum_cfl`: The Courant number up to which the rescaling alone guarantees the interval: the fixed weight
+                 `ω̂₁`, or the upper clamp of the adaptive weight. Raising it admits a larger time step and
+                 rescales more aggressively. With a `flux_limiter` the interval is guaranteed for any time step,
+                 and `maximum_cfl` only sets how hard the rescaling clips the reconstructions. Default: `5//18`
+                 for the fixed weight, and `1//6` for the adaptive weight, the largest weight at which the
+                 rescaling leaves smooth extrema alone.
 - `flux_limiter`: `nothing` or `false` for none, `true` or a [`FluxLimiter`](@ref) for one. Default: `nothing`.
 
 The materialized struct also holds the field `reconstruction_limiter` with the cell-wise rescaling factor ``θ``,
 which is `nothing` until the scheme is materialized on a grid, like the fields of `flux_limiter`.
 """
-struct BoundsPreservation{FT, L, F}
+struct BoundsPreservation{FT, W, L, F}
     minimum_value :: FT
     maximum_value :: FT
-    maximum_cfl :: FT
+    maximum_cfl :: FT           # the fixed quadrature weight ω̂₁, or the upper clamp of the adaptive weight
+    minimum_weight :: W         # the lower clamp of the adaptive weight (`true` until WENO sets it from the order), or nothing
     reconstruction_limiter :: L
     flux_limiter :: F
 end
 
-function BoundsPreservation(minimum_value, maximum_value; maximum_cfl=5//18, flux_limiter=nothing)
+function BoundsPreservation(minimum_value, maximum_value; adaptive_weight=false, maximum_cfl=nothing, flux_limiter=nothing)
     minimum_value < maximum_value || throw(ArgumentError("minimum_value must be below maximum_value, found ($minimum_value, $maximum_value)"))
+    adaptive_weight isa Bool || throw(ArgumentError("adaptive_weight must be a Bool, found $adaptive_weight"))
+
+    maximum_cfl = something(maximum_cfl, adaptive_weight ? 1//6 : 5//18)
     0 < maximum_cfl < 1//2 || throw(ArgumentError("maximum_cfl must lie in (0, 1/2), found $maximum_cfl"))
 
     flux_limiter isa Union{Bool, Nothing, FluxLimiter} || throw(ArgumentError("flux_limiter must be a Bool, nothing or a FluxLimiter, found $flux_limiter"))
     flux_limiter = flux_limiter === true ? FluxLimiter() : flux_limiter === false ? nothing : flux_limiter
 
+    minimum_weight = adaptive_weight ? true : nothing # `true` until the order is known
     minimum_value, maximum_value, maximum_cfl = promote(minimum_value, maximum_value, maximum_cfl)
-    return BoundsPreservation(minimum_value, maximum_value, maximum_cfl, nothing, flux_limiter)
+    return BoundsPreservation(minimum_value, maximum_value, maximum_cfl, minimum_weight, nothing, flux_limiter)
 end
 
-# The bounds with their numbers converted to the float type of a scheme
-with_float_type(FT, ::Nothing) = nothing
-with_float_type(FT, bounds::BoundsPreservation) =
-    BoundsPreservation(convert(FT, bounds.minimum_value), convert(FT, bounds.maximum_value),
-                       convert(FT, bounds.maximum_cfl), bounds.reconstruction_limiter, bounds.flux_limiter)
+# The bounds with their numbers converted to the float type of a WENO scheme of the given order, which
+# also fixes the lower clamp of an adaptive weight: the end weight 4 / ((N + 1) (N + 3)) of the Gauss–Lobatto
+# quadrature with (N + 3) / 2 points, which is exact for the degree N - 1 reconstruction of WENO order N.
+# It cannot exceed the upper clamp.
+with_order_and_float_type(order, FT, ::Nothing) = nothing
 
-Base.show(io::IO, bounds::BoundsPreservation) = print(io, "(", bounds.minimum_value, ", ", bounds.maximum_value, ")")
+function with_order_and_float_type(order, FT, bounds::BoundsPreservation)
+    maximum_cfl = convert(FT, bounds.maximum_cfl)
+    minimum_weight = minimum_weight_for_order(order, FT, bounds.minimum_weight, maximum_cfl)
+    return BoundsPreservation(convert(FT, bounds.minimum_value), convert(FT, bounds.maximum_value),
+                              maximum_cfl, minimum_weight, bounds.reconstruction_limiter, bounds.flux_limiter)
+end
+
+minimum_weight_for_order(order, FT, ::Nothing, maximum_cfl) = nothing
+minimum_weight_for_order(order, FT, ::Bool, maximum_cfl) = min(convert(FT, 4 // ((order + 1) * (order + 3))), maximum_cfl)
+minimum_weight_for_order(order, FT, minimum_weight::Number, maximum_cfl) = min(convert(FT, minimum_weight), maximum_cfl)
+
+const FixedWeightBounds = BoundsPreservation{<:Any, Nothing}
+const AdaptiveWeightBounds = BoundsPreservation{<:Any, <:Number}
+
+Base.show(io::IO, bounds::BoundsPreservation) =
+    print(io, "(", bounds.minimum_value, ", ", bounds.maximum_value, ")", weight_summary(bounds), flux_limiter_summary(bounds))
+
+weight_summary(::FixedWeightBounds) = ""
+weight_summary(::AdaptiveWeightBounds) = ", adaptive_weight=true"
+
+flux_limiter_summary(::BoundsPreservation) = ""
 
 Adapt.adapt_structure(to, bounds::BoundsPreservation) =
     BoundsPreservation(Adapt.adapt(to, bounds.minimum_value),
                        Adapt.adapt(to, bounds.maximum_value),
                        Adapt.adapt(to, bounds.maximum_cfl),
+                       Adapt.adapt(to, bounds.minimum_weight),
                        Adapt.adapt(to, bounds.reconstruction_limiter),
                        Adapt.adapt(to, bounds.flux_limiter))
 
@@ -62,6 +101,7 @@ Architectures.on_architecture(to, bounds::BoundsPreservation) =
     BoundsPreservation(on_architecture(to, bounds.minimum_value),
                        on_architecture(to, bounds.maximum_value),
                        on_architecture(to, bounds.maximum_cfl),
+                       on_architecture(to, bounds.minimum_weight),
                        on_architecture(to, bounds.reconstruction_limiter),
                        on_architecture(to, bounds.flux_limiter))
 
@@ -75,7 +115,52 @@ const BoundsPreservingWENO = WENO{<:Any, <:Any, <:Any, <:Any, <:BoundsPreservati
 @inline Grids.required_halo_size_y(::WENO{N, <:Any, <:Any, <:Any, <:BoundsPreservation}) where N = N + 1
 
 #####
-##### Cell-wise rescaling factor, from cᵢ = ω̂₁ c⁻ + ω̂₁ c⁺ + (1 - 2ω̂₁) p̃ in each direction
+##### Quadrature weight ω̂₁ on the face values, from cᵢ = ω̂₁ c⁻ + ω̂₁ c⁺ + (1 - 2ω̂₁) p̃ in each direction
+#####
+#
+# With the face values rescaled into [m, M], a forward Euler update of cell i with the upwind fluxes
+# leaves c⁻ and c⁺ with the coefficients ω̂₁ - Δt A⁻ max(0, -u⁻) / V and ω̂₁ - Δt A⁺ max(0, u⁺) / V,
+# where u⁻ and u⁺ are the velocities through its two faces, and p̃ with 1 - 2ω̂₁: a convex combination
+# of values in [m, M], and so in [m, M], as long as the larger of the two outflows in each direction,
+# summed over the directions into the cell's outgoing Courant number Λᵢ, satisfies Λᵢ ≤ ω̂₁. Every
+# ω̂₁ ≥ Λᵢ therefore guarantees the bounds, and the smallest one rescales least: for a smooth profile
+# p̃ - cᵢ = Δx² c″ (1 - 6ω̂₁) / (24 (1 - 2ω̂₁)) + ..., so at an extremum touching a bound p̃ lies outside
+# the interval and θ clips the reconstruction, unless ω̂₁ ≤ 1/6. Below the Gauss–Lobatto end weight
+# 4 / ((N + 1) (N + 3)) of WENO order N, though, the face values of a smooth profile themselves leave
+# the interval that p̃ and cᵢ span, and θ clips again. The adaptive weight is ω̂₁ = clamp(Λᵢ, ω̂ₘᵢₙ, ω̂ₘₐₓ)
+# with these two limits. Only the cell's own ω̂₁ enters its own update, so the weight may differ between cells.
+
+# The volume leaving cell (i, j, k) per unit time through its faces in one direction: the larger of the
+# outflows through the two faces, whose coefficients in the update must each stay non-negative.
+@inline outgoing_volume_flux_x(i, j, k, grid::XFlatGrid, u) = zero(grid)
+@inline outgoing_volume_flux_y(i, j, k, grid::YFlatGrid, v) = zero(grid)
+@inline outgoing_volume_flux_z(i, j, k, grid::ZFlatGrid, w) = zero(grid)
+
+@inline outgoing_volume_flux_x(i, j, k, grid, u) = @inbounds max(0, Axᶠᶜᶜ(i+1, j, k, grid) * u[i+1, j, k], - Axᶠᶜᶜ(i, j, k, grid) * u[i, j, k])
+@inline outgoing_volume_flux_y(i, j, k, grid, v) = @inbounds max(0, Ayᶜᶠᶜ(i, j+1, k, grid) * v[i, j+1, k], - Ayᶜᶠᶜ(i, j, k, grid) * v[i, j, k])
+@inline outgoing_volume_flux_z(i, j, k, grid, w) = @inbounds max(0, Azᶜᶜᶠ(i, j, k+1, grid) * w[i, j, k+1], - Azᶜᶜᶠ(i, j, k, grid) * w[i, j, k])
+
+# The outgoing Courant number Λᵢ of cell (i, j, k) over the time step Δt of the coming forward Euler update
+@inline function outgoing_courant_number(i, j, k, grid, U, Δt)
+    outgoing = outgoing_volume_flux_x(i, j, k, grid, U.u) +
+               outgoing_volume_flux_y(i, j, k, grid, U.v) +
+               outgoing_volume_flux_z(i, j, k, grid, U.w)
+
+    return Δt * V⁻¹ᶜᶜᶜ(i, j, k, grid) * outgoing
+end
+
+# The fixed weight reads neither the velocities nor the time step
+@inline quadrature_weight(i, j, k, grid, bounds::FixedWeightBounds, U, Δt) = bounds.maximum_cfl
+
+@inline function quadrature_weight(i, j, k, grid, bounds::AdaptiveWeightBounds, U, Δt)
+    Λ = convert(eltype(grid), outgoing_courant_number(i, j, k, grid, U, Δt))
+    # Before the first time step the clock's Δt is infinite, and Λ is not finite where the velocity vanishes
+    Λ = ifelse(isfinite(Λ), Λ, bounds.maximum_cfl)
+    return clamp(Λ, bounds.minimum_weight, bounds.maximum_cfl)
+end
+
+#####
+##### Cell-wise rescaling factor θ
 #####
 
 @inline function reconstruction_extrema_x(i, j, k, grid, scheme, c, m, M, ω̂₁)
@@ -110,13 +195,15 @@ end
 @inline reconstruction_extrema_y(i, j, k, ::AbstractGrid{FT, TX, Flat, TZ}, scheme, c, m, M, ω̂₁) where {FT, TX, TZ} = (m, M)
 @inline reconstruction_extrema_z(i, j, k, ::AbstractGrid{FT, TX, TY, Flat}, scheme, c, m, M, ω̂₁) where {FT, TX, TY} = (m, M)
 
-@inline function bounds_preserving_limiter(i, j, k, grid, scheme::BoundsPreservingWENO, c)
+# `U` and `Δt` are the transport velocities and time step of the coming forward Euler update, which only
+# an adaptive weight reads (see `quadrature_weight`); a fixed weight accepts `nothing` for both.
+@inline function bounds_preserving_limiter(i, j, k, grid, scheme::BoundsPreservingWENO, c, U, Δt)
     FT = eltype(c)
     ε₂ = convert(FT, _ε₂)
 
     cᵐⁱⁿ = scheme.bounds.minimum_value
     cᵐᵃˣ = scheme.bounds.maximum_value
-    ω̂₁ = scheme.bounds.maximum_cfl
+    ω̂₁ = quadrature_weight(i, j, k, grid, scheme.bounds, U, Δt)
 
     cᵢ = @inbounds c[i, j, k]
 
@@ -131,29 +218,80 @@ end
     return min(θᵐᵃˣ, θᵐⁱⁿ, one(FT))
 end
 
-@kernel function _compute_bounds_preserving_limiter!(θ, grid, scheme, c)
+@kernel function _compute_bounds_preserving_limiter!(θ, grid, scheme, c, U, Δt)
     i, j, k = @index(Global, NTuple)
-    @inbounds θ[i, j, k] = bounds_preserving_limiter(i, j, k, grid, scheme, c)
+    @inbounds θ[i, j, k] = bounds_preserving_limiter(i, j, k, grid, scheme, c, U, Δt)
 end
 
-update_bounds_preserving_limiter!(scheme, grid, c) = nothing
+update_bounds_preserving_limiter!(scheme, grid, c, U, Δt) = nothing
 
-update_bounds_preserving_limiter!(scheme::FluxFormAdvection, grid, c) = update_bounds_preserving_limiter!(scheme.z, grid, c)
+update_bounds_preserving_limiter!(scheme::FluxFormAdvection, grid, c, U, Δt) = update_bounds_preserving_limiter!(scheme.z, grid, c, U, Δt)
 
 """
 $(TYPEDSIGNATURES)
 
-Fill the rescaling factor ``θ`` carried by a bounds-preserving `scheme` from the tracer `c`.
-``θ`` is computed in the first horizontal halo layer too, from the halos of `c`, so that
-only its bottom and top halos are filled afterwards and no halo is communicated.
+Fill the rescaling factor ``θ`` carried by a bounds-preserving `scheme` from the tracer `c`, for the coming
+forward Euler update over `Δt` with the transport velocities `U`, which only an adaptive quadrature weight
+reads (see [`BoundsPreservation`](@ref)). ``θ`` is computed in the first horizontal halo layer too, from
+the halos of `c` and `U`, so that only its bottom and top halos are filled afterwards and no halo is
+communicated.
 """
-function update_bounds_preserving_limiter!(scheme::BoundsPreservingWENO, grid, c)
+function update_bounds_preserving_limiter!(scheme::BoundsPreservingWENO, grid, c, U, Δt)
     isnothing(c) && return nothing # the `momentum` entry has no tracer to limit
     θ = scheme.bounds.reconstruction_limiter
+    Δt = limiter_timestep(eltype(grid), Δt)
     parameters = horizontally_extended_interior_kernel_parameters(grid)
-    launch!(architecture(grid), grid, parameters, _compute_bounds_preserving_limiter!, θ, grid, scheme, c)
+    launch!(architecture(grid), grid, parameters, _compute_bounds_preserving_limiter!, θ, grid, scheme, c, U, Δt)
     fill_bottom_and_top_halo!(θ.data, θ.boundary_conditions, θ.indices, (Center(), Center(), Center()), grid)
     return nothing
+end
+
+limiter_timestep(FT, ::Nothing) = nothing
+limiter_timestep(FT, Δt) = convert(FT, Δt)
+
+#####
+##### Model interface
+#####
+
+"""
+$(TYPEDSIGNATURES)
+
+The velocities that advect the tracer `name` of `model`: its `velocities` unless the model extends this,
+for instance with drift velocities or advective forcing.
+"""
+tracer_transport_velocities(model, ::Val{name}) where name = model.velocities
+
+# Refresh the limiters of the scheme advecting the tracer `name` of `model` for the coming forward Euler
+# update: the rescaling factor θ, and the fractions of a flux limiter. `adaptive_advection_timestep` is the
+# Δt of the coming stage.
+update_bounds_preserving_limiters!(scheme, model, val_name) = nothing
+
+update_bounds_preserving_limiters!(scheme::FluxFormAdvection, model, val_name) =
+    update_bounds_preserving_limiters!(scheme.z, model, val_name)
+
+function update_bounds_preserving_limiters!(scheme::BoundsPreservingWENO, model, val_name::Val{name}) where name
+    c = model.tracers[name]
+    U = tracer_transport_velocities(model, val_name)
+    Δt = adaptive_advection_timestep(model.timestepper, model.clock)
+    update_bounds_preserving_limiter!(scheme, model.grid, c, U, Δt)
+    return update_flux_limiter!(scheme, model.grid, c, U, Δt)
+end
+
+# The scheme-wise hook of `update_advection!(scheme, model, tracer)` knows no tracer name, so an adaptive
+# weight transports with the model's `velocities`; a fixed weight needs neither velocities nor a time step.
+update_bounds_preserving_limiter!(scheme, model, tracer) = nothing
+
+update_bounds_preserving_limiter!(scheme::FluxFormAdvection, model, tracer) = update_bounds_preserving_limiter!(scheme.z, model, tracer)
+
+const FixedWeightWENO = WENO{<:Any, <:Any, <:Any, <:Any, <:FixedWeightBounds}
+const AdaptiveWeightWENO = WENO{<:Any, <:Any, <:Any, <:Any, <:AdaptiveWeightBounds}
+
+update_bounds_preserving_limiter!(scheme::FixedWeightWENO, model, tracer) =
+    update_bounds_preserving_limiter!(scheme, model.grid, tracer, nothing, nothing)
+
+function update_bounds_preserving_limiter!(scheme::AdaptiveWeightWENO, model, tracer)
+    Δt = adaptive_advection_timestep(model.timestepper, model.clock)
+    return update_bounds_preserving_limiter!(scheme, model.grid, tracer, model.velocities, Δt)
 end
 
 @inline function rescaled_reconstruction(ĉ, i, j, k, grid, θ, c)

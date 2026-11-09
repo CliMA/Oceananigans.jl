@@ -22,6 +22,7 @@ end
          buffer_scheme = DecreasingOrderAdvectionScheme(),
          time_discretization = ExplicitTimeDiscretization(),
          bounds = nothing,
+         adaptive_weight = nothing,
          maximum_cfl = nothing,
          flux_limiter = nothing,
          minimum_buffer_upwind_order = 3,
@@ -49,9 +50,15 @@ Keyword arguments
                            for a forward Euler or strong-stability-preserving update whose Courant numbers
                            satisfy `λˣ + λʸ + λᶻ ≤ maximum_cfl`.
                            Default: `nothing`, which does not use a bounds-preserving scheme.
-- `maximum_cfl`: With a tuple `bounds`, the Courant number `ω̂₁ ∈ (0, 1/2)` up to which `bounds` is guaranteed.
-                 Raising it admits a larger time step and limits more aggressively.
-                 Default: `nothing`, for the `BoundsPreservation` default `5//18`.
+- `adaptive_weight` (experimental): With a tuple `bounds`, whether the quadrature weight `ω̂₁` of the rescaling
+                                    adapts to each cell's outgoing Courant number, so that smooth extrema touching
+                                    a bound are not clipped (see [`BoundsPreservation`](@ref)). The weight is
+                                    clamped between `4 / ((N + 1) (N + 3))` for `order = N` and `maximum_cfl`.
+                                    Default: `nothing`, for the `BoundsPreservation` default `false`.
+- `maximum_cfl`: With a tuple `bounds`, the Courant number up to which `bounds` is guaranteed: the fixed weight
+                 `ω̂₁ ∈ (0, 1/2)`, or the upper clamp of the adaptive weight. Raising it admits a larger time step
+                 and limits more aggressively. Default: `nothing`, for the `BoundsPreservation` defaults `5//18`
+                 with the fixed weight and `1//6` with the adaptive weight.
 - `flux_limiter` (experimental): With a tuple `bounds`, whether to also limit the fluxes between cells to what
                                  the coming update can afford, so that the tracer stays within `bounds` for any
                                  time step; `maximum_cfl` then only sets how hard the rescaling clips. `true`
@@ -132,6 +139,17 @@ WENO{3, Float64, Nothing}(order=5, bounds=(0.0, 1.0), flux_limiter=FluxLimiter()
 └── advecting_velocity_scheme: Centered(order=2)
 ```
 
+To let the quadrature weight of the rescaling adapt to each cell's Courant number, so that smooth extrema
+touching a bound are not clipped:
+
+```jldoctest weno
+julia> WENO(order=5, bounds=(0, 1), adaptive_weight=true)
+WENO{3, Float64, Nothing}(order=5, bounds=(0.0, 1.0), adaptive_weight=true)
+├── buffer_scheme: WENO{2, Float64, Nothing}(order=3, bounds=(0.0, 1.0), adaptive_weight=true)
+│   └── buffer_scheme: Centered(order=2)
+└── advecting_velocity_scheme: Centered(order=2)
+```
+
 To build a WENO scheme that uses approximate division on a GPU to execute faster:
 ```jldoctest weno
 julia> WENO(;weight_computation=Oceananigans.Utils.BackendOptimizedDivision)
@@ -152,6 +170,7 @@ function WENO(FT::DataType=Oceananigans.defaults.FloatType;
               buffer_scheme = DecreasingOrderAdvectionScheme(),
               time_discretization = ExplicitTimeDiscretization(),
               bounds = nothing,
+              adaptive_weight = nothing,
               maximum_cfl = nothing,
               flux_limiter = nothing,
               minimum_buffer_upwind_order = 3,
@@ -166,15 +185,17 @@ function WENO(FT::DataType=Oceananigans.defaults.FloatType;
 
     # A tuple is shorthand for a `BoundsPreservation` with the flat keyword arguments as options
     if bounds isa NTuple{2}
-        maximum_cfl = something(maximum_cfl, 5//18)
-        bounds = BoundsPreservation(bounds...; maximum_cfl, flux_limiter)
+        adaptive_weight = something(adaptive_weight, false)
+        bounds = BoundsPreservation(bounds...; adaptive_weight, maximum_cfl, flux_limiter)
     elseif bounds isa BoundsPreservation
-        isnothing(maximum_cfl) && isnothing(flux_limiter) ||
-            throw(ArgumentError("maximum_cfl and flux_limiter are options of the BoundsPreservation passed as bounds"))
+        isnothing(adaptive_weight) && isnothing(maximum_cfl) && isnothing(flux_limiter) ||
+            throw(ArgumentError("adaptive_weight, maximum_cfl and flux_limiter are options of the BoundsPreservation passed as bounds"))
     elseif !isnothing(bounds)
         throw(ArgumentError("bounds must be nothing, a tuple of two values or a BoundsPreservation"))
     elseif !(isnothing(flux_limiter) || flux_limiter === false)
         throw(ArgumentError("a flux_limiter requires bounds"))
+    elseif !(isnothing(adaptive_weight) || adaptive_weight === false)
+        throw(ArgumentError("an adaptive_weight requires bounds"))
     end
 
     if order < 3
@@ -193,7 +214,7 @@ function WENO(FT::DataType=Oceananigans.defaults.FloatType;
         end
 
         N = Int((order + 1) ÷ 2)
-        preserved_bounds = with_float_type(FT, bounds)
+        preserved_bounds = with_order_and_float_type(order, FT, bounds)
 
         return WENO{N, FT, weight_computation}(preserved_bounds, buffer_scheme, advecting_velocity_scheme, time_discretization)
     end
