@@ -53,12 +53,15 @@ Keyword arguments
 - `adaptive_weight` (experimental): With a tuple `bounds`, whether the quadrature weight `ω̂₁` of the rescaling
                                     adapts to each cell's outgoing Courant number, so that smooth extrema touching
                                     a bound are not clipped (see [`BoundsPreservation`](@ref)). The weight is
-                                    clamped between `4 / ((N + 1) (N + 3))` for `order = N` and `maximum_cfl`.
-                                    Default: `nothing`, for the `BoundsPreservation` default `false`.
+                                    clamped between `4 / ((N + 1) (N + 3))` for `order = N` (or the larger end
+                                    weight of the buffer scheme reconstructing near a `Bounded` boundary) and
+                                    `maximum_cfl`. Default: `nothing`, for the `BoundsPreservation` default `false`.
 - `maximum_cfl`: With a tuple `bounds`, the Courant number up to which `bounds` is guaranteed: the fixed weight
                  `ω̂₁ ∈ (0, 1/2)`, or the upper clamp of the adaptive weight. Raising it admits a larger time step
                  and limits more aggressively. Default: `nothing`, for the `BoundsPreservation` defaults `5//18`
-                 with the fixed weight and `1//6` with the adaptive weight.
+                 with the fixed weight and `1//6` with the adaptive weight; with the latter, the rescaling alone
+                 no longer guarantees `bounds` above Courant number `1/6` unless `maximum_cfl` is raised or a
+                 `flux_limiter` is on.
 - `flux_limiter` (experimental): With a tuple `bounds`, whether to also limit the fluxes between cells to what
                                  the coming update can afford, so that the tracer stays within `bounds` for any
                                  time step; `maximum_cfl` then only sets how hard the rescaling clips. `true`

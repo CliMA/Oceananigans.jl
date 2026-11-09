@@ -25,13 +25,17 @@ Keyword arguments
 - `adaptive_weight`: Whether the weight adapts to each cell's outgoing Courant number `Λ`. Below the lower clamp
                      `minimum_weight = 4 / ((N + 1) (N + 3))` of WENO order `N` (the end weight of the Gauss–Lobatto
                      quadrature that is exact for the reconstruction) the rescaling clips smooth profiles, so the
-                     weight is held there; [`WENO`](@ref) sets it from the order. Default: `false`.
+                     weight is held there; [`WENO`](@ref) sets it from the order, and near the boundaries of a
+                     `Bounded` direction, where a lower-order buffer scheme reconstructs the faces, that scheme's
+                     larger end weight applies instead. Default: `false`.
 - `maximum_cfl`: The Courant number up to which the rescaling alone guarantees the interval: the fixed weight
                  `ω̂₁`, or the upper clamp of the adaptive weight. Raising it admits a larger time step and
                  rescales more aggressively. With a `flux_limiter` the interval is guaranteed for any time step,
                  and `maximum_cfl` only sets how hard the rescaling clips the reconstructions. Default: `5//18`
                  for the fixed weight, and `1//6` for the adaptive weight, the largest weight at which the
-                 rescaling leaves smooth extrema alone.
+                 rescaling leaves smooth extrema alone. With the adaptive weight and this default, the rescaling
+                 alone therefore no longer guarantees the interval at Courant numbers above `1/6`: to keep the
+                 guarantee there, raise `maximum_cfl` or add a `flux_limiter`.
 - `flux_limiter`: `nothing` or `false` for none, `true` or a [`FluxLimiter`](@ref) for one. Default: `nothing`.
 
 The materialized struct also holds the field `reconstruction_limiter` with the cell-wise rescaling factor ``θ``,
@@ -41,10 +45,14 @@ struct BoundsPreservation{FT, W, L, F}
     minimum_value :: FT
     maximum_value :: FT
     maximum_cfl :: FT           # the fixed quadrature weight ω̂₁, or the upper clamp of the adaptive weight
-    minimum_weight :: W         # the lower clamp of the adaptive weight (`true` until WENO sets it from the order), or nothing
+    minimum_weight :: W         # the lower clamp of the adaptive weight, unresolved until WENO sets it from the order, or nothing
     reconstruction_limiter :: L
     flux_limiter :: F
 end
+
+# The `minimum_weight` of an adaptive weight before the order is known. Bounds carrying it are neither
+# fixed- nor adaptive-weight bounds, so they cannot enter a kernel before `WENO` resolves them.
+struct UnresolvedMinimumWeight end
 
 function BoundsPreservation(minimum_value, maximum_value; adaptive_weight=false, maximum_cfl=nothing, flux_limiter=nothing)
     minimum_value < maximum_value || throw(ArgumentError("minimum_value must be below maximum_value, found ($minimum_value, $maximum_value)"))
@@ -56,7 +64,7 @@ function BoundsPreservation(minimum_value, maximum_value; adaptive_weight=false,
     flux_limiter isa Union{Bool, Nothing, FluxLimiter} || throw(ArgumentError("flux_limiter must be a Bool, nothing or a FluxLimiter, found $flux_limiter"))
     flux_limiter = flux_limiter === true ? FluxLimiter() : flux_limiter === false ? nothing : flux_limiter
 
-    minimum_weight = adaptive_weight ? true : nothing # `true` until the order is known
+    minimum_weight = adaptive_weight ? UnresolvedMinimumWeight() : nothing
     minimum_value, maximum_value, maximum_cfl = promote(minimum_value, maximum_value, maximum_cfl)
     return BoundsPreservation(minimum_value, maximum_value, maximum_cfl, minimum_weight, nothing, flux_limiter)
 end
@@ -75,7 +83,7 @@ function with_order_and_float_type(order, FT, bounds::BoundsPreservation)
 end
 
 minimum_weight_for_order(order, FT, ::Nothing, maximum_cfl) = nothing
-minimum_weight_for_order(order, FT, ::Bool, maximum_cfl) = min(convert(FT, 4 // ((order + 1) * (order + 3))), maximum_cfl)
+minimum_weight_for_order(order, FT, ::UnresolvedMinimumWeight, maximum_cfl) = min(convert(FT, 4 // ((order + 1) * (order + 3))), maximum_cfl)
 minimum_weight_for_order(order, FT, minimum_weight::Number, maximum_cfl) = min(convert(FT, minimum_weight), maximum_cfl)
 
 const FixedWeightBounds = BoundsPreservation{<:Any, Nothing}
@@ -86,6 +94,7 @@ Base.show(io::IO, bounds::BoundsPreservation) =
 
 weight_summary(::FixedWeightBounds) = ""
 weight_summary(::AdaptiveWeightBounds) = ", adaptive_weight=true"
+weight_summary(::BoundsPreservation{<:Any, UnresolvedMinimumWeight}) = ", adaptive_weight=true"
 
 flux_limiter_summary(::BoundsPreservation) = ""
 
@@ -109,6 +118,8 @@ const _ε₂ = 1e-20
 
 # Note: this can probably be generalized to include UpwindBiased
 const BoundsPreservingWENO = WENO{<:Any, <:Any, <:Any, <:Any, <:BoundsPreservation}
+const FixedWeightWENO = WENO{<:Any, <:Any, <:Any, <:Any, <:FixedWeightBounds}
+const AdaptiveWeightWENO = WENO{<:Any, <:Any, <:Any, <:Any, <:AdaptiveWeightBounds}
 
 # The limiter is also computed in the first horizontal halo layer, whose reconstructions reach one cell further
 @inline Grids.required_halo_size_x(::WENO{N, <:Any, <:Any, <:Any, <:BoundsPreservation}) where N = N + 1
@@ -149,14 +160,59 @@ const BoundsPreservingWENO = WENO{<:Any, <:Any, <:Any, <:Any, <:BoundsPreservati
     return Δt * V⁻¹ᶜᶜᶜ(i, j, k, grid) * outgoing
 end
 
-# The fixed weight reads neither the velocities nor the time step
-@inline quadrature_weight(i, j, k, grid, bounds::FixedWeightBounds, U, Δt) = bounds.maximum_cfl
+# Near the boundaries of a Bounded direction the faces are reconstructed by a lower-order buffer scheme
+# (see topologically_conditional_interpolation.jl), whose end weight 1 / (N (N + 1)) for WENO{N}, of order
+# 2N - 1, is larger, so in each direction the lower clamp is that of the scheme reconstructing both faces of
+# the cell there. The buffer schemes carry no bounds once materialized, so their weights come from their
+# order, capped at the upper clamp like the outer scheme's; the lowest-order fall-backs reconstruct at most
+# linearly, with end weight 1/2, and take the cap. Each direction may use its own weight: writing
+# cᵢ = Σ_d a_d [ω̂₁ᵈ c⁻ᵈ + ω̂₁ᵈ c⁺ᵈ + (1 - 2ω̂₁ᵈ) p̃ᵈ] with a_d = Λᵈ / Λᵢ, the coefficient of each face value in
+# the update is at least a_d (ω̂₁ᵈ - Λᵢ), so the update stays in [m, M] whenever every ω̂₁ᵈ ≥ Λᵢ.
+for (dir, d) in zip((:x, :y, :z), (1, 2, 3))
+    minimum_weight_ξ = Symbol(:minimum_weight_, dir)
+    buffer_minimum_weight_ξ = Symbol(:buffer_minimum_weight_, dir)
+    outside_buffer = Symbol(:outside_biased_halo_, dir, :ᶠ)
+    index = (:i, :j, :k)[d]
+    Nξ = (:Nx, :Ny, :Nz)[d]
+    AGξ = (:AGX, :AGY, :AGZ)[d]
 
-@inline function quadrature_weight(i, j, k, grid, bounds::AdaptiveWeightBounds, U, Δt)
+    @eval begin
+        # Not Bounded: the outer scheme reconstructs every face
+        @inline $minimum_weight_ξ(i, j, k, grid, scheme::AdaptiveWeightWENO) = scheme.bounds.minimum_weight
+
+        @inline function $minimum_weight_ξ(i, j, k, grid::$AGξ, scheme::AdaptiveWeightWENO)
+            bounds = scheme.bounds
+            outer = $outside_buffer($index, topology(grid, $d), grid.$Nξ, scheme) &
+                    $outside_buffer($index + 1, topology(grid, $d), grid.$Nξ, scheme)
+            return ifelse(outer, bounds.minimum_weight, $buffer_minimum_weight_ξ(i, j, k, grid, scheme.buffer_scheme, bounds.maximum_cfl))
+        end
+
+        @inline $buffer_minimum_weight_ξ(i, j, k, grid, scheme, maximum_cfl) = maximum_cfl
+
+        @inline function $buffer_minimum_weight_ξ(i, j, k, grid, scheme::WENO{N, FT}, maximum_cfl) where {N, FT}
+            outer = $outside_buffer($index, topology(grid, $d), grid.$Nξ, scheme) &
+                    $outside_buffer($index + 1, topology(grid, $d), grid.$Nξ, scheme)
+            weight = min(convert(FT, 1 // (N * (N + 1))), maximum_cfl)
+            return ifelse(outer, weight, $buffer_minimum_weight_ξ(i, j, k, grid, scheme.buffer_scheme, maximum_cfl))
+        end
+    end
+end
+
+# The weights of the three directions. The fixed weight reads neither the velocities nor the time step.
+@inline function quadrature_weights(i, j, k, grid, scheme::FixedWeightWENO, U, Δt)
+    ω̂₁ = scheme.bounds.maximum_cfl
+    return ω̂₁, ω̂₁, ω̂₁
+end
+
+@inline function quadrature_weights(i, j, k, grid, scheme::AdaptiveWeightWENO, U, Δt)
+    bounds = scheme.bounds
     Λ = convert(eltype(grid), outgoing_courant_number(i, j, k, grid, U, Δt))
     # Before the first time step the clock's Δt is infinite, and Λ is not finite where the velocity vanishes
     Λ = ifelse(isfinite(Λ), Λ, bounds.maximum_cfl)
-    return clamp(Λ, bounds.minimum_weight, bounds.maximum_cfl)
+    ω̂₁ˣ = clamp(Λ, minimum_weight_x(i, j, k, grid, scheme), bounds.maximum_cfl)
+    ω̂₁ʸ = clamp(Λ, minimum_weight_y(i, j, k, grid, scheme), bounds.maximum_cfl)
+    ω̂₁ᶻ = clamp(Λ, minimum_weight_z(i, j, k, grid, scheme), bounds.maximum_cfl)
+    return ω̂₁ˣ, ω̂₁ʸ, ω̂₁ᶻ
 end
 
 #####
@@ -196,21 +252,21 @@ end
 @inline reconstruction_extrema_z(i, j, k, ::AbstractGrid{FT, TX, TY, Flat}, scheme, c, m, M, ω̂₁) where {FT, TX, TY} = (m, M)
 
 # `U` and `Δt` are the transport velocities and time step of the coming forward Euler update, which only
-# an adaptive weight reads (see `quadrature_weight`); a fixed weight accepts `nothing` for both.
+# an adaptive weight reads (see `quadrature_weights`); a fixed weight accepts `nothing` for both.
 @inline function bounds_preserving_limiter(i, j, k, grid, scheme::BoundsPreservingWENO, c, U, Δt)
     FT = eltype(c)
     ε₂ = convert(FT, _ε₂)
 
     cᵐⁱⁿ = scheme.bounds.minimum_value
     cᵐᵃˣ = scheme.bounds.maximum_value
-    ω̂₁ = quadrature_weight(i, j, k, grid, scheme.bounds, U, Δt)
+    ω̂₁ˣ, ω̂₁ʸ, ω̂₁ᶻ = quadrature_weights(i, j, k, grid, scheme, U, Δt)
 
     cᵢ = @inbounds c[i, j, k]
 
     m, M = cᵢ, cᵢ
-    m, M = reconstruction_extrema_x(i, j, k, grid, scheme, c, m, M, ω̂₁)
-    m, M = reconstruction_extrema_y(i, j, k, grid, scheme, c, m, M, ω̂₁)
-    m, M = reconstruction_extrema_z(i, j, k, grid, scheme, c, m, M, ω̂₁)
+    m, M = reconstruction_extrema_x(i, j, k, grid, scheme, c, m, M, ω̂₁ˣ)
+    m, M = reconstruction_extrema_y(i, j, k, grid, scheme, c, m, M, ω̂₁ʸ)
+    m, M = reconstruction_extrema_z(i, j, k, grid, scheme, c, m, M, ω̂₁ᶻ)
 
     θᵐᵃˣ = abs((cᵐᵃˣ - cᵢ) / (M - cᵢ + ε₂))
     θᵐⁱⁿ = abs((cᵐⁱⁿ - cᵢ) / (m - cᵢ - ε₂))
@@ -282,9 +338,6 @@ end
 update_bounds_preserving_limiter!(scheme, model, tracer) = nothing
 
 update_bounds_preserving_limiter!(scheme::FluxFormAdvection, model, tracer) = update_bounds_preserving_limiter!(scheme.z, model, tracer)
-
-const FixedWeightWENO = WENO{<:Any, <:Any, <:Any, <:Any, <:FixedWeightBounds}
-const AdaptiveWeightWENO = WENO{<:Any, <:Any, <:Any, <:Any, <:AdaptiveWeightBounds}
 
 update_bounds_preserving_limiter!(scheme::FixedWeightWENO, model, tracer) =
     update_bounds_preserving_limiter!(scheme, model.grid, tracer, nothing, nothing)

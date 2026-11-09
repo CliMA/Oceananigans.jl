@@ -1,7 +1,8 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Oceananigans.Advection: div_Uc, materialize_advection, update_advection!, update_flux_limiter!,
-                              update_bounds_preserving_limiter!, bounds_preserving_limiter
+                              update_bounds_preserving_limiter!, bounds_preserving_limiter,
+                              UnresolvedMinimumWeight, minimum_weight_x
 using Oceananigans.Operators: Vᶜᶜᶜ
 using Random
 
@@ -273,8 +274,27 @@ end
 
         # A `BoundsPreservation` knows the order only once it is passed to `WENO`
         grouped = BoundsPreservation(0, 1; adaptive_weight=true)
-        @test grouped.minimum_weight === true
+        @test grouped.minimum_weight isa UnresolvedMinimumWeight
         @test WENO(order=7, bounds=grouped).bounds == WENO(order=7, bounds=(0, 1), adaptive_weight=true).bounds
+
+        # Each buffer scheme carries the lower clamp of its own order
+        scheme = WENO(order=9, bounds=(0, 1), adaptive_weight=true)
+        @test scheme.buffer_scheme.bounds.minimum_weight ≈ 1//20
+        @test scheme.buffer_scheme.buffer_scheme.bounds.minimum_weight ≈ 1//12
+        @test scheme.buffer_scheme.buffer_scheme.buffer_scheme.bounds.minimum_weight ≈ 1//6
+
+        # Near the boundaries of a Bounded direction the lower clamp is that of the buffer scheme reconstructing
+        # both faces of the cell: WENO7 reaches 5 cells into the domain with bounds, its WENO5 buffer 3, its
+        # WENO3 buffer 2, and the remaining cells fall back on second-order reconstructions, which take the cap.
+        Nx = 32
+        bounded_grid = RectilinearGrid(CPU(), size=Nx, x=(0, 1), topology=(Bounded, Flat, Flat), halo=6)
+        periodic_grid = RectilinearGrid(CPU(), size=Nx, x=(0, 1), topology=(Periodic, Flat, Flat), halo=6)
+        weno = WENO(order=7, bounds=(0, 1), adaptive_weight=true, maximum_cfl=0.3)
+        bounded_scheme = materialize_advection(weno, bounded_grid)
+        periodic_scheme = materialize_advection(weno, periodic_grid)
+        expected(i) = 6 ≤ i ≤ 27 ? 1/20 : 4 ≤ i ≤ 29 ? 1/12 : 3 ≤ i ≤ 30 ? 1/6 : 0.3
+        @test all(minimum_weight_x(i, 1, 1, bounded_grid, bounded_scheme) ≈ expected(i) for i in 1:Nx)
+        @test all(minimum_weight_x(i, 1, 1, periodic_grid, periodic_scheme) ≈ 1/20 for i in 1:Nx)
 
         @test sprint(show, WENO(order=5, bounds=grouped).bounds) == "(0.0, 1.0), adaptive_weight=true"
         @test sprint(show, WENO(order=5, bounds=(0, 1), adaptive_weight=true, flux_limiter=true).bounds) == "(0.0, 1.0), adaptive_weight=true, flux_limiter=FluxLimiter()"
