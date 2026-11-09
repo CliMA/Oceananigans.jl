@@ -90,9 +90,11 @@ function Base.isapprox(a::Clock, b::Clock; kw...)
 end
 
 # Type used to represent the time step Δt for a clock with `time::TT`.
-# For numeric clocks, Δt has the same type as `time`. For `DateTime`/`AbstractTime`
-# clocks, Δt is a `Float64` (interpreted as seconds).
+# For floating-point clocks, Δt has the same type as `time`. For integer clocks Δt is a `Float64`,
+# since it defaults to `Inf` (as for `Clock(; time=1)`). For `DateTime`/`AbstractTime` clocks,
+# Δt is a `Float64` (interpreted as seconds).
 time_step_type(TT) = TT
+time_step_type(::Type{<:Integer}) = Float64
 time_step_type(::Type{<:AbstractTime}) = Float64
 
 function Clock{TT}(; time,

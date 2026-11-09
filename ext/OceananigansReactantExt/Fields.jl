@@ -38,7 +38,7 @@ function set_to_function!(u::ReactantField, f)
     f_field = Oceananigans.Fields.field(Oceananigans.Fields.instantiated_location(u), f, cpu_grid)
     set!(cpu_u, f_field)
     interior(u) .= interior(cpu_u)
-    return nothing
+    return u
 end
 
 # When `v` may be copied into `u` we broadcast interiors, which traces. Otherwise we fall

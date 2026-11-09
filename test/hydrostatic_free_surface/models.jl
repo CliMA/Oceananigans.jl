@@ -3,6 +3,7 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant, PrescribedVelocityFields
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ExplicitFreeSurface, ImplicitFreeSurface
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: SingleColumnGrid
+using Oceananigans.Models: reset!
 using Oceananigans.Advection: EnergyConserving, EnstrophyConserving, FluxFormAdvection, CrossAndSelfUpwinding
 using Oceananigans.TurbulenceClosures
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
@@ -96,6 +97,26 @@ topos_3d = ((Periodic, Periodic, Bounded),
             # SingleColumnGrid tests
             @test grid isa SingleColumnGrid
             @test isnothing(model.free_surface)
+        end
+    end
+
+    @testset "reset! for $topo_1d models" begin
+        @info "  Testing reset! for $topo_1d models..."
+        for arch in archs, closure in (nothing, CATKEVerticalDiffusivity(), TKEDissipationVerticalDiffusivity())
+            grid = RectilinearGrid(arch, topology=topo_1d, size=4, extent=1)
+            model = HydrostaticFreeSurfaceModel(grid; closure, tracers=:b, buoyancy=BuoyancyTracer())
+            set!(model, u=1, b=1)
+            time_step!(model, 1)
+            reset!(model)
+            @test maximum(abs, model.velocities.u) == 0
+            @test maximum(abs, model.tracers.b) == 0
+            @test maximum(abs, model.timestepper.G⁻.b) == 0
+
+            if !isnothing(closure)
+                u⁻, v⁻ = model.closure_fields.previous_velocities
+                @test maximum(abs, u⁻) == 0
+                @test maximum(abs, model.closure_fields.κu) == 0
+            end
         end
     end
 

@@ -854,7 +854,9 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
             Base.$(reduction!)(identity, interior(r), conditioned_c, init=false)
 
             if dims isa Colon
-                return @allowscalar first(r)
+                # Cartesian indexing: with Reactant on Julia 1.13, linear indexing
+                # into a view returns a one-element array rather than a number
+                return @allowscalar interior(r)[1, 1, 1]
             else
                 return r
             end
