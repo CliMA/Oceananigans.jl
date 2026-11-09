@@ -19,6 +19,10 @@ struct ShiftedDiagonal{B}
     band :: B
 end
 
+# The tags wrap device arrays, so they must adapt to be passed to GPU kernels.
+Adapt.adapt_structure(to, c::ScaledBand) = ScaledBand(Adapt.adapt(to, c.band))
+Adapt.adapt_structure(to, c::ShiftedDiagonal) = ShiftedDiagonal(Adapt.adapt(to, c.band))
+
 @inline Oceananigans.Solvers.get_coefficient(i, j, k, grid, c::ScaledBand, parameters, direction, shift, scale) =
     scale * get_coefficient(i, j, k, grid, c.band, parameters, direction)
 
