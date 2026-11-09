@@ -6,13 +6,15 @@ export
     HydrostaticFreeSurfaceModel, ZStarCoordinate, ZCoordinate,
     ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
     PrescribedVelocityFields, PressureField,
-    LagrangianParticles, DroguedParticleDynamics,
+    LagrangianParticles, DroguedParticleDynamics, CountingSort, ComparisonSort,
+    ParticleBoundaryConditions, ReflectingBoundary, AbsorbingBoundary,
     BoundaryConditionOperation, ForcingOperation,
     seawater_density,
     BulkDrag, BulkDragFunction, BulkDragBoundaryCondition,
     XDirectionBulkDragFunction, YDirectionBulkDragFunction, ZDirectionBulkDragFunction,
     LinearFormulation, QuadraticFormulation,
-    BoundaryAdjacentMean, boundary_total_area
+    BoundaryAdjacentMean, boundary_total_area,
+    initialize_boundary_transport, enforce_net_zero_transport!
 
 using Adapt: Adapt, adapt
 using DocStringExtensions: TYPEDSIGNATURES
@@ -109,11 +111,10 @@ default_free_surface_boundary_conditions(free_surface, user_boundary_conditions)
 # Communication - Computation overlap in distributed models
 include("interleave_communication_and_computation.jl")
 
-# Shared open-boundary transport building blocks: per-boundary integrals,
-# initialization, and correction helpers. NonhydrostaticModel composes these
-# into `enforce_net_zero_transport!` to enforce the incompressible-pressure
-# solvability condition; external anelastic models can compose their own
-# variant for density-weighted momentum (ρu, ρv, ρw).
+# Open-boundary transport: per-boundary integrals, initialization, and the
+# net-zero transport correction `enforce_net_zero_transport!` that enforces the
+# solvability condition of a Neumann pressure problem. NonhydrostaticModel uses
+# it for velocities; anelastic models can use it for momentum (ρu, ρv, ρw).
 include("boundary_transport.jl")
 
 # Boundary mean / area utilities used by model submodules. Must come after
@@ -138,7 +139,8 @@ using .HydrostaticFreeSurfaceModels:
     PrescribedVelocityFields, ZStarCoordinate, ZCoordinate
 
 using .ShallowWaterModels: ShallowWaterModel, ConservativeFormulation, VectorInvariantFormulation
-using .LagrangianParticleTracking: LagrangianParticles, DroguedParticleDynamics
+using .LagrangianParticleTracking: LagrangianParticles, DroguedParticleDynamics, CountingSort, ComparisonSort,
+                                   ParticleBoundaryConditions, ReflectingBoundary, AbsorbingBoundary
 
 # BulkDrag for quadratic drag boundary conditions
 include("BulkDragBoundaryConditions.jl")

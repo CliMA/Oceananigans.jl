@@ -206,9 +206,16 @@ Oceananigans.restore_prognostic_state!(restored::WallTimeInterval,  ::Nothing) =
 ##### SpecifiedTimes
 #####
 
-mutable struct SpecifiedTimes{FT} <: AbstractSchedule
-    times :: Vector{FT}
+# `FT` is the times' own type, left free of `T`: a traced device array of `FT` times has a traced
+# element type (`TracedRArray{FT}` is an `AbstractVector{TracedRNumber{FT}}`), see `DeviceSpecifiedTimes`
+# in the Reactant extension.
+mutable struct SpecifiedTimes{FT, T <: AbstractVector} <: AbstractSchedule
+    times :: T
     previous_actuation :: Int
+
+    SpecifiedTimes{FT, T}(times, previous_actuation) where {FT, T} = new{FT, T}(times, previous_actuation)
+    SpecifiedTimes(times::AbstractVector, previous_actuation::Int) =
+        new{eltype(times), typeof(times)}(times, previous_actuation)
 end
 
 """
@@ -230,10 +237,10 @@ function SpecifiedTimes(times...)
 
     if all(t -> t isa Number, times)
         FT = Oceananigans.defaults.FloatType
-        return SpecifiedTimes{FT}(sort([convert(FT, t) for t in times]), 0)
+        return SpecifiedTimes(sort!(collect(FT, times)), 0)
     elseif all(t -> t isa AbstractTime, times)
         TT = typeof(first_time)
-        return SpecifiedTimes{TT}(sort(collect(times)), 0)
+        return SpecifiedTimes(sort!(collect(TT, times)), 0)
     else
         throw(ArgumentError("SpecifiedTimes expects all times to be numbers or all to be Date/DateTime."))
     end

@@ -18,12 +18,12 @@ using Oceananigans.Models: Models
 using Oceananigans.Simulations: Simulations, timestepper
 using Oceananigans.Solvers: ConjugateGradientPoissonSolver, GridWithFFTSolver, GridWithFourierTridiagonalSolver,
                             InhomogeneousFormulation, ZDirection
-using Oceananigans.TimeSteppers: TimeSteppers, step_lagrangian_particles!, update_lagrangian_particle_state!,
+using Oceananigans.TimeSteppers: TimeSteppers, substep_lagrangian_particles!, update_lagrangian_particle_state!,
                                  update_state!
 using Oceananigans.TurbulenceClosures: TurbulenceClosures
 using Oceananigans.Utils: foreach_name, named_tuple, sum_of_velocities
 
-using ..Models: initialize_boundary_transport
+using ..Models: enforce_net_zero_transport!, initialize_boundary_transport
 
 function nonhydrostatic_pressure_solver(::Distributed, local_grid::XYZRegularRG, ::Nothing)
     global_grid = reconstruct_global_grid(local_grid)
@@ -78,7 +78,6 @@ nonhydrostatic_pressure_solver(grid, free_surface) = nonhydrostatic_pressure_sol
 #####
 
 include("background_fields.jl")
-include("enforce_net_zero_transport.jl")
 include("nonhydrostatic_model.jl")
 include("pressure_field.jl")
 include("show_nonhydrostatic_model.jl")
@@ -113,7 +112,7 @@ Return a flattened `NamedTuple` of the prognostic fields associated with `Nonhyd
 Oceananigans.prognostic_fields(model::NonhydrostaticModel) = merge(model.velocities, model.tracers)
 
 # Unpack model.particles to update particle properties. See Models/LagrangianParticleTracking/LagrangianParticleTracking.jl
-TimeSteppers.step_lagrangian_particles!(model::NonhydrostaticModel, Δt) = step_lagrangian_particles!(model.particles, model, Δt)
+TimeSteppers.substep_lagrangian_particles!(model::NonhydrostaticModel, Δt, stage) = substep_lagrangian_particles!(model.particles, model, Δt, stage)
 TimeSteppers.update_lagrangian_particle_state!(model::NonhydrostaticModel) = update_lagrangian_particle_state!(model.particles, model)
 
 include("cache_nonhydrostatic_tendencies.jl")
