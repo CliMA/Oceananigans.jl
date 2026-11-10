@@ -1,9 +1,9 @@
-using Oceananigans.Grids: Face, Face, Center
-using Oceananigans.Operators: ζ₃ᶠᶠᶜ
 using Oceananigans.AbstractOperations: KernelFunctionOperation
+using Oceananigans.Grids: Center, Face
+using Oceananigans.Operators: ζ₃ᶠᶠᶜ
 
 """
-    vertical_vorticity(model::HydrostaticFreeSurfaceModel)
+$(TYPEDSIGNATURES)
 
 Return a `KernelFunctionOperation` that represents vertical vorticity for the
 `HydrostaticFreeSurfaceModel`. The kernel function is `Oceananigans.Operators.ζ₃ᶠᶠᶜ`,

@@ -34,7 +34,7 @@ Ny - 1 (center) ─▶  u₅    c₅     u₆    c₆     u₇    c₇     u₈ 
                                                          (face) (center)
 ```
 
-Note that for the `RightFaceFolded` topology used here,
+Note that for the `FaceFolded` north side used here,
 the fold is located along the y-direction faces at `j = Ny+1` (i.e., the fold
 is exactly on the northern boundary of the grid). The boundary condition
 fills the halo regions by mirroring interior values across the fold.
@@ -70,9 +70,7 @@ end
     Hy = grid.Hy
 
     for j in 1:Hy
-        @inbounds begin
-            u[i, Ny + j, k] = sign * u[i′, Ny + 1 - j, k]
-        end
+        @inbounds u[i, Ny + j, k] = sign * u[i′, Ny + 1 - j, k]
     end
 
     return nothing
@@ -102,9 +100,7 @@ end
     Hy = grid.Hy
 
     for j in 1:Hy
-        @inbounds begin
-            c[i, Ny + j, k] = sign * c[i′, Ny + 1 - j, k]
-        end
+        @inbounds c[i, Ny + j, k] = sign * c[i′, Ny + 1 - j, k]
     end
 
     return nothing
@@ -116,13 +112,17 @@ const CFLocation = Tuple{<:Center, <:Face, <:Any}
 const FFLocation = Tuple{<:Face, <:Face, <:Any}
 
 # tracers or similar fields
-@inline _fill_north_halo!(i, k, grid, c, bc::FZBC, ::CCLocation, args...) = fold_north_center_center_fpivot!(i, k, grid, bc.condition, c)
+@inline _fill_north_halo!(i, k, grid, c, bc::FZBC, ::CCLocation, args...) =
+    fold_north_center_center_fpivot!(i, k, grid, bc.condition, c)
 
 # u-velocity or similar fields
-@inline _fill_north_halo!(i, k, grid, u, bc::FZBC, ::FCLocation, args...) = fold_north_face_center_fpivot!(i, k, grid, bc.condition, u)
+@inline _fill_north_halo!(i, k, grid, u, bc::FZBC, ::FCLocation, args...) =
+    fold_north_face_center_fpivot!(i, k, grid, bc.condition, u)
 
 # v-velocity or similar fields
-@inline _fill_north_halo!(i, k, grid, v, bc::FZBC, ::CFLocation, args...) = fold_north_center_face_fpivot!(i, k, grid, bc.condition, v)
+@inline _fill_north_halo!(i, k, grid, v, bc::FZBC, ::CFLocation, args...) =
+    fold_north_center_face_fpivot!(i, k, grid, bc.condition, v)
 
 # vorticity or similar fields
-@inline _fill_north_halo!(i, k, grid, ζ, bc::FZBC, ::FFLocation, args...) = fold_north_face_face_fpivot!(i, k, grid, bc.condition, ζ)
+@inline _fill_north_halo!(i, k, grid, ζ, bc::FZBC, ::FFLocation, args...) =
+    fold_north_face_face_fpivot!(i, k, grid, bc.condition, ζ)

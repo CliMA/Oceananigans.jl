@@ -5,7 +5,7 @@ the Boussinesq and hydrostatic approximations and with an arbitrary number of tr
 equations. Physics associated with individual terms in the momentum and tracer conservation
 equations -- the background rotation rate of the equation's reference frame,
 gravitational effects associated with buoyant tracers under the Boussinesq
-approximation, generalized stresses and tracer fluxes associated with viscous and
+approximation, generalized momentum and tracer fluxes associated with viscous and
 diffusive physics, and arbitrary "forcing functions" -- are determined by the whims of the
 user.
 
@@ -40,7 +40,8 @@ via the Boussinesq approximation are
     0 & = b - \partial_z p \, , \label{eq:hydrostatic}
     \end{align}
 ```
-where ``b`` the is buoyancy, ``\boldsymbol{\tau}`` is the hydrostatic kinematic stress tensor,
+where ``b`` the is buoyancy, ``\boldsymbol{\tau}`` is the hydrostatic kinematic momentum flux
+(i.e. the negative of the hydrostatic kinematic stress tensor),
 ``\boldsymbol{F_u}`` denotes an internal forcing of the horizontal flow ``\boldsymbol{u}``,
 ``\boldsymbol{v} = \boldsymbol{u} + w \hat{\boldsymbol{z}}`` is the three-dimensional flow,
 ``p`` is kinematic pressure, ``\eta`` is the free-surface displacement, and ``\boldsymbol{f}``
@@ -66,7 +67,7 @@ The terms that appear on the right-hand side of the momentum conservation equati
 * Coriolis: ``\boldsymbol{f} \times \boldsymbol{u}``,
 * baroclinic kinematic pressure gradient: ``\boldsymbol{\nabla} p``,
 * barotropic kinematic pressure gradient: ``\boldsymbol{\nabla} (g \eta)``,
-* molecular or turbulence viscous stress: ``\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau}``, and
+* divergence of the molecular or turbulent momentum flux: ``\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau}``, and
 * an arbitrary internal source of momentum: ``\boldsymbol{F_u}``.
 
 ## The tracer conservation equation

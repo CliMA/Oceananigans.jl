@@ -1,5 +1,5 @@
 """
-    struct DiscreteBoundaryFunction{P, F} <: Function
+    struct DiscreteBoundaryFunction{P, F}
 
 A wrapper for boundary condition functions with optional parameters.
 When `parameters=nothing`, the boundary condition `func` is called with the signature
@@ -12,8 +12,8 @@ where `i, j` are the indices along the boundary,
 where `grid` is `model.grid`, `clock.time` is the current simulation time and
 `clock.iteration` is the current model iteration, and
 `model_fields` is a `NamedTuple` with `u, v, w`, the fields in `model.tracers`,
-and the fields in `model.closure_fields`, each of which is an `OffsetArray`s (or `NamedTuple`s
-of `OffsetArray`s depending on the turbulence closure) of field data.
+and the fields in `model.closure_fields`, each of which is an `AbstractOffsetArray` (or a `NamedTuple`
+of `AbstractOffsetArray`s depending on the turbulence closure) of field data.
 
 When `parameters` is not `nothing`, the boundary condition `func` is called with
 the signature
@@ -55,5 +55,5 @@ Base.summary(bf::DiscreteBoundaryFunction) = string("DiscreteBoundaryFunction ",
 Adapt.adapt_structure(to, bf::DiscreteBoundaryFunction) = DiscreteBoundaryFunction(Adapt.adapt(to, bf.func),
                                                                                    Adapt.adapt(to, bf.parameters))
 
-on_architecture(to, bf::DiscreteBoundaryFunction) = DiscreteBoundaryFunction(on_architecture(to, bf.func),
-                                                                             on_architecture(to, bf.parameters))
+Architectures.on_architecture(to, bf::DiscreteBoundaryFunction) = DiscreteBoundaryFunction(on_architecture(to, bf.func),
+                                                                                           on_architecture(to, bf.parameters))

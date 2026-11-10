@@ -1,11 +1,11 @@
 using Oceananigans.Architectures: architecture
-using Oceananigans.BuoyancyFormulations: ∂z_b, top_buoyancy_flux
-using Oceananigans.Operators
+using Oceananigans.BuoyancyFormulations: top_buoyancy_flux, ∂z_b
 using Oceananigans.Grids: inactive_node
+using Oceananigans.Operators
 using Oceananigans.Operators: ℑzᵃᵃᶜ
 using Oceananigans.Utils: time_difference_seconds
 
-import Oceananigans: prognostic_state, restore_prognostic_state!
+using Oceananigans: prognostic_state, restore_prognostic_state!
 
 struct RiBasedVerticalDiffusivity{TD, FT, R, HR} <: AbstractScalarDiffusivity{TD, VerticalFormulation, 1}
     ν₀  :: FT
@@ -207,7 +207,7 @@ function compute_closure_fields!(closure_fields, closure::FlavorOfRBVD, model; p
     tracers = buoyancy_tracers(model)
     buoyancy = buoyancy_force(model)
     velocities = model.velocities
-    top_tracer_bcs = NamedTuple(c => tracers[c].boundary_conditions.top for c in propertynames(tracers))
+    top_tracer_bcs = map(c -> c.boundary_conditions.top, tracers)
     Δt = update_previous_compute_time!(closure_fields, model)
 
     # Skip recomputation if Δt == 0 (e.g., after restoring from a checkpoint).
@@ -342,8 +342,9 @@ end
     # Set to zero on periphery and NaN within inactive region
     on_periphery = peripheral_node(i, j, k, grid, c, c, f)
     within_inactive = inactive_node(i, j, k, grid, c, c, f)
-    κc⁺ = ifelse(on_periphery, zero(grid), ifelse(within_inactive, NaN, κc⁺))
-    κu⁺ = ifelse(on_periphery, zero(grid), ifelse(within_inactive, NaN, κu⁺))
+    nan = convert(eltype(grid), NaN)
+    κc⁺ = ifelse(on_periphery, zero(grid), ifelse(within_inactive, nan, κc⁺))
+    κu⁺ = ifelse(on_periphery, zero(grid), ifelse(within_inactive, nan, κu⁺))
 
     # Update by averaging in time
     @inbounds κc[i, j, k] = (Cᵃᵛ * κc[i, j, k] + κc⁺) / (1 + Cᵃᵛ)
@@ -378,14 +379,14 @@ end
 
 const RiBasedVerticalDiffusivityFields = NamedTuple{(:κc, :κu, :Ri, :previous_compute_time)}
 
-function prognostic_state(closure_fields::RiBasedVerticalDiffusivityFields)
+function Oceananigans.prognostic_state(closure_fields::RiBasedVerticalDiffusivityFields)
     return (κc = prognostic_state(closure_fields.κc),
             κu = prognostic_state(closure_fields.κu),
             Ri = prognostic_state(closure_fields.Ri),
             previous_compute_time = closure_fields.previous_compute_time[])
 end
 
-function restore_prognostic_state!(restored::RiBasedVerticalDiffusivityFields, from)
+function Oceananigans.restore_prognostic_state!(restored::RiBasedVerticalDiffusivityFields, from)
     restore_prognostic_state!(restored.κc, from.κc)
     restore_prognostic_state!(restored.κu, from.κu)
     restore_prognostic_state!(restored.Ri, from.Ri)
@@ -393,4 +394,4 @@ function restore_prognostic_state!(restored::RiBasedVerticalDiffusivityFields, f
     return restored
 end
 
-restore_prognostic_state!(::RiBasedVerticalDiffusivityFields, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::RiBasedVerticalDiffusivityFields, ::Nothing) = nothing

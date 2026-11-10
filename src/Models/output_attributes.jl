@@ -1,10 +1,9 @@
-using Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.BuoyancyFormulations: BuoyancyForce, BuoyancyTracer, SeawaterBuoyancy, LinearEquationOfState
-
 using SeawaterPolynomials: BoussinesqEquationOfState
 
-import Oceananigans.OutputWriters: default_output_attributes
+using Oceananigans.BuoyancyFormulations: BuoyancyForce, BuoyancyTracer, LinearEquationOfState, SeawaterBuoyancy
+using Oceananigans.Grids: LatitudeLongitudeGrid, RectilinearGrid
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+using Oceananigans.OrthogonalSphericalShellGrids: OrthogonalSphericalShellGrid
 
 const BoussinesqSeawaterBuoyancy = SeawaterBuoyancy{FT, <:BoussinesqEquationOfState, T, S} where {FT, T, S}
 const BuoyancyBoussinesqEOSModel = BuoyancyForce{<:BoussinesqSeawaterBuoyancy, g} where {g}
@@ -21,6 +20,14 @@ default_velocity_attributes(::RectilinearGrid) = Dict(
 default_velocity_attributes(::LatitudeLongitudeGrid) = Dict(
     "u"            => Dict("long_name" => "Velocity in the zonal direction (+ = east).", "units" => "m/s"),
     "v"            => Dict("long_name" => "Velocity in the meridional direction (+ = north).", "units" => "m/s"),
+    "w"            => Dict("long_name" => "Velocity in the vertical direction (+ = up).", "units" => "m/s"),
+    "displacement" => Dict("long_name" => "Sea surface height displacement", "units" => "m"))
+
+# On curvilinear OSSG (TripolarGrid, RotatedLatitudeLongitudeGrid, ConformalCubedSpherePanelGrid),
+# u and v are along-grid components, not pure zonal/meridional. The labels follow that.
+default_velocity_attributes(::OrthogonalSphericalShellGrid) = Dict(
+    "u"            => Dict("long_name" => "Along-grid (curvilinear x) velocity.", "units" => "m/s"),
+    "v"            => Dict("long_name" => "Along-grid (curvilinear y) velocity.", "units" => "m/s"),
     "w"            => Dict("long_name" => "Velocity in the vertical direction (+ = up).", "units" => "m/s"),
     "displacement" => Dict("long_name" => "Sea surface height displacement", "units" => "m"))
 
@@ -46,12 +53,12 @@ default_tracer_attributes(::BuoyancyBoussinesqEOSModel) = Dict(
 ##### Specialized default_output_attributes
 #####
 
-function default_output_attributes(model::Union{NonhydrostaticModel, HydrostaticFreeSurfaceModel})
+function OutputWriters.default_output_attributes(model::Union{NonhydrostaticModel, HydrostaticFreeSurfaceModel})
     velocity_attrs = default_velocity_attributes(model.grid)
     tracer_attrs = default_tracer_attributes(model.buoyancy)
     return merge(velocity_attrs, tracer_attrs)
 end
 
-function default_output_attributes(model::ShallowWaterModel)
+function OutputWriters.default_output_attributes(model::ShallowWaterModel)
     return default_velocity_attributes(model.grid)
 end

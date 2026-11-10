@@ -38,13 +38,13 @@ Architectures.child_architecture(f::AbstractField) = child_architecture(architec
 @inline Grids.topology(f::AbstractField, args...) = topology(f.grid, args...)
 
 """
-    size(f::AbstractField)
+$(TYPEDSIGNATURES)
 
 Returns the size of an `AbstractField{LX, LY, LZ}` located at `LX, LY, LZ`.
 This is a 3-tuple of integers corresponding to the number of interior nodes
-of `f` along `x, y, z`.
+of `f` along `x, y, z`, restricted to the `indices` of `f`.
 """
-Base.size(f::AbstractField) = size(f.grid, location(f))
+Base.size(f::AbstractField) = size(f.grid, location(f), axes_indices(f))
 Base.length(f::AbstractField) = prod(size(f))
 Base.parent(f::AbstractField) = f
 
@@ -57,9 +57,12 @@ const Abstract4DField = AbstractField{<:Any, <:Any, <:Any, <:Any, <:Any, 4}
 @inline axis(index::UnitRange, N) = index
 @inline axis(index::Base.OneTo, N) = index
 
+# Fields adapted to the GPU drop their indices
+@inline axes_indices(f) = something(indices(f), (:, :, :))
+
 @inline function Base.axes(f::Abstract3DField)
     Nx, Ny, Nz = size(f)
-    ix, iy, iz = indices(f)
+    ix, iy, iz = axes_indices(f)
 
     ax = axis(ix, Nx)
     ay = axis(iy, Ny)
@@ -70,7 +73,7 @@ end
 
 @inline function Base.axes(f::Abstract4DField)
     Nx, Ny, Nz, Nt = size(f)
-    ix, iy, iz = indices(f)
+    ix, iy, iz = axes_indices(f)
 
     ax = axis(ix, Nx)
     ay = axis(iy, Ny)
@@ -81,7 +84,7 @@ end
 end
 
 """
-    total_size(field::AbstractField)
+$(TYPEDSIGNATURES)
 
 Returns a 3-tuple that gives the "total" size of a field including
 both interior points and halo points.
@@ -114,6 +117,8 @@ Grids.nodes(ψ::AbstractField; kwargs...) = nodes(ψ.grid, instantiated_location
 for f in (:+, :-)
     @eval Base.$f(ϕ::AbstractArray, ψ::AbstractField) = $f(ϕ, interior(ψ))
     @eval Base.$f(ϕ::AbstractField, ψ::AbstractArray) = $f(interior(ϕ), ψ)
+    @eval Base.$f(ϕ::StaticArray, ψ::AbstractField) = $f(ϕ, interior(ψ))
+    @eval Base.$f(ϕ::AbstractField, ψ::StaticArray) = $f(interior(ϕ), ψ)
 end
 
 const XReducedAF = AbstractField{Nothing}

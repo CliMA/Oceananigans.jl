@@ -1,10 +1,9 @@
-using Adapt, GPUArraysCore
-using Oceananigans: instantiated_location
-using Oceananigans.Fields: Center, Face
-using Oceananigans.AbstractOperations: grid_metric_operation, Ax, Ay, Az
-using Oceananigans.BoundaryConditions: BoundaryCondition, Open
+using Adapt: Adapt, adapt
 
-import Oceananigans.BoundaryConditions: update_boundary_condition!
+using Oceananigans: instantiated_location
+using Oceananigans.AbstractOperations: Ax, Ay, Az, grid_metric_operation
+using Oceananigans.BoundaryConditions: BoundaryCondition, NormalFlow
+using Oceananigans.Fields: Center, Face
 
 
 """
@@ -101,5 +100,14 @@ function (bam::BoundaryAdjacentMean)(val_side::Val, u)
     return nothing
 end
 
-const MOOBC = BoundaryCondition{<:Open, <:BoundaryAdjacentMean}
-@inline update_boundary_condition!(bc::MOOBC, val_side, u, model) = bc.condition(val_side, u)
+const MOOBC = BoundaryCondition{<:NormalFlow, <:BoundaryAdjacentMean}
+@inline BoundaryConditions.update_boundary_condition!(bc::MOOBC, val_side, u, model) = bc.condition(val_side, u)
+
+# Public dispatcher over the per-side area helpers defined in `boundary_transport.jl`.
+boundary_total_area(::Val{:west},   grid) = get_west_area(grid)
+boundary_total_area(::Val{:east},   grid) = get_east_area(grid)
+boundary_total_area(::Val{:south},  grid) = get_south_area(grid)
+boundary_total_area(::Val{:north},  grid) = get_north_area(grid)
+boundary_total_area(::Val{:bottom}, grid) = get_bottom_area(grid)
+boundary_total_area(::Val{:top},    grid) = get_top_area(grid)
+boundary_total_area(side::Symbol,   grid) = boundary_total_area(Val(side), grid)

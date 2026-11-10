@@ -4,59 +4,27 @@ export CATKEVerticalDiffusivity,
        TKEDissipationVerticalDiffusivity
 
 using Adapt: Adapt, adapt
+using DocStringExtensions: TYPEDSIGNATURES
 using GPUArraysCore: @allowscalar
-using KernelAbstractions: @kernel, @index
+using KernelAbstractions: @index, @kernel
 
-using Oceananigans: Oceananigans
-using Oceananigans.Grids: Center, Face, peripheral_node, inactive_node, inactive_cell, static_column_depthᶜᶜᵃ
+using Oceananigans: Oceananigans, prognostic_state, restore_prognostic_state!
+using Oceananigans.BoundaryConditions: BoundaryConditions, DefaultBoundaryCondition, DiscreteBoundaryFunction,
+                                       FieldBoundaryConditions, FluxBoundaryCondition, default_prognostic_bc,
+                                       fill_halo_regions!
+using Oceananigans.BuoyancyFormulations: BuoyancyForce, BuoyancyTracer, SalinitySeawaterBuoyancy, SeawaterBuoyancy,
+                                         TemperatureSeawaterBuoyancy, top_buoyancy_flux, ∂z_b
 using Oceananigans.Fields: CenterField, XFaceField, YFaceField, ZFaceField, ZeroField
-using Oceananigans.Operators: Δzᶜᶜᶜ, Δzᶜᶠᶠ, Δzᶠᶜᶠ, Δz⁻¹ᶜᶠᶜ, Δz⁻¹ᶠᶜᶜ,
-    ℑxᶜᵃᵃ, ℑxᶠᵃᵃ, ℑyᵃᶜᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶜ, ℑzᵃᵃᶠ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ
-using Oceananigans.Utils: Utils, launch!, prettysummary, get_active_cells_map
-
-using Oceananigans.BoundaryConditions:
-    BoundaryConditions,
-    default_prognostic_bc,
-    fill_halo_regions!,
-    DefaultBoundaryCondition,
-    FieldBoundaryConditions,
-    DiscreteBoundaryFunction,
-    FluxBoundaryCondition
-
-using Oceananigans.BuoyancyFormulations:
-    BuoyancyForce,
-    BuoyancyTracer,
-    SeawaterBuoyancy,
-    TemperatureSeawaterBuoyancy,
-    SalinitySeawaterBuoyancy,
-    ∂z_b,
-    top_buoyancy_flux
-
-using Oceananigans.TurbulenceClosures:
-    getclosure,
-    time_discretization,
-    AbstractScalarDiffusivity,
-    VerticallyImplicitTimeDiscretization,
-    VerticalFormulation
-
-import Oceananigans: prognostic_state, restore_prognostic_state!
-
-import Oceananigans.TurbulenceClosures:
-    validate_closure,
-    shear_production,
-    dissipation,
-    buoyancy_force,
-    buoyancy_tracers,
-    add_closure_specific_boundary_conditions,
-    closure_required_tracers,
-    compute_closure_fields!,
-    step_closure_prognostics!,
-    build_closure_fields,
-    implicit_linear_coefficient,
-    viscosity,
-    diffusivity,
-    viscosity_location,
-    diffusivity_location
+using Oceananigans.Forcings: surface_radiative_buoyancy_flux, transmitted_fraction, transmitted_fraction_derivative,
+                             transmitted_thickness
+using Oceananigans.Grids: Center, Face, inactive_cell, inactive_node, peripheral_node, static_column_depthᶜᶜᵃ
+using Oceananigans.Operators: Δzᶜᶜᶜ, Δzᶜᶠᶠ, Δzᶠᶜᶠ, Δz⁻¹ᶜᶜᶜ, Δz⁻¹ᶜᶠᶜ, Δz⁻¹ᶠᶜᶜ, ℑxᶜᵃᵃ, ℑxᶠᵃᵃ, ℑyᵃᶜᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶜ, ℑzᵃᵃᶠ,
+                              ∂zᶜᶠᶠ, ∂zᶠᶜᶠ
+using Oceananigans.TimeSteppers: TimeSteppers, time_discretization
+using Oceananigans.TurbulenceClosures: TurbulenceClosures, AbstractScalarDiffusivity, VerticalFormulation,
+                                       VerticallyImplicitTimeDiscretization, buoyancy_force, buoyancy_tracers,
+                                       dissipation, getclosure, shear_production, with_penetrative_radiation
+using Oceananigans.Utils: Utils, f32_safe_cbrt, launch!, named_tuple, prettysummary
 
 const c = Center()
 const f = Face()
@@ -139,7 +107,7 @@ end
     return (Δz_Pyⁿ + Δz_Py⁺) / 2 * Δz⁻¹ᶜᶠᶜ(i, j, k, grid)
 end
 
-@inline function shear_production(i, j, k, grid, νₑ, uⁿ, u⁺, vⁿ, v⁺)
+@inline function TurbulenceClosures.shear_production(i, j, k, grid, νₑ, uⁿ, u⁺, vⁿ, v⁺)
     # Reconstruct the shear production term in an "approximately conservative" manner
     # (ie respecting the spatial discretization and using a stencil commensurate with the
     # loss of mean kinetic energy due to shear production --- but _not_ respecting the
@@ -179,6 +147,7 @@ get_top_tracer_bcs(::SeawaterBuoyancy, tracers) = (T = tracers.T.boundary_condit
 get_top_tracer_bcs(::TemperatureSeawaterBuoyancy, tracers) = (; T = tracers.T.boundary_conditions.top)
 get_top_tracer_bcs(::SalinitySeawaterBuoyancy, tracers)    = (; S = tracers.S.boundary_conditions.top)
 
+include("penetrative_radiation.jl")
 include("tke_top_boundary_condition.jl")
 include("catke_vertical_diffusivity.jl")
 include("catke_mixing_length.jl")

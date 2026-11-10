@@ -1,9 +1,8 @@
-using Oceananigans.Grids: halo_size, topology, AbstractGrid, Flat,
-    column_depthᶜᶜᵃ, column_depthᶜᶠᵃ, column_depthᶠᶜᵃ, column_depthᶠᶠᵃ,
-    static_column_depthᶜᶜᵃ, static_column_depthᶜᶠᵃ, static_column_depthᶠᶜᵃ, static_column_depthᶠᶠᵃ
+using Oceananigans: prognostic_state, restore_prognostic_state!
+using Oceananigans.Grids: AbstractGrid, Flat, column_depthᶜᶜᵃ, column_depthᶜᶠᵃ, column_depthᶠᶜᵃ, column_depthᶠᶠᵃ,
+                          halo_size, static_column_depthᶜᶜᵃ, static_column_depthᶜᶠᵃ, static_column_depthᶠᶜᵃ,
+                          static_column_depthᶠᶠᵃ, topology
 using Oceananigans.ImmersedBoundaries: MutableGridOfSomeKind
-
-import Oceananigans: prognostic_state, restore_prognostic_state!
 
 #####
 ##### Mutable-specific vertical spacings update
@@ -23,7 +22,7 @@ barotropic_velocities(free_surface) = nothing, nothing
 barotropic_transport(free_surface)  = nothing, nothing
 
 """
-    ab2_step_grid!(grid::MutableGridOfSomeKind, model, ::ZStarCoordinate, Δt, χ)
+$(TYPEDSIGNATURES)
 
 Update z-star grid scaling factors during an AB2 time step.
 
@@ -33,12 +32,12 @@ The previous scaling `σᶜᶜ⁻` is also updated for use in tracer evolution.
 """
 function ab2_step_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordinate, Δt, χ)
     parent(grid.z.σᶜᶜ⁻) .= parent(grid.z.σᶜᶜⁿ)
-    launch!(architecture(grid), grid, surface_kernel_parameters(grid), _update_zstar_scaling!, model.free_surface.displacement, grid)
+    update_zstar_scaling!(grid, model.free_surface.displacement)
     return nothing
 end
 
 """
-    rk_substep_grid!(grid::MutableGridOfSomeKind, model, ::ZStarCoordinate, Δt)
+$(TYPEDSIGNATURES)
 
 Update z-star grid scaling factors during a split Runge-Kutta substep.
 
@@ -47,14 +46,32 @@ Similar to `ab2_step_grid!`, but only updates `σᶜᶜ⁻` on the final substep
 """
 function rk_substep_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordinate, Δt)
     parent(grid.z.σᶜᶜ⁻) .= parent(grid.z.σᶜᶜⁿ)
-    launch!(architecture(grid), grid, surface_kernel_parameters(grid), _update_zstar_scaling!, model.free_surface.displacement, grid)
+    update_zstar_scaling!(grid, model.free_surface.displacement)
     return nothing
 end
 
-# Update η in the grid
-@kernel function _update_zstar_scaling!(ηⁿ⁺¹, grid)
+"""
+$(TYPEDSIGNATURES)
+
+Store the free surface displacement `η` in `grid.z.ηⁿ` and recompute the grid
+stretching factors `σ` at all staggered locations from it.
+"""
+function update_zstar_scaling!(grid, η)
+    arch = architecture(grid)
+    parameters = surface_kernel_parameters(grid)
+    launch!(arch, grid, parameters, _update_grid_free_surface!, grid, η)
+    # the face scalings read `ηⁿ` in neighbouring columns, so they are computed in a second pass
+    launch!(arch, grid, parameters, _update_grid_scaling!, grid)
+    return nothing
+end
+
+@kernel function _update_grid_free_surface!(grid, η)
     i, j = @index(Global, NTuple)
-    @inbounds grid.z.ηⁿ[i, j, 1] = ηⁿ⁺¹[i, j, grid.Nz+1]
+    @inbounds grid.z.ηⁿ[i, j, 1] = η[i, j, grid.Nz+1]
+end
+
+@kernel function _update_grid_scaling!(grid)
+    i, j = @index(Global, NTuple)
     update_grid_scaling!(grid.z, i, j, grid)
 end
 
@@ -80,11 +97,17 @@ end
         z_coordinate.σᶠᶜⁿ[i, j, 1] = σᶠᶜ
         z_coordinate.σᶜᶠⁿ[i, j, 1] = σᶜᶠ
         z_coordinate.σᶠᶠⁿ[i, j, 1] = σᶠᶠ
+
+        z_coordinate.σ⁻¹ᶜᶜⁿ[i, j, 1] = 1 / σᶜᶜ
+        z_coordinate.σ⁻¹ᶠᶜⁿ[i, j, 1] = 1 / σᶠᶜ
+        z_coordinate.σ⁻¹ᶜᶠⁿ[i, j, 1] = 1 / σᶜᶠ
+        z_coordinate.σ⁻¹ᶠᶠⁿ[i, j, 1] = 1 / σᶠᶠ
     end
 end
 
 """
-    update_grid_vertical_velocity!(velocities, model, grid::MutableGridOfSomeKind, ::ZStarCoordinate; parameters)
+    update_grid_vertical_velocity!(velocities, model, grid::MutableGridOfSomeKind, ::ZStarCoordinate;
+                                   parameters=surface_kernel_parameters(grid))
 
 Compute the time derivative of the z-star grid stretching factor `∂t_σ`.
 
@@ -102,7 +125,7 @@ function update_grid_vertical_velocity!(velocities, model, grid::MutableGridOfSo
     # SplitExplicitFreeSurface and are calculated for other free surface models
     # Here we distinguish between the model (prognostic) velocities and the transport velocities
     # used to advect tracers...
-    if velocities === model.velocities
+    if parent(velocities.u) === parent(model.velocities.u)
         U, V = barotropic_velocities(model.free_surface)
     else
         U, V = barotropic_transport(model.free_surface)
@@ -110,15 +133,16 @@ function update_grid_vertical_velocity!(velocities, model, grid::MutableGridOfSo
 
     u, v, _ = velocities
     ∂t_σ    = grid.z.∂t_σ
+    Fη      = model.forcing.η
 
     # Update the time derivative of the vertical spacing,
     # No need to fill the halo as the scaling is updated _IN_ the halos through the parameters
-    launch!(architecture(grid), grid, parameters, _update_grid_vertical_velocity!, ∂t_σ, grid, U, V, u, v)
+    launch!(architecture(grid), grid, parameters, _update_grid_vertical_velocity!, ∂t_σ, grid, U, V, u, v, Fη, model.clock, fields(model))
 
     return nothing
 end
 
-@kernel function _update_grid_vertical_velocity!(∂t_σ, grid, U, V, u, v)
+@kernel function _update_grid_vertical_velocity!(∂t_σ, grid, U, V, u, v, Fη, clock, fields)
     i, j = @index(Global, NTuple)
     kᴺ = size(grid, 3)
 
@@ -129,8 +153,9 @@ end
     δy_V = δyᶜᶜᶜ(i, j, kᴺ, grid, Δx_qᶜᶠᶜ, barotropic_V, V, v)
 
     δh_U = (δx_U + δy_V) * Az⁻¹ᶜᶜᶜ(i, j, kᴺ, grid)
+    fη   = Fη(i, j, kᴺ+1, grid, clock, fields)
 
-    @inbounds ∂t_σ[i, j, 1] = ifelse(hᶜᶜ == 0, zero(grid), - δh_U / hᶜᶜ)
+    @inbounds ∂t_σ[i, j, 1] = ifelse(hᶜᶜ == 0, zero(grid), (- δh_U + fη) / hᶜᶜ)
 end
 
 #####
@@ -141,7 +166,7 @@ end
 scale_by_stretching_factor!(Gⁿ, tracers, grid) = nothing
 
 """
-    scale_by_stretching_factor!(Gⁿ, tracers, grid::MutableGridOfSomeKind)
+$(TYPEDSIGNATURES)
 
 Multiply tracer tendencies by the grid stretching factor `σ` for z-star coordinates.
 
@@ -150,13 +175,16 @@ This function scales tendencies after they are computed so that the time-steppin
 advances `σ * c` correctly.
 """
 function scale_by_stretching_factor!(Gⁿ, tracers, grid::MutableGridOfSomeKind)
+    scale_by_stretching_factor!(Gⁿ, grid, Val(propertynames(tracers)))
+    return nothing
+end
 
-    # Multiply the Gⁿ tendencies by the grid scaling
-    for i in propertynames(tracers)
-        @inbounds G = Gⁿ[i]
-        launch!(architecture(grid), grid, :xyz, _scale_by_stretching_factor!, G, grid)
-    end
+@inline scale_by_stretching_factor!(Gⁿ, grid, ::Val{()}) = nothing
 
+@inline function scale_by_stretching_factor!(Gⁿ, grid, ::Val{names}) where names
+    name = first(names)
+    launch!(architecture(grid), grid, :xyz, _scale_by_stretching_factor!, Gⁿ[name], grid)
+    scale_by_stretching_factor!(Gⁿ, grid, Val(Base.tail(names)))
     return nothing
 end
 
@@ -170,7 +198,7 @@ end
 #####
 
 """
-    reconcile_vertical_coordinate!(vertical_coordinate, model, grid)
+$(TYPEDSIGNATURES)
 
 Reconcile the vertical coordinate with the current free surface displacement.
 
@@ -181,7 +209,7 @@ free surface height (we assume that `∂t_σ = 0`).
 reconcile_vertical_coordinate!(::ZCoordinate, model, grid) = nothing
 
 function reconcile_vertical_coordinate!(::ZStarCoordinate, model, grid::MutableGridOfSomeKind)
-    launch!(architecture(grid), grid, surface_kernel_parameters(grid), _update_zstar_scaling!, model.free_surface.displacement, grid)
+    update_zstar_scaling!(grid, model.free_surface.displacement)
     parent(grid.z.σᶜᶜ⁻) .= parent(grid.z.σᶜᶜⁿ)
     return nothing
 end
@@ -190,10 +218,10 @@ end
 ##### Checkpointing
 #####
 
-prognostic_state(::ZCoordinate, grid) = nothing
-restore_prognostic_state!(::ZCoordinate, grid, ::Nothing) = ZCoordinate()
+Oceananigans.prognostic_state(::ZCoordinate, grid) = nothing
+Oceananigans.restore_prognostic_state!(::ZCoordinate, grid, ::Nothing) = ZCoordinate()
 
-function prognostic_state(::ZStarCoordinate, grid)
+function Oceananigans.prognostic_state(::ZStarCoordinate, grid)
     z = grid.z
     return (ηⁿ   = prognostic_state(z.ηⁿ),
             σᶜᶜⁿ = prognostic_state(z.σᶜᶜⁿ),
@@ -203,7 +231,7 @@ function prognostic_state(::ZStarCoordinate, grid)
             σᶜᶜ⁻ = prognostic_state(z.σᶜᶜ⁻))
 end
 
-function restore_prognostic_state!(::ZStarCoordinate, grid, from)
+function Oceananigans.restore_prognostic_state!(::ZStarCoordinate, grid, from)
     z = grid.z
     restore_prognostic_state!(z.ηⁿ,   from.ηⁿ)
     restore_prognostic_state!(z.σᶜᶜⁿ, from.σᶜᶜⁿ)
@@ -211,5 +239,9 @@ function restore_prognostic_state!(::ZStarCoordinate, grid, from)
     restore_prognostic_state!(z.σᶜᶠⁿ, from.σᶜᶠⁿ)
     restore_prognostic_state!(z.σᶠᶠⁿ, from.σᶠᶠⁿ)
     restore_prognostic_state!(z.σᶜᶜ⁻, from.σᶜᶜ⁻)
+    parent(z.σ⁻¹ᶜᶜⁿ) .= 1 ./ parent(z.σᶜᶜⁿ)
+    parent(z.σ⁻¹ᶠᶜⁿ) .= 1 ./ parent(z.σᶠᶜⁿ)
+    parent(z.σ⁻¹ᶜᶠⁿ) .= 1 ./ parent(z.σᶜᶠⁿ)
+    parent(z.σ⁻¹ᶠᶠⁿ) .= 1 ./ parent(z.σᶠᶠⁿ)
     return ZStarCoordinate()
 end

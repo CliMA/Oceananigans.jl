@@ -1,5 +1,5 @@
 using Oceananigans.Architectures: Architectures, on_architecture
-using Oceananigans.BoundaryConditions: BoundaryConditions, DiscreteBoundaryFunction, getbc
+using Oceananigans.BoundaryConditions: BoundaryConditions, DiscreteBoundaryFunction, total_boundary_flux, Top
 using Oceananigans.Grids: AbstractGrid, topology
 
 struct TKETopBoundaryConditionParameters{C, U}
@@ -24,7 +24,7 @@ const TKEBoundaryFunction = DiscreteBoundaryFunction{<:TKETopBoundaryConditionPa
     condition.func(i, j, k, grid, clock, fields, condition.parameters, clo, buoyancy)
 
 """
-    top_tke_flux(i, j, grid, clock, fields, parameters, closure, buoyancy)
+$(TYPEDSIGNATURES)
 
 Compute the flux of TKE through the surface / top boundary.
 Designed to be used with TKETopBoundaryConditionParameters in a FluxBoundaryCondition, eg:
@@ -45,10 +45,14 @@ See the implementation in catke_equation.jl.
 #####
 
 """ Infer tracer boundary conditions from user_bcs and tracer_names. """
-function top_tracer_boundary_conditions(grid, tracer_names, user_bcs)
-    default_tracer_bcs = NamedTuple(c => FieldBoundaryConditions(grid, (Center(), Center(), Center())) for c in tracer_names)
+Base.@constprop :aggressive function top_tracer_boundary_conditions(grid, tracer_names, user_bcs)
+    default_tracer_bcs = named_tuple(c -> FieldBoundaryConditions(grid, (Center(), Center(), Center())), tracer_names)
     bcs = merge(default_tracer_bcs, user_bcs)
-    return NamedTuple(c => bcs[c].top for c in tracer_names)
+
+    return named_tuple(tracer_names) do c
+        Base.@constprop :aggressive
+        bcs[c].top
+    end
 end
 
 """ Infer velocity boundary conditions from `user_bcs` and `tracer_names`. """
@@ -65,16 +69,18 @@ end
 """ Computes the friction velocity u★ based on fluxes of u and v. """
 @inline function friction_velocity(i, j, grid, clock, fields, velocity_bcs)
     FT = eltype(grid)
-    τx = getbc(velocity_bcs.u, i, j, grid, clock, fields)
-    τy = getbc(velocity_bcs.v, i, j, grid, clock, fields)
+    Nz = size(grid, 3)
+    τx = total_boundary_flux(velocity_bcs.u, Top(), i, j, Nz, grid, fields.u, clock, fields)
+    τy = total_boundary_flux(velocity_bcs.v, Top(), i, j, Nz, grid, fields.v, clock, fields)
     return sqrt(sqrt(τx^2 + τy^2))
 end
 
-""" Computes the convective velocity w★. """
-@inline function top_convective_turbulent_velocity_cubed(i, j, grid, clock, fields, buoyancy, tracer_bcs)
-    Jᵇ = top_buoyancy_flux(i, j, grid, buoyancy, tracer_bcs, clock, fields)
+""" Computes the convective velocity w★ over the top cell, counting the `radiation` absorbed within it. """
+@inline function top_convective_turbulent_velocity_cubed(i, j, grid, clock, fields, buoyancy, tracer_bcs, radiation = nothing)
+    Jʳ = surface_radiative_buoyancy_flux(i, j, grid, radiation, buoyancy, fields)
+    Jᵇ = top_buoyancy_flux(i, j, grid, buoyancy, tracer_bcs, clock, fields) + Jʳ
     Δz = Δzᶜᶜᶜ(i, j, grid.Nz, grid)
-    return clip(Jᵇ) * Δz
+    return ifelse(Jᵇ > 0, convective_buoyancy_production(i, j, grid, radiation, Δz, Jᵇ, Jʳ), zero(Jᵇ))
 end
 
 @inline top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple::Tuple{<:Any}, buoyancy) =
@@ -88,3 +94,21 @@ end
     top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[1], buoyancy) +
     top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[2], buoyancy) +
     top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[3], buoyancy)
+
+@inline top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple::Tuple{<:Any, <:Any, <:Any, <:Any}, buoyancy) =
+    top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[1], buoyancy) +
+    top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[2], buoyancy) +
+    top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[3], buoyancy) +
+    top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[4], buoyancy)
+
+@inline top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple::Tuple{<:Any, <:Any, <:Any, <:Any, <:Any}, buoyancy) =
+    top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[1], buoyancy) +
+    top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[2], buoyancy) +
+    top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[3], buoyancy) +
+    top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[4], buoyancy) +
+    top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[5], buoyancy)
+
+# Longer tuples recurse down to the unrolled methods above
+@inline top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple::Tuple, buoyancy) =
+    top_tke_flux(i, j, grid, clock, fields, parameters, first(closure_tuple), buoyancy) +
+    top_tke_flux(i, j, grid, clock, fields, parameters, Base.tail(closure_tuple), buoyancy)

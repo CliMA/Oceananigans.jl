@@ -1,11 +1,9 @@
-using Statistics
+using Statistics: Statistics, mean
 
 using Oceananigans: instantiated_location
-using Oceananigans.Fields: reduced_location
+using Oceananigans.Fields: Fields, reduced_location, conditional_length
 
-import Oceananigans.Fields: conditional_length
-
-@inline conditional_length(fts::FieldTimeSeries) = length(fts) * conditional_length(fts[1])
+@inline Fields.conditional_length(fts::FieldTimeSeries) = length(fts) * conditional_length(fts[1])
 
 #####
 ##### Methods

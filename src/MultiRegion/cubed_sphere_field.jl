@@ -19,4 +19,4 @@ const AbstractCubedSphereField{LX, LY, LZ} =
                   CubedSphereField{LX, LY, LZ}}
 
 Base.summary(::AbstractCubedSphereField{LX, LY, LZ}) where {LX, LY, LZ} =
-    "CubedSphereField{$LX, $LY, $LZ}"
+    "CubedSphereField{$(nameof(LX)), $(nameof(LY)), $(nameof(LZ))}"

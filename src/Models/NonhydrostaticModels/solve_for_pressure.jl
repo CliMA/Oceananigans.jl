@@ -1,10 +1,8 @@
-using Oceananigans.Operators
 using Oceananigans.DistributedComputations: DistributedFFTBasedPoissonSolver
 using Oceananigans.Grids: XDirection, YDirection, ZDirection, inactive_cell
-using Oceananigans.Solvers: FFTBasedPoissonSolver, FourierTridiagonalPoissonSolver
-using Oceananigans.Solvers: ConjugateGradientPoissonSolver
-using Oceananigans.Solvers: solve!
-using Oceananigans.Solvers: precondition!
+using Oceananigans.Operators: Vᶜᶜᶜ, divᶜᶜᶜ, Azᶜᶜᶠ, Δxᶜᶜᶜ, Δyᶜᶜᶜ, Δzᶜᶜᶜ, Δzᵃᵃᶜ, Δzᵃᵃᶠ, Δz⁻¹ᵃᵃᶠ, ∂xᶠᶜᶜ, ∂yᶜᶠᶜ, ∂zᶜᶜᶠ
+using Oceananigans.Solvers: ConjugateGradientPoissonSolver, FFTBasedPoissonSolver, FourierTridiagonalPoissonSolver,
+                            solve!
 
 #####
 ##### Calculate the right-hand-side of the non-hydrostatic pressure Poisson equation.
@@ -83,9 +81,6 @@ add_inhomogeneous_boundary_terms!(rhs, ::Nothing, grid, Ũ, Δt; area_weighted=
         num = η[i, j, Nz+1] + Δt * w̃[i, j, Nz+1]
         den = Δt^2 + Δzᶠ / 2g
         rhs[i, j, Nz] -= active * weight * Δt * (num / den)
-        # rhs[i, j, Nz] -= Δt * (num / den)
-        # rhs[i, j, Nz] -= active * Az * Δt * (num / den)
-        # rhs[i, j, Nz] -= active * Δt * (num / den)
     end
 end
 
@@ -105,8 +100,8 @@ function compute_source_term!(solver::FourierTridiagonalPoissonSolver, free_surf
     tdir = solver.batched_tridiagonal_solver.tridiagonal_direction
     launch!(arch, grid, :xyz, _fourier_tridiagonal_source_term!, rhs, tdir, grid, Ũ)
 
-    # Add the inhomgeneous terms on the top boundary associated with an implicit
-    # free surface formulation represneting a Robin boundary condition on pressure.
+    # Add the inhomogeneous terms on the top boundary associated with an implicit
+    # free surface formulation representing a Robin boundary condition on pressure.
     add_inhomogeneous_boundary_terms!(rhs, free_surface, grid, Ũ, Δt; area_weighted=false)
 
     return nothing
@@ -132,9 +127,9 @@ function solve_for_pressure!(pressure, solver, free_surface, Ũ, Δt)
     return pressure
 end
 
-update_fourier_tridiagonal_solver!(solver, ::Nothing, Ũ, Δt) = nothing
+update_fourier_tridiagonal_solver!(::FourierTridiagonalPoissonSolver, ::Nothing, Ũ, Δt) = nothing
 
-function update_fourier_tridiagonal_solver!(solver::FourierTridiagonalPoissonSolver, free_surface, Ũ, Δt)         # ADD fourier tridiagonal solver 
+function update_fourier_tridiagonal_solver!(solver::FourierTridiagonalPoissonSolver, free_surface, Ũ, Δt)         
     g = free_surface.gravitational_acceleration
     η = free_surface.displacement
     λx, λy = solver.poisson_eigenvalues
@@ -153,7 +148,7 @@ update_fourier_tridiagonal_solver!(solver, free_surface, Ũ, Δt) = nothing
     Δzᶠ = Δzᵃᵃᶠ(i, j, Nz+1, grid)
     Δzᶜ = Δzᵃᵃᶜ(i, j, Nz, grid)
     den = g * Δt^2 + Δzᶠ / 2
-    @inbounds diagonal[i, j, Nz] = - 1 / den - 1/Δzᵃᵃᶠ(i, j, Nz, grid) - Δzᶜ * (λx[i] + λy[j])
+    @inbounds diagonal[i, j, Nz] = - 1 / den - Δz⁻¹ᵃᵃᶠ(i, j, Nz, grid) - Δzᶜ * (λx[i] + λy[j])
 end
 
 function solve_for_pressure!(pressure, solver::ConjugateGradientPoissonSolver, free_surface, Ũ, Δt)
@@ -177,18 +172,8 @@ function solve_for_pressure!(pressure, solver::ConjugateGradientPoissonSolver, f
     arch = architecture(grid)
     launch!(arch, grid, :xyz, _cg_source_term!, rhs, grid, Ũ)
 
-    # ADD
     add_inhomogeneous_boundary_terms!(rhs, free_surface, grid, Ũ, Δt; area_weighted=true)
 
-    # η = free_surface.displacement
-    Nz = grid.Nz
-    # println("max|w̃ at top| = ", maximum(abs, interior(Ũ.w, :, :, Nz+1)))
-
     result = solve!(pressure, solver.conjugate_gradient_solver, rhs, free_surface, Δt)
-
-    # did cg converge?
-    # @show Δt
-    # @show solver.conjugate_gradient_solver.iteration 
     return result
-    # return solve!(pressure, solver.conjugate_gradient_solver, rhs)
 end

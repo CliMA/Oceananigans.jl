@@ -5,13 +5,15 @@ const PossibleDiffusivity = Union{Number, Function, DiscreteDiffusionFunction, A
 @inline tracer_diffusivities(tracer_names, κ::PossibleDiffusivity) = with_tracers(tracer_names, NamedTuple(), (tracer_names, init) -> κ)
 @inline tracer_diffusivities(tracer_names, ::Nothing) = nothing
 
-@inline function tracer_diffusivities(tracer_names, user_κ::NamedTuple)
+Base.@constprop :aggressive @inline function tracer_diffusivities(tracer_names, user_κ::NamedTuple)
     all(name ∈ propertynames(user_κ) for name in tracer_names) ||
         throw(ArgumentError("Tracer diffusivities or diffusivity parameters must either be a constants
                             or a `NamedTuple` with a value for every tracer!"))
 
-    materialized_κ = NamedTuple(name => user_κ[name] for name in tracer_names)
-    return materialized_κ
+    return named_tuple(tracer_names) do name
+        Base.@constprop :aggressive
+        user_κ[name]
+    end
 end
 
 @inline convert_diffusivity(FT, κ::Nothing; kw...) = nothing

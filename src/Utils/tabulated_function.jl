@@ -1,9 +1,9 @@
 using Adapt
-using KernelAbstractions: @kernel, @index
-import KernelAbstractions
 using DocStringExtensions: TYPEDFIELDS, TYPEDSIGNATURES
-using Oceananigans.Architectures: CPU, device
-import Oceananigans.Architectures: on_architecture
+import KernelAbstractions
+using KernelAbstractions: @index, @kernel
+
+using Oceananigans.Architectures: CPU, device, on_architecture
 
 """
     $(TYPEDFIELDS)
@@ -414,7 +414,7 @@ end
 ##### GPU/architecture support
 #####
 
-function on_architecture(arch, f::TabulatedFunction{N}) where N
+function Architectures.on_architecture(arch, f::TabulatedFunction{N}) where N
     new_table = on_architecture(arch, f.table)
     return TabulatedFunction{N, typeof(f.func), typeof(new_table), typeof(f.range), typeof(f.inverse_Δ)}(
         f.func, new_table, f.range, f.inverse_Δ)

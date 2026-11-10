@@ -1,11 +1,9 @@
+using Oceananigans: location
 using Oceananigans.Architectures: Architectures, on_architecture
 using Oceananigans.Operators: index_and_interp_dependencies
-import Oceananigans.Operators: interpolation_code
 using Oceananigans.Utils: Utils, tupleit, user_function_arguments, prettysummary
 using Oceananigans.Grids: XFlatGrid, YFlatGrid, ZFlatGrid, YZFlatGrid, XZFlatGrid, XYFlatGrid
 using Oceananigans.Grids: ξnode, ηnode, rnode
-
-import Oceananigans: location
 
 struct LeftBoundary end
 struct RightBoundary end
@@ -21,23 +19,23 @@ preventing dispatch ambiguities on grids with `Flat` topologies.
 struct BoundaryAdjacent end
 
 # BoundaryAdjacent acts like Nothing for interpolation purposes
-interpolation_code(::Type{BoundaryAdjacent}) = :ᵃ
-interpolation_code(::BoundaryAdjacent) = :ᵃ
-interpolation_code(::BoundaryAdjacent, to) = :ᵃ
-interpolation_code(from, ::BoundaryAdjacent) = :ᵃ
-interpolation_code(::BoundaryAdjacent, ::BoundaryAdjacent) = :ᵃ
-interpolation_code(::BoundaryAdjacent, ::Nothing) = :ᵃ
-interpolation_code(::Nothing, ::BoundaryAdjacent) = :ᵃ
+Oceananigans.Operators.interpolation_code(::Type{BoundaryAdjacent}) = :ᵃ
+Oceananigans.Operators.interpolation_code(::BoundaryAdjacent) = :ᵃ
+Oceananigans.Operators.interpolation_code(::BoundaryAdjacent, to) = :ᵃ
+Oceananigans.Operators.interpolation_code(from, ::BoundaryAdjacent) = :ᵃ
+Oceananigans.Operators.interpolation_code(::BoundaryAdjacent, ::BoundaryAdjacent) = :ᵃ
+Oceananigans.Operators.interpolation_code(::BoundaryAdjacent, ::Nothing) = :ᵃ
+Oceananigans.Operators.interpolation_code(::Nothing, ::BoundaryAdjacent) = :ᵃ
 
 """
-    struct ContinuousBoundaryFunction{X, Y, Z, I, F, P, D, N, ℑ} <: Function
+    struct ContinuousBoundaryFunction{X, Y, Z, S, F, P, D, N, ℑ} <: Function
 
 A wrapper for the user-defined boundary condition function `func` at location
-`X, Y, Z`. `I` denotes the boundary-normal index (`I=1` at western boundaries,
-`I=grid.Nx` at eastern boundaries, etc). `F, P, D, N, ℑ` are, respectively, the
-user-defined function, parameters, field dependencies, indices of the field dependencies
-in `model_fields`, and interpolation operators for interpolating `model_fields` to the
-location at which the boundary condition is applied.
+`X, Y, Z`. `S` denotes the boundary side (`LeftBoundary` or `RightBoundary`).
+`F, P, D, N, ℑ` are, respectively, the user-defined function, parameters, field
+dependencies, indices of the field dependencies in `model_fields`, and interpolation
+operators for interpolating `model_fields` to the location at which the boundary
+condition is applied.
 """
 struct ContinuousBoundaryFunction{X, Y, Z, S, F, P, D, N, ℑ}
                           func :: F
@@ -63,7 +61,7 @@ struct ContinuousBoundaryFunction{X, Y, Z, S, F, P, D, N, ℑ}
     end
 end
 
-location(::ContinuousBoundaryFunction{X, Y, Z}) where {X, Y, Z} = X, Y, Z
+Oceananigans.location(::ContinuousBoundaryFunction{X, Y, Z}) where {X, Y, Z} = X, Y, Z
 
 destantiate(t::T) where T = T
 
@@ -72,13 +70,12 @@ destantiate(t::T) where T = T
 #####
 
 """
-    regularize_boundary_condition(bc::BoundaryCondition{C, <:ContinuousBoundaryFunction},
-                                  topo, loc, dim, I, prognostic_field_names) where C
+$(TYPEDSIGNATURES)
 
 Regularizes `bc.condition` for location `loc`, boundary index `I`, and `prognostic_field_names`,
 returning `BoundaryCondition(C, regularized_condition)`.
 
-The regularization of `bc.condition::ContinuousBoundaryFunction` requries
+The regularization of `bc.condition::ContinuousBoundaryFunction` requires
 
 1. Setting the boundary location to `LX, LY, LZ`.
    The location in the boundary-normal direction is `BoundaryAdjacent`.
@@ -136,13 +133,16 @@ end
 @inline z_boundary_node(i, j, k, grid::YFlatGrid,  ℓx, ℓy) = tuple(ξnode(i, j, k, grid, ℓx, nothing, Face()))
 @inline z_boundary_node(i, j, k, grid::XYFlatGrid, ℓx, ℓy) = tuple()
 
-const XBoundaryFunction{LY, LZ, S} = ContinuousBoundaryFunction{BoundaryAdjacent, LY, LZ, S} where {LY, LZ, S}
-const YBoundaryFunction{LX, LZ, S} = ContinuousBoundaryFunction{LX, BoundaryAdjacent, LZ, S} where {LX, LZ, S}
-const ZBoundaryFunction{LX, LY, S} = ContinuousBoundaryFunction{LX, LY, BoundaryAdjacent, S} where {LX, LY, S}
+# Locations of the two boundary-tangential directions
+const PossibleLocation = Union{Nothing, Center, Face}
+
+const XBoundaryFunction{LY, LZ, S} = ContinuousBoundaryFunction{BoundaryAdjacent, LY, LZ, S} where {LY <: PossibleLocation, LZ <: PossibleLocation, S}
+const YBoundaryFunction{LX, LZ, S} = ContinuousBoundaryFunction{LX, BoundaryAdjacent, LZ, S} where {LX <: PossibleLocation, LZ <: PossibleLocation, S}
+const ZBoundaryFunction{LX, LY, S} = ContinuousBoundaryFunction{LX, LY, BoundaryAdjacent, S} where {LX <: PossibleLocation, LY <: PossibleLocation, S}
 
 # Return ContinuousBoundaryFunction on east or west boundaries.
 @inline function getbc(cbf::XBoundaryFunction{LY, LZ, S}, j::Integer, k::Integer,
-                       grid::AbstractGrid, clock, model_fields, args...) where {LY, LZ, S}
+                       grid::AbstractGrid, clock, model_fields, args...) where {LY <: PossibleLocation, LZ <: PossibleLocation, S}
 
     i, i′ = domain_boundary_indices(S(), grid.Nx)
     args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)
@@ -153,7 +153,7 @@ end
 
 # Return ContinuousBoundaryFunction on south or north boundaries.
 @inline function getbc(cbf::YBoundaryFunction{LX, LZ, S}, i::Integer, k::Integer,
-                       grid::AbstractGrid, clock, model_fields, args...) where {LX, LZ, S}
+                       grid::AbstractGrid, clock, model_fields, args...) where {LX <: PossibleLocation, LZ <: PossibleLocation, S}
 
     j, j′ = domain_boundary_indices(S(), grid.Ny)
     args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)
@@ -164,7 +164,7 @@ end
 
 # Return ContinuousBoundaryFunction on bottom or top boundaries.
 @inline function getbc(cbf::ZBoundaryFunction{LX, LY, S}, i::Integer, j::Integer,
-                       grid::AbstractGrid, clock, model_fields, args...) where {LX, LY, S}
+                       grid::AbstractGrid, clock, model_fields, args...) where {LX <: PossibleLocation, LY <: PossibleLocation, S}
 
     k, k′ = domain_boundary_indices(S(), grid.Nz)
     args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)
@@ -179,7 +179,7 @@ end
 
 # Return ContinuousBoundaryFunction on the east or west interface of a cell adjacent to an immersed boundary
 @inline function getbc(cbf::XBoundaryFunction{LY, LZ, S}, i::Integer, j::Integer, k::Integer,
-                       grid::AbstractGrid, clock, model_fields, args...) where {LY, LZ, S}
+                       grid::AbstractGrid, clock, model_fields, args...) where {LY <: PossibleLocation, LZ <: PossibleLocation, S}
 
     i′ = cell_boundary_index(S(), i)
     args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)
@@ -190,7 +190,7 @@ end
 
 # Return ContinuousBoundaryFunction on the south or north interface of a cell adjacent to an immersed boundary
 @inline function getbc(cbf::YBoundaryFunction{LX, LZ, S}, i::Integer, j::Integer, k::Integer,
-                       grid::AbstractGrid, clock, model_fields, args...) where {LX, LZ, S}
+                       grid::AbstractGrid, clock, model_fields, args...) where {LX <: PossibleLocation, LZ <: PossibleLocation, S}
 
     j′ = cell_boundary_index(S(), j)
     args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)
@@ -201,7 +201,7 @@ end
 
 # Return ContinuousBoundaryFunction on the bottom or top interface of a cell adjacent to an immersed boundary
 @inline function getbc(cbf::ZBoundaryFunction{LX, LY, S}, i::Integer, j::Integer, k::Integer,
-                       grid::AbstractGrid, clock, model_fields, args...) where {LX, LY, S}
+                       grid::AbstractGrid, clock, model_fields, args...) where {LX <: PossibleLocation, LY <: PossibleLocation, S}
 
     k′ = cell_boundary_index(S(), k)
     args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)

@@ -1,9 +1,10 @@
-using Oceananigans: fields
-using Oceananigans.BoundaryConditions: getbc, bc_str
-using Oceananigans.Fields: Field, location
-using Oceananigans.AbstractOperations: KernelFunctionOperation
-using Oceananigans.Utils: Utils
 using Adapt: Adapt
+
+using Oceananigans: fields
+using Oceananigans.AbstractOperations: KernelFunctionOperation
+using Oceananigans.BoundaryConditions: bc_str, getbc
+using Oceananigans.Fields: Field, location
+using Oceananigans.Utils: Utils
 
 struct BoundaryConditionKernelFunction{Side, BC}
     bc :: BC
@@ -50,7 +51,7 @@ const BoundaryConditionField{LX, LY, LZ} =
     Field{LX, LY, LZ, <:BoundaryConditionOperation} where {LX, LY, LZ}
 
 """
-    BoundaryConditionOperation(field::Field, side::Symbol, model::AbstractModel)
+$(TYPEDSIGNATURES)
 
 Returns a `KernelFunctionOperation` that evaluates a `field`'s boundary condition
 on the specified `side` using the properties of `model`.
@@ -91,7 +92,7 @@ c_flux_field = Field(c_flux_op)
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: Nothing, top: Nothing, immersed: Nothing
 ├── operand: KernelFunctionOperation at (Center, Center, ⋅)
 ├── status: time=0.0
-└── data: 22×22×1 OffsetArray(::Array{Float64, 3}, -2:19, -2:19, 1:1) with eltype Float64 with indices -2:19×-2:19×1:1
+└── data: 22×22×1 StaticStridesOffsetArray(::Array{Float64, 3}, -2:19, -2:19, 1:1) with eltype Float64 with indices -2:19×-2:19×1:1
     └── max=0.980785, min=-0.980785, mean=1.0842e-19
 ```
 """
