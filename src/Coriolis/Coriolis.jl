@@ -6,6 +6,7 @@ export
     ActiveWeightedEnstrophyConserving, ActiveWeightedEnergyConserving, TriadScheme, DualGridScheme,
     x_f_cross_U, y_f_cross_U, z_f_cross_U
 
+using DocStringExtensions: MethodSignatures
 using Printf: @sprintf
 using Adapt: Adapt
 using Oceananigans: Oceananigans
