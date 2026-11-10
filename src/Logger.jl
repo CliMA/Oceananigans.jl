@@ -2,6 +2,7 @@ module Logger
 
 export OceananigansLogger
 
+using DocStringExtensions: MethodSignatures
 using Dates: Dates
 using Logging: Logging
 using Crayons: Crayons, Crayon
@@ -22,7 +23,7 @@ struct OceananigansLogger <: Logging.AbstractLogger
 end
 
 """
-    OceananigansLogger(stream::IO=stdout, level=Logging.Info; show_info_source=false)
+$(MethodSignatures(; defaults = true))
 
 Based on Logging.SimpleLogger, it tries to log all messages in the following format:
 
