@@ -24,7 +24,8 @@ OceananigansReactantExt = Base.get_extension(Oceananigans, :OceananigansReactant
 bottom_height(x, y) = - 0.5
 
 function r_run!(sim, r_time_step!, r_first_time_step!)
-    stop_iteration = sim.stop_iteration
+    # A device number on a Reactant Simulation: this eager loop bounds its range on the host
+    stop_iteration = Int(sim.stop_iteration)
     start_iteration = iteration(sim) + 1
     for n = start_iteration:stop_iteration
         if n == 1
