@@ -43,7 +43,7 @@ export
     BoundaryCondition,
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, NormalFlowBoundaryCondition, GravityWaveRadiationBoundaryCondition,
     IMEXFluxTimeDiscretization, IMEXFluxBoundaryCondition,
-    PerturbationAdvection, GravityWaveRadiation, NormalRadiation, SurfaceWaveRadiation,
+    PerturbationAdvection, BalancedTransport, GravityWaveRadiation, NormalRadiation, SurfaceWaveRadiation,
     TidalHarmonics, tidal_forcing, tidal_boundary_conditions, tidal_atlas_constants,
     FieldBoundaryConditions,
 
@@ -86,7 +86,8 @@ export
     viscosity, diffusivity,
 
     # Lagrangian particle tracking
-    LagrangianParticles, DroguedParticleDynamics,
+    LagrangianParticles, DroguedParticleDynamics, CountingSort, ComparisonSort,
+    ParticleBoundaryConditions, ReflectingBoundary, AbsorbingBoundary,
 
     # Models
     NonhydrostaticModel, HydrostaticFreeSurfaceModel, ShallowWaterModel,
@@ -286,8 +287,8 @@ include("Simulations/Simulations.jl")
 include("Coriolis/Coriolis.jl")
 include("BuoyancyFormulations/BuoyancyFormulations.jl")
 include("StokesDrifts.jl")
-include("TurbulenceClosures/TurbulenceClosures.jl")
 include("Forcings/Forcings.jl")
+include("TurbulenceClosures/TurbulenceClosures.jl")
 include("Biogeochemistry.jl")
 
 # TODO: move above

@@ -11,6 +11,7 @@ module OceananigansZarrExt
 
 import Zarr
 using Printf: @sprintf
+using DocStringExtensions: MethodSignatures
 using OrderedCollections: OrderedDict
 
 using Dates: Dates, AbstractTime, UTC, now, DateTime
@@ -75,7 +76,7 @@ using Oceananigans.OutputWriters:
 using Oceananigans.Utils:
     materialize_schedule,
     versioninfo_with_gpu, oceananigans_versioninfo,
-    prettykeys, prettytime
+    prettykeys, prettytime, time_difference_in_seconds
 
 const c = Center()
 const f = Face()

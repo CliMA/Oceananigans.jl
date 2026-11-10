@@ -53,7 +53,8 @@ end
     end
 
     @testset "Import via Owner" begin
-        @test ExplicitImports.check_all_explicit_imports_via_owners(Oceananigans) === nothing
+        # `@atomic` is owned by Atomix, which is not a direct dependency; KernelAbstractions re-exports it
+        @test ExplicitImports.check_all_explicit_imports_via_owners(Oceananigans; ignore=(Symbol("@atomic"),)) === nothing
     end
 
     @testset "Stale Explicit Imports" begin

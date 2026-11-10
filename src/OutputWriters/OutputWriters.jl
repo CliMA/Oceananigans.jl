@@ -10,7 +10,7 @@ export
     TimeInterval, IterationInterval, WallTimeInterval, AveragedTimeInterval,
     FilteredTimeInterval, AbstractFilterKernel, LanczosKernel, BoxcarKernel, HanningKernel
 
-using DocStringExtensions: TYPEDSIGNATURES
+using DocStringExtensions: MethodSignatures, TYPEDSIGNATURES
 using OffsetArrays: OffsetArrays, AbstractOffsetArray
 using OrderedCollections: OrderedDict
 

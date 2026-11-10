@@ -415,12 +415,7 @@ end
 struct DefaultPreconditioner end
 
 """
-    ConjugateGradientPoissonSolver(grid;
-                                   preconditioner = DefaultPreconditioner(),
-                                   reltol = sqrt(eps(grid)),
-                                   abstol = sqrt(eps(grid)),
-                                   enforce_gauge_condition! = ZeroMeanGaugeCondition(grid),
-                                   kw...)
+$(MethodSignatures(; defaults = true))
 
 Creates a `ConjugateGradientPoissonSolver` on `grid` using a `preconditioner`.
 `ConjugateGradientPoissonSolver` is iterative, and will stop when both the relative error in the
@@ -659,8 +654,8 @@ end
 
 Construct a block-diagonal preconditioner for the `ConjugateGradientPoissonSolver` that, for
 each horizontal column `(i, j)`, exactly solves the vertical tridiagonal sub-system of the
-symmetric volume-weighted Laplacian `V∇²` while discarding horizontal couplings (Marshall et
-al. 1997, §4).
+symmetric volume-weighted Laplacian `V∇²` while discarding horizontal couplings
+([Marshall et al., 1997](@cite Marshall97FV), §4).
 
 For each horizontal column `(i, j)` the preconditioning system solved is
 
@@ -687,6 +682,12 @@ in most scenarios.
 
 The same `grid` must be passed to both `ColumnwiseTridiagonalPreconditioner` and the
 `ConjugateGradientPoissonSolver` that uses it.
+
+References
+==========
+* Marshall, J., Adcroft, A., Hill, C., Perelman, L., & Heisey, C. (1997). "A finite-volume,
+  incompressible Navier Stokes model for studies of the ocean on parallel computers."
+  Journal of Geophysical Research: Oceans, 102(C3), 5753-5766.
 """
 function ColumnwiseTridiagonalPreconditioner(grid::AbstractGrid)
     solver = BatchedTridiagonalSolver(grid; lower_diagonal = ColumnwiseTridiagonalLowerDiagonal(),

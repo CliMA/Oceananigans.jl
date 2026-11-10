@@ -46,7 +46,7 @@ end
 Base.summary(r::Average) = string("Average of ", summary(r.operand), " over dims ", r.dims)
 
 """
-    Average(field::AbstractField; dims=:, condition=nothing, mask=0)
+$(MethodSignatures(; defaults = true))
 
 Return `Reduction` representing a spatial average of `field` over `dims`.
 
@@ -95,7 +95,7 @@ const Integral = Scan{<:Integrating}
 Base.summary(r::Integral) = string("Integral of ", summary(r.operand), " over dims ", r.dims)
 
 """
-    Integral(field::AbstractField; dims=:, condition=nothing, mask=0)
+$(MethodSignatures(; defaults = true))
 
 
 Return a `Reduction` representing a spatial integral of `field` over `dims`.
@@ -155,7 +155,7 @@ const CumulativeIntegral = Scan{<:CumulativelyIntegrating}
 Base.summary(c::CumulativeIntegral) = string("CumulativeIntegral of ", summary(c.operand), " over dims ", c.dims)
 
 """
-    CumulativeIntegral(field::AbstractField; dims, reverse=false, condition=nothing, mask=0)
+$(MethodSignatures(; defaults = true))
 
 Return an `Accumulation` representing the cumulative spatial integral of `field` over `dims`.
 

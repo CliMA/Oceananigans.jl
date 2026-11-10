@@ -2,7 +2,7 @@ using KernelAbstractions: @kernel, @index
 using OrderedCollections: OrderedDict
 
 struct LatitudeLongitudeGrid{FT, TX, TY, TZ, Z, DXF, DXC, XF, XC, DYF, DYC, YF, YC,
-                             DXCC, DXFC, DXCF, DXFF, DYFC, DYCF, Arch, I, SZ} <: AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Z, Arch, SZ}
+                             DXCC, DXFC, DXCF, DXFF, DYFC, DYCF, Arch, I, SZ, SP, NP} <: AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Z, Arch, SZ}
     architecture :: Arch
     Nx :: I
     Ny :: I
@@ -47,6 +47,10 @@ struct LatitudeLongitudeGrid{FT, TX, TY, TZ, Z, DXF, DXC, XF, XC, DYF, DYC, YF, 
     Az⁻¹ᶠᶠᵃ :: DXFF
     # Spherical radius
     radius :: FT
+    # `Pole()` where the southern or northern boundary is a pole, else `nothing`. Neither holds a number,
+    # so both stay on the host when the latitudes are traced
+    south_pole :: SP
+    north_pole :: NP
 end
 
 LatitudeLongitudeGrid{TX, TY, TZ}(arch, Nλ, Nφ, Nz, Hλ, Hφ, Hz, args...) where {TX, TY, TZ} =
@@ -69,17 +73,19 @@ function LatitudeLongitudeGrid{TX, TY, TZ, SZ}(architecture::Arch,
                                                Δy⁻¹ᶠᶜᵃ :: DYFC, Δy⁻¹ᶜᶠᵃ :: DYCF,
                                                Az⁻¹ᶜᶜᵃ :: DXCC, Az⁻¹ᶠᶜᵃ :: DXFC,
                                                Az⁻¹ᶜᶠᵃ :: DXCF, Az⁻¹ᶠᶠᵃ :: DXFF,
-                                               radius :: FT) where {SZ, Arch, FT, TX, TY, TZ, Z,
+                                               radius :: FT,
+                                               south_pole :: SP = find_south_pole(TY, φᵃᶠᵃ),
+                                               north_pole :: NP = find_north_pole(TY, Nφ, φᵃᶠᵃ)) where {SZ, Arch, FT, TX, TY, TZ, Z,
                                                                     DXF, DXC, XF, XC,
                                                                     DYF, DYC, YF, YC,
                                                                     DXFC, DXCF,
                                                                     DXFF, DXCC,
-                                                                    DYFC, DYCF, I}
+                                                                    DYFC, DYCF, I, SP, NP}
     return LatitudeLongitudeGrid{FT, TX, TY, TZ, Z,
                                  DXF, DXC, XF, XC,
                                  DYF, DYC, YF, YC,
                                  DXCC, DXFC, DXCF, DXFF,
-                                 DYFC, DYCF, Arch, I, SZ}(architecture,
+                                 DYFC, DYCF, Arch, I, SZ, SP, NP}(architecture,
                                                           Nλ, Nφ, Nz,
                                                           Hλ, Hφ, Hz,
                                                           Lλ, Lφ, Lz,
@@ -90,14 +96,17 @@ function LatitudeLongitudeGrid{TX, TY, TZ, SZ}(architecture::Arch,
                                                           Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ,
                                                           Δx⁻¹ᶜᶜᵃ, Δx⁻¹ᶠᶜᵃ, Δx⁻¹ᶜᶠᵃ, Δx⁻¹ᶠᶠᵃ,
                                                           Δy⁻¹ᶠᶜᵃ, Δy⁻¹ᶜᶠᵃ,
-                                                          Az⁻¹ᶜᶜᵃ, Az⁻¹ᶠᶜᵃ, Az⁻¹ᶜᶠᵃ, Az⁻¹ᶠᶠᵃ, radius)
+                                                          Az⁻¹ᶜᶜᵃ, Az⁻¹ᶠᶜᵃ, Az⁻¹ᶜᶠᵃ, Az⁻¹ᶠᶠᵃ, radius,
+                                                          south_pole, north_pole)
 end
 
 function LatitudeLongitudeGrid{TX, TY, TZ, SZ}(architecture, Nλ, Nφ, Nz, Hλ, Hφ, Hz, Lλ, Lφ, Lz,
                                                Δλᶠᵃᵃ, Δλᶜᵃᵃ, λᶠᵃᵃ, λᶜᵃᵃ,
                                                Δφᵃᶠᵃ, Δφᵃᶜᵃ, φᵃᶠᵃ, φᵃᶜᵃ, z,
                                                Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ,
-                                               Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, radius) where {TX, TY, TZ, SZ}
+                                               Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, radius,
+                                               south_pole = find_south_pole(TY, φᵃᶠᵃ),
+                                               north_pole = find_north_pole(TY, Nφ, φᵃᶠᵃ)) where {TX, TY, TZ, SZ}
 
     metrics = (Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ)
 
@@ -107,8 +116,23 @@ function LatitudeLongitudeGrid{TX, TY, TZ, SZ}(architecture, Nλ, Nφ, Nz, Hλ, 
     return LatitudeLongitudeGrid{TX, TY, TZ, SZ}(architecture, Nλ, Nφ, Nz, Hλ, Hφ, Hz, Lλ, Lφ, Lz,
                                                  Δλᶠᵃᵃ, Δλᶜᵃᵃ, λᶠᵃᵃ, λᶜᵃᵃ,
                                                  Δφᵃᶠᵃ, Δφᵃᶜᵃ, φᵃᶠᵃ, φᵃᶜᵃ, z,
-                                                 metrics..., reciprocal_metrics..., radius)
+                                                 metrics..., reciprocal_metrics..., radius, south_pole, north_pole)
 end
+
+"""
+    Pole()
+
+The value of a `LatitudeLongitudeGrid`'s `south_pole` or `north_pole` when that boundary is a pole,
+at latitude ±90; the value is `nothing` otherwise. Fields take polar boundary conditions there.
+"""
+struct Pole end
+
+pole_at(φ, φpole) = φ ≈ φpole ? Pole() : nothing
+
+find_south_pole(::Type{Flat}, φᵃᶠᵃ) = nothing
+find_north_pole(::Type{Flat}, Nφ, φᵃᶠᵃ) = nothing
+find_south_pole(TY, φᵃᶠᵃ) = pole_at(@allowscalar(getnode(φᵃᶠᵃ, 1)), -90)
+find_north_pole(TY, Nφ, φᵃᶠᵃ) = pole_at(@allowscalar(getnode(φᵃᶠᵃ, Nφ + 1)), 90)
 
 const LLG = LatitudeLongitudeGrid
 
@@ -140,15 +164,7 @@ const YNonRegularLLG = LLGSpacing{<:Any, <:Any, <:Any, <:AbstractArray, <:Abstra
 regular_dimensions(::ZRegularLLG) = tuple(3)
 
 """
-    LatitudeLongitudeGrid([architecture = CPU(), FT = Oceananigans.defaults.FloatType];
-                          size,
-                          longitude,
-                          latitude,
-                          z = nothing,
-                          radius = Oceananigans.defaults.planet_radius,
-                          topology = nothing,
-                          precompute_metrics = true,
-                          halo = nothing)
+$(MethodSignatures(; defaults = true))
 
 Creates a `LatitudeLongitudeGrid` with coordinates `(λ, φ, z)` denoting longitude, latitude,
 and vertical coordinate respectively.
@@ -173,6 +189,7 @@ Keyword arguments
   3. single-argument function that takes an index and returns cell interface location.
 
   **Note**: the latitude and longitude coordinates extents are expected in degrees.
+  A latitude bound at ±90 degrees is a pole, where fields take polar boundary conditions.
 
 - `radius`: The radius of the sphere the grid lives on. By default is equal to the radius of Earth.
 
@@ -306,7 +323,8 @@ function with_precomputed_metrics(grid)
                                              grid.Δφᵃᶠᵃ, grid.Δφᵃᶜᵃ, grid.φᵃᶠᵃ, grid.φᵃᶜᵃ,
                                              grid.z,
                                              Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ,
-                                             Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, grid.radius)
+                                             Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, grid.radius,
+                                             grid.south_pole, grid.north_pole)
 end
 
 function validate_lat_lon_grid_args(topology, size, halo, FT, latitude, longitude, z, precompute_metrics)
@@ -513,7 +531,9 @@ function Adapt.adapt_structure(to, grid::LatitudeLongitudeGrid)
                                                       Adapt.adapt(to, grid.Az⁻¹ᶠᶜᵃ),
                                                       Adapt.adapt(to, grid.Az⁻¹ᶜᶠᵃ),
                                                       Adapt.adapt(to, grid.Az⁻¹ᶠᶠᵃ),
-                                                      Adapt.adapt(to, grid.radius))
+                                                      Adapt.adapt(to, grid.radius),
+                                                      grid.south_pole,
+                                                      grid.north_pole)
 end
 
 #####

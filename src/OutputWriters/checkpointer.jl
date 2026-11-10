@@ -27,13 +27,7 @@ function Checkpointer{Mode}(schedule::T, dir, prefix, overwrite_files, verbose, 
 end
 
 """
-    Checkpointer(model;
-                 schedule,
-                 dir = ".",
-                 prefix = "checkpoint",
-                 overwrite_files = false,
-                 verbose = false,
-                 cleanup = false)
+$(MethodSignatures(; defaults = true))
 
 Construct a `Checkpointer` that checkpoints the `model` to a JLD2 file on `schedule.`
 The `model.clock.iteration` is included in the filename to distinguish between multiple checkpoint files.
@@ -301,7 +295,7 @@ function load_nested_data(obj)
 end
 
 """
-    load_checkpoint_state(filepath; base_path="simulation")
+$(MethodSignatures(; defaults = true))
 
 Load checkpoint data from a JLD2 file and return it as a nested NamedTuple.
 """
@@ -522,7 +516,7 @@ Oceananigans.restore_prognostic_state!(::Symbol, from::Symbol) = from
 #####
 
 """
-    checkpoint(simulation; filepath=nothing)
+$(MethodSignatures(; defaults = true))
 
 Manually checkpoint `simulation` state to a JLD2 file.
 
