@@ -273,10 +273,16 @@ function try_convert_to_range(times::AbstractArray)
     return times
 end
 
+struct UnspecifiedBoundaryConditions end
+
 # One field per in-memory time slot, so `fts[n]` reuses its slot's communication buffers rather than
 # allocating new ones (and, on distributed grids, taking a new MPI tag that only the calling rank advances)
 memory_fields(data, grid, loc, bcs, indices, backend, times) = nothing
 memory_fields(::Nothing, grid, loc, bcs, indices, backend::AbstractInMemoryBackend, times) = nothing
+
+# Placeholder boundary conditions cannot build a `Field`, so `getindex` builds one on demand as before
+memory_fields(data, grid, loc, ::UnspecifiedBoundaryConditions, indices, backend::AbstractInMemoryBackend, times) = nothing
+memory_fields(::Nothing, grid, loc, ::UnspecifiedBoundaryConditions, indices, backend::AbstractInMemoryBackend, times) = nothing
 
 function memory_fields(data, grid, loc, bcs, indices, backend::AbstractInMemoryBackend, times)
     return [memory_field(data, grid, loc, bcs, indices, m) for m in 1:memory_length(backend, times)]
@@ -657,8 +663,6 @@ function naturalsort(x::Vector{String})
     sorter = key -> join(f(m.match) for m in eachmatch(r"[0-9]+|[^0-9]+", key))
     return sort(x, by=sorter)
 end
-
-struct UnspecifiedBoundaryConditions end
 
 """
 $(TYPEDSIGNATURES)
