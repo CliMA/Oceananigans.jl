@@ -1,12 +1,12 @@
-using Oceananigans.Grids: AbstractUnderlyingGrid, Closed, CenterFolded, FaceFolded, Periodic, Sides
+using Oceananigans.Grids: AbstractUnderlyingGrid, Closed, CenterFolded, FaceFolded, Periodic, TwoSided
 
 const AGXP  = AbstractUnderlyingGrid{FT, Periodic} where FT
-const AGXS  = AbstractUnderlyingGrid{FT, Sides{L, R}} where {FT, L, R}
+const AGXS  = AbstractUnderlyingGrid{FT, TwoSided{L, R}} where {FT, L, R}
 
 const AGYP  = AbstractUnderlyingGrid{FT, <:Any, Periodic} where FT
-const AGYS  = AbstractUnderlyingGrid{FT, <:Any, Sides{L, R}} where {FT, L, R}
-const AGYCF = AbstractUnderlyingGrid{FT, <:Any, Sides{L, CenterFolded}} where {FT, L}
-const AGYFF = AbstractUnderlyingGrid{FT, <:Any, Sides{L, FaceFolded}} where {FT, L}
+const AGYS  = AbstractUnderlyingGrid{FT, <:Any, TwoSided{L, R}} where {FT, L, R}
+const AGYCF = AbstractUnderlyingGrid{FT, <:Any, TwoSided{L, CenterFolded}} where {FT, L}
+const AGYFF = AbstractUnderlyingGrid{FT, <:Any, TwoSided{L, FaceFolded}} where {FT, L}
 
 # Topology-aware Operators with the following convention:
 #

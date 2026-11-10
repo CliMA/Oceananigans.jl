@@ -43,13 +43,13 @@ function offset_data(underlying_data::A, loc, topo, N, H, indices::T=default_ind
         @inbounds axes(underlying_data, i+length(ii))
     end
 
-    return OffsetArray(underlying_data, ii..., extra_ii...)
+    return StaticStridesOffsetArray(underlying_data, map(r -> first(r) - 1, (ii..., extra_ii...))...)
 end
 
 """
     offset_data(underlying_data, grid::AbstractGrid, loc, indices=default_indices(length(loc)))
 
-Return an `OffsetArray` that maps to `underlying_data` in memory, with offset indices
+Return a `StaticStridesOffsetArray` that maps to `underlying_data` in memory, with offset indices
 appropriate for the `data` of a field on a `grid` of `size(grid)` and located at `loc`.
 """
 offset_data(underlying_data::AbstractArray, grid::AbstractGrid, loc, indices=default_indices(length(loc))) =
@@ -58,7 +58,7 @@ offset_data(underlying_data::AbstractArray, grid::AbstractGrid, loc, indices=def
 """
 $(TYPEDSIGNATURES)
 
-Return an `OffsetArray` of zeros of float type `FT` on `arch`itecture,
+Return a `StaticStridesOffsetArray` of zeros of float type `FT` on `arch`itecture,
 with indices corresponding to a field on a `grid` of `size(grid)` and located at `loc`.
 """
 function new_data(::Type{FT}, arch, loc, topo, sz, halo_sz, indices=default_indices(length(loc))) where FT

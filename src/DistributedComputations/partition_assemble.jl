@@ -1,12 +1,41 @@
 using Oceananigans.Fields: Field
 
-import Oceananigans.Architectures: on_architecture
+using Oceananigans.Architectures: on_architecture
+
+#####
+##### Host-staged communication, for MPI libraries that are not GPU-aware
+#####
+
+stages_communication_through_host(arch) = false
+
+# NCCL communicators move device buffers themselves.
+function stages_communication_through_host(arch::Distributed)
+    staging = parse(Bool, get(ENV, "OCEANANIGANS_HOST_STAGED_COMMUNICATION", string(!MPI.has_cuda())))
+    return staging && child_architecture(arch) isa GPU && arch.communicator isa MPI.Comm
+end
+
+function host_mapped_zeros end
+
+function communication_buffer_array(arch, FT, dims...)
+    stages_communication_through_host(arch) && return host_mapped_zeros(child_architecture(arch), FT, dims...)
+    return on_architecture(arch, zeros(FT, dims...))
+end
 
 all_reduce(op, val, arch::Distributed) = MPI.Allreduce(val, op, arch.communicator)
 all_reduce(op, val, arch) = val
 
+function all_reduce(op, val::GPUArraysCore.AbstractGPUArray, arch::Distributed)
+    stages_communication_through_host(arch) || return MPI.Allreduce(val, op, arch.communicator)
+    return on_architecture(child_architecture(arch), MPI.Allreduce(Array(val), op, arch.communicator))
+end
+
 all_reduce!(op, val, arch::Distributed) = MPI.Allreduce!(val, op, arch.communicator)
 all_reduce!(op, val, arch) = val
+
+function all_reduce!(op, val::GPUArraysCore.AbstractGPUArray, arch::Distributed)
+    stages_communication_through_host(arch) || return MPI.Allreduce!(val, op, arch.communicator)
+    return copyto!(val, MPI.Allreduce!(Array(val), op, arch.communicator))
+end
 
 # MPI Barrier
 barrier(arch) = nothing

@@ -1,25 +1,26 @@
+using Oceananigans: prognostic_state, restore_prognostic_state!
 using Oceananigans.Advection: Centered, adapt_advection_order, materialize_advection
-using Oceananigans.Architectures: AbstractArchitecture
-using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
+using Oceananigans.Architectures: AbstractArchitecture, architecture
+using Oceananigans.Biogeochemistry: AbstractBiogeochemistry, biogeochemical_auxiliary_fields, validate_biogeochemistry
 using Oceananigans.BoundaryConditions: MixedBoundaryCondition, needs_implicit_solver,
                                        regularize_field_boundary_conditions, validate_implicit_explicit_flux_locations
-using Oceananigans.BuoyancyFormulations: validate_buoyancy, materialize_buoyancy
+using Oceananigans.BuoyancyFormulations: materialize_buoyancy, validate_buoyancy
 using Oceananigans.DistributedComputations: Distributed
-using Oceananigans.Fields: Field, tracernames, VelocityFields, CenterField, ZFaceField
-using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: topology, architecture
+using Oceananigans.Fields: CenterField, Field, VelocityFields, ZFaceField, tracernames
+using Oceananigans.Forcings: model_forcing, penetrative_radiation
+using Oceananigans.Grids: architecture, topology
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Models: AbstractModel, extract_boundary_conditions, materialize_free_surface, validate_model_halo, validate_tracer_advection, materialize_tracers, timestepper_name
+using Oceananigans.Models: AbstractModel, extract_boundary_conditions, materialize_free_surface, materialize_tracers,
+                           timestepper_name, total_velocities, validate_model_halo, validate_tracer_advection
 using Oceananigans.Solvers: FFTBasedPoissonSolver
-using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!, materialize_clock!, AbstractLagrangianParticles, time_discretization
-using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_closure_fields, implicit_diffusion_solver, VerticallyImplicitTimeDiscretization, initialize_closure_fields!
+using Oceananigans.TimeSteppers: AbstractLagrangianParticles, Clock, TimeStepper, materialize_clock!,
+                                 materialize_lagrangian_particles,
+                                 time_discretization, update_state!
+using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization, build_closure_fields,
+                                       implicit_diffusion_solver, initialize_closure_fields!, validate_closure,
+                                       with_penetrative_radiation, with_tracers
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE
 using Oceananigans.Utils: tupleit
-
-import Oceananigans: prognostic_state, restore_prognostic_state!
-import Oceananigans.Architectures: architecture
-import Oceananigans.Models: total_velocities
-import Oceananigans.TurbulenceClosures: buoyancy_force, buoyancy_tracers
 
 const ParticlesOrNothing = Union{Nothing, AbstractLagrangianParticles}
 const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}
@@ -347,8 +348,10 @@ function build_nonhydrostatic_model(grid, ::Val{tracer_names}, timestepper,
     advecting_vertical_velocity = needs_implicit_solver(advection) ? ZFaceField(grid) : nothing
 
     timestepper = TimeStepper(timestepper, grid, prognostic_fields; implicit_solver)
+    particles = materialize_lagrangian_particles(particles, timestepper)
 
     # Materialize forcing for model tracer and velocity fields.
+    closure = with_penetrative_radiation(closure, penetrative_radiation(forcing))
     forcing = model_forcing(forcing, model_fields, prognostic_fields)
 
     # Initialize boundary transport container
@@ -366,8 +369,8 @@ function build_nonhydrostatic_model(grid, ::Val{tracer_names}, timestepper,
     return model
 end
 
-architecture(model::NonhydrostaticModel) = model.architecture
-timestepper(model::NonhydrostaticModel) = model.timestepper
+Architectures.architecture(model::NonhydrostaticModel) = model.architecture
+Simulations.timestepper(model::NonhydrostaticModel) = model.timestepper
 
 function materialize_model_advection(advection, grid)
     advection = map(scheme -> adapt_advection_order(scheme, grid), advection)
@@ -375,17 +378,15 @@ function materialize_model_advection(advection, grid)
 end
 
 # return the total advective velocities
-@inline total_velocities(m::NonhydrostaticModel) = sum_of_velocities(m.velocities, m.background_fields.velocities)
-buoyancy_force(model::NonhydrostaticModel) = model.buoyancy
-buoyancy_tracers(model::NonhydrostaticModel) = model.tracers
+@inline Models.total_velocities(m::NonhydrostaticModel) = sum_of_velocities(m.velocities, m.background_fields.velocities)
+TurbulenceClosures.buoyancy_force(model::NonhydrostaticModel) = model.buoyancy
+TurbulenceClosures.buoyancy_tracers(model::NonhydrostaticModel) = model.tracers
 
 #####
 ##### Initialization
 #####
 
-import Oceananigans: initialize!
-
-function initialize!(model::NonhydrostaticModel)
+function Oceananigans.initialize!(model::NonhydrostaticModel)
     initialize_closure_fields!(model.closure_fields, model.closure, model)
     return nothing
 end
@@ -394,7 +395,7 @@ end
 ##### Checkpointing
 #####
 
-function prognostic_state(model::NonhydrostaticModel)
+function Oceananigans.prognostic_state(model::NonhydrostaticModel)
     return (clock = prognostic_state(model.clock),
             particles = prognostic_state(model.particles),
             velocities = prognostic_state(model.velocities),
@@ -402,10 +403,11 @@ function prognostic_state(model::NonhydrostaticModel)
             closure_fields = prognostic_state(model.closure_fields),
             timestepper = prognostic_state(model.timestepper),
             auxiliary_fields = prognostic_state(model.auxiliary_fields),
-            boundary_transport = prognostic_state(model.boundary_transport))
+            boundary_transport = prognostic_state(model.boundary_transport),
+            biogeochemistry = prognostic_state(model.biogeochemistry))
 end
 
-function restore_prognostic_state!(restored::NonhydrostaticModel, from)
+function Oceananigans.restore_prognostic_state!(restored::NonhydrostaticModel, from)
     restore_prognostic_state!(restored.clock, from.clock)
     restore_prognostic_state!(restored.particles, from.particles)
     restore_prognostic_state!(restored.velocities, from.velocities)
@@ -414,7 +416,8 @@ function restore_prognostic_state!(restored::NonhydrostaticModel, from)
     restore_prognostic_state!(restored.closure_fields, from.closure_fields)
     restore_prognostic_state!(restored.auxiliary_fields, from.auxiliary_fields)
     restore_prognostic_state!(restored.boundary_transport, from.boundary_transport)
+    restore_prognostic_state!(restored.biogeochemistry, from.biogeochemistry)
     return restored
 end
 
-restore_prognostic_state!(::NonhydrostaticModel, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::NonhydrostaticModel, ::Nothing) = nothing
