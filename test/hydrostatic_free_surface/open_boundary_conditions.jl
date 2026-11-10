@@ -772,9 +772,51 @@ function test_gravity_wave_target_transport()
     return pinned && flat && drift && inert && wet_only && rejected
 end
 
+#####
+##### Test: GravityWaveRadiation with a time-dependent exterior state
+#####
+# A uniform tide forced in the interior and prescribed on Flather boundaries: the velocity and the transport velocity
+# carry the same transport through the boundary faces as through the adjacent interior faces.
+
+function test_gravity_wave_radiation_follows_exterior_tide()
+    Nx, H, L = 8, 100.0, 1e5
+    grid = RectilinearGrid(size = (Nx, 1, 2), x = (0, L), y = (0, L), z = (-H, 0), topology = (Open, Periodic, Bounded))
+
+    U₀, ω = 0.1, 2π / 12hours
+    parameters = (; U₀, ω, H)
+    tidal_acceleration(x, y, z, t, p) = - p.U₀ * p.ω * sin(p.ω * t)
+    tidal_velocity(y, z, t, p) = p.U₀ * cos(p.ω * t)
+    tidal_transport(j, k, grid, clock, model_fields, p) = (p.H * p.U₀ * cos(p.ω * clock.time), zero(grid))
+
+    radiation = NormalFlowBoundaryCondition(tidal_velocity; scheme = NormalRadiation(), parameters)
+    flather = GravityWaveRadiationBoundaryCondition(tidal_transport; discrete_form = true, parameters)
+    boundary_conditions = (u = FieldBoundaryConditions(west = radiation, east = radiation),
+                           U = FieldBoundaryConditions(west = flather, east = flather))
+
+    model = HydrostaticFreeSurfaceModel(grid; boundary_conditions, free_surface = SplitExplicitFreeSurface(grid; substeps = 30),
+                                        forcing = (; u = Forcing(tidal_acceleration; parameters)), buoyancy = nothing, tracers = ())
+    set!(model, u = U₀)
+
+    # A quarter period ends at the peak tidal acceleration, where lagging by one step changes the transport by H U₀ ω Δt
+    Δt = 10minutes
+    for _ in 1:round(Int, π / (2ω * Δt))
+        time_step!(model, Δt)
+    end
+
+    transport(u, i) = sum(Array(interior(u, i, 1, :))) * H / size(grid, 3)
+    jumps = [abs(transport(u, boundary) - transport(u, interior_face)) for u in (model.velocities.u, model.transport_velocities.u),
+                                                                       (boundary, interior_face) in ((1, 2), (Nx + 1, Nx))]
+
+    return all(jumps .< H * U₀ * ω * Δt / 4)
+end
+
 @testset "Open Boundary Conditions for HydrostaticFreeSurfaceModel" begin
     @testset "GravityWaveRadiation with target_transport" begin
         @test test_gravity_wave_target_transport()
+    end
+
+    @testset "GravityWaveRadiation with a time-dependent exterior tide" begin
+        @test test_gravity_wave_radiation_follows_exterior_tide()
     end
 
     @testset "Barotropic gravity wave radiation" begin

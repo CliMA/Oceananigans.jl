@@ -231,11 +231,14 @@ end
 
 # Open boundaries read model fields while filling the barotropic halos; `ExtendedHalos` has none, so it
 # fills without threading them, which avoids a per-step allocation on distributed grids.
-@inline fill_barotropic_state_halos!(field, ::SplitExplicitFreeSurface{ExtendedHalos}, model) =
-    fill_halo_regions!(field; async=true)
+@inline fill_barotropic_state_halos!(field, ::SplitExplicitFreeSurface{ExtendedHalos}, clock, model) = fill_halo_regions!(field; async=true)
+@inline fill_barotropic_state_halos!(field, ::FillHaloSplitExplicit, clock, model) = fill_halo_regions!(field, clock, fields(model); async=true)
 
-@inline fill_barotropic_state_halos!(field, ::FillHaloSplitExplicit, model) =
-    fill_halo_regions!(field, model.clock, fields(model); async=true)
+# A clock at the barycenter of the substep `weights`, with substep `m` at `(m - 1) Δτᴮ` after `clock`
+function barycentric_clock(clock, weights, Δτᴮ)
+    barycenter = sum(m -> weights[m] * (m - 1), eachindex(weights)) / sum(weights)
+    return (; time = add_time_interval(clock.time, Δτᴮ, barycenter), iteration = clock.iteration, stage = 0, last_stage_Δt = Δτᴮ)
+end
 
 function HydrostaticFreeSurfaceModels.step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroclinic_timestepper, Δt)
     # Note: free_surface.displacement.grid != model.grid for DistributedSplitExplicitFreeSurface since
@@ -284,10 +287,12 @@ function HydrostaticFreeSurfaceModels.step_free_surface!(free_surface::SplitExpl
     # Update eta and velocities for the next timestep. The halos are updated in the `update_state!` function.
     @apply_regionally launch!(architecture(free_surface_grid), free_surface_grid, :xy, _update_split_explicit_state!, η, U, V, free_surface_grid, filtered_state)
 
-    # Fill all the barotropic state.
-    fill_barotropic_state_halos!((filtered_state.Ũ, filtered_state.Ṽ), free_surface, model)
-    fill_barotropic_state_halos!((U, V), free_surface, model)
-    fill_barotropic_state_halos!(η, free_surface, model)
+    # Fill all the barotropic state. The averaged velocities are refilled at the barycenter of their weights.
+    averaging_clock = barycentric_clock(model.clock, weights, Δτᴮ)
+    transport_clock = barycentric_clock(model.clock, transport_weights, Δτᴮ)
+    fill_barotropic_state_halos!((filtered_state.Ũ, filtered_state.Ṽ), free_surface, transport_clock, model)
+    fill_barotropic_state_halos!((U, V), free_surface, averaging_clock, model)
+    fill_barotropic_state_halos!(η, free_surface, model.clock, model)
 
     # The Flather refills above undo the pin, so re-pin the faces before the barotropic corrector reads them
     arch = architecture(free_surface_grid)
