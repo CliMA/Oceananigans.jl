@@ -1,4 +1,4 @@
-using Oceananigans.Operators: Operators, δxTᶜᵃᵃ, δyTᵃᶜᵃ, ℑxyᶠᶠᵃ, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ, ∂xTᶠᶜᶠ, ∂yTᶜᶠᶠ, ∂xᵣTᶠᶜᶠ, ∂yᵣTᶜᶠᶠ, δxᶜᶜᶜ, δyᶜᶜᶜ, δxᶜᵃᵃ, δyᵃᶜᵃ
+using Oceananigans.Operators: Operators, δxTᶜᵃᵃ, δyTᵃᶜᵃ, ℑxyᶠᶠᵃ, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ, ∂xTᶠᶜᶠ, ∂yTᶜᶠᶠ, ∂xᵣTᶠᶜᶠ, ∂yᵣTᶜᶠᶠ, δxᶜᶜᶜ, δyᶜᶜᶜ, δxᶜᶜᶠ, δyᶜᶜᶠ
 
 # Conditional differences that are "immersed boundary aware".
 # Here we return `zero(ibg)` rather than `δx` (for example) when _one_ of the
@@ -101,8 +101,8 @@ end
 @inline Operators.δyᶜᶜᵃ(i, j, k, ibg::IBG, f::Function, args...) = δyᶜᶜᶜ(i, j, k, ibg, f, args...)
 
 # Barotropic transports live in every wet column, so beneath a top they are masked at the free surface
-@inline Operators.δxᶜᶜᵃ(i, j, k, ibg::ImmersedTopIBG, Φ::Function, args...) = conditional_δx_c(c, f, i, j, ibg.Nz + 1, ibg, δxᶜᵃᵃ, Φ, args...)
-@inline Operators.δyᶜᶜᵃ(i, j, k, ibg::ImmersedTopIBG, Φ::Function, args...) = conditional_δy_c(c, f, i, j, ibg.Nz + 1, ibg, δyᵃᶜᵃ, Φ, args...)
+@inline Operators.δxᶜᶜᵃ(i, j, k, ibg::ImmersedTopIBG, Φ::Function, args...) = δxᶜᶜᶠ(i, j, ibg.Nz + 1, ibg, Φ, args...)
+@inline Operators.δyᶜᶜᵃ(i, j, k, ibg::ImmersedTopIBG, Φ::Function, args...) = δyᶜᶜᶠ(i, j, ibg.Nz + 1, ibg, Φ, args...)
 
 @inline Operators.∂xTᶠᶜᶠ(i, j, k, ibg::IBG, f, args...) = conditional_∂xTᶠᶜᶠ(i, j, k, ibg, f, args...)
 @inline Operators.∂yTᶜᶠᶠ(i, j, k, ibg::IBG, f, args...) = conditional_∂yTᶜᶠᶠ(i, j, k, ibg, f, args...)

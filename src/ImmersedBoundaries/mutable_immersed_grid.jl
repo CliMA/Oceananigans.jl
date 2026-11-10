@@ -35,7 +35,7 @@ const MutableImmersedTopGrid = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Bound
 # The thin-face rule H = h · mean(σ), as a method of the existing `σⁿ`
 @inline function Operators.σⁿ(i, j, k, grid, η)
     h = static_column_depthᶜᶜᵃ(i, j, grid)
-    return @inbounds ifelse(h == 0, one(grid), (h + η[i, j, k]) / ifelse(h == 0, one(grid), h))
+    return @inbounds ifelse(h == 0, one(grid), (h + η[i, j, k]) / h)
 end
 
 @inline Grids.column_depthᶠᶜᵃ(i, j, k, grid::MutableImmersedTopGrid, η) = static_column_depthᶠᶜᵃ(i, j, grid) * ℑxᶠᵃᵃ(i, j, k, grid, σⁿ, η)
