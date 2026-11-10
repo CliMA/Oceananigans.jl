@@ -5,6 +5,7 @@ using Oceananigans.BoundaryConditions: Mixed, MixedBoundaryCondition
 using Oceananigans.BoundaryConditions: Zipper, ContinuousBoundaryFunction, DiscreteBoundaryFunction, regularize_field_boundary_conditions
 using Oceananigans.BoundaryConditions: compute_x_bcs!, compute_y_bcs!, compute_z_bcs!
 using Oceananigans.Fields: Face, Center
+using Oceananigans.Grids: Pole, with_halo
 
 simple_bc(ξ, η, t) = exp(ξ) * cos(η) * sin(t)
 
@@ -57,6 +58,16 @@ end
 
         @test default_bcs_N.north isa Nothing
         @test default_bcs_N.south isa Nothing
+
+        # Whether a boundary is a pole is decided on construction and kept through every rebuild of the grid
+        poles(grid) = (grid.south_pole, grid.north_pole)
+        @test poles(grid) === (Pole(), Pole())
+        @test poles(Adapt.adapt(Array, grid)) === poles(grid)
+        @test poles(with_halo((4, 4, 4), grid)) === poles(grid)
+        @test all(poles(on_architecture(arch, grid)) === poles(grid) for arch in archs)
+        @test poles(LatitudeLongitudeGrid(size=(10, 10, 10), latitude=(0, 90), longitude=(-10, 10), z=(0, 1))) === (nothing, Pole())
+        @test poles(LatitudeLongitudeGrid(size=(10, 10, 10), latitude=(-90, 0), longitude=(-10, 10), z=(0, 1))) === (Pole(), nothing)
+        @test poles(LatitudeLongitudeGrid(size=(10, 10, 10), latitude=(-30, 30), longitude=(-10, 10), z=(0, 1))) === (nothing, nothing)
 
         grid = TripolarGrid(size=(10, 10, 10), z = (0, 1))
         default_bcs = FieldBoundaryConditions(grid, loc)
@@ -561,7 +572,7 @@ end
         # field itself is adapted to its bare data like any other non-reduced field (e.g. the free
         # surface displacement of a hydrostatic model is a windowed field, and must adapt like the
         # other model fields, so that the tuple of model fields stays homogeneous)
-        @test Adapt.adapt(Array, ∂z_cᵗ) isa OffsetArray
+        @test Adapt.adapt(Array, ∂z_cᵗ) isa StaticStridesOffsetArray
         adapted_top = Adapt.adapt(Array, bcs.top)
         @test adapted_top.condition isa Field
         @test adapted_top.condition.indices == ∂z_cᵗ.indices
