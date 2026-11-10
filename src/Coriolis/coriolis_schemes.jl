@@ -190,8 +190,8 @@ Base.summary(::ThicknessWeightedEnergyConserving) = "ThicknessWeightedEnergyCons
 
 const TWENC = AbstractRotation{<:ThicknessWeightedEnergyConserving}
 
-@inline x_f_cross_U(i, j, k, grid, coriolis::TWENC, U) = - potential_vorticity_flux_xᶠᶜᶜ(i, j, k, grid, U[2], fᶠᶠᵃ, coriolis)
-@inline y_f_cross_U(i, j, k, grid, coriolis::TWENC, U) = + potential_vorticity_flux_yᶜᶠᶜ(i, j, k, grid, U[1], fᶠᶠᵃ, coriolis)
+@inline x_f_cross_U(i, j, k, grid, coriolis::TWENC, U) = - vorticity_flux_xᶠᶜᶜ(i, j, k, grid, U[2], fᶠᶠᵃ, coriolis)
+@inline y_f_cross_U(i, j, k, grid, coriolis::TWENC, U) = + vorticity_flux_yᶜᶠᶜ(i, j, k, grid, U[1], fᶠᶠᵃ, coriolis)
 
 #####
 ##### EEN (Energy and Enstrophy conserving, Arakawa & Lamb, 1981) scheme

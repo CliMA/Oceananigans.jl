@@ -1,5 +1,5 @@
 #####
-##### Energy-conserving potential vorticity flux for grids whose Δz varies horizontally
+##### Energy-conserving vorticity flux for grids whose Δz varies horizontally
 #####
 
 @inline active_Ax_qᶠᶜᶜ(i, j, k, grid, u) = ifelse(immersed_peripheral_node(i, j, k, grid, Face(), Center(), Center()), zero(grid), Ax_qᶠᶜᶜ(i, j, k, grid, u))
@@ -30,6 +30,6 @@ end
 
 # Sadourny (1975) energy-conserving flux of q = ω / h for the transports 𝒰 = Aˣ u and 𝒱 = Aʸ v:
 # the work Σ Δx Aˣ u ℑʸ(q ℑˣ𝒱) / Δx - Σ Δy Aʸ v ℑˣ(q ℑʸ𝒰) / Δy cancels corner by corner for any Δz.
-@inline potential_vorticity_flux_xᶠᶜᶜ(i, j, k, grid, v, ω, args...) = ℑyᵃᶜᵃ(i, j, k, grid, q_ℑx_Ay_vᶠᶠᶜ, v, ω, args...) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
+@inline vorticity_flux_xᶠᶜᶜ(i, j, k, grid, v, ω, args...) = ℑyᵃᶜᵃ(i, j, k, grid, q_ℑx_Ay_vᶠᶠᶜ, v, ω, args...) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
 
-@inline potential_vorticity_flux_yᶜᶠᶜ(i, j, k, grid, u, ω, args...) = ℑxᶜᵃᵃ(i, j, k, grid, q_ℑy_Ax_uᶠᶠᶜ, u, ω, args...) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
+@inline vorticity_flux_yᶜᶠᶜ(i, j, k, grid, u, ω, args...) = ℑxᶜᵃᵃ(i, j, k, grid, q_ℑy_Ax_uᶠᶠᶜ, u, ω, args...) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
