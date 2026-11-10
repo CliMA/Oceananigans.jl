@@ -286,8 +286,8 @@ function HydrostaticFreeSurfaceModels.materialize_free_surface(free_surface::Spl
     V = Field{Center, Face, Nothing}(maybe_extended_grid, boundary_conditions = bcs.V)
     U̅ = Field{Face, Center, Nothing}(maybe_extended_grid, boundary_conditions = bcs.U)
     V̅ = Field{Center, Face, Nothing}(maybe_extended_grid, boundary_conditions = bcs.V)
-    Ũ = Field{Face, Center, Nothing}(maybe_extended_grid, boundary_conditions = bcs.U)
-    Ṽ = Field{Center, Face, Nothing}(maybe_extended_grid, boundary_conditions = bcs.V)
+    Ũ = Field{Face, Center, Nothing}(maybe_extended_grid)
+    Ṽ = Field{Center, Face, Nothing}(maybe_extended_grid)
 
     filtered_state = (η̅ = η̅, U̅ = U̅, V̅ = V̅, Ũ = Ũ, Ṽ = Ṽ)
     barotropic_velocities = (U = U, V = V)

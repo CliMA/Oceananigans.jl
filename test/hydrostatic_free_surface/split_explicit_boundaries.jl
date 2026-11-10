@@ -3,7 +3,7 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 using Random
 
 using Oceananigans.Architectures: architecture, on_architecture
-using Oceananigans.BoundaryConditions: GravityWaveRadiationBoundaryCondition, DiscreteBoundaryFunction
+using Oceananigans.BoundaryConditions: GravityWaveRadiationBoundaryCondition, DiscreteBoundaryFunction, TracerReservoir
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom,
                                        immersed_peripheral_node, immersed_inactive_node, mask_immersed_field!
 using Oceananigans.Operators: Δzᶠᶜᶜ, Δzᶜᶠᶜ
@@ -236,4 +236,32 @@ end
 
     Δτ = diff(substep_times)
     @test all(isapprox.(Δτ, Δτ[1]; rtol=1e-6))
+end
+
+@testset "A uniform tracer stays uniform beside open boundaries on a z-star grid [$(summary(arch))]" for arch in archs
+    # On a moving grid a uniform tracer stays uniform only where the divergence of the filtered
+    # transport that advects it is the change of the free surface over the step.
+    grid = RectilinearGrid(arch; size=(8, 8, 2), x=(0, 8e4), y=(0, 8e4), z=MutableVerticalDiscretization((-100, 0)),
+                           topology=(Open, Open, Bounded))
+
+    radiation(η) = GravityWaveRadiationBoundaryCondition((0.0, η))
+    no_flow = NormalFlowBoundaryCondition(0)
+    reservoir = ValueBoundaryCondition(1; scheme=TracerReservoir())
+
+    boundary_conditions = (U = FieldBoundaryConditions(west=radiation(0.1), east=radiation(-0.1)),
+                           V = FieldBoundaryConditions(south=radiation(0.05), north=radiation(-0.05)),
+                           u = FieldBoundaryConditions(west=no_flow, east=no_flow),
+                           v = FieldBoundaryConditions(south=no_flow, north=no_flow),
+                           c = FieldBoundaryConditions(west=reservoir, east=reservoir, south=reservoir, north=reservoir))
+
+    model = HydrostaticFreeSurfaceModel(grid; free_surface=SplitExplicitFreeSurface(grid; substeps=10),
+                                        timestepper=:SplitRungeKutta3, boundary_conditions, buoyancy=nothing, tracers=:c)
+    set!(model, c=1)
+
+    for _ in 1:10
+        time_step!(model, 60)
+    end
+
+    @test maximum(abs, Array(interior(model.free_surface.displacement))) > 1e-3
+    @test maximum(abs, Array(interior(model.tracers.c)) .- 1) < 1e-12
 end

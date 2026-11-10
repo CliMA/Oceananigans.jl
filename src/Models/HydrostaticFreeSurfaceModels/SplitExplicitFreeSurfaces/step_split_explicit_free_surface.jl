@@ -41,7 +41,7 @@ end
 #
 # The free surface field η and its average η̄ are located on `Face`s at the surface (grid.Nz +1). All other intermediate
 # variables (U, V, Ū, V̄) are barotropic fields (`ReducedField`) for which a k index is not defined.
-@kernel function _split_explicit_barotropic_velocity!(transport_weight, grid, filled_halos, Δτ, η, U, V, Gᵁ, Gⱽ, g, Ũ, Ṽ, timestepper)
+@kernel function _split_explicit_barotropic_velocity!(grid, filled_halos, Δτ, η, U, V, Gᵁ, Gⱽ, g, timestepper)
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
 
@@ -58,14 +58,19 @@ end
     @inbounds begin
         U[i, j, 1] += Δτ * (- g * Hᶠᶜ * ∂xᵣ(i, j, k_top, grid, η★, timestepper, η) + Gᵁ[i, j, 1])
         V[i, j, 1] += Δτ * (- g * Hᶜᶠ * ∂yᵣ(i, j, k_top, grid, η★, timestepper, η) + Gⱽ[i, j, 1])
-
-        # Averaging the transport
-        Ũ[i, j, 1] += transport_weight * U[i, j, 1]
-        Ṽ[i, j, 1] += transport_weight * V[i, j, 1]
     end
 end
 
-@kernel function _split_explicit_free_surface!(averaging_weight, grid, filled_halos, Δτ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)
+const EastBoundaryGrid  = AbstractGrid{<:Any, <:TwoSided{<:Any, <:BoundarySide}}
+const NorthBoundaryGrid = AbstractGrid{<:Any, <:Any, <:TwoSided{<:Any, <:BoundarySide}}
+
+@inline on_east_boundary(i, grid) = false
+@inline on_east_boundary(i, grid::EastBoundaryGrid) = i == grid.Nx
+
+@inline on_north_boundary(j, grid) = false
+@inline on_north_boundary(j, grid::NorthBoundaryGrid) = j == grid.Ny
+
+@kernel function _split_explicit_free_surface!(averaging_weight, transport_weight, grid, filled_halos, Δτ, η, U, V, F, clock, η̅, U̅, V̅, Ũ, Ṽ, timestepper)
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
 
@@ -84,6 +89,16 @@ end
         η̅[i, j, k_top] += averaging_weight * η[i, j, k_top]
         U̅[i, j, 1]     += averaging_weight * U[i, j, 1]
         V̅[i, j, 1]     += averaging_weight * V[i, j, 1]
+
+        # Averaging the transport that advanced η, so that η̅ⁿ⁺¹ - ηⁿ = - Δt ∇⋅Ũ
+        Ũ[i, j, 1] += transport_weight * U[i, j, 1]
+        Ṽ[i, j, 1] += transport_weight * V[i, j, 1]
+
+        # A cell on the east or north boundary also averages the transport through that boundary
+        east  = on_east_boundary(i, grid)
+        north = on_north_boundary(j, grid)
+        Ũ[i + east, j, 1]  += east  * transport_weight * U[i + east, j, 1]
+        Ṽ[i, j + north, 1] += north * transport_weight * V[i, j + north, 1]
     end
 end
 
@@ -124,8 +139,8 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
     @apply_regionally velocity_kernel!, _     = configure_kernel(arch, grid, workspec, _split_explicit_barotropic_velocity!)
     @apply_regionally free_surface_kernel!, _ = configure_kernel(arch, grid, workspec, _split_explicit_free_surface!)
 
-    U_args = (grid, Val(true), Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, Ũ, Ṽ, timestepper)
-    η_args = (grid, Val(true), Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)
+    U_args = (grid, Val(true), Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, timestepper)
+    η_args = (grid, Val(true), Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, Ũ, Ṽ, timestepper)
 
     barotropic_model_fields = (; U, V, η)
 
@@ -152,13 +167,13 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
 
             maybe_distributed_fill_halo_regions!(arch, η_halo_args[1:end-1]..., substep_clock, η_halo_args[end]; only_local_halos)
             @apply_regionally cache_boundary_conditions!((U, V, η), substep_clock, barotropic_model_fields)
-            @apply_regionally apply_barotropic_kernel!(velocity_kernel!, transport_weight, converted_U_args)
+            @apply_regionally apply_barotropic_kernel!(velocity_kernel!, converted_U_args)
             @apply_regionally step_boundary_conditions!((U, V), substep_clock, barotropic_model_fields, Δτᴮ)
 
             maybe_distributed_fill_halo_regions!(arch, U_halo_args[1:end-1]..., substep_clock, U_halo_args[end]; only_local_halos)
             maybe_distributed_fill_halo_regions!(arch, V_halo_args[1:end-1]..., substep_clock, V_halo_args[end]; only_local_halos)
             pin_barotropic_faces!(face_pins)
-            @apply_regionally apply_barotropic_kernel!(free_surface_kernel!, averaging_weight, converted_η_args)
+            @apply_regionally apply_barotropic_kernel!(free_surface_kernel!, converted_η_args, averaging_weight, transport_weight)
             @apply_regionally step_boundary_conditions!((η,), substep_clock, barotropic_model_fields, Δτᴮ)
         end
     end
@@ -166,7 +181,7 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
     return nothing
 end
 
-@inline apply_barotropic_kernel!(kernel, weight, args) = kernel(weight, args...)
+@inline apply_barotropic_kernel!(kernel, args, weights...) = kernel(weights..., args...)
 
 function iterate_split_explicit_in_halo!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, F::Fη, clock, weights, transport_weights, ::Val{Nsubsteps}) where {Fη, Nsubsteps}
     arch = architecture(grid)
@@ -189,8 +204,8 @@ function iterate_split_explicit_in_halo!(free_surface, grid, GUⁿ, GVⁿ, Δτ�
 
     exchange_interval = halo_exchange_interval(free_surface, grid, Nsubsteps)
 
-    U_args = (grid, Val(false), Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, Ũ, Ṽ, timestepper)
-    η_args = (grid, Val(false), Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)
+    U_args = (grid, Val(false), Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, timestepper)
+    η_args = (grid, Val(false), Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, Ũ, Ṽ, timestepper)
 
     GC.@preserve U_args η_args begin
         # We need to perform ~50 time-steps which means launching ~100 very small kernels: we are limited by latency of
@@ -206,8 +221,8 @@ function iterate_split_explicit_in_halo!(free_surface, grid, GUⁿ, GVⁿ, Δτ�
                 fill_halo_regions!((U, V, η))
             end
 
-            barotropic_velocity_kernel!(transport_weight, converted_U_args...)
-            free_surface_kernel!(averaging_weight, converted_η_args...)
+            barotropic_velocity_kernel!(converted_U_args...)
+            free_surface_kernel!(averaging_weight, transport_weight, converted_η_args...)
         end
     end
 
