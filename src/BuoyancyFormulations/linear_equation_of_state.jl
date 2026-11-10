@@ -18,7 +18,7 @@ SeawaterPolynomials.with_float_type(FT::DataType, eos::LinearEquationOfState) = 
                                                                                                       convert(FT, eos.haline_contraction))
 
 """
-    LinearEquationOfState([FT=Oceananigans.defaults.FloatType;] thermal_expansion=1.67e-4, haline_contraction=7.80e-4)
+$(MethodSignatures(; defaults = true))
 
 Return `LinearEquationOfState` for `SeawaterBuoyancy` with
 `thermal_expansion` coefficient and `haline_contraction` coefficient.
@@ -33,8 +33,12 @@ where ``g`` is gravitational acceleration, ``α`` is `thermal_expansion`, ``β``
 
 Default constants in units inverse Kelvin and practical salinity units
 for `thermal_expansion` and `haline_contraction`, respectively,
-are taken from Table 1.2 (page 33) of Vallis, "Atmospheric and Oceanic Fluid
-Dynamics: Fundamentals and Large-Scale Circulation" (2nd ed, 2017).
+are taken from Table 1.2 (page 33) of [Vallis (2017)](@cite Vallis17).
+
+References
+==========
+* Vallis, G. K. (2017). "Atmospheric and Oceanic Fluid Dynamics: Fundamentals and Large-Scale
+  Circulation." 2nd edition, Cambridge University Press.
 """
 LinearEquationOfState(FT=Oceananigans.defaults.FloatType; thermal_expansion=1.67e-4, haline_contraction=7.80e-4) =
     LinearEquationOfState{FT}(thermal_expansion, haline_contraction)

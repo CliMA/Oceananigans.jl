@@ -21,11 +21,7 @@ const DynamicSmagorinsky = Union{
 }
 
 """
-    DynamicSmagorinsky([time_discretization=ExplicitTimeDiscretization(), FT=Float64;]
-                       averaging = LagrangianAveraging(),
-                       Pr = 1,
-                       schedule = IterationInterval(1),
-                       minimum_numerator = 1e-32)
+$(MethodSignatures(; defaults = true))
 
 Returns a `Smagorinsky`-type closure with dynamic computation of the Smagorinsky coefficient
 according to the scale invariant procedure described by [Bou-Zeid et al. (2005)](@cite BouZeid05).
@@ -133,7 +129,7 @@ tupleit(a::Number) = tuple(a)
 tupleit(a::Tuple) = a
 
 """
-    DynamicCoefficient([FT=Oceananigans.defaults.FloatType;] averaging, schedule=IterationInterval(1), minimum_numerator=1e-32)
+$(MethodSignatures(; defaults = true))
 
 When used with `Smagorinsky`, it calculates the Smagorinsky coefficient dynamically from the flow
 according to the scale invariant procedure described by [Bou-Zeid et al. (2005)](@cite BouZeid05).
@@ -202,6 +198,9 @@ See also [`DynamicSmagorinsky`](@ref).
 
 References
 ==========
+
+Bou-Zeid, Elie, Meneveau, Charles, and Parlange, Marc. (2005) A scale-dependent Lagrangian dynamic model for
+large eddy simulation of complex turbulent flows, Physics of Fluids, **17**, 025105.
 
 Chen, Bicheng, Yang, Di, Meneveau, Charles and Chamecki, Marcelo. (2016) Effects of swell on
 transport and dispersion of oil plumes within the ocean mixed layer, Journal of Geophysical
@@ -453,6 +452,10 @@ function TurbulenceClosures.step_closure_prognostics!(closure_fields, closure::L
     time_to_compute = isnothing(cˢ.schedule) || (cˢ.schedule(model) && clock.stage == 1)
 
     if time_to_compute
+        # This runs before `update_state!`, so that velocity halos may still hold
+        # the predictor velocity from before the pressure correction.
+        fill_halo_regions!(model.velocities, clock, Oceananigans.fields(model))
+
         Σ = closure_fields.Σ
         Σ̄ = closure_fields.Σ̄
         launch!(arch, grid, :xyz, _compute_Σ!, Σ, grid, u, v, w)

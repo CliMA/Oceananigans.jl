@@ -14,9 +14,16 @@ TimeSteppers.time_discretization(::EnstrophyConserving) = ExplicitTimeDiscretiza
     EnergyConservingUpwinding(scheme)
 
 Vorticity scheme for `VectorInvariant` that reconstructs vorticity with the upwind-biased `scheme` and pairs
-the reconstructed values symmetrically between the `u` and `v` equations, as in the TRiSK scheme of Ringler et al. (2010).
+the reconstructed values symmetrically between the `u` and `v` equations, as in the TRiSK scheme
+of [Ringler et al. (2010)](@cite Ringler2010).
 The horizontal vorticity flux does no work on the flow for any reconstructed vorticity, so the upwinding
 dissipates enstrophy while conserving kinetic energy.
+
+References
+==========
+* Ringler, T. D., Thuburn, J., Klemp, J. B., & Skamarock, W. C. (2010). "A unified approach to energy
+  conservation and potential vorticity dynamics for arbitrarily-structured C-grids." Journal of
+  Computational Physics, 229(9), 3065-3090.
 """
 struct EnergyConservingUpwinding{N, FT, TD, S} <: AbstractAdvectionScheme{N, FT, TD}
     scheme :: S
@@ -56,13 +63,7 @@ struct VectorInvariant{N, FT, TD, Z, ZS, V, K, D, U, M} <: AbstractAdvectionSche
 end
 
 """
-    VectorInvariant(; vorticity_scheme = EnstrophyConserving(),
-                      vorticity_stencil = VelocityStencil(),
-                      vertical_advection_scheme = EnergyConserving(),
-                      divergence_scheme = vertical_advection_scheme,
-                      kinetic_energy_gradient_scheme = divergence_scheme,
-                      upwinding = OnlySelfUpwinding(; cross_scheme = divergence_scheme),
-                      multi_dimensional_stencil = false)
+$(MethodSignatures(; defaults = true))
 
 Return a vector-invariant momentum advection scheme.
 
@@ -192,17 +193,7 @@ end
 nothing_to_default(user_value; default=nothing) = isnothing(user_value) ? default : user_value
 
 """
-    WENOVectorInvariant(FT = Float64;
-                        upwinding = nothing,
-                        vorticity_stencil = VelocityStencil(),
-                        order = nothing,
-                        vorticity_order = nothing,
-                        vertical_order = nothing,
-                        divergence_order = nothing,
-                        kinetic_energy_gradient_order = nothing,
-                        multi_dimensional_stencil = false,
-                        minimum_buffer_upwind_order = 1,
-                        weno_kw...)
+$(MethodSignatures(; defaults = true))
 
 Return a vector-invariant weighted essentially non-oscillatory (WENO) scheme.
 See [`VectorInvariant`](@ref) and [`WENO`](@ref) for kwargs definitions.

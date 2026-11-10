@@ -38,9 +38,7 @@ Adapt.adapt_structure(to, smag::Smagorinsky{TD}) where TD =
 const ConstantSmagorinsky = Smagorinsky{<:Any, <:Number}
 
 """
-    Smagorinsky([time_discretization::TD = ExplicitTimeDiscretization(), FT=Float64;]
-                coefficient = 0.16,
-                Pr = 1.0)
+$(MethodSignatures(; defaults = true))
 
 Return a `Smagorinsky` type associated with the turbulence closure proposed by
 [Smagorinsky1958](@citet) and [Smagorinsky1963](@citet)
@@ -64,6 +62,15 @@ number modification to the eddy viscosity.
 `Cˢ` is the Smagorinsky coefficient and the default value is 0.16, according
 to the analysis by [Lilly66](@citet). For other options, see `LillyCoefficient`
 and `DynamicCoefficient`.
+
+References
+==========
+* Smagorinsky, J. (1958). "On the numerical integration of the primitive equations of motion for
+  baroclinic flow in a closed region." Monthly Weather Review, 86(12), 457-466.
+* Smagorinsky, J. (1963). "General circulation experiments with the primitive equations: I. The basic
+  experiment." Monthly Weather Review, 91(3), 99-164.
+* Lilly, D. K. (1966). "The representation of small-scale turbulence in numerical simulation
+  experiments." NCAR Manuscript No. 281.
 """
 function Smagorinsky(time_discretization::TD = ExplicitTimeDiscretization(), FT=Oceananigans.defaults.FloatType;
                      coefficient = 0.16, Pr = 1.0) where TD

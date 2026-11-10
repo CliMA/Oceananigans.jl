@@ -38,7 +38,7 @@ struct Relaxation{R, F, M, T, L, Tr}
 end
 
 """
-    Relaxation(; rate, mask=onefunction, target=zerofunction, transform=nothing)
+$(MethodSignatures(; defaults = true))
 
 Returns a `Forcing` that restores a field to `target(X..., t)`
 at the specified `rate`, in the region `mask(X...)`.
@@ -304,8 +304,13 @@ $(TYPEDSIGNATURES)
 Rate for `Relaxation` that nudges toward `target` at `inflow_rate` where the local horizontal
 normal velocity indicates inflow through the domain boundary in direction `D` (one of
 `:west`, `:east`, `:south`, `:north`), and at `outflow_rate` where it indicates outflow,
-following the ROMS/Marchesiello-et-al.-2001 nudging-layer convention. See [`Relaxation`](@ref)
-for the role of `mask` in shaping the nudging spatially.
+following the nudging-layer convention of ROMS ([Marchesiello et al., 2001](@cite marchesiello.ea2001)).
+See [`Relaxation`](@ref) for the role of `mask` in shaping the nudging spatially.
+
+References
+==========
+* Marchesiello, P., McWilliams, J. C., & Shchepetkin, A. (2001). "Open boundary conditions
+  for long-term integration of regional oceanic models." Ocean Modelling, 3(1-2), 1-20.
 
 Example
 =======

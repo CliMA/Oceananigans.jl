@@ -34,7 +34,7 @@ function Architectures.on_architecture(new_arch::Distributed, old_grid::Latitude
                                              old_grid.Hx, old_grid.Hy, old_grid.Hz,
                                              old_grid.Lx, old_grid.Ly, old_grid.Lz,
                                              new_properties...,
-                                             old_grid.radius)
+                                             old_grid.radius, old_grid.south_pole, old_grid.north_pole)
 end
 
 function Architectures.on_architecture(new_arch::Distributed, old_grid::RectilinearGrid)

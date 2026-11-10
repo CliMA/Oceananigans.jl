@@ -7,7 +7,7 @@
                          gravitational_acceleration = defaults.gravitational_acceleration,
                          target_transport = nothing)
 
-Flather (1976) characteristic boundary condition for the shallow water equations.
+[Flather (1976)](@cite flather1976tidal) characteristic boundary condition for the shallow water equations.
 Prescribes the incoming Riemann invariant while letting the outgoing one radiate freely:
 
     Uᵇ = Uᵉˣᵗ + √(g H) ⋅ (ηᵇ − ηᵉˣᵗ)
@@ -88,9 +88,9 @@ get_target_transport(scheme::GravityWaveRadiation) = scheme.target_transport
 """
     SurfaceWaveRadiation(; gravitational_acceleration = defaults.gravitational_acceleration)
 
-Chapman (1985) radiation condition for the free surface displacement at an open boundary,
-the standard companion of [`GravityWaveRadiation`](@ref): the boundary η radiates at the known
-barotropic gravity-wave speed,
+[Chapman (1985)](@cite chapman1985numerical) radiation condition for the free surface displacement
+at an open boundary, the standard companion of [`GravityWaveRadiation`](@ref): the boundary η radiates
+at the known barotropic gravity-wave speed,
 
     ∂η/∂t ± √(g H) ∂η/∂n = 0
 
@@ -150,8 +150,7 @@ end
 #####
 
 """
-    GravityWaveRadiationBoundaryCondition(val; gravitational_acceleration = defaults.gravitational_acceleration,
-                                          target_transport = nothing, kwargs...)
+$(MethodSignatures(; defaults = true))
 
 Construct a `NormalFlowBoundaryCondition` with the [`GravityWaveRadiation`](@ref) scheme. `val` must be a 2-tuple `(U, η)` or a function
 returning a 2-tuple, where `U` is the external barotropic transport and `η` is the external free surface displacement. Each
@@ -182,7 +181,7 @@ end
 GravityWaveRadiationBoundaryCondition(U, η; kwargs...) = GravityWaveRadiationBoundaryCondition((U, η); kwargs...)
 
 """
-    SurfaceWaveRadiationBoundaryCondition(; gravitational_acceleration = defaults.gravitational_acceleration)
+$(MethodSignatures(; defaults = true))
 
 Construct a `ValueBoundaryCondition` with the [`SurfaceWaveRadiation`](@ref) scheme for the free surface displacement `η`
 at an open boundary. Pair with [`GravityWaveRadiationBoundaryCondition`](@ref) on the barotropic transport.

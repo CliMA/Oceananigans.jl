@@ -173,7 +173,7 @@ const reference_smoothness_normalization = (1, 3, 6//25, 63//1250, 189//15625)
 """
     exact_smoothness_matrix(buffer, stencil)
 
-Return the `buffer × buffer` matrix `Q` of the Jiang & Shu smoothness indicator
+Return the `buffer × buffer` matrix `Q` of the [Jiang and Shu (1996)](@cite Jiang96) smoothness indicator
 
 ```math
 β = ∑ₗ₌₁ᵇᵘᶠᶠᵉʳ⁻¹ ∫ (dˡpᵣ / dxˡ)² dx = ψᵀ Q ψ
@@ -183,6 +183,11 @@ of the stencil number `stencil` of a WENO reconstruction of order `2buffer - 1`,
 arithmetic. `pᵣ` is the polynomial that reconstructs the cell averages `ψ` of the stencil (ordered from left to
 right), the integral spans the cell whose right face is reconstructed (of unit width), and `Q` is multiplied by
 the normalization of the reference tables.
+
+References
+==========
+* Jiang, G.-S., & Shu, C.-W. (1996). "Efficient implementation of weighted ENO schemes." Journal of
+  Computational Physics, 126(1), 202-228.
 """
 function exact_smoothness_matrix(buffer, stencil)
     R = Rational{BigInt}
@@ -463,7 +468,7 @@ end
 end
 
 """
-    load_weno_stencil(buffer, dir, func::Bool = false)
+$(MethodSignatures(; defaults = true))
 
 Stencils for WENO reconstruction calculations
 

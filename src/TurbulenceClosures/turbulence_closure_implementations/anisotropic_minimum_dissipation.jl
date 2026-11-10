@@ -38,8 +38,7 @@ function Base.show(io::IO, closure::AMD{TD}) where TD
 end
 
 """
-    AnisotropicMinimumDissipation([time_discretization = ExplicitTimeDiscretization, FT = Float64;]
-                                  C = 1/3, Cν = nothing, Cκ = nothing, Cb = nothing)
+$(MethodSignatures(; defaults = true))
 
 Return parameters of type `FT` for the `AnisotropicMinimumDissipation`
 turbulence closure.
@@ -124,6 +123,9 @@ References
 
 Abkar, M., Bae, H. J., & Moin, P. (2016). Minimum-dissipation scalar transport model for
     large-eddy simulation of turbulent flows. Physical Review Fluids, 1(4), 041701.
+
+Rozema, W., Bae, H. J., Moin, P., and Verstappen, R. (2015). Minimum-dissipation models for
+    large-eddy simulation. Physics of Fluids, 27(8), 085107.
 
 Verstappen, R., Rozema, W., and Bae, J. H. (2014), "Numerical scale separation in large-eddy
     simulation", Center for Turbulence ResearchProceedings of the Summer Program 2014.

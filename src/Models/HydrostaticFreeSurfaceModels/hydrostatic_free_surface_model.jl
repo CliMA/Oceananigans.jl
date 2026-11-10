@@ -8,17 +8,19 @@ using Oceananigans.BoundaryConditions: FieldBoundaryConditions, needs_implicit_s
 using Oceananigans.BuoyancyFormulations: materialize_buoyancy, validate_buoyancy
 using Oceananigans.DistributedComputations: Distributed
 using Oceananigans.Fields: CenterField, Field, TracerFields, ZeroField, tracernames
-using Oceananigans.Forcings: model_forcing
+using Oceananigans.Forcings: model_forcing, penetrative_radiation
 using Oceananigans.Grids: AbstractHorizontallyCurvilinearGrid, Center, Face, MutableVerticalDiscretization,
                           architecture, halo_size
 using Oceananigans.ImmersedBoundaries: GridFittedBoundary, ImmersedBoundaryGrid
 using Oceananigans.Models: AbstractModel, extract_boundary_conditions, materialize_tracers, timestepper_name,
                            validate_model_halo, validate_tracer_advection
-using Oceananigans.TimeSteppers: AbstractLagrangianParticles, Clock, TimeStepper, materialize_clock!, reconcile_state!,
+using Oceananigans.TimeSteppers: AbstractLagrangianParticles, Clock, TimeStepper, materialize_clock!,
+                                 materialize_lagrangian_particles, reconcile_state!,
                                  time_discretization, update_state!
 using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization, add_closure_specific_boundary_conditions,
                                        build_closure_fields, closure_required_tracers, implicit_diffusion_solver,
-                                       initialize_closure_fields!, validate_closure, with_tracers
+                                       initialize_closure_fields!, validate_closure, with_penetrative_radiation,
+                                       with_tracers
 using Oceananigans.Utils: tupleit
 
 PressureField(grid) = (; pHY′ = CenterField(grid))
@@ -82,25 +84,7 @@ default_free_surface(grid; gravitational_acceleration=defaults.gravitational_acc
     SplitExplicitFreeSurface(grid; cfl = 0.7, gravitational_acceleration)
 
 """
-    HydrostaticFreeSurfaceModel(grid;
-                                clock = Clock(grid),
-                                momentum_advection = VectorInvariant(),
-                                tracer_advection = Centered(),
-                                buoyancy = nothing,
-                                coriolis = nothing,
-                                free_surface = [default_free_surface],
-                                forcing::NamedTuple = NamedTuple(),
-                                closure = nothing,
-                                timestepper = :QuasiAdamsBashforth2,
-                                boundary_conditions::NamedTuple = NamedTuple(),
-                                tracers = nothing,
-                                particles::ParticlesOrNothing = nothing,
-                                biogeochemistry::AbstractBGCOrNothing = nothing,
-                                velocities = nothing,
-                                pressure = nothing,
-                                closure_fields = nothing,
-                                auxiliary_fields = NamedTuple(),
-                                vertical_coordinate = default_vertical_coordinate(grid))
+$(MethodSignatures(; defaults = true))
 
 Construct a hydrostatic model with a free surface on `grid`.
 
@@ -331,6 +315,7 @@ function build_hydrostatic_free_surface_model(grid, ::Val{tracer_names}, timeste
     G⁻ = previous_hydrostatic_tendency_fields(timestepper, velocities, free_surface, grid, tracer_names, boundary_conditions)
     cached_state = previous_hydrostatic_state_fields(timestepper, velocities, free_surface, tracers)
     timestepper = TimeStepper(timestepper, grid, prognostic_fields; implicit_solver, Gⁿ, G⁻, cached_state...)
+    particles = materialize_lagrangian_particles(particles, timestepper)
     materialize_clock!(clock, timestepper)
 
     # Materialize forcing for model tracer and velocity fields.
@@ -338,6 +323,7 @@ function build_hydrostatic_free_surface_model(grid, ::Val{tracer_names}, timeste
     # constructed inside tendency kernels, ensuring field dependency indices
     # are consistent between materialization and tendency computation.
     model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
+    closure = with_penetrative_radiation(closure, penetrative_radiation(forcing))
     forcing = model_forcing(forcing, model_fields, prognostic_fields)
     transport_velocities = transport_velocity_fields(velocities)
 

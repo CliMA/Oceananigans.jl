@@ -48,7 +48,7 @@ function Fields.communication_buffers(grid::DistributedGrid, data, bcs::FieldBou
 
     FT = eltype(data)
     Nz = size(parent(data), 3)
-    D  = typeof(zeros(arch, FT, 0, 0, 0))
+    D  = typeof(communication_buffer_array(arch, FT, 0, 0, 0))
     west  = (send = HaloBuffer{D}[], recv = HaloBuffer{D}[])
     east  = (send = HaloBuffer{D}[], recv = HaloBuffer{D}[])
     south = (send = HaloBuffer{D}[], recv = HaloBuffer{D}[])
@@ -70,7 +70,7 @@ function Fields.communication_buffers(grid::DistributedGrid, data, bcs::FieldBou
             tag = halo_tag_slots * field_tag + slot
             i = cells[1] .- i₀
             j = cells[2] .- j₀
-            data = zeros(arch, FT, length(i), length(j), Nz)
+            data = communication_buffer_array(arch, FT, length(i), length(j), Nz)
             push!(sides[side].recv, HaloBuffer{D}(rank, tag, data, i, j, 1, MPI.UnsafeMultiRequest(1)))
         end
 
@@ -82,7 +82,7 @@ function Fields.communication_buffers(grid::DistributedGrid, data, bcs::FieldBou
             i = σ * first(cells[1]) + ox - i₀ : σ : σ * last(cells[1]) + ox - i₀
             j = σ * first(cells[2]) + oy - j₀ : σ : σ * last(cells[2]) + oy - j₀
 
-            data = zeros(arch, FT, length(i), length(j), Nz)
+            data = communication_buffer_array(arch, FT, length(i), length(j), Nz)
             sign = σ == 1 ? 1 : something(zipper_sign(bcs.north), 1)
             facing_side = σ == 1 ? opposite[side] : side
             sending_side = getproperty(bcs, facing_side) isa DCBC ? facing_side : opposite[facing_side]

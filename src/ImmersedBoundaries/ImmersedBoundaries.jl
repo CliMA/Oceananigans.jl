@@ -18,7 +18,7 @@ using Oceananigans.Utils: @apply_regionally, launch!
 
 using Adapt: Adapt, adapt
 
-using DocStringExtensions: TYPEDSIGNATURES
+using DocStringExtensions: MethodSignatures, TYPEDSIGNATURES
 using Oceananigans.AbstractOperations: AbstractOperations
 using Oceananigans.BoundaryConditions: BoundaryConditions
 using Oceananigans.Fields: Fields, AbstractField, ConstantField, fractional_x_index, fractional_y_index,
@@ -34,6 +34,7 @@ include("abstract_grid_fitted_boundary.jl")
 include("grid_fitted_boundary.jl")
 include("grid_fitted_bottom.jl")
 include("partial_cell_bottom.jl")
+include("fourth_order_stencils.jl")
 include("immersed_boundary_condition.jl")
 include("conditional_differences.jl")
 include("mask_immersed_field.jl")

@@ -2,10 +2,10 @@ module BuoyancyFormulations
 
 export
     BuoyancyForce, BuoyancyTracer, SeawaterBuoyancy, LinearEquationOfState,
-    ∂xᵣ_b, ∂yᵣ_b, ∂x_b, ∂y_b, ∂z_b, buoyancy_perturbationᶜᶜᶜ, x_dot_g_bᶠᶜᶜ, y_dot_g_bᶜᶠᶜ, z_dot_g_bᶜᶜᶠ,
+    ∂xᵣ_b, ∂yᵣ_b, ∂x_b, ∂y_b, ∂z_b, buoyancy_perturbationᶜᶜᶜ, x_dot_g_bᶠᶜᶜ, y_dot_g_bᶜᶠᶜ, z_dot_g_bᶜᶜᶠ, z_dot_g_bᶜᶜᶜ,
     top_buoyancy_flux
 
-using DocStringExtensions: TYPEDSIGNATURES
+using DocStringExtensions: MethodSignatures, TYPEDSIGNATURES
 using SeawaterPolynomials: SeawaterPolynomials, ρ′, thermal_expansion, haline_contraction, with_float_type
 
 using Oceananigans: Oceananigans

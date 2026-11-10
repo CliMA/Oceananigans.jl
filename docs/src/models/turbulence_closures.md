@@ -105,7 +105,7 @@ for large eddy simulation (LES).
 
 [`SmagorinskyLilly`](@ref) computes an eddy viscosity from the resolved strain rate
 with a buoyancy-based stability correction, following the classic work of
-[Smagorinsky1958](@citet), [Smagorinsky63](@citet), [Lilly62](@citet), and [Lilly66](@citet):
+[Smagorinsky1958](@citet), [Smagorinsky1963](@citet), [Lilly62](@citet), and [Lilly66](@citet):
 
 ```jldoctest
 julia> using Oceananigans
@@ -219,6 +219,7 @@ CATKEVerticalDiffusivity{VerticallyImplicitTimeDiscretization}
 ├── negative_tke_time_scale: 60.0
 ├── minimum_convective_buoyancy_flux: 1.0e-11
 ├── tke_time_step: nothing
+├── penetrative_radiation: nothing
 ├── mixing_length: TKEBasedVerticalDiffusivities.CATKEMixingLength
 │   ├── Cˢ:   1.131
 │   ├── Cᵇ:   0.967
