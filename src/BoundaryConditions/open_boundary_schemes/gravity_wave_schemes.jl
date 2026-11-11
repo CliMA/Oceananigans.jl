@@ -31,10 +31,12 @@ free surface displacement).
 positive coordinate direction, to a prescribed value: after the Flather fill of every barotropic substep
 the face transport is shifted uniformly so that its integral along the boundary matches the target, so
 only the shape of the Flather profile survives and the free surface sees exactly the prescribed transport.
-It may be a number or a callable of the grid, and is supported on single-region, non-distributed grids. On an
-immersed grid only the wet columns of the side carry the target, and a fully dry side is left untouched. The
-default `nothing` leaves the transport to the Flather condition, which then adds `√(gH)` times the free-surface
-mismatch to `Uᵉˣᵗ`.
+It may be a number, a [`TransportTimeSeries`](@ref), or a callable of the grid that returns either of these or a
+callable of the model time; time-dependent targets are evaluated on the host at the start of every barotropic step.
+On a distributed grid the integral spans all ranks of the side, with one all-reduce per substep; multi-region grids
+are not supported. On an immersed grid only the wet columns of the side carry the target, and a fully dry side is
+left untouched. The default `nothing` leaves the transport to the Flather condition, which then adds `√(gH)` times
+the free-surface mismatch to `Uᵉˣᵗ`.
 
 References
 ==========
@@ -66,8 +68,8 @@ function GravityWaveRadiation(FT = defaults.FloatType;
     return GravityWaveRadiation(gravitational_acceleration, target_transport)
 end
 
-Adapt.adapt_structure(to, f::GravityWaveRadiation) =
-    GravityWaveRadiation(adapt(to, f.gravitational_acceleration), adapt(to, f.target_transport))
+# The target is applied on the host, so device kernels never see it
+Adapt.adapt_structure(to, f::GravityWaveRadiation) = GravityWaveRadiation(adapt(to, f.gravitational_acceleration), nothing)
 
 const GWNFBC = BoundaryCondition{<:NormalFlow{<:GravityWaveRadiation}}
 

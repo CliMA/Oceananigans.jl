@@ -3,11 +3,11 @@ module SplitExplicitFreeSurfaces
 export SplitExplicitFreeSurface, ForwardBackwardScheme
 export FixedSubstepNumber, FixedTimeStepSize
 
-using DocStringExtensions: MethodSignatures, TYPEDSIGNATURES
+using DocStringExtensions: MethodSignatures, TYPEDEF, TYPEDFIELDS, TYPEDSIGNATURES
 using KernelAbstractions: @index, @kernel, @localmem, @synchronize, StaticSize
 
 using Oceananigans: Oceananigans
-using Oceananigans.Architectures: architecture, convert_to_device, device
+using Oceananigans.Architectures: architecture, convert_to_device, device, on_architecture
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions, SurfaceWaveRadiationBoundaryCondition,
                                        cache_boundary_conditions!, fill_halo_regions!, gravity_wave_boundary_condition,
                                        regularize_field_boundary_conditions, step_boundary_conditions!

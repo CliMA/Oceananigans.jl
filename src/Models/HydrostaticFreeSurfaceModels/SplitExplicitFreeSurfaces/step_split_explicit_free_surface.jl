@@ -141,7 +141,7 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
         # argument conversion to GPU-compatible values. To alleviate this penalty we convert first and then we substep!
         @apply_regionally converted_U_args = convert_to_device(arch, U_args)
         @apply_regionally converted_η_args = convert_to_device(arch, η_args)
-        face_pins = configure_face_pins(arch, grid, U, V, free_surface.boundary_transport)
+        face_pins = configure_face_pins(arch, grid, U, V, free_surface.boundary_transport, clock.time)
 
         @unroll for substep in 1:Nsubsteps
             @inbounds averaging_weight = weights[substep]
@@ -292,8 +292,7 @@ function HydrostaticFreeSurfaceModels.step_free_surface!(free_surface::SplitExpl
     # The Flather refills above undo the pin, so re-pin the faces before the barotropic corrector reads them
     arch = architecture(free_surface_grid)
     boundary_transport = free_surface.boundary_transport
-    enforce_barotropic_transport_targets!(arch, free_surface_grid, U, V, boundary_transport)
-    enforce_barotropic_transport_targets!(arch, free_surface_grid, filtered_state.Ũ, filtered_state.Ṽ, boundary_transport)
+    enforce_barotropic_transport_targets!(arch, free_surface_grid, U, V, boundary_transport, model.clock.time)
 
     return nothing
 end

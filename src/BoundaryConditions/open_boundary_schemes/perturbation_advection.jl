@@ -164,6 +164,7 @@ For a callable, calls it with `grid` to recompute the target at the current grid
 get_target_transport(scheme, grid) = get_target_transport(scheme)  # 1-arg fallback for external schemes
 
 _eval_tt(x::Number, grid) = x
+_eval_tt(s::TransportTimeSeries, grid) = s
 _eval_tt(f, grid) = f(grid)
 
 # Helper to convert between density-weighted and intensive fields.
