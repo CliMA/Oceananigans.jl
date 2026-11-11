@@ -8,7 +8,7 @@ using Oceananigans.Utils: Utils, TimeInterval, prettykeys, materialize_schedule
 
 default_included_properties(model) = []
 
-mutable struct JLD2Writer{A, O, T, D, IF, IN, FS, KW} <: AbstractOutputWriter{A}
+mutable struct JLD2Writer{O, T, D, IF, IN, FS, KW} <: AbstractOutputWriter
     filepath :: String
     outputs :: O
     schedule :: T
@@ -21,7 +21,8 @@ mutable struct JLD2Writer{A, O, T, D, IF, IN, FS, KW} <: AbstractOutputWriter{A}
     verbose :: Bool
     jld2_kw :: KW
     initialized :: Bool
-    asynchronous :: A
+    asynchronous :: Bool
+    task :: Union{Nothing, Task}
 end
 
 noinit(args...) = nothing
@@ -107,11 +108,7 @@ Keyword arguments
 - `jld2_kw`: Dict of kwargs to be passed to `JLD2.jldopen` when data is written.
              A `:compress` entry here takes precedence over the `compress` keyword argument.
 
-- `asynchronous`: If `true`, run the disk-write phase on a background task (an
-                  [`AsyncOutputWriter`](@ref)). The synchronous GPU→CPU copy
-                  still happens on the main thread, so output content is identical to the
-                  synchronous case. Use [`wait_for_async_writes!`](@ref) to flush pending
-                  writes (called automatically at the end of `run!`). Default: `false`.
+- `asynchronous`: Write to disk on a background task while the simulation continues. Default: `false`.
 
 Example
 =======
@@ -205,12 +202,10 @@ function JLD2Writer(model, outputs; filename, schedule,
 
     validate_file_splitting(file_splitting, filepath, init, jld2_kw, including, d_outputs, model)
 
-    asynchronous && validate_async_outputs(d_outputs, array_type, model)
-
     # Note: file initialization is deferred until `initialize!(writer, model)` is called
     # (typically when `run!` is invoked on a Simulation containing this writer)
-    return JLD2Writer(filepath, d_outputs, schedule, array_type, init, including, part,
-                      file_splitting, overwrite_files, verbose, jld2_kw, false, io_mode(asynchronous))
+    return JLD2Writer(filepath, d_outputs, schedule, array_type, init,
+                      including, part, file_splitting, overwrite_files, verbose, jld2_kw, false, asynchronous, nothing)
 end
 
 # Inferring this for a concrete model type means inferring `serializeproperty!` for the
@@ -370,15 +365,61 @@ function iteration_exists(filepath, iter=0)
     return iter_exists
 end
 
-# Synchronous JLD2Writer: run prepare and commit inline. The async path uses
-# the same prepare/commit pair via the generic `write_output!(::AsyncOutputWriter, ::AbstractModel)`
-# in `async_output_writer.jl`, but spawns the commit on a background task. The
-# `::AbstractModel` constraint disambiguates from the `::Simulation` pass-through
-# defined in `Simulations/simulation.jl`.
-function Oceananigans.write_output!(writer::JLD2Writer{Synchronous}, model::AbstractModel)
-    snapshot = prepare_async_write(writer, model)
-    snapshot === nothing && return nothing
-    commit_async_write!(writer, snapshot)
+function Oceananigans.write_output!(writer::JLD2Writer, model)
+    wait(writer)
+    model.clock.iteration == 0 && !has_initial_output(writer.schedule) && return nothing
+
+    # Ensure the writer is initialized before writing
+    if !writer.initialized
+        initialize!(writer, model)
+    end
+
+    verbose = writer.verbose
+    current_iteration = model.clock.iteration
+
+    # Skip writes for iterations that are already present in the file.
+    if iteration_exists(writer.filepath, current_iteration)
+        @warn "Iteration $current_iteration was found in $(writer.filepath). Skipping output writing."
+    else # ok let's do this
+
+        # Fetch JLD2 output and store in `data`
+        verbose && @info @sprintf("Fetching JLD2 output %s...", keys(writer.outputs))
+
+        tc = Base.@elapsed data = NamedTuple(name => fetch_and_convert_output(output, model, writer) for (name, output)
+                                             in zip(keys(writer.outputs), values(writer.outputs)))
+
+        verbose && @info "Fetching time: $(prettytime(tc))"
+
+        # Start a new file if the file_splitting(model) is true
+        split_happened = writer.file_splitting(model)
+        split_happened && start_next_file(model, writer)
+        update_file_splitting_schedule!(writer.file_splitting, writer.filepath)
+
+        # After a file split, the new file may already contain this iteration
+        # (e.g., when picking up from a checkpoint that predates the latest output).
+        # In that case, skip writing to avoid duplicate key errors.
+        if split_happened && iteration_exists(writer.filepath, current_iteration)
+            @warn "Iteration $current_iteration already exists in $(writer.filepath) after file split. Skipping."
+            return nothing
+        end
+
+        # Write output from `data`
+        verbose && @info "Writing JLD2 output $(keys(writer.outputs)) to $(writer.filepath)..."
+
+        t = output_time(model.clock, writer.schedule)
+
+        write_to_disk!(writer) do
+            start_time, old_filesize = time_ns(), filesize(writer.filepath)
+            jld2output!(writer.filepath, current_iteration, t, data, writer.jld2_kw)
+            end_time, new_filesize = time_ns(), filesize(writer.filepath)
+
+            verbose && @info @sprintf("Writing done: time=%s, size=%s, Δsize=%s",
+                                      prettytime((end_time - start_time) / 1e9),
+                                      pretty_filesize(new_filesize),
+                                      pretty_filesize(new_filesize - old_filesize))
+        end
+    end
+
     return nothing
 end
 
@@ -439,79 +480,11 @@ function Base.show(io::IO, ow::JLD2Writer)
         "0 bytes (file not yet created)"
     end
 
-    async_tag = is_asynchronous(ow) ? " (async)" : ""
-
-    print(io, "JLD2Writer$(async_tag) scheduled on $(summary(ow.schedule)):", "\n",
+    print(io, "JLD2Writer scheduled on $(summary(ow.schedule)):", "\n",
               "├── filepath: ", relpath(ow.filepath), "\n",
               "├── $Noutputs outputs: ", prettykeys(ow.outputs), show_averaging_schedule(averaging_schedule), "\n",
               "├── array_type: ", show_array_type(ow.array_type), "\n",
               "├── including: ", ow.including, "\n",
               "├── file_splitting: ", summary(ow.file_splitting), "\n",
               "└── file size: ", file_size_str)
-end
-
-#####
-##### Async support for JLD2Writer
-#####
-
-function prepare_async_write(writer::JLD2Writer, model)
-    model.clock.iteration == 0 && !has_initial_output(writer.schedule) && return nothing
-
-    # Lazy initialization: if this is the first write, create the file and
-    # write metadata synchronously on the main thread (this is rare and only
-    # happens once).
-    if !writer.initialized
-        initialize!(writer, model)
-    end
-
-    iteration = model.clock.iteration
-
-    # Skip writes for iterations that are already present in the file. This
-    # check happens synchronously so the decision is made before any fetch.
-    if iteration_exists(writer.filepath, iteration)
-        @warn "Iteration $iteration was found in $(writer.filepath). Skipping output writing."
-        return nothing
-    end
-
-    writer.verbose && @info @sprintf("Fetching JLD2 output %s...", keys(writer.outputs))
-
-    # Synchronous fetch — this is the GPU→CPU transfer that must complete
-    # before the GPU advances to the next time step.
-    tc = Base.@elapsed data = NamedTuple(name => fetch_and_convert_output(output, model, writer)
-                                         for (name, output) in zip(keys(writer.outputs), values(writer.outputs)))
-
-    writer.verbose && @info "Fetching time: $(prettytime(tc))"
-
-    # Fetch before computing the output time: for a schedule like `FilteredTimeInterval`,
-    # `output_time` advances internal state that fetching still depends on.
-    time = output_time(model.clock, writer.schedule)
-
-    # File splitting decisions happen synchronously, since `start_next_file`
-    # needs `model` and mutates `writer.filepath`. The new filepath is captured
-    # into the snapshot so the in-flight write is decoupled from later splits.
-    split_happened = writer.file_splitting(model)
-    split_happened && start_next_file(model, writer)
-    update_file_splitting_schedule!(writer.file_splitting, writer.filepath)
-
-    if split_happened && iteration_exists(writer.filepath, iteration)
-        @warn "Iteration $iteration already exists in $(writer.filepath) after file split. Skipping."
-        return nothing
-    end
-
-    return OutputSnapshot(iteration, time, data, writer.filepath)
-end
-
-function commit_async_write!(writer::JLD2Writer, snap::OutputSnapshot)
-    writer.verbose && @info "Writing JLD2 output $(keys(snap.data)) to $(snap.destination)..."
-
-    start_time, old_filesize = time_ns(), filesize(snap.destination)
-    jld2output!(snap.destination, snap.iteration, snap.time, snap.data, writer.jld2_kw)
-    end_time, new_filesize = time_ns(), filesize(snap.destination)
-
-    writer.verbose && @info @sprintf("Writing done: time=%s, size=%s, Δsize=%s",
-                                     prettytime((end_time - start_time) / 1e9),
-                                     pretty_filesize(new_filesize),
-                                     pretty_filesize(new_filesize - old_filesize))
-
-    return nothing
 end

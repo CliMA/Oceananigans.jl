@@ -225,6 +225,34 @@ function field_time_series_bc(C, FT=Float64, ArrayType=Array)
     return BoundaryCondition(C, fts)
 end
 
+function test_asynchronous_output(Writer, arch)
+    dir = mktempdir()
+
+    filepaths = map((false, true)) do asynchronous
+        grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+        model = NonhydrostaticModel(grid; tracers=:c)
+        set!(model, u=(x, y, z) -> sin(2π * x) * cos(2π * y), v=(x, y, z) -> -cos(2π * x) * sin(2π * y), c=(x, y, z) -> sin(2π * x))
+        simulation = Simulation(model, Δt=0.01, stop_iteration=5, verbose=false)
+
+        # Output with the model eltype, so that only a copy of the model state keeps earlier iterations intact
+        writer = Writer(model, merge(model.velocities, model.tracers); dir, filename="asynchronous_$asynchronous",
+                        schedule=IterationInterval(1), array_type=Array{Float64}, asynchronous)
+
+        simulation.output_writers[:writer] = writer
+        run!(simulation)
+        return writer.filepath
+    end
+
+    for name in ("u", "c")
+        synchronous_series, asynchronous_series = (@test_logs(min_level=Logging.Error, FieldTimeSeries(filepath, name)) for filepath in filepaths)
+        @test synchronous_series.times == asynchronous_series.times
+        @test parent(synchronous_series) == parent(asynchronous_series)
+    end
+
+    rm(dir; recursive=true)
+    return nothing
+end
+
 # ParallelTestRunner.jl spawns new jobs with `@async` (via Malt.jl), which uses a smaller task
 # stack.  Provide a utility to run some code with a larger task stack, borrowed from Breeze.jl.
 macro with_stack_size(stack_size, expr)

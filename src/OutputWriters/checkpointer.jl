@@ -3,18 +3,16 @@ using StructArrays: StructArray
 
 using Oceananigans: Oceananigans, prognostic_state, restore_prognostic_state!
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper
-using Oceananigans.Utils: prettytime
 
 const NonCheckpointingOutputWriters = Union{JLD2Writer, NetCDFWriter, ZarrWriter}
 
-mutable struct Checkpointer{Mode, T} <: AbstractOutputWriter{Mode}
+mutable struct Checkpointer{T} <: AbstractOutputWriter
     schedule :: T
     dir :: String
     prefix :: String
     overwrite_files :: Bool
     verbose :: Bool
     cleanup :: Bool
-    asynchronous :: Mode
 end
 
 """
@@ -46,33 +44,19 @@ Keyword arguments
 
 - `cleanup`: Previous checkpoint files are deleted once a new checkpoint file is written.
              Default: `false`.
-
-- `asynchronous`: If `true`, run the disk-write phase on a background task. Supported only
-                  on `GPU` models: the prepare phase materializes the prognostic state to
-                  CPU (the same copy the synchronous path would do during JLD2
-                  serialization), and the worker thread serializes the CPU snapshot.
-                  Passing `asynchronous=true` on a CPU model emits a warning and falls
-                  back to synchronous I/O — async would buy nothing there but cost an
-                  extra full-state copy. Default: `false`.
 """
 function Checkpointer(model; schedule,
                       dir = ".",
                       prefix = "checkpoint",
                       overwrite_files = false,
                       verbose = false,
-                      cleanup = false,
-                      asynchronous = false)
+                      cleanup = false)
 
     mkpath(dir)
     filename = with_architecture_suffix(architecture(model), string(prefix, ".jld2"), ".jld2")
     prefix = String(chop(filename, tail=length(".jld2")))
 
-    if asynchronous && !(architecture(model) isa GPU)
-        @warn "Checkpointer: `asynchronous=true` is supported only on GPU; falling back to synchronous I/O."
-        asynchronous = false
-    end
-
-    return Checkpointer(schedule, dir, prefix, overwrite_files, verbose, cleanup, io_mode(asynchronous))
+    return Checkpointer(schedule, dir, prefix, overwrite_files, verbose, cleanup)
 end
 
 #####
@@ -198,49 +182,21 @@ function cleanup_checkpoints(checkpointer)
     return nothing
 end
 
-# Synchronous Checkpointer: prepare + commit inline. The async path shares the
-# same prepare/commit pair via the generic
-# `write_output!(::AsyncOutputWriter, ::AbstractModel)`. `Checkpointer`'s
-# `write_output!` takes a `Simulation`, not an `AbstractModel`, so the async
-# dispatch lives below.
-function Oceananigans.write_output!(c::Checkpointer{Synchronous}, simulation)
-    snapshot = prepare_async_write(c, simulation)
-    commit_async_write!(c, snapshot)
-    return nothing
-end
+Base.wait(::Checkpointer) = nothing
 
-# Asynchronous Checkpointer: matches the framework's `AsyncOutputWriter` path
-# but on `Simulation` rather than `AbstractModel` (Checkpointer needs the
-# Simulation to walk callbacks/output_writers in `prognostic_state`). The
-# `::AbstractModel` method only disambiguates from the generic
-# `write_output!(::AsyncOutputWriter, ::AbstractModel)`.
-Oceananigans.write_output!(c::Checkpointer{Asynchronous}, simulation) = spawn_async_write!(c, simulation)
-Oceananigans.write_output!(c::Checkpointer{Asynchronous}, model::AbstractModel) = spawn_async_write!(c, model)
-
-function prepare_async_write(c::Checkpointer, simulation)
+function Oceananigans.write_output!(c::Checkpointer, simulation)
     iter = iteration(simulation)
     filepath = checkpoint_path(iter, c)
 
-    # Build the prognostic state tree on the main thread, then move its arrays
-    # to the CPU. On GPU this is the GPU→CPU copy that the synchronous path
-    # would do implicitly during JLD2 serialization; on CPU it is a no-op.
-    # `on_architecture` only touches arrays: the state also holds objects such
-    # as the `Clock`, whose `Adapt` rule would demote `time` to kernel precision
-    # and so must not be applied to checkpointed state.
-    state = prognostic_state(simulation)
-    cpu_state = on_architecture(CPU(), state)
-
-    return OutputSnapshot(iter, nothing, cpu_state, filepath)
-end
-
-function commit_async_write!(c::Checkpointer, snap::OutputSnapshot)
     t1 = time_ns()
 
-    jldopen(snap.destination, "w") do file
-        serializeproperty!(file, "simulation", snap.data)
+    state = prognostic_state(simulation)
+
+    jldopen(filepath, "w") do file
+        serializeproperty!(file, "simulation", state)
     end
 
-    t2, sz = time_ns(), filesize(snap.destination)
+    t2, sz = time_ns(), filesize(filepath)
     c.verbose && @info "Checkpointing done: time=$(prettytime((t2 - t1) * 1e-9)), size=$(pretty_filesize(sz))"
 
     c.cleanup && cleanup_checkpoints(c)

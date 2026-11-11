@@ -10,7 +10,6 @@ Extension that adds Zarr read/write support to Oceananigans.jl via [Zarr.jl](htt
 module OceananigansZarrExt
 
 import Zarr
-using Printf: @sprintf
 using DocStringExtensions: MethodSignatures
 using OrderedCollections: OrderedDict
 
@@ -45,6 +44,7 @@ using Oceananigans.OutputWriters:
     time_average_outputs,
     has_initial_output,
     output_time,
+    write_to_disk!,
     output_averaging_schedule,
     show_averaging_schedule,
     show_array_type,
@@ -69,15 +69,11 @@ using Oceananigans.OutputWriters:
     halo_fill_2d_metric,
     materialize_serialized_output,
     serialize_vertical_coordinate,
-    ZarrWriter,
-    Synchronous,
-    OutputSnapshot,
-    io_mode,
-    is_asynchronous
+    ZarrWriter
 using Oceananigans.Utils:
     materialize_schedule,
     versioninfo_with_gpu, oceananigans_versioninfo,
-    prettykeys, prettytime, time_difference_in_seconds
+    prettykeys, time_difference_in_seconds
 
 const c = Center()
 const f = Face()

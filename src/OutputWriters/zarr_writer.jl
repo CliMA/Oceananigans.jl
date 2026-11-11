@@ -5,7 +5,7 @@
 #####
 ##### ZarrWriter struct definition
 #####
-mutable struct ZarrWriter{Mode, O, T, S, A, FS, C, CH, G, DN, DT} <: AbstractOutputWriter{Mode}
+mutable struct ZarrWriter{O, T, S, A, FS, C, CH, G, DN, DT} <: AbstractOutputWriter
     filepath :: String
     store :: S
     grids :: G
@@ -28,7 +28,8 @@ mutable struct ZarrWriter{Mode, O, T, S, A, FS, C, CH, G, DN, DT} <: AbstractOut
     dimension_name_generator :: DN
     dimension_type :: DT
     initialized :: Bool
-    asynchronous :: Mode
+    asynchronous :: Bool
+    task :: Union{Nothing, Task}
 end
 
 # method in OceananigansZarrExt
@@ -139,20 +140,14 @@ Keyword arguments
 
 - `dimension_type`: Element type for coordinate and time arrays. Default: `Float64`.
 
+- `asynchronous`: Write to disk on a background task while the simulation continues. Not supported on
+                  distributed architectures. Default: `false`.
+
 - `dimension_name_generator`: A function with signature `(var_name, grid, LX, LY, LZ, dim)` where `dim` is
                               either `Val(:x)`, `Val(:y)`, or `Val(:z)` that returns a string corresponding
                               to the name of the dimension `var_name` on `grid` with location `(LX, LY, LZ)`
                               along `dim`. This advanced option can be used to rename dimensions and variables
                               to satisfy certain naming conventions. Default: `trilocation_dim_name`.
-
-- `asynchronous`: If `true`, run the disk-write phase on a background task (an
-                  [`AsyncOutputWriter`](@ref)). The synchronous GPU→CPU copy
-                  still happens on the main thread, so output content is identical to the
-                  synchronous case. Use [`wait_for_async_writes!`](@ref) to flush pending
-                  writes (called automatically at the end of `run!`). Async is currently
-                  supported only on non-distributed (serial) runs; passing `asynchronous=true`
-                  with a `Distributed` architecture emits a warning and falls back to
-                  synchronous. Default: `false`.
 
 Reading output back
 ===================

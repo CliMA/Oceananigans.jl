@@ -2,7 +2,7 @@
 ##### NetCDFWriter functionality is implemented in ext/OceananigansNCDatasetsExt
 #####
 
-mutable struct NetCDFWriter{Mode, G, GM, O, T, A, FS, DN, DT} <: AbstractOutputWriter{Mode}
+mutable struct NetCDFWriter{G, GM, O, T, A, FS, DN, DT} <: AbstractOutputWriter
     grids :: G
     output_grid_map :: GM
     filepath :: String
@@ -24,7 +24,8 @@ mutable struct NetCDFWriter{Mode, G, GM, O, T, A, FS, DN, DT} <: AbstractOutputW
     dimension_name_generator :: DN
     dimension_type :: DT
     initialized :: Bool
-    asynchronous :: Mode
+    asynchronous :: Bool
+    task :: Union{Nothing, Task}
 end
 
 # method in OceananigansNCDatasetsExt
@@ -162,13 +163,7 @@ Optional keyword arguments
 - `dimension_type`: Floating point type for dimension coordinate arrays. Default: `Float64`.
                     Use `Float32` to reduce file size if needed.
 
-- `asynchronous`: If `true`, run the disk-write phase on a background task so that GPU
-                  computation can continue concurrently. The synchronous GPU→CPU copy still
-                  happens on the main thread. Use [`wait_for_async_writes!`](@ref) to flush
-                  pending writes (called automatically at the end of `run!`).
-                  A single in-flight task per writer is enforced (the next write waits for
-                  the previous one to complete), so HDF5/NetCDF concurrency hazards are
-                  avoided. Default: `false`.
+- `asynchronous`: Write to disk on a background task while the simulation continues. Default: `false`.
 
 Examples
 ========

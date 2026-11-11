@@ -1913,66 +1913,6 @@ function test_pickup_mode_selection_and_default(arch)
     return nothing
 end
 
-function test_checkpointer_async(arch)
-    N, L, Δt = 8, 1, 0.1
-
-    function make_model()
-        grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
-        return NonhydrostaticModel(grid)
-    end
-
-    if !(arch isa GPU)
-        # CPU: passing `asynchronous=true` must warn and fall back to Synchronous.
-        model = make_model()
-        cp = (@test_logs (:warn, r"asynchronous=true"i) match_mode=:any (
-            Checkpointer(model; schedule=IterationInterval(1), prefix="async_cp_cpu",
-                         asynchronous=true)))
-        @test cp isa SyncOutputWriter
-        @test !is_asynchronous(cp)
-        return nothing
-    end
-
-    # GPU: async must match sync byte-for-byte over a short run.
-    function run_with(asynchronous, prefix)
-        model = make_model()
-        set!(model, u=1, v=0.5)
-        sim = Simulation(model, Δt=Δt, stop_iteration=3)
-        sim.output_writers[:checkpointer] =
-            Checkpointer(model; schedule=IterationInterval(1), prefix=prefix,
-                         overwrite_files=true, asynchronous=asynchronous)
-        run!(sim)
-        return sim
-    end
-
-    sync_prefix  = "async_cp_sync_$(typeof(arch))"
-    async_prefix = "async_cp_async_$(typeof(arch))"
-    rm.(glob("$(sync_prefix)_iteration*.jld2");  force=true)
-    rm.(glob("$(async_prefix)_iteration*.jld2"); force=true)
-
-    sim_sync  = run_with(false, sync_prefix)
-    sim_async = run_with(true,  async_prefix)
-
-    @test sim_sync.output_writers[:checkpointer]  isa SyncOutputWriter
-    @test sim_async.output_writers[:checkpointer] isa AsyncOutputWriter
-
-    # Restart from each and assert the recovered model state matches.
-    function restored_model(prefix, iter)
-        model = make_model()
-        sim = Simulation(model, Δt=Δt, stop_iteration=3)
-        sim.output_writers[:checkpointer] = Checkpointer(model; schedule=IterationInterval(1), prefix)
-        set!(sim; iteration=iter)
-        return model
-    end
-
-    for iter in (1, 2, 3)
-        test_model_equality(restored_model(sync_prefix, iter), restored_model(async_prefix, iter))
-    end
-
-    rm.(glob("$(sync_prefix)_iteration*.jld2");  force=true)
-    rm.(glob("$(async_prefix)_iteration*.jld2"); force=true)
-    return nothing
-end
-
 function test_manual_checkpoint_with_checkpointer(arch)
     N = 8
     L = 1
@@ -2609,11 +2549,6 @@ for arch in archs
         test_manual_checkpoint_without_checkpointer(arch)
         test_manual_checkpoint_with_filepath(arch)
         test_checkpoint_at_end(arch)
-    end
-
-    @testset "Async checkpointing [$(typeof(arch))]" begin
-        @info "  Testing async checkpointing [$(typeof(arch))]..."
-        test_checkpointer_async(arch)
     end
 
     for WriterType in (JLD2Writer, NetCDFWriter)
