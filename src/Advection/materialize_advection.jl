@@ -57,6 +57,11 @@ function materialize_advection(weno::WENO{N, FT, Nothing}, grid) where {N, FT}
                             weno.time_discretization)
 end
 
+function materialize_advection(s::THINCBVD{N, FT, TD}, grid) where {N, FT, TD}
+    weno = materialize_advection(s.buffer_scheme, grid)
+    return THINCBVD{N, FT, TD, typeof(weno), typeof(s.steepnesses)}(weno, s.steepnesses, s.base_steepness)
+end
+
 materialize_advection(scheme::UpwindBiased{N, FT}, grid) where {N, FT} =
     UpwindBiased{N, FT}(materialize_advection(without_bounds_preservation(scheme.buffer_scheme), grid),
                         materialize_advection(scheme.advecting_velocity_scheme, grid),
