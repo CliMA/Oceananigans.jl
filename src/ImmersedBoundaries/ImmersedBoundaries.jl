@@ -18,7 +18,7 @@ using Oceananigans.Utils: @apply_regionally, launch!
 
 using Adapt: Adapt, adapt
 
-using DocStringExtensions: MethodSignatures, TYPEDSIGNATURES
+using Oceananigans.Utils: TYPEDSIGNATURES
 using Oceananigans.AbstractOperations: AbstractOperations
 using Oceananigans.BoundaryConditions: BoundaryConditions
 using Oceananigans.Fields: Fields, AbstractField, ConstantField, fractional_x_index, fractional_y_index,

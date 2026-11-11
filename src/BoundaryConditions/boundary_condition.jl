@@ -9,7 +9,7 @@ struct BoundaryCondition{C<:AbstractBoundaryConditionClassification, T}
 end
 
 """
-$(MethodSignatures(; defaults = true))
+$(TYPEDSIGNATURES)
 
 Construct a boundary condition of type `classification` with a function boundary `condition`.
 
@@ -128,7 +128,7 @@ NormalFlowBoundaryCondition(val; scheme = nothing, kwargs...) = BoundaryConditio
 DistributedCommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(DistributedCommunication(), val; kwargs...)
 
 """
-$(MethodSignatures(; defaults = true))
+$(TYPEDSIGNATURES)
 
 Return a `Flux` `BoundaryCondition` with `flux`.
 

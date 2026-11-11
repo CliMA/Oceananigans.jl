@@ -11,7 +11,7 @@ struct AdvectiveForcing{U, V, W}
 end
 
 """
-$(MethodSignatures(; defaults = true))
+$(TYPEDSIGNATURES)
 
 Build a forcing term representing advection by the velocity field `u, v, w`.
 

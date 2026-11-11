@@ -27,7 +27,8 @@ export offset_data, new_data
 export on_architecture
 
 using Adapt: Adapt
-using DocStringExtensions: FIELDS, MethodSignatures, TYPEDSIGNATURES
+using DocStringExtensions: FIELDS
+using Oceananigans.Utils: TYPEDSIGNATURES
 using GPUArraysCore: @allowscalar
 using OffsetArrays: OffsetArrays
 using Printf: @sprintf

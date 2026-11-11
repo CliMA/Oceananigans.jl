@@ -9,7 +9,7 @@ export
     @root, @onrank, @distribute, @handshake,
     SimplifiedGeneralizedBlockDistribution, create_cost_map, create_balanced_partition
 
-using DocStringExtensions: MethodSignatures, TYPEDSIGNATURES
+using Oceananigans.Utils: TYPEDSIGNATURES
 using GPUArraysCore: GPUArraysCore
 using LinearAlgebra: LinearAlgebra
 using MPI: MPI

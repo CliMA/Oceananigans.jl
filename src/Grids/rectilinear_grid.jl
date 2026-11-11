@@ -86,7 +86,7 @@ stretched_dimensions(::XYRegularRG) = tuple(3)
 stretched_dimensions(::XYZRegularRG) = tuple()
 
 """
-$(MethodSignatures(; defaults = true))
+$(TYPEDSIGNATURES)
 
 Create a `RectilinearGrid` with `size = (Nx, Ny, Nz)` grid points.
 

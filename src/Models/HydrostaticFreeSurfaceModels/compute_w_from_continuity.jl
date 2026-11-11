@@ -3,7 +3,7 @@ using Oceananigans.ImmersedBoundaries: immersed_cell
 using Oceananigans.Operators: Az⁻¹ᶜᶜᶜ, flux_div_xyᶜᶜᶜ, Δrᶜᶜᶜ, ∂t_σ
 
 """
-$(MethodSignatures(; defaults = true))
+$(TYPEDSIGNATURES)
 
 Update the vertical velocity field `w` and grid vertical velocity (for z-star coordinates).
 

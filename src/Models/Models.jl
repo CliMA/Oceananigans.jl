@@ -17,7 +17,7 @@ export
     initialize_boundary_transport, enforce_net_zero_transport!
 
 using Adapt: Adapt, adapt
-using DocStringExtensions: TYPEDSIGNATURES
+using Oceananigans.Utils: TYPEDSIGNATURES
 using GPUArraysCore: GPUArraysCore
 using JLD2: JLD2, jldopen
 

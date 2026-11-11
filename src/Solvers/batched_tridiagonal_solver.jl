@@ -34,7 +34,7 @@ const ZTridiagonalSolver = BatchedTridiagonalSolver{A, B, C, T, G, P, <:ZDirecti
 Architectures.architecture(solver::BatchedTridiagonalSolver) = architecture(solver.grid)
 
 """
-$(MethodSignatures(; defaults = true))
+$(TYPEDSIGNATURES)
 
 Construct a solver for batched tridiagonal systems on `grid` of the form
 

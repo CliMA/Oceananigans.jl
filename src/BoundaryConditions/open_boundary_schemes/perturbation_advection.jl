@@ -10,7 +10,7 @@ struct PerturbationAdvection{FT, D, TF, S} <: AbstractRadiationScheme{FT}
 end
 
 """
-$(MethodSignatures(; defaults = true))
+$(TYPEDSIGNATURES)
 
 Create a `PerturbationAdvection` scheme, passed as the `scheme` keyword to an
 `NormalFlowBoundaryCondition` (for boundary-normal velocities, `Face`-located) or to a

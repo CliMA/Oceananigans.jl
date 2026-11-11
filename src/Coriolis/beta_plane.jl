@@ -10,7 +10,7 @@ struct BetaPlane{S, FT} <: AbstractRotation{S}
 end
 
 """
-$(MethodSignatures(; defaults = true))
+$(TYPEDSIGNATURES)
 
 Return a β-plane Coriolis parameter, `f = f₀ + β y`, with floating-point type `FT`.
 

@@ -355,7 +355,7 @@ function new_metric(FT, arch, (LX, LY), topo, (Nx, Ny), (Hx, Hy))
 end
 
 """
-$(MethodSignatures(; defaults = true))
+$(TYPEDSIGNATURES)
 
 Return an OrthogonalSphericalShellGrid with empty horizontal metrics.
 """

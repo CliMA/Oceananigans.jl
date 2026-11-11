@@ -9,7 +9,7 @@ export VelocityFields, TracerFields, tracernames
 export interpolate, interpolate!
 
 using Adapt: Adapt, adapt
-using DocStringExtensions: MethodSignatures, TYPEDSIGNATURES
+using Oceananigans.Utils: TYPEDSIGNATURES
 using OffsetArrays: AbstractOffsetArray
 using SparseArrays: CHOLMOD
 using StaticArrays: StaticArray

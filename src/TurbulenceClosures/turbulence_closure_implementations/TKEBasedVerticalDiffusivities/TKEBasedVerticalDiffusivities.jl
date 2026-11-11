@@ -4,7 +4,7 @@ export CATKEVerticalDiffusivity,
        TKEDissipationVerticalDiffusivity
 
 using Adapt: Adapt, adapt
-using DocStringExtensions: MethodSignatures, TYPEDSIGNATURES
+using Oceananigans.Utils: TYPEDSIGNATURES
 using GPUArraysCore: @allowscalar
 using KernelAbstractions: @index, @kernel
 

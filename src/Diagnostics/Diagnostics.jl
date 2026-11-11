@@ -2,7 +2,7 @@ module Diagnostics
 
 export StateChecker, CFL, AdvectiveCFL, DiffusiveCFL
 
-using DocStringExtensions: MethodSignatures, TYPEDSIGNATURES
+using Oceananigans.Utils: TYPEDSIGNATURES
 
 using Oceananigans: Oceananigans, AbstractDiagnostic, fields, run_diagnostic!
 

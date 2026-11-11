@@ -4,7 +4,7 @@ export LagrangianParticles, DroguedParticleDynamics, CountingSort, ComparisonSor
        ParticleBoundaryConditions, ReflectingBoundary, AbsorbingBoundary
 
 using Adapt: Adapt, adapt
-using DocStringExtensions: MethodSignatures, TYPEDSIGNATURES
+using Oceananigans.Utils: TYPEDSIGNATURES
 using KernelAbstractions: @atomic, @index, @kernel
 using Printf: @sprintf
 using StructArrays: StructArray, components
@@ -47,7 +47,7 @@ end
 @inline no_dynamics(args...) = nothing
 
 """
-$(MethodSignatures(; defaults = true))
+$(TYPEDSIGNATURES)
 
 Construct some `LagrangianParticles` that can be passed to a model. The particles have initial locations
 `x`, `y`, and `z`. The behavior of particles at boundaries is specified by `boundary_conditions`;

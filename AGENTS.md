@@ -39,8 +39,8 @@ on RectilinearGrid, LatitudeLongitudeGrid, ConformalCubedSphereGrid, TripolarGri
 
 ### Docstrings
 
-- Use DocStringExtensions.jl: `$(TYPEDSIGNATURES)` when the signature has no default values, and
-  `$(MethodSignatures(; defaults = true))` when it does. Write the signature by hand only when the
+- Use `$(TYPEDSIGNATURES)` from `Oceananigans.Utils` (not from DocStringExtensions): with
+  DocStringExtensions v0.10 it also shows default values. Write the signature by hand only when the
   generated one would mislead, e.g. when it would drop a type the method dispatches on.
 - **ALWAYS `jldoctest` blocks, NEVER plain `julia` blocks** — doctests are tested; plain blocks rot
 - Include `# output` with verifiable output; prefer `show` methods over boolean comparisons
