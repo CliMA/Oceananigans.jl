@@ -52,9 +52,19 @@ const DistributedLatitudeLongitudeGrid{FT, TX, TY, TZ, Z,
                                                 DXFF, DYFC, DYCF}
 
 # Local size from global size and architecture
-local_size(arch::Distributed, global_sz) = (local_size(global_sz[1], arch.partition.x, arch.local_index[1]),
-                                            local_size(global_sz[2], arch.partition.y, arch.local_index[2]),
-                                            local_size(global_sz[3], arch.partition.z, arch.local_index[3]))
+function validate_partition_ranks(arch::Distributed)
+    Rx, Ry, Rz = ranks(arch)
+    Nr = MPI.Comm_size(arch.communicator)
+    Rx * Ry * Rz == Nr || throw(ArgumentError("Partition($Rx, $Ry, $Rz) [$(Rx * Ry * Rz) ranks] inconsistent with $Nr MPI ranks"))
+    return nothing
+end
+
+function local_size(arch::Distributed, global_sz)
+    validate_partition_ranks(arch)
+    return (local_size(global_sz[1], arch.partition.x, arch.local_index[1]),
+            local_size(global_sz[2], arch.partition.y, arch.local_index[2]),
+            local_size(global_sz[3], arch.partition.z, arch.local_index[3]))
+end
 
 # Individual, per-direction local size
 function local_size(N, R, local_index)

@@ -125,14 +125,14 @@ function YinYangGrid(arch::AbstractArchitecture = CPU(),
     halos = [YinYangRegionHalos(layout, r, interpolation, panel_size, halo[1:2]) for r in eachindex(layout)]
     local_regions = yin_yang_local_regions(arch, layout)
     exchange = yin_yang_exchange(arch, halos)
-    arch = child_architecture(arch)
+    child = child_architecture(arch)
 
     region_masks = MultiRegionObject(Tuple(YinYangMasks(region_cell_weights(layout, r, masks.cell_weights, halo[1:2])) for r in local_regions))
     region_halos = MultiRegionObject(Tuple(halos[r] for r in local_regions))
-    connectivity = YinYangConnectivity(overlap, (Nλ, Nφ), stencil_width, on_architecture(arch, masks),
-                                       on_architecture(arch, interpolation),
-                                       on_architecture(arch, region_masks), on_architecture(arch, region_halos),
-                                       on_architecture(arch, exchange))
+    connectivity = YinYangConnectivity(overlap, (Nλ, Nφ), stencil_width, on_architecture(child, masks),
+                                       on_architecture(child, interpolation),
+                                       on_architecture(child, region_masks), on_architecture(child, region_halos),
+                                       on_architecture(child, exchange))
 
     λᶠ, φᶠ = panel_faces
     topology = (TwoSided{Connected, Connected}, TwoSided{Connected, Connected}, Bounded)
@@ -144,7 +144,7 @@ function YinYangGrid(arch::AbstractArchitecture = CPU(),
         north_pole = layout[r].region == 1 ? (0, 90) : (90, 0)
         longitude = (λ₀ + λᶠ[ox + 1], λ₀ + λᶠ[ox + nx + 1])
         latitude = (φᶠ[oy + 1], φᶠ[oy + ny + 1])
-        return RotatedLatitudeLongitudeGrid(arch, FT; size = (nx, ny, Nz), z, halo, radius, topology,
+        return RotatedLatitudeLongitudeGrid(child, FT; size = (nx, ny, Nz), z, halo, radius, topology,
                                             latitude, longitude, north_pole)
     end
 

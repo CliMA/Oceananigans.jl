@@ -3,8 +3,9 @@ using Oceananigans.DistributedComputations: Distributed
 using Oceananigans.Utils: sync_device!
 
 #####
-##### A YinYangGrid on a `Distributed` architecture with `partition = MultiRegionPartition(yin, yang)`: each rank
-##### holds one piece of one panel, piece r on rank r - 1. Every rank builds the halo tables of every piece, so a
+##### A YinYangGrid on a `Distributed` architecture, whose `Partition` splits both panels or whose
+##### `MultiRegionPartition(yin, yang)` splits each panel: each rank holds one piece of one panel, piece r on rank r - 1,
+##### on the child architecture. Every rank builds the halo tables of every piece, so a
 ##### rank knows which of its values each other rank needs: the halos of a piece are pushed by their donors, one
 ##### message per donor and phase (copies, then interpolations, which may read the copied halos).
 #####
@@ -22,26 +23,25 @@ end
 yin_yang_local_regions(arch::Distributed, layout) = (arch.local_rank + 1,)
 
 # The halo pieces that this rank's piece `r` donates to the other pieces, as Vectors of `(receiver, table)`
-struct YinYangExchange{C, S, V}
-    communicator :: C
+struct YinYangExchange{S, V}
     scalars :: S # (; center_center, face_center, center_face, face_face) of (; copies, interpolations)
     vector :: V  # (; u_copies, v_copies, u, v)
 end
 
 function yin_yang_exchange(arch::Distributed, halos)
     r = arch.local_rank + 1
-    donated(pieces) = [(q, table) for q in eachindex(halos) for (d, table) in pieces(halos[q]) if d == r]
+    donated(pieces) = eltype(pieces(first(halos)))[(q, table) for q in eachindex(halos) for (d, table) in pieces(halos[q]) if d == r]
     scalar(name) = (; copies = donated(h -> getfield(h.scalars, name).copies),
                       interpolations = donated(h -> getfield(h.scalars, name).interpolations))
     scalars = NamedTuple{(:center_center, :face_center, :center_face, :face_face)}(
         map(scalar, (:center_center, :face_center, :center_face, :face_face)))
     vector = NamedTuple{(:u_copies, :v_copies, :u, :v)}(
         map(name -> donated(h -> getfield(h.vector, name)), (:u_copies, :v_copies, :u, :v)))
-    return YinYangExchange(arch.communicator, scalars, vector)
+    return YinYangExchange(scalars, vector)
 end
 
 Grids.on_architecture(arch, e::YinYangExchange) =
-    YinYangExchange(e.communicator, map(s -> map(p -> on_architecture_pieces(arch, p), s), e.scalars),
+    YinYangExchange(map(s -> map(p -> on_architecture_pieces(arch, p), s), e.scalars),
                     map(p -> on_architecture_pieces(arch, p), e.vector))
 
 @inline region_halo(s::NamedTuple, ::Center, ::Center) = s.center_center
@@ -50,12 +50,20 @@ Grids.on_architecture(arch, e::YinYangExchange) =
 @inline region_halo(s::NamedTuple, ::Face,   ::Face)   = s.face_face
 
 const DistributedYinYangGrid = MultiRegionGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:SubregionPartition{<:YinYangPartition},
-                                               <:YinYangConnectivity{<:Any, <:Any, <:Any, <:Any, <:YinYangExchange}}
+                                               <:Any, <:Any, <:Distributed}
 
 const DistributedYinYangGridOfSomeKind = Union{DistributedYinYangGrid,
-    ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:DistributedYinYangGrid, <:Any, <:Any, <:Any, <:AbstractSerialArchitecture}}
+    ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:DistributedYinYangGrid, <:Any, <:Any, <:Any, <:Distributed}}
 
 const DistributedYinYangField = Field{<:Any, <:Any, <:Any, <:Any, <:DistributedYinYangGridOfSomeKind}
+
+# A multi-region grid on a `Distributed` architecture holds the regions of its rank and fills their halos itself,
+# so its fields are built as on any multi-region grid
+const DistributedMultiRegionGrids = Union{MultiRegionGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Distributed},
+    ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:MultiRegionGrid, <:Any, <:Any, <:Any, <:Distributed}}
+
+Fields.Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::DistributedMultiRegionGrids, data, bcs, indices::Tuple, op, status) where {LX, LY, LZ} =
+    invoke(Field, Tuple{Tuple{LX, LY, LZ}, AbstractGrid, Any, Any, Any, Any, Any}, loc, grid, data, bcs, indices, op, status)
 
 #####
 ##### Exchanging halo pieces
@@ -66,7 +74,7 @@ first_table(table) = table
 
 # Fill the halo pieces of `data` listed in `receives` from their donor ranks, after packing with `pack!(buffer, table)`
 # the pieces this rank donates in `sends`; `unpack!(buffer, table)` writes a received buffer into `data`
-function exchange_pieces!(pack!, unpack!, exchange, data, receives, sends, tag)
+function exchange_pieces!(pack!, unpack!, communicator, data, receives, sends, tag)
     arch = architecture(data)
     Nk = size(data, 3)
     buffer(tables) = zeros(arch, eltype(data), length(first_table(tables)), Nk)
@@ -78,8 +86,8 @@ function exchange_pieces!(pack!, unpack!, exchange, data, receives, sends, tag)
     sync_device!(arch)
 
     received = [(donor, buffer(tables)) for (donor, tables) in receives]
-    requests = [[MPI.Irecv!(b, exchange.communicator; source = donor - 1, tag) for (donor, b) in received];
-                [MPI.Isend(b, exchange.communicator; dest = receiver - 1, tag) for (receiver, b) in sent]]
+    requests = [[MPI.Irecv!(b, communicator; source = donor - 1, tag) for (donor, b) in received];
+                [MPI.Isend(b, communicator; dest = receiver - 1, tag) for (receiver, b) in sent]]
     MPI.Waitall(requests)
 
     for ((_, b), (_, tables)) in zip(received, receives)
@@ -124,11 +132,11 @@ end
     end
 end
 
-function exchange_copies!(field, exchange, receives, sends, tag)
+function exchange_copies!(field, receives, sends, tag)
     grid, data = getregion(field.grid, 1), getregion(field.data, 1)
     pack!(b, copy) = launch_pieces!(grid, data, copy, _pack_copy!, b, data, copy)
     unpack!(b, copy) = launch_pieces!(grid, data, copy, _unpack!, data, b, copy, nothing, nothing)
-    return exchange_pieces!(pack!, unpack!, exchange, data, receives, sends, tag)
+    return exchange_pieces!(pack!, unpack!, architecture(field.grid).communicator, data, receives, sends, tag)
 end
 
 #####
@@ -144,12 +152,12 @@ function BoundaryConditions.fill_halo_regions!(field::DistributedYinYangField, a
     loc = instantiated_location(field)
     receives = region_halo(getregion(yin_yang_region_halos(field.grid), 1), loc[1], loc[2])
     sends = region_halo(exchange.scalars, loc[1], loc[2])
-    exchange_copies!(field, exchange, receives.copies, sends.copies, 1)
+    exchange_copies!(field, receives.copies, sends.copies, 1)
 
     grid, data = getregion(field.grid, 1), getregion(field.data, 1)
     pack!(b, (table,)) = launch_pieces!(grid, data, table, _pack_scalar!, b, data, grid, loc, table)
     unpack!(b, (table,)) = launch_pieces!(grid, data, table, _unpack!, data, b, table, nothing, nothing)
-    exchange_pieces!(pack!, unpack!, exchange, data, receives.interpolations, sends.interpolations, 2)
+    exchange_pieces!(pack!, unpack!, architecture(field.grid).communicator, data, receives.interpolations, sends.interpolations, 2)
     return nothing
 end
 
@@ -166,8 +174,8 @@ function BoundaryConditions.fill_halo_regions!((u, v)::Tuple{DistributedYinYangX
     exchange = yin_yang_connectivity(u.grid).exchange
     receives = getregion(yin_yang_region_halos(u.grid), 1).vector
     sends = exchange.vector
-    exchange_copies!(u, exchange, receives.u_copies, sends.u_copies, 3)
-    exchange_copies!(v, exchange, receives.v_copies, sends.v_copies, 4)
+    exchange_copies!(u, receives.u_copies, sends.u_copies, 3)
+    exchange_copies!(v, receives.v_copies, sends.v_copies, 4)
 
     # Each component is interpolated from both donor components, and zeroed on the immersed receivers
     grid = getregion(u.grid, 1)
@@ -177,7 +185,7 @@ function BoundaryConditions.fill_halo_regions!((u, v)::Tuple{DistributedYinYangX
         loc = instantiated_location(c)
         pack!(b, tables) = launch_pieces!(grid, data, tables, _pack_vector_component!, b, uᵈ, vᵈ, tables, component)
         unpack!(b, tables) = launch_pieces!(grid, data, tables, _unpack!, data, b, first(tables), grid, loc)
-        exchange_pieces!(pack!, unpack!, exchange, data, receive, send, tag)
+        exchange_pieces!(pack!, unpack!, architecture(c.grid).communicator, data, receive, send, tag)
     end
     return nothing
 end
@@ -188,7 +196,7 @@ end
 
 function all_reduce_regions!(combine, r, grid::DistributedYinYangGridOfSomeKind)
     values = on_architecture(CPU(), interior(r))
-    MPI.Allreduce!(values, combine, yin_yang_connectivity(grid).exchange.communicator)
+    MPI.Allreduce!(values, combine, architecture(grid).communicator)
     interior(r) .= on_architecture(architecture(r), values)
     return nothing
 end

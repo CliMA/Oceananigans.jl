@@ -12,12 +12,19 @@ yin_yang_script(partition) = """
     using Oceananigans.MultiRegion: MultiRegionPartition
     using Oceananigans.BoundaryConditions: fill_halo_regions!
     using Oceananigans.Utils: getregion
+    using Oceananigans.Architectures: architecture
 
     partition = $partition
     arch = Distributed(CPU(); partition)
     r = arch.local_rank + 1
     serial = YinYangGrid(CPU(); size=(48, 16, 2), z=(-1, 0), partition)
     grid = YinYangGrid(arch; size=(48, 16, 2), z=(-1, 0))
+    @test architecture(grid) isa Distributed
+
+    # Only multi-region grids apply the partition to each region
+    Nr = MPI.Comm_size(MPI.COMM_WORLD)
+    @test_throws ArgumentError RectilinearGrid(Distributed(CPU(); partition = Partition(1)); size=(4, 4, 1), extent=(1, 1, 1))
+    @test_throws ArgumentError YinYangGrid(Distributed(CPU(); partition = Partition(Nr)); size=(48, 16, 2), z=(-1, 0))
 
     f(λ, φ, z) = cosd(φ)^2 * sind(φ) * cosd(2λ) + cosd(φ) * sind(λ - 40) + z
     g(λ, φ, z) = sind(φ) * cosd(λ - 10) - z
@@ -62,9 +69,7 @@ function run_mpi_script(script, nranks)
 end
 
 @testset "Distributed YinYangGrid with $partition on $nranks ranks" for (nranks, partition) in
-        ((2, "MultiRegionPartition(Partition(1), Partition(1))"),
-         (3, "MultiRegionPartition(Partition(1), Partition(2))"),
-         (4, "MultiRegionPartition(Partition(2), Partition(2))"),
-         (8, "MultiRegionPartition(Partition(2, 2), Partition(2, 2))"))
+        ((2, "Partition(1)"), (3, "MultiRegionPartition(Partition(1), Partition(2))"),
+         (4, "Partition(2)"), (8, "Partition(2, 2)"))
     @test (run_mpi_script(yin_yang_script(partition), nranks); true)
 end

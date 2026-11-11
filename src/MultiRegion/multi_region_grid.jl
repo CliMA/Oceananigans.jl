@@ -13,13 +13,13 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
                                                                                   FixedTimeStepSize,
                                                                                   materialize_kernel_parameters
 
-struct MultiRegionGrid{FT, TX, TY, TZ, CZ, P, C, G, Arch <: AbstractSerialArchitecture} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, Arch, Nothing}
+struct MultiRegionGrid{FT, TX, TY, TZ, CZ, P, C, G, Arch <: AbstractArchitecture} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, Arch, Nothing}
     architecture :: Arch
     partition :: P
     connectivity :: C
     region_grids :: G
 
-    function MultiRegionGrid{FT, TX, TY, TZ, CZ}(arch::A, partition::P, connectivity::C, region_grids::G) where {FT, TX, TY, TZ, CZ, P, C, G, A <: AbstractSerialArchitecture}
+    function MultiRegionGrid{FT, TX, TY, TZ, CZ}(arch::A, partition::P, connectivity::C, region_grids::G) where {FT, TX, TY, TZ, CZ, P, C, G, A <: AbstractArchitecture}
         return new{FT, TX, TY, TZ, CZ, P, C, G, A}(arch, partition, connectivity, region_grids)
     end
 end

@@ -272,20 +272,20 @@ function distributed_architecture(child_architecture;
     ranks = Rx, Ry, Rz = size(partition)
     partition_ranks = Rx * Ry * Rz
 
-    if partition_ranks == 1
+    if mpi_ranks == 1
         @warn "We are building a Distributed architecture on a single MPI rank. \n" *
               "This can occur when MPI is incorrectly configured. \n" *
               "See https://juliaparallel.org/MPI.jl/stable/configuration/ for more details."
     end
 
-    # TODO: make this error refer to `partition` (user input) rather than `ranks`
-    if partition_ranks != mpi_ranks
+    # A multi-region grid applies the partition to each of its regions; grids check the number of ranks they need
+    if mpi_ranks % partition_ranks != 0
         throw(ArgumentError("Partition($Rx, $Ry, $Rz) [$partition_ranks ranks] inconsistent " *
                             "with $mpi_ranks MPI ranks"))
     end
 
     local_rank         = MPI.Comm_rank(communicator)
-    local_index        = rank2index(local_rank, Rx, Ry, Rz)
+    local_index        = rank2index(local_rank % partition_ranks, Rx, Ry, Rz)
     # The rank connectivity _ALWAYS_ wraps around (The cartesian processor "grid" is `Periodic`)
     local_connectivity = NeighboringRanks(local_index, ranks)
 
