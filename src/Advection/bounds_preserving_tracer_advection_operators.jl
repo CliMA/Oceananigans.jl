@@ -201,10 +201,6 @@ end
     return Ay_ρvc⁺ - Ay_ρvc⁻
 end
 
-# With adaptive-implicit vertical advection only the CFL-limited part of `w` is advected explicitly;
-# the remainder is added by the implicit solve. The bounded divergence assembles its own vertical
-# fluxes (bypassing `advective_tracer_flux_z`), so it must apply the same explicit scaling, or the
-# vertical flux is counted twice wherever the vertical Courant number exceeds `cfl`.
 @inline explicit_vertical_velocityᶜᶜᶠ(i, j, k, grid, advection, td, w) = @inbounds w[i, j, k]
 @inline explicit_vertical_velocityᶜᶜᶠ(i, j, k, grid, advection, td::AdaptiveVerticallyImplicitDiscretization, w) =
     @inbounds explicit_velocity_scaleᶜᶜᶠ(i, j, k, grid, advection, td, w) * w[i, j, k]
