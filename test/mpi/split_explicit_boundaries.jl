@@ -258,13 +258,15 @@ function build_targeted(grid)
 
     U_bcs = FieldBoundaryConditions(grid, (Face(), Center(), nothing); west = flather(series), east = flather(2Q))
     V_bcs = FieldBoundaryConditions(grid, (Center(), Face(), nothing); south = flather(Q / 2), north = flather(Q / 2))
+    u_bcs = FieldBoundaryConditions(west = NormalFlowBoundaryCondition(0), east = NormalFlowBoundaryCondition(0))
+    v_bcs = FieldBoundaryConditions(south = NormalFlowBoundaryCondition(0), north = NormalFlowBoundaryCondition(0))
 
     free_surface = SplitExplicitFreeSurface(grid; substeps=8, extend_halos=false)
 
     model = HydrostaticFreeSurfaceModel(grid; free_surface,
                                         timestepper = :QuasiAdamsBashforth2,
                                         coriolis = FPlane(f = 10),
-                                        boundary_conditions = (U = U_bcs, V = V_bcs),
+                                        boundary_conditions = (u = u_bcs, v = v_bcs, U = U_bcs, V = V_bcs),
                                         momentum_advection = nothing,
                                         buoyancy = nothing,
                                         tracers = ())
@@ -286,7 +288,7 @@ end
         cpu_arch = cpu_architecture(arch)
 
         grid = RectilinearGrid(arch, size=(40, 40, 2), x=(0, 1), y=(0, 1), z=(-1, 0),
-                               halo=(4, 4, 2), topology=(Bounded, Bounded, Bounded))
+                               halo=(4, 4, 2), topology=(Open, Open, Bounded))
         global_grid = reconstruct_global_grid(grid)
 
         mp = build_targeted(grid)
@@ -319,6 +321,8 @@ function build_exporting(grid)
 
     U_bcs = FieldBoundaryConditions(grid, (Face(), Center(), nothing); west = flather(Q), east = flather(Q))
     V_bcs = FieldBoundaryConditions(grid, (Center(), Face(), nothing); south = flather(0), north = flather(0))
+    u_bcs = FieldBoundaryConditions(west = NormalFlowBoundaryCondition(0), east = NormalFlowBoundaryCondition(0))
+    v_bcs = FieldBoundaryConditions(south = NormalFlowBoundaryCondition(0), north = NormalFlowBoundaryCondition(0))
 
     surface_freshwater_flux = Field{Center, Center, Nothing}(grid)
     set!(surface_freshwater_flux, (x, y) -> 1e-4 * (1 + x * y))
@@ -328,7 +332,7 @@ function build_exporting(grid)
     model = HydrostaticFreeSurfaceModel(grid; free_surface,
                                         timestepper = :QuasiAdamsBashforth2,
                                         coriolis = FPlane(f = 10),
-                                        boundary_conditions = (U = U_bcs, V = V_bcs),
+                                        boundary_conditions = (u = u_bcs, v = v_bcs, U = U_bcs, V = V_bcs),
                                         forcing = (; η = surface_freshwater_flux),
                                         momentum_advection = nothing,
                                         buoyancy = nothing,
@@ -351,7 +355,7 @@ end
         cpu_arch = cpu_architecture(arch)
 
         grid = RectilinearGrid(arch, size=(40, 40, 2), x=(0, 1), y=(0, 1), z=MutableVerticalDiscretization((-1, 0)),
-                               halo=(4, 4, 2), topology=(Bounded, Bounded, Bounded))
+                               halo=(4, 4, 2), topology=(Open, Open, Bounded))
         global_grid = reconstruct_global_grid(grid)
 
         mp = build_exporting(grid)

@@ -782,9 +782,11 @@ end
 function test_free_surface_forcing_export()
     Nx, Ny, H = 8, 8, 10.0
     Lx = Ly = 1e4
-    underlying_grid = RectilinearGrid(size = (Nx, Ny, 2), halo = (3, 3, 3), x = (0, Lx), y = (0, Ly),
-                                      z = MutableVerticalDiscretization((-H, 0)), topology = (Bounded, Bounded, Bounded))
-    grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((x, y) -> y < Ly / 4 ? 0 : -H))
+    bottom = GridFittedBottom((x, y) -> y < Ly / 4 ? 0 : -H)
+    underlying_grid(topology) = RectilinearGrid(size = (Nx, Ny, 2), halo = (3, 3, 3), x = (0, Lx), y = (0, Ly),
+                                                z = MutableVerticalDiscretization((-H, 0)), topology = topology)
+    grid = ImmersedBoundaryGrid(underlying_grid((Open, Open, Bounded)), bottom)
+    wall_grid = ImmersedBoundaryGrid(underlying_grid((Bounded, Bounded, Bounded)), bottom)
     Q, Jʷ, Δt, steps = 200.0, 1e-6, 30.0, 20
 
     flather(target) = GravityWaveRadiationBoundaryCondition((0, 0); target_transport = target)
@@ -795,7 +797,8 @@ function test_free_surface_forcing_export()
         surface_freshwater_flux = Field{Center, Center, Nothing}(grid)
         set!(surface_freshwater_flux, (x, y) -> y < Ly / 4 ? 0 : Jʷ)
         boundary_conditions = (U = FieldBoundaryConditions(west = flather(Q), east = flather(Q)),
-                               V = FieldBoundaryConditions(south = flather(0), north = flather(0)))
+                               V = FieldBoundaryConditions(south = flather(0), north = flather(0)),
+                               u = zero_normal_flow(:west, :east), v = zero_normal_flow(:south, :north))
         free_surface = SplitExplicitFreeSurface(grid; substeps = 4, export_free_surface_forcing)
         model = HydrostaticFreeSurfaceModel(grid; boundary_conditions, free_surface, buoyancy = nothing, tracers = (),
                                             forcing = (; η = surface_freshwater_flux))
@@ -818,7 +821,7 @@ function test_free_surface_forcing_export()
     split = shares.west ≈ -3/10 && shares.east ≈ 3/10 && shares.south == 0 && shares.north ≈ 4/10
 
     untargeted = try
-        HydrostaticFreeSurfaceModel(grid; free_surface = SplitExplicitFreeSurface(grid; substeps = 4, export_free_surface_forcing = true),
+        HydrostaticFreeSurfaceModel(wall_grid; free_surface = SplitExplicitFreeSurface(wall_grid; substeps = 4, export_free_surface_forcing = true),
                                     buoyancy = nothing, tracers = ())
         false
     catch error
@@ -834,7 +837,7 @@ function test_gravity_wave_time_dependent_target_transport()
     Nx, Ny, H = 8, 8, 10.0
     Lx = Ly = 1e4
     grid = RectilinearGrid(size = (Nx, Ny, 1), x = (0, Lx), y = (0, Ly), z = (-H, 0),
-                           topology = (Bounded, Bounded, Bounded))
+                           topology = (Open, Bounded, Bounded))
     Δy = Ly / Ny
     Q = 200.0
     Δt, steps = 30.0, 5
@@ -842,7 +845,8 @@ function test_gravity_wave_time_dependent_target_transport()
     flather(target) = GravityWaveRadiationBoundaryCondition((0, 0); target_transport = target)
 
     function run_model(west)
-        boundary_conditions = (; U = FieldBoundaryConditions(west = flather(west), east = flather(Q)))
+        boundary_conditions = (; U = FieldBoundaryConditions(west = flather(west), east = flather(Q)),
+                                 u = zero_normal_flow(:west, :east))
         model = HydrostaticFreeSurfaceModel(grid; boundary_conditions, timestepper = :QuasiAdamsBashforth2,
                                             free_surface = SplitExplicitFreeSurface(grid; substeps = 4),
                                             buoyancy = nothing, tracers = ())
