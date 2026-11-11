@@ -36,19 +36,15 @@ variable `JULIA_NUM_THREADS` is set.
 struct CPU <: AbstractSerialArchitecture end
 
 """
-    GPU(device, ordinal = nothing)
+    GPU(device)
 
-Return a GPU architecture using `device`, on the GPU numbered `ordinal` (0-based),
-or on the current GPU if `ordinal = nothing`.
+Return a GPU architecture using `device`.
 `device` defauls to `CUDA.CUDABackend(always_inline=true)`
 if CUDA is loaded.
 """
-struct GPU{D, O} <: AbstractSerialArchitecture
+struct GPU{D} <: AbstractSerialArchitecture
     device :: D
-    ordinal :: O
 end
-
-GPU(device) = GPU(device, nothing)
 
 """
     ReactantState <: AbstractArchitecture
@@ -65,12 +61,6 @@ device(a::CPU) = KA.CPU()
 device(a::GPU) = a.device
 device!(::CPU, i) = nothing
 device!(::CPU) = nothing
-device!(::AbstractArchitecture) = nothing
-device!(arch::GPU{<:Any, Int}) = device!(arch, arch.ordinal)
-
-# The architecture `arch` on device `ordinal`
-on_device(::CPU, ordinal) = CPU()
-on_device(arch::GPU, ordinal) = GPU(arch.device, ordinal)
 ndevices(a::CPU) = KA.ndevices(KA.CPU())
 ndevices(a::AbstractArchitecture) = KA.ndevices(a.device)
 synchronize(a::CPU) = KA.synchronize(KA.CPU())

@@ -79,24 +79,12 @@ function reduce_regions!(reduction!, r, operand)
         throw(ArgumentError("The result of a reduction over dims=$dims must be a reduced field on the MultiRegionGrid."))
 
     operand = spanning_operand(reduction!, operand)
+    partial = Field(instantiated_location(r), r.grid, eltype(r); indices=indices(r))
     combine = reduction_operator(reduction!)
-
-    # Every region reduces its own operand on its own device, into a partial result allocated there, so that the
-    # operand (often a KernelFunctionOperation reading neighboring cells) is never read through peer access.
-    # Only the partial results (as small as the reduced field) cross devices, when they are combined on the device
-    # of the first region. Combining in region order keeps the result identical to the single-device one.
-    R = regions(operand.grid)
-    partials = map(R[2:end]) do region
-        activate_region_device!(operand.grid, region)
-        partial = Field(instantiated_location(r), r.grid, eltype(r); indices=indices(r))
-        reduce_region!(reduction!, partial, getregion(operand, region))
-    end
-    activate_region_device!(operand.grid, 1)
     reduce_region!(reduction!, r, getregion(operand, 1))
 
-    # The partial results are complete before the first region's device reads them (stream-ordered)
-    order_region_devices!(operand.grid)
-    for partial in partials
+    for region in regions(operand.grid)[2:end]
+        reduce_region!(reduction!, partial, getregion(operand, region))
         interior(r) .= combine.(interior(r), interior(partial))
     end
 
@@ -105,10 +93,8 @@ end
 
 function reduce_regions!(reduction!, r::MultiRegionAbstractField, operand)
     for region in regions(operand.grid)
-        activate_region_device!(operand.grid, region)
         reduce_region!(reduction!, getregion(r, region), getregion(operand, region))
     end
-    activate_region_device!(operand.grid, 1)
     return r
 end
 

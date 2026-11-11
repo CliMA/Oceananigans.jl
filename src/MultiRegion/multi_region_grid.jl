@@ -83,8 +83,7 @@ Keyword Arguments
 
 - `partition`: the partitioning required. The implemented partitioning are `XPartition`
                (division along the ``x`` direction) and `YPartition` (division along
-               the ``y`` direction), or a `MultiRegionPartition` of either that also sets
-               the device of each region.
+               the ``y`` direction).
 
 Example
 =======
@@ -103,14 +102,11 @@ function MultiRegionGrid(global_grid; partition = XPartition(2))
 
     @warn "MultiRegion functionalities are experimental: help the development by reporting bugs or non-implemented features!"
 
-    arch = architecture(global_grid)
-    archs = region_architectures(arch, MultiRegionPartition(partition))
-    partition = MultiRegionPartition(partition).layout
-
     if length(partition) == 1
         return global_grid
     end
 
+    arch = architecture(global_grid)
     connectivity = Connectivity(partition, global_grid)
 
     global_grid  = on_architecture(CPU(), global_grid)
@@ -123,7 +119,7 @@ function MultiRegionGrid(global_grid; partition = XPartition(2))
     FT = eltype(global_grid)
 
     args = (Reference(global_grid),
-            archs,
+            Reference(arch),
             local_topo,
             local_size,
             local_extent,

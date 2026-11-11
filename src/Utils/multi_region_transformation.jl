@@ -27,63 +27,6 @@ struct Iterate{I}
 end
 
 #####
-##### Region devices: each region of a multi-device MultiRegionGrid is built on an architecture that records its
-##### device (see `MultiRegionPartition`). Regional calls activate the device of the architecture of each region.
-#####
-
-# The architecture of a region of a regional object, if it records its device; extended by MultiRegion for grids and fields
-regional_architecture(a) = nothing
-regional_architecture(arch::Architectures.GPU{<:Any, Int}) = arch
-regional_architecture(::Tuple{}) = nothing
-regional_architecture(nt::NamedTuple) = regional_architecture(values(nt))
-
-function regional_architecture(t::Tuple)
-    arch = regional_architecture(first(t))
-    return isnothing(arch) ? regional_architecture(Base.tail(t)) : arch
-end
-
-activate_device!(::Nothing) = nothing
-activate_device!(arch) = Architectures.device!(arch)
-
-"""
-    activate_region_device!(object, r)
-
-Activate the device of region `r` of `object`, a regional object or a tuple of them.
-"""
-activate_region_device!(object, r) = activate_device!(regional_architecture(getregion(object, r)))
-
-"""
-    enable_region_peer_access!(arch, devices)
-
-Make memory allocated on each of `devices` readable and writable from kernels running on the others.
-Extended by the GPU extensions.
-"""
-enable_region_peer_access!(arch, devices) = nothing
-
-"""
-    order_region_devices!(object)
-
-Order the work queued on the device of every region of `object` after the work queued so far on the devices of
-the other regions, without blocking the host. Use it where one region's kernels read or overwrite another region's
-data (halo copies and interpolations, remapping, combining partial reductions).
-"""
-function order_region_devices!(object)
-    archs = unique(regional_architecture(getregion(object, r)) for r in regions(object))
-    length(archs) > 1 && stream_barrier!(archs)
-    return nothing
-end
-
-# Extended by the GPU extensions with a stream-ordered barrier
-function stream_barrier!(archs)
-    for arch in archs
-        activate_device!(arch)
-        sync_device!(arch)
-    end
-    activate_device!(first(archs))
-    return nothing
-end
-
-#####
 ##### Multi region functions
 #####
 
@@ -150,10 +93,8 @@ end
     R = isnothing(multi_region_args) ? regions(multi_region_kwargs) : regions(multi_region_args)
 
     for r in R
-        activate_region_device!((args..., values(kwargs)...), r)
         regional_func!(map(Base.Fix2(getregion, r), args)...; map(Base.Fix2(getregion, r), values(kwargs))...)
     end
-    activate_region_device!((args..., values(kwargs)...), 1)
 
     return nothing
 end
@@ -164,10 +105,8 @@ end
 @inline function apply_regionally!(regional_func!::MultiRegionObject, args...; kwargs...)
     R = regions(regional_func!)
     for r in R
-        activate_region_device!((args..., values(kwargs)...), r)
         getregion(regional_func!, r)(map(Base.Fix2(getregion, r), args)...; map(Base.Fix2(getregion, r), values(kwargs))...)
     end
-    activate_region_device!((args..., values(kwargs)...), 1)
     return nothing
 end
 
@@ -193,10 +132,8 @@ end
     # return values
     regional_return_values = Vector(undef, length(R))
     for r in R
-        activate_region_device!((args..., values(kwargs)...), r)
         regional_return_values[r] = regional_func(map(Base.Fix2(getregion, r), args)...; map(Base.Fix2(getregion, r), values(kwargs))...)
     end
-    activate_region_device!((args..., values(kwargs)...), 1)
 
     if Nreturns == 1
         return MultiRegionObject(Tuple(regional_return_values))

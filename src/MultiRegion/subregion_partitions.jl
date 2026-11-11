@@ -1,32 +1,22 @@
 #####
-##### Partitions that subdivide every region of a parent partition into px × py subregions, each of which may live on
-##### its own device (see `MultiRegionPartition`). Subregion r = (q - 1) px py + (j - 1) px + i is the subregion (i, j)
-##### of region q. The halo nodes of a subregion that lie inside the interior of its region are copies of the interior
-##### of a sibling; the others are filled by the connectivity of the parent partition, split by donor subregion.
+##### Partitions of the regions of a parent partition into pieces: logically rectangular ranges of the interior of a
+##### region, each the interior of one region of the grid (in time, of one rank). Every region may be split differently,
+##### into pieces of different sizes. The halo nodes of a piece that lie inside the interior of its region are copies
+##### of the interior of a sibling; the others are filled by the connectivity of the parent partition, split by donor
+##### piece. Everything below works on the list of pieces, whatever its order or shape.
 #####
 
-"""
-$(TYPEDFIELDS)
-
-Subdivide each region of `partition`, whose regions have logically rectangular interiors of equal size,
-into `subregions = (px, py)` subregions.
-
-```jldoctest
-julia> using Oceananigans.MultiRegion: SubregionPartition, YinYangPartition
-
-julia> summary(SubregionPartition(YinYangPartition(), (2, 2)))
-"YinYangPartition with (1: Yin, 2: Yang) with 2×2 subregions per region"
-```
-"""
-struct SubregionPartition{P} <: AbstractPartition
+# The parent `region`, the index `offsets` `(ox, oy)` (region index = piece index + offset) and the interior `size`
+# `(nx, ny)` of every piece; pieces of the same region tile its interior
+struct SubregionPartition{P, L} <: AbstractPartition
     partition :: P
-    subregions :: NTuple{2, Int}
+    layout :: L # Vector of (; region, offsets, size)
 end
 
-Base.length(p::SubregionPartition) = length(p.partition) * prod(p.subregions)
+Base.length(p::SubregionPartition) = length(p.layout)
 
-Base.summary(p::SubregionPartition) = p.subregions == (1, 1) ? summary(p.partition) :
-    string(summary(p.partition), " with ", p.subregions[1], "×", p.subregions[2], " subregions per region")
+Base.summary(p::SubregionPartition) = length(p) == length(p.partition) ? summary(p.partition) :
+    string(summary(p.partition), " in ", length(p), " pieces")
 
 # The first index and size of each of `n` nearly equal parts of 1:N
 function split_range(N, n)
@@ -35,18 +25,48 @@ function split_range(N, n)
     return offsets, sizes
 end
 
-"""
-    subregion_layout(partition::SubregionPartition, (Nx, Ny))
+# Split region q of `partition`, whose regions have `Nx × Ny` interior cells, into `splits[q] = (px, py)` nearly equal
+# pieces, numbered region by region and then as (i, j) ↦ (j - 1) px + i
+function SubregionPartition(partition, splits, (Nx, Ny))
+    layout = NamedTuple{(:region, :offsets, :size), Tuple{Int, NTuple{2, Int}, NTuple{2, Int}}}[]
+    for (region, (px, py)) in enumerate(splits)
+        x_offsets, x_sizes = split_range(Nx, px)
+        y_offsets, y_sizes = split_range(Ny, py)
+        for j in 1:py, i in 1:px
+            push!(layout, (; region, offsets = (x_offsets[i], y_offsets[j]), size = (x_sizes[i], y_sizes[j])))
+        end
+    end
+    return SubregionPartition(partition, layout)
+end
 
-The parent `region`, the index offsets `(ox, oy)` (region index = subregion index + offset) and the interior
-`size` `(nx, ny)` of every subregion of `partition`, whose regions have `Nx × Ny` interior cells.
 """
-function subregion_layout(p::SubregionPartition, (Nx, Ny))
-    px, py = p.subregions
-    x_offsets, x_sizes = split_range(Nx, px)
-    y_offsets, y_sizes = split_range(Ny, py)
-    return [(; region, offsets = (x_offsets[i], y_offsets[j]), size = (x_sizes[i], y_sizes[j]))
-            for region in 1:length(p.partition) for j in 1:py for i in 1:px]
+$(TYPEDSIGNATURES)
+
+The partition of each region of a multi-region grid by its own `Partition`, e.g.
+`MultiRegionPartition(Partition(1), Partition(2))` puts the first region in one piece and splits the second in
+two along `x`. A grid takes a single `Partition` as the same partition of every region.
+
+```jldoctest
+julia> using Oceananigans
+
+julia> using Oceananigans.MultiRegion: MultiRegionPartition
+
+julia> length(MultiRegionPartition(Partition(1), Partition(2, 2)))
+5
+```
+"""
+struct MultiRegionPartition{P}
+    partitions :: P
+    MultiRegionPartition(partitions::Partition...) = new{typeof(partitions)}(partitions)
+end
+
+Base.length(p::MultiRegionPartition) = sum(prod, map(ranks, p.partitions))
+
+function region_splits(p::MultiRegionPartition)
+    for partition in p.partitions
+        ranks(partition)[3] == 1 || throw(ArgumentError("Regions cannot be partitioned in z; got $(summary(partition))."))
+    end
+    return map(partition -> ranks(partition)[1:2], p.partitions)
 end
 
 # The subregion of `region` whose interior holds the region index (I, J)
@@ -110,12 +130,11 @@ function subregion_halos(layout, r, (Nx, Ny), (Hx, Hy))
     return [(d, SubregionCopy(pairs)) for (d, pairs) in sort(collect(copies))], seam_nodes
 end
 
-# Copy the halos of `data` on subregion `r` from its siblings, each on the device of its donor
+# Copy the halos of `data` on subregion `r` from its siblings
 function copy_subregion_halos!(field, r, copies)
     data = getregion(field.data, r)
     ks = axes(data, 3)
     for (donor, copy) in copies
-        activate_region_device!(field.grid, donor)
         kernel_parameters = KernelParameters((length(copy), length(ks)), (0, first(ks) - 1))
         launch!(architecture(field.grid), getregion(field.grid, donor), kernel_parameters,
                 _copy_subregion_halo!, data, getregion(field.data, donor), copy)
@@ -128,52 +147,3 @@ end
     @inbounds c[copy.receivers.i[n], copy.receivers.j[n], k] = source[copy.donors.i[n], copy.donors.j[n], k]
 end
 
-#####
-##### The device of each region
-#####
-
-"""
-$(TYPEDFIELDS)
-
-The partition of a `MultiRegionGrid` into the regions of `layout` (e.g. `XPartition(2)` or
-`SubregionPartition(YinYangPartition(), (2, 2))`), with region `r` on device `devices[r]` (0-based),
-or every region on the current device if `devices = nothing`.
-
-```jldoctest
-julia> using Oceananigans.MultiRegion: MultiRegionPartition, XPartition
-
-julia> summary(MultiRegionPartition(XPartition(2); devices = (0, 1)))
-"Equal partitioning in X with (2 regions) on devices (0, 1)"
-```
-"""
-struct MultiRegionPartition{L, D}
-    layout :: L
-    devices :: D
-
-    function MultiRegionPartition(layout; devices = nothing)
-        isnothing(devices) || length(devices) == length(layout) ||
-            throw(ArgumentError("$(summary(layout)) needs $(length(layout)) devices; got $devices."))
-        return new{typeof(layout), typeof(devices)}(layout, devices)
-    end
-end
-
-MultiRegionPartition(p::MultiRegionPartition) = p
-
-Base.summary(p::MultiRegionPartition) = isnothing(p.devices) ? summary(p.layout) :
-    string(summary(p.layout), " on devices ", p.devices)
-
-# The architecture of every region of `partition`, a `MultiRegionObject`
-function region_architectures(arch, p::MultiRegionPartition)
-    isnothing(p.devices) && return MultiRegionObject(Tuple(arch for _ in 1:length(p.layout)))
-    enable_region_peer_access!(arch, unique(p.devices))
-    return MultiRegionObject(Tuple(on_device(arch, d) for d in p.devices))
-end
-
-# The devices of the regions of `grid`, or `nothing` if they are all on the current device
-function region_devices(grid)
-    archs = [regional_architecture(getregion(grid, r)) for r in regions(grid)]
-    return any(isnothing, archs) ? nothing : Tuple(arch.ordinal for arch in archs)
-end
-
-Utils.regional_architecture(grid::AbstractGrid) = regional_architecture(architecture(grid))
-Utils.regional_architecture(field::Field) = regional_architecture(field.grid)
