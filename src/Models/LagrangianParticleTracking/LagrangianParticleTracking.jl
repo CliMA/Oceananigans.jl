@@ -1,12 +1,13 @@
 module LagrangianParticleTracking
 
-export LagrangianParticles, DroguedParticleDynamics
+export LagrangianParticles, DroguedParticleDynamics, CountingSort, ComparisonSort,
+       ParticleBoundaryConditions, ReflectingBoundary, AbsorbingBoundary
 
 using Adapt: Adapt, adapt
-using DocStringExtensions: TYPEDSIGNATURES
-using KernelAbstractions: @index, @kernel
+using DocStringExtensions: MethodSignatures, TYPEDSIGNATURES
+using KernelAbstractions: @atomic, @index, @kernel
 using Printf: @sprintf
-using StructArrays: StructArray
+using StructArrays: StructArray, components
 
 using Oceananigans: Oceananigans, prognostic_state, restore_prognostic_state!
 using Oceananigans.Architectures: architecture, device
@@ -32,26 +33,37 @@ Base.show(io::IO, p::Particle) = print(io, "Particle at (",
                                        @sprintf("%-8s", prettysummary(p.y, true) * ", "),
                                        @sprintf("%-8s", prettysummary(p.z, true) * ")"))
 
-struct LagrangianParticles{P, R, T, D, Π} <: AbstractLagrangianParticles
-        properties :: P
-       restitution :: R
-    tracked_fields :: T
-          dynamics :: D
-        parameters :: Π
+struct LagrangianParticles{P, B, T, D, Π, S, R, M} <: AbstractLagrangianParticles
+             properties :: P
+    boundary_conditions :: B
+         tracked_fields :: T
+               dynamics :: D
+             parameters :: Π
+                sorting :: S
+                removal :: R
+          tendencies :: M
 end
 
 @inline no_dynamics(args...) = nothing
 
 """
-    LagrangianParticles(; x, y, z, restitution=1.0, dynamics=no_dynamics, parameters=nothing)
+$(MethodSignatures(; defaults = true))
 
 Construct some `LagrangianParticles` that can be passed to a model. The particles have initial locations
-`x`, `y`, and `z`. The coefficient of restitution for particle-wall collisions is specified by `restitution`.
+`x`, `y`, and `z`. The behavior of particles at boundaries is specified by `boundary_conditions`;
+see [`ParticleBoundaryConditions`](@ref).
 
 `dynamics` is a function of `(lagrangian_particles, model, Δt)` that is called prior to advecting particles.
 `parameters` can be accessed inside the `dynamics` function.
+
+`sorting` specifies an algorithm for sorting particles by grid cell, either
+[`CountingSort`](@ref) or [`ComparisonSort`](@ref). Default: `nothing` (particles are not sorted).
 """
-function LagrangianParticles(; x, y, z, restitution=1.0, dynamics=no_dynamics, parameters=nothing)
+function LagrangianParticles(; x, y, z,
+                             boundary_conditions = ParticleBoundaryConditions(),
+                             dynamics = no_dynamics,
+                             parameters = nothing,
+                             sorting = nothing)
     size(x) == size(y) == size(z) ||
         throw(ArgumentError("x, y, z must all have the same size!"))
 
@@ -60,32 +72,45 @@ function LagrangianParticles(; x, y, z, restitution=1.0, dynamics=no_dynamics, p
 
     particles = StructArray{Particle}((x, y, z))
 
-    return LagrangianParticles(particles; restitution, dynamics, parameters)
+    return LagrangianParticles(particles; boundary_conditions, dynamics, parameters, sorting)
 end
 
 """
     LagrangianParticles(particles::StructArray;
-                        restitution = 1.0,
+                        boundary_conditions = ParticleBoundaryConditions(),
                         tracked_fields::NamedTuple=NamedTuple(),
                         dynamics = no_dynamics,
-                        parameters = nothing)
+                        parameters = nothing,
+                        sorting = nothing)
 
 Construct some `LagrangianParticles` that can be passed to a model. The `particles` should be a `StructArray`
-and can contain custom fields. The coefficient of restitution for particle-wall collisions is specified by `restitution`.
+and can contain custom fields.
+
+`boundary_conditions` specifies the behavior of particles at boundaries; see [`ParticleBoundaryConditions`](@ref).
+Particles that cross an [`AbsorbingBoundary`](@ref) stop moving and are removed at the end of the time step.
 
 A number of `tracked_fields` may be passed in as a `NamedTuple` of fields. Each particle will track the value of each
 field. Each tracked field must have a corresponding particle property. So if `T` is a tracked field, then `T` must also
 be a custom particle property. Tracked fields are sampled before `dynamics` and refreshed after advection
 and boundary handling, so properties match the final particle positions.
 
-`dynamics` is a function of `(lagrangian_particles, model, Δt)` that is called prior to advecting particles.
-`parameters` can be accessed inside the `dynamics` function.
+`dynamics` is a function of `(lagrangian_particles, model, Δt)` that is called once per time step,
+with the full time step `Δt`, prior to advecting particles. `parameters` can be accessed inside the `dynamics` function.
+
+Particle positions are advanced with the time-stepping scheme of the model; see `substep_lagrangian_particles!`.
+
+`sorting` specifies an algorithm for sorting particles by grid cell, either
+[`CountingSort`](@ref) or [`ComparisonSort`](@ref). Default: `nothing` (particles are not sorted).
+Sorted particles are reordered at the beginning of every time step,
+so that `dynamics` sees particles stored in order of increasing cell index.
+See [`sort_lagrangian_particles!`](@ref).
 """
 function LagrangianParticles(particles::StructArray;
-                             restitution = 1.0,
+                             boundary_conditions = ParticleBoundaryConditions(),
                              tracked_fields::NamedTuple=NamedTuple(),
                              dynamics = no_dynamics,
-                             parameters = nothing)
+                             parameters = nothing,
+                             sorting = nothing)
 
     for (field_name, tracked_field) in pairs(tracked_fields)
         field_name in propertynames(particles) ||
@@ -93,7 +118,14 @@ function LagrangianParticles(particles::StructArray;
                                 "You might have to define your own particle type."))
     end
 
-    return LagrangianParticles(particles, restitution, tracked_fields, dynamics, parameters)
+    sorting = materialize_sorting(sorting, particles)
+    removal = materialize_removal(boundary_conditions, particles)
+    validate_reordering(dynamics, sorting, removal)
+
+    tendencies = nothing # materialized by the model constructor; see `materialize_lagrangian_particles`
+
+    return LagrangianParticles(particles, boundary_conditions, tracked_fields, dynamics, parameters,
+                               sorting, removal, tendencies)
 end
 
 Base.size(lagrangian_particles::LagrangianParticles) = size(lagrangian_particles.properties)
@@ -112,8 +144,9 @@ function Base.show(io::IO, lagrangian_particles::LagrangianParticles)
 
     print(io, Nparticles, " LagrangianParticles with eltype ", Tparticle, ":", "\n",
         "├── ", length(properties), " properties: ", properties, "\n",
-        "├── particle-wall restitution coefficient: ", lagrangian_particles.restitution, "\n",
+        "├── boundary conditions: ", summary(lagrangian_particles.boundary_conditions), "\n",
         "├── ", length(fields), " tracked fields: ", propertynames(fields), "\n",
+        "├── sorting: ", prettysummary(lagrangian_particles.sorting, false), "\n",
         "└── dynamics: ", prettysummary(lagrangian_particles.dynamics, false))
 end
 
@@ -128,16 +161,11 @@ end
 @inline flattened_node((x, y, z), grid::XYZFlatGrid) = tuple()
 
 include("update_lagrangian_particle_state.jl")
+include("particle_boundary_conditions.jl")
 include("lagrangian_particle_advection.jl")
 include("drogued_dynamics.jl")
-
-TimeSteppers.step_lagrangian_particles!(::Nothing, model, Δt) = nothing
-
-function TimeSteppers.step_lagrangian_particles!(particles::LagrangianParticles, model, Δt)
-    particles.dynamics(particles, model, Δt)
-    advect_lagrangian_particles!(particles, model, Δt)
-    return nothing
-end
+include("lagrangian_particle_sorting.jl")
+include("lagrangian_particle_time_stepping.jl")
 
 ####
 #### Extend output writers to support LagrangianParticles
@@ -154,11 +182,19 @@ end
 # Checkpointing
 
 function Oceananigans.prognostic_state(lagrangian_particles::LagrangianParticles)
-    return (; properties = prognostic_state(lagrangian_particles.properties))
+    return (; properties = prognostic_state(lagrangian_particles.properties),
+              tendencies = prognostic_state(lagrangian_particles.tendencies))
 end
 
 function Oceananigans.restore_prognostic_state!(restored::LagrangianParticles, from)
+    # Particles may have been absorbed before the checkpoint was written
+    resize!(restored.properties, length(from.properties.x))
     restore_prognostic_state!(restored.properties, from.properties)
+
+    if hasproperty(from, :tendencies)
+        restore_prognostic_state!(restored.tendencies, from.tendencies)
+    end
+
     return restored
 end
 

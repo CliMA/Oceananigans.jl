@@ -109,7 +109,7 @@ function schedule_aligned_time_step(schedule::TimeInterval, clock, Δt)
     t★ = next_actuation_time(schedule)
     t★ === Inf && return Δt
     t = clock.time
-    δt = time_difference_seconds(t★, t)
+    δt = time_difference_in_seconds(t★, t)
     return min(Δt, δt)
 end
 
@@ -139,7 +139,7 @@ struct IterationInterval <: AbstractSchedule
 end
 
 """
-    IterationInterval(interval; offset=0)
+$(MethodSignatures(; defaults = true))
 
 Return a callable `IterationInterval` that "actuates" (i.e., schedules output or callback execution)
 whenever the model iteration (modified by `offset`) is a multiple of `interval`.
@@ -169,7 +169,7 @@ mutable struct WallTimeInterval{FT} <: AbstractSchedule
 end
 
 """
-    WallTimeInterval(interval; start_time = time_ns() * 1e-9)
+$(MethodSignatures(; defaults = true))
 
 Return a callable `WallTimeInterval` that schedules periodic output or diagnostic evaluation
 on a `interval` of "wall time" while a simulation runs, in units of seconds.
@@ -206,9 +206,16 @@ Oceananigans.restore_prognostic_state!(restored::WallTimeInterval,  ::Nothing) =
 ##### SpecifiedTimes
 #####
 
-mutable struct SpecifiedTimes{FT} <: AbstractSchedule
-    times :: Vector{FT}
+# `FT` is the times' own type, left free of `T`: a traced device array of `FT` times has a traced
+# element type (`TracedRArray{FT}` is an `AbstractVector{TracedRNumber{FT}}`), see `DeviceSpecifiedTimes`
+# in the Reactant extension.
+mutable struct SpecifiedTimes{FT, T <: AbstractVector} <: AbstractSchedule
+    times :: T
     previous_actuation :: Int
+
+    SpecifiedTimes{FT, T}(times, previous_actuation) where {FT, T} = new{FT, T}(times, previous_actuation)
+    SpecifiedTimes(times::AbstractVector, previous_actuation::Int) =
+        new{eltype(times), typeof(times)}(times, previous_actuation)
 end
 
 """
@@ -230,10 +237,10 @@ function SpecifiedTimes(times...)
 
     if all(t -> t isa Number, times)
         FT = Oceananigans.defaults.FloatType
-        return SpecifiedTimes{FT}(sort([convert(FT, t) for t in times]), 0)
+        return SpecifiedTimes(sort!(collect(FT, times)), 0)
     elseif all(t -> t isa AbstractTime, times)
         TT = typeof(first_time)
-        return SpecifiedTimes{TT}(sort(collect(times)), 0)
+        return SpecifiedTimes(sort!(collect(TT, times)), 0)
     else
         throw(ArgumentError("SpecifiedTimes expects all times to be numbers or all to be Date/DateTime."))
     end
@@ -271,7 +278,7 @@ Oceananigans.initialize!(st::SpecifiedTimes, model) = st(model)
 
 function schedule_aligned_time_step(schedule::SpecifiedTimes, clock, Δt)
     t★ = next_actuation_time(schedule)
-    δt = t★ == Inf ? Δt : time_difference_seconds(t★, clock.time)
+    δt = t★ == Inf ? Δt : time_difference_in_seconds(t★, clock.time)
     return min(Δt, δt)
 end
 
@@ -310,7 +317,7 @@ mutable struct ConsecutiveIterations{S} <: AbstractSchedule
 end
 
 """
-    ConsecutiveIterations(parent_schedule, N=1)
+$(MethodSignatures(; defaults = true))
 
 Return a `schedule::ConsecutiveIterations` that actuates both when `parent_schedule`
 actuates, and at iterations immediately following the actuation of `parent_schedule`.
@@ -356,7 +363,7 @@ struct PrecedingIterations{S, FT} <: AbstractSchedule
 end
 
 """
-    PrecedingIterations(parent_schedule; expected_max_time_step_growth=1.2)
+$(MethodSignatures(; defaults = true))
 
 Return a `schedule::PrecedingIterations` that actuates both when `parent_schedule` actuates,
 and at the iteration immediately preceding the actuation of `parent_schedule`. This is the
@@ -404,7 +411,7 @@ function actuates_next_iteration(schedule::Union{TimeInterval, SpecifiedTimes}, 
     t★ = next_actuation_time(schedule)
     t★ === Inf && return false
 
-    return time_difference_seconds(t★, clock.time) <= expected_max_time_step_growth * clock.last_Δt
+    return time_difference_in_seconds(t★, clock.time) <= expected_max_time_step_growth * clock.last_Δt
 end
 
 schedule_aligned_time_step(schedule::PrecedingIterations, clock, Δt) =
@@ -495,7 +502,7 @@ end
 function offset_reached(schedule::TimeOffset, t)
     t★ = offset_time(schedule)
     t★ === Inf && return false
-    return time_difference_seconds(t, t★) >= 0
+    return time_difference_in_seconds(t, t★) >= 0
 end
 
 function reset_offset!(schedule::TimeOffset, t, parent_actuated=true)
@@ -537,7 +544,7 @@ function schedule_aligned_time_step(schedule::TimeOffset, clock, Δt)
     schedule.offset_actuated && return Δt
     t★ = offset_time(schedule)
     t★ === Inf && return Δt
-    δt = time_difference_seconds(t★, clock.time)
+    δt = time_difference_in_seconds(t★, clock.time)
     δt > 0 || return Δt
     return min(Δt, δt)
 end

@@ -38,16 +38,7 @@ const TripolarGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} = OrthogonalSpheric
 const TripolarGridOfSomeKind{FT, TX, TY, TZ} = Union{TripolarGrid{FT, TX, TY, TZ}, ImmersedBoundaryGrid{FT, TX, TY, TZ, <:TripolarGrid}}
 
 """
-    TripolarGrid(arch = CPU(), FT::DataType = Oceananigans.defaults.FloatType;
-                 size,
-                 southernmost_latitude = -80,
-                 halo = (4, 4, 4),
-                 radius = Oceananigans.defaults.planet_radius,
-                 z = (0, 1),
-                 north_poles_latitude = 55,
-                 first_pole_longitude = 70,
-                 fold_topology = CenterFolded,
-                 pivot = default_pivot(fold_topology))
+$(MethodSignatures(; defaults = true))
 
 Return an `OrthogonalSphericalShellGrid` tripolar grid on the sphere. The
 tripolar grid replaces the North Pole singularity with two other singularities
@@ -139,6 +130,18 @@ Keyword Arguments
               1     1     2                     Nx÷2+1                    Nx    Nx    Nx+1
     ```
     See [`FPivotZipperBoundaryCondition`](@ref) for more information on the fold.
+
+!!! info "Zipper and fold line"
+    The zipper and the fold line are two distinct objects. The [`Zipper`](@ref) is the north boundary condition:
+    its pivot (`UPivot`, `TPivot` or `FPivot`) sets where the two north singularities sit and how columns are
+    mirrored across them when the halos are filled. The fold line is the row that the fold maps onto itself, and
+    its location is set by `fold_topology`: the `Center` row `j = Ny` for `RightCenterFolded`, the `Face` row
+    `j = Ny + 1` for `RightFaceFolded`. Each pivot requires one fold topology: `FPivot` requires `RightFaceFolded`,
+    while `UPivot` and `TPivot` require `RightCenterFolded`. `UPivot` and `TPivot` share the same fold line and
+    differ only in the halo-filling kernels.
+
+    Besides filling the halos, the zipper reconciles the fold line: it overwrites the redundant half of the
+    fold-line row with the mirror image of the other half.
 
 !!! info "North boundary condition"
     The north boundary of a tripolar grid is topologically required to be a
@@ -368,13 +371,21 @@ end
 function transfer_horizontal_field(old_data, helper_grid, bcs, LX, LY)
     TX, TY, _ = topology(helper_grid)
     Nx, Ny, _ = size(helper_grid)
-    new_field = Field{LX, LY, Center}(helper_grid; boundary_conditions = bcs)
+    new_field = Field{LX, LY, Nothing}(helper_grid; boundary_conditions = bcs)
     Ni = Base.length(LX(), TX(), Nx)
     Nj = Base.length(LY(), TY(), Ny)
-    cpu_old_data = on_architecture(CPU(), old_data)
-    new_field.data[1:Ni, 1:Nj, 1] .= cpu_old_data[1:Ni, 1:Nj]
+    new_field.data[1:Ni, 1:Nj, 1] .= on_architecture(architecture(helper_grid), old_data)[1:Ni, 1:Nj]
     fill_halo_regions!(new_field)
     return deepcopy(dropdims(new_field.data, dims=3))
+end
+
+# The grid the transferred metrics are filled on. Only its size, halo, topology and — when
+# distributed — its connectivity are read; its own metrics are never touched.
+function halo_filling_grid(new_halo, grid::TripolarGrid)
+    Nx, Ny, _ = size(grid)
+    TX, TY, _ = topology(grid)
+    Hx, Hy, _ = new_halo
+    return RectilinearGrid(; size = (Nx, Ny), halo = (Hx, Hy), x = (0, 1), y = (0, 1), topology = (TX, TY, Flat))
 end
 
 function Grids.with_halo(new_halo, old_grid::TripolarGrid)
@@ -384,18 +395,13 @@ function Grids.with_halo(new_halo, old_grid::TripolarGrid)
 
     Nx,  Ny,  Nz  = size(old_grid)
     TX,  TY,  TZ  = topology(old_grid)
-    Hxo, Hyo, Hzo = halo_size(old_grid)
     Hxn, Hyn, Hzn = new_halo
 
     # Reconstruct vertical coordinate with new halo
     z = cpu_face_constructor_z(old_grid)
     Lz, new_z = generate_coordinate(FT, topology(old_grid), (Nx, Ny, Nz), new_halo, z, :z, 3, CPU())
 
-    # Helper grid for halo filling (same approach as the TripolarGrid constructor)
-    helper_grid = RectilinearGrid(; size = (Nx, Ny),
-                                    halo = (Hxn, Hyn),
-                                    x = (0, 1), y = (0, 1),
-                                    topology = (TX, TY, Flat))
+    helper_grid = halo_filling_grid(new_halo, old_grid)
 
     # Boundary conditions for halo filling (same as in the TripolarGrid constructor)
     bcs = FieldBoundaryConditions(north  = BoundaryCondition(Zipper{fold_pivot(old_grid.conformal_mapping)}(), 1),

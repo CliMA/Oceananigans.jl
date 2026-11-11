@@ -82,7 +82,8 @@ using Oceananigans.OutputWriters:
     construct_ossg_halo_padded_array,
     halo_fill_2d_metric
 using Oceananigans.Utils:
-    materialize_schedule, versioninfo_with_gpu, oceananigans_versioninfo, prettykeys
+    materialize_schedule, versioninfo_with_gpu, oceananigans_versioninfo, prettykeys,
+    time_difference_in_seconds
 
 import NCDatasets: defVar
 import Oceananigans: initialize!, write_output!
@@ -93,8 +94,7 @@ import Oceananigans.OutputWriters:
     convert_for_netcdf,
     materialize_from_netcdf,
     reconstruct_grid,
-    trilocation_dim_name,
-    dimension_name_generator_free_surface
+    trilocation_dim_name
 
 const c = Center()
 const f = Face()

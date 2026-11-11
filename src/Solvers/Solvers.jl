@@ -7,7 +7,7 @@ export
     ConjugateGradientSolver,
     KrylovSolver
 
-using DocStringExtensions: TYPEDSIGNATURES
+using DocStringExtensions: MethodSignatures, TYPEDSIGNATURES
 using FFTW: FFTW
 using KernelAbstractions: @kernel, @index
 

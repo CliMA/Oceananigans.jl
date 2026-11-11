@@ -33,10 +33,7 @@ struct SphericalCoriolis{S, FT, F} <: AbstractRotation{S}
 end
 
 """
-    SphericalCoriolis([FT = Float64;]
-                      rotation_rate = Oceananigans.defaults.planet_rotation_rate,
-                      scheme = EnstrophyConserving(),
-                      formulation = NonhydrostaticFormulation())
+$(MethodSignatures(; defaults = true))
 
 Return a parameter object for Coriolis forces on a sphere rotating at `rotation_rate`.
 
@@ -80,9 +77,7 @@ const HydrostaticSphericalCoriolis{S, FT}      = SphericalCoriolis{S, FT, <:Hydr
 const NonhydrostaticSphericalCoriolis{S, FT}   = SphericalCoriolis{S, FT, <:NonhydrostaticFormulation} where {S, FT}
 
 """
-    HydrostaticSphericalCoriolis([FT = Float64;]
-                                 rotation_rate = Oceananigans.defaults.planet_rotation_rate,
-                                 scheme = EnstrophyConserving())
+$(MethodSignatures(; defaults = true))
 
 Return a `SphericalCoriolis` with `HydrostaticFormulation`. This is a convenience
 constructor that sets `formulation = HydrostaticFormulation()` and defaults to the

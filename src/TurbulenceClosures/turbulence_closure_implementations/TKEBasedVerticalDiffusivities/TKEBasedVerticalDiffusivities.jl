@@ -4,7 +4,7 @@ export CATKEVerticalDiffusivity,
        TKEDissipationVerticalDiffusivity
 
 using Adapt: Adapt, adapt
-using DocStringExtensions: TYPEDSIGNATURES
+using DocStringExtensions: MethodSignatures, TYPEDSIGNATURES
 using GPUArraysCore: @allowscalar
 using KernelAbstractions: @index, @kernel
 
@@ -15,13 +15,15 @@ using Oceananigans.BoundaryConditions: BoundaryConditions, DefaultBoundaryCondit
 using Oceananigans.BuoyancyFormulations: BuoyancyForce, BuoyancyTracer, SalinitySeawaterBuoyancy, SeawaterBuoyancy,
                                          TemperatureSeawaterBuoyancy, top_buoyancy_flux, ∂z_b
 using Oceananigans.Fields: CenterField, XFaceField, YFaceField, ZFaceField, ZeroField
+using Oceananigans.Forcings: surface_radiative_buoyancy_flux, transmitted_fraction, transmitted_fraction_derivative,
+                             transmitted_thickness
 using Oceananigans.Grids: Center, Face, inactive_cell, inactive_node, peripheral_node, static_column_depthᶜᶜᵃ
 using Oceananigans.Operators: Δzᶜᶜᶜ, Δzᶜᶠᶠ, Δzᶠᶜᶠ, Δz⁻¹ᶜᶜᶜ, Δz⁻¹ᶜᶠᶜ, Δz⁻¹ᶠᶜᶜ, ℑxᶜᵃᵃ, ℑxᶠᵃᵃ, ℑyᵃᶜᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶜ, ℑzᵃᵃᶠ,
                               ∂zᶜᶠᶠ, ∂zᶠᶜᶠ
 using Oceananigans.TimeSteppers: TimeSteppers, time_discretization
 using Oceananigans.TurbulenceClosures: TurbulenceClosures, AbstractScalarDiffusivity, VerticalFormulation,
                                        VerticallyImplicitTimeDiscretization, buoyancy_force, buoyancy_tracers,
-                                       dissipation, getclosure, shear_production
+                                       dissipation, getclosure, shear_production, with_penetrative_radiation
 using Oceananigans.Utils: Utils, f32_safe_cbrt, launch!, named_tuple, prettysummary
 
 const c = Center()
@@ -145,6 +147,7 @@ get_top_tracer_bcs(::SeawaterBuoyancy, tracers) = (T = tracers.T.boundary_condit
 get_top_tracer_bcs(::TemperatureSeawaterBuoyancy, tracers) = (; T = tracers.T.boundary_conditions.top)
 get_top_tracer_bcs(::SalinitySeawaterBuoyancy, tracers)    = (; S = tracers.S.boundary_conditions.top)
 
+include("penetrative_radiation.jl")
 include("tke_top_boundary_condition.jl")
 include("catke_vertical_diffusivity.jl")
 include("catke_mixing_length.jl")

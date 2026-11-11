@@ -27,19 +27,7 @@ noinit(args...) = nothing
 ext(::Type{JLD2Writer}) = ".jld2"
 
 """
-    JLD2Writer(model, outputs; filename, schedule,
-               dir = ".",
-               indices = (:, :, :),
-               with_halos = true,
-               array_type = Array{Float32},
-               file_splitting = NoFileSplitting(),
-               overwrite_files = false,
-               init = noinit,
-               including = default_included_properties(model),
-               verbose = false,
-               part = 1,
-               compress = [Shuffle(), ZstdFilter(1)],
-               jld2_kw = Dict{Symbol, Any}())
+$(MethodSignatures(; defaults = true))
 
 Construct a `JLD2Writer` for an Oceananigans `model` that writes `label, output` pairs
 in `outputs` to a JLD2 file.
@@ -227,7 +215,11 @@ Base.@nospecializeinfer function save_and_serialize_properties!(file, @nospecial
     return nothing
 end
 
-function initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, model)
+# Initialization runs once, so we specialize neither on the model nor on the outputs, which
+# can be large immutable structs (for example, fields of a `KernelFunctionOperation` whose
+# kernel function holds many fields).
+Base.@nospecializeinfer function initialize_jld2_file!(filepath, init, jld2_kw, including,
+                                                      @nospecialize(outputs), @nospecialize(model))
     # Output is appended to an existing file, which already holds the metadata
     isfile(filepath) && return nothing
 
@@ -270,8 +262,11 @@ function initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, mode
     end
 
     # Serialize the grid index, location, indices, and boundary conditions of each output.
+    # The file is opened without a `do` block: a closure would capture, and so specialize
+    # on, each output.
     for (name, field) in pairs(outputs)
-        jldopen(filepath, "a+"; jld2_kw...) do file
+        file = jldopen(filepath, "a+"; jld2_kw...)
+        try
             # Only write a grid index when we actually have multiple grids to choose from;
             # otherwise all outputs use the single grid at `serialized/grid`.
             if !single_grid && !isnothing(output_grids[string(name)])
@@ -288,6 +283,8 @@ function initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, mode
                 serializeproperty!(file, "timeseries/$name/serialized/boundary_conditions", boundary_conditions(field))
             catch
             end
+        finally
+            close(file)
         end
     end
 

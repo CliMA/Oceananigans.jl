@@ -8,10 +8,7 @@ mutable struct QuasiAdamsBashforth2TimeStepper{FT, GT, IT} <: AbstractTimeSteppe
 end
 
 """
-    QuasiAdamsBashforth2TimeStepper(grid, prognostic_fields, χ = 0.1;
-                                    implicit_solver = nothing,
-                                    Gⁿ = map(similar, prognostic_fields),
-                                    G⁻ = map(similar, prognostic_fields))
+$(MethodSignatures(; defaults = true))
 
 Return a 2nd-order quasi Adams-Bashforth (AB2) time stepper (`QuasiAdamsBashforth2TimeStepper`)
 on `grid`, with `tracers`, and AB2 parameter `χ`. The tendency fields `Gⁿ` and `G⁻`, usually equal to
@@ -56,7 +53,7 @@ function materialize_clock!(clock::Clock, timestepper::QuasiAdamsBashforth2TimeS
 end
 
 """
-    QuasiAdamsBashforth2TimeStepper(; χ = 0.1)
+$(MethodSignatures(; defaults = true))
 
 Construct a `QuasiAdamsBashforth2TimeStepper` by specifying the `χ` parameter.
 """
@@ -67,7 +64,7 @@ QuasiAdamsBashforth2TimeStepper(; χ = 0.1) = QuasiAdamsBashforth2TimeStepper{ty
 #####
 
 """
-    time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt; callbacks=[], euler=false)
+$(MethodSignatures(; defaults = true))
 
 Step forward `model` one time step `Δt` with a 2nd-order Adams-Bashforth method.
 Setting `euler=true` will take a forward Euler time step.
@@ -75,13 +72,15 @@ Setting `euler=true` will take a forward Euler time step.
 The steps of the Quasi-Adams-Bashforth second-order (AB2) algorithm are:
 
 1. If this is the first time step (`model.clock.iteration == 0`), call `update_state!`.
-2. Call `ab2_step!(model, Δt, callbacks)` which:
+2. Advance Lagrangian particles with `X += Δt * ((3/2 + χ) * Uⁿ - (1/2 + χ) * U⁻)`, where `Uⁿ`
+   is the particle velocity at the beginning of the step and `U⁻` is the particle velocity at the
+   beginning of the previous step. See `substep_lagrangian_particles!`.
+3. Call `ab2_step!(model, Δt, callbacks)` which:
    - Computes tendencies for all prognostic fields
    - Advances fields using AB2: `U += Δt * ((3/2 + χ) * Gⁿ - (1/2 + χ) * G⁻)`
    - Applies model-specific corrections (e.g., pressure correction for incompressibility)
-3. Store the current tendencies in `G⁻` for use in the next time step.
-4. Update the model state (fill halos, compute diagnostics).
-5. Advance the clock and step Lagrangian particles.
+4. Store the current tendencies in `G⁻` for use in the next time step.
+5. Advance the clock and update the model state (fill halos, compute diagnostics).
 
 The specific implementation of `ab2_step!` varies by model type (e.g., `NonhydrostaticModel`
 includes a pressure correction step, while `HydrostaticFreeSurfaceModel` handles the
@@ -112,8 +111,8 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     ab2_timestepper.χ = χ
 
     cache_boundary_conditions!(model)
+    substep_lagrangian_particles!(model, kernel_Δt, 1)
     ab2_step!(model, kernel_Δt, callbacks)
-    step_lagrangian_particles!(model, kernel_Δt)
     cache_previous_tendencies!(model)
 
     tick!(model.clock, Δt)
