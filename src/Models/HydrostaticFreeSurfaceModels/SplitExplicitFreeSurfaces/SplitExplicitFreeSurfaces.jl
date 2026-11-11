@@ -3,8 +3,7 @@ module SplitExplicitFreeSurfaces
 export SplitExplicitFreeSurface, ForwardBackwardScheme
 export FixedSubstepNumber, FixedTimeStepSize
 
-using DocStringExtensions: TYPEDSIGNATURES
-using Oceananigans.Utils: SIGNATURES
+using Oceananigans.Utils: SIGNATURES, TYPEDSIGNATURES
 using KernelAbstractions: @index, @kernel, @localmem, @synchronize, StaticSize
 
 using Oceananigans: Oceananigans

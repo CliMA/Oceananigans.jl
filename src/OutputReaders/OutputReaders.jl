@@ -8,8 +8,7 @@ export
     Cyclical, Linear, Clamp,
     time_average
 
-using DocStringExtensions: TYPEDSIGNATURES
-using Oceananigans.Utils: SIGNATURES
+using Oceananigans.Utils: SIGNATURES, TYPEDSIGNATURES
 
 using Oceananigans: Oceananigans, boundary_conditions
 using Oceananigans.Utils: @apply_regionally

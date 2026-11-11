@@ -10,8 +10,7 @@ export at_minimum, at_maximum
 
 using Adapt: Adapt, adapt
 using Base: @propagate_inbounds
-using DocStringExtensions: TYPEDSIGNATURES
-using Oceananigans.Utils: SIGNATURES
+using Oceananigans.Utils: SIGNATURES, TYPEDSIGNATURES
 
 using Oceananigans: Oceananigans, location
 using Oceananigans.Architectures: Architectures, architecture, on_architecture

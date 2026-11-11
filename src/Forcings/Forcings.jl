@@ -3,8 +3,7 @@ module Forcings
 export Forcing, ContinuousForcing, DiscreteForcing, Relaxation, InflowOutflowRate, GaussianMask, PiecewiseLinearMask, CosineRampMask, LinearTarget, AdvectiveForcing, compute_forcing!, tidal_forcing
 
 using Adapt: Adapt, adapt
-using DocStringExtensions: TYPEDSIGNATURES
-using Oceananigans.Utils: SIGNATURES
+using Oceananigans.Utils: SIGNATURES, TYPEDSIGNATURES
 
 using Oceananigans: Oceananigans
 using Oceananigans.BuoyancyFormulations: BuoyancyForce, BuoyancyTracerFormulation, SeawaterBuoyancy,

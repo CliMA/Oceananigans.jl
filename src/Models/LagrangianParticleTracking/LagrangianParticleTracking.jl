@@ -4,8 +4,7 @@ export LagrangianParticles, DroguedParticleDynamics, CountingSort, ComparisonSor
        ParticleBoundaryConditions, ReflectingBoundary, AbsorbingBoundary
 
 using Adapt: Adapt, adapt
-using DocStringExtensions: TYPEDSIGNATURES
-using Oceananigans.Utils: SIGNATURES
+using Oceananigans.Utils: SIGNATURES, TYPEDSIGNATURES
 using KernelAbstractions: @atomic, @index, @kernel
 using Printf: @sprintf
 using StructArrays: StructArray, components

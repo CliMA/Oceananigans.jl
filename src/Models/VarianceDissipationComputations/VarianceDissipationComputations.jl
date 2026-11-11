@@ -2,8 +2,7 @@ module VarianceDissipationComputations
 
 export VarianceDissipation, flatten_dissipation_fields
 
-using DocStringExtensions: TYPEDSIGNATURES
-using Oceananigans.Utils: SIGNATURES
+using Oceananigans.Utils: SIGNATURES, TYPEDSIGNATURES
 using KernelAbstractions: @index, @kernel
 using OffsetArrays: OffsetArrays
 

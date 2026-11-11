@@ -3,8 +3,7 @@ module NonhydrostaticModels
 export NonhydrostaticModel, BackgroundField, BackgroundFields
 
 using Adapt: Adapt, adapt
-using DocStringExtensions: TYPEDSIGNATURES
-using Oceananigans.Utils: SIGNATURES
+using Oceananigans.Utils: SIGNATURES, TYPEDSIGNATURES
 using KernelAbstractions: @index, @kernel
 
 using Oceananigans: Oceananigans, fields, prognostic_fields

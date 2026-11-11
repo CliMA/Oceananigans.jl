@@ -60,7 +60,7 @@ using Oceananigans.Grids: LatitudeLongitudeGrid, LLGOTF, XRegLLGOTF, YRegLLGOTF,
     OrthogonalSphericalShellGrid, RectilinearGrid, XRegularLLG, XRegularRG, YRegularLLG,
     YRegularRG, ZRegOrthogonalSphericalShellGrid, ZRegularLLG, ZRegularRG, AbstractGrid,
     Center, Face, flip_location
-using DocStringExtensions: TYPEDSIGNATURES
+using Oceananigans.Utils: TYPEDSIGNATURES
 
 #####
 ##### Convenient aliases

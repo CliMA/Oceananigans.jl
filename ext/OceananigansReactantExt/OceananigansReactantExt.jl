@@ -4,12 +4,12 @@ using Reactant
 using Oceananigans
 using OffsetArrays
 using OffsetArrays: AbstractOffsetArray
-using Oceananigans.Utils: StaticStridesOffsetArray
 
 using Oceananigans: Distributed, DistributedComputations, ReactantState, CPU,
                     OrthogonalSphericalShellGrids
 using Oceananigans.Architectures: on_architecture
 using Oceananigans.Grids: Bounded, Periodic
+using Oceananigans.Utils: StaticStridesOffsetArray
 
 deconcretize(obj) = obj # fallback
 deconcretize(a::AbstractOffsetArray) = StaticStridesOffsetArray(Array(parent(a)), OffsetArrays.offsets(a)...)

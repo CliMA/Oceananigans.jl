@@ -5,7 +5,8 @@ using Oceananigans.AbstractOperations: Average
 using Oceananigans.OutputReaders: interpolate
 using Oceananigans.Operators: ℑxᶜᵃᵃ, ℑyᵃᶜᵃ, active_weighted_ℑxyᶠᶜᶜ, active_weighted_ℑxyᶜᶠᶜ
 using Oceananigans.Utils: prettysummary
-using DocStringExtensions: TYPEDEF, TYPEDFIELDS, TYPEDSIGNATURES
+using DocStringExtensions: TYPEDEF, TYPEDFIELDS
+using Oceananigans.Utils: TYPEDSIGNATURES
 
 @inline zerofunction(args...) = 0
 @inline onefunction(args...) = 1

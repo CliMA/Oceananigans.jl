@@ -1,7 +1,6 @@
 using JLD2: JLD2, jldopen
 using Glob: Glob, glob
 using GPUArraysCore: @allowscalar
-using Oceananigans.Utils: StaticStridesOffsetArray
 using Statistics: mean
 
 using Oceananigans.DistributedComputations: reconstruct_global_topology
@@ -11,6 +10,7 @@ using Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphe
                           cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z,
                           topology, size, halo_size, generate_coordinate,
                           with_precomputed_metrics, metrics_precomputed
+using Oceananigans.Utils: StaticStridesOffsetArray
 
 #####
 ##### DistributedPaths - wrapper for path that includes rank file info

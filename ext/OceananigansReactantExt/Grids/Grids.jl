@@ -5,7 +5,6 @@ export constant_with_arch
 using Reactant
 using Reactant: TracedRArray
 using OffsetArrays
-using Oceananigans.Utils: StaticStridesOffsetArray
 
 using Oceananigans
 using Oceananigans: Distributed
@@ -17,6 +16,7 @@ using Oceananigans.Grids: Center, Face, Periodic, TwoSided, Bounded, Closed, Con
 using Oceananigans.Fields: Field
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedVerticalBoundaries, AbstractImmersedBoundary
 using Oceananigans.OrthogonalSphericalShellGrids: TripolarGrid
+using Oceananigans.Utils: StaticStridesOffsetArray
 
 using ..OceananigansReactantExt: OceananigansReactantExt, deconcretize
 

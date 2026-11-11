@@ -1,6 +1,7 @@
 using Adapt: Adapt
 using Dates: AbstractTime, Millisecond, Nanosecond
-using DocStringExtensions: TYPEDEF, TYPEDSIGNATURES
+using DocStringExtensions: TYPEDEF
+using Oceananigans.Utils: TYPEDSIGNATURES
 
 using Oceananigans: restore_prognostic_state!
 using Oceananigans.Grids: AbstractGrid
