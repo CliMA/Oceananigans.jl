@@ -127,7 +127,8 @@ function subregion_halos(layout, r, (Nx, Ny), (Hx, Hy))
     end
 
     # A Vector, not a Tuple: the number of donors varies by subregion and must not enter the type of the grid
-    return [(d, SubregionCopy(pairs)) for (d, pairs) in sort(collect(copies))], seam_nodes
+    copy_type = typeof(SubregionCopy(Tuple{NTuple{2, Int}, NTuple{2, Int}}[]))
+    return Tuple{Int, copy_type}[(d, SubregionCopy(pairs)) for (d, pairs) in sort(collect(copies))], seam_nodes
 end
 
 # Copy the halos of `data` on subregion `r` from its siblings
