@@ -1,8 +1,7 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Oceananigans.Advection: EnergyConserving, EnstrophyConserving, horizontal_advection_U, horizontal_advection_V
-using Oceananigans.Coriolis: fᶜᶜᵃ, fᶠᶠᵃ, HydrostaticFormulation, TriadScheme, ActiveWeightedEnergyConserving, ActiveWeightedEnstrophyConserving, DualGridScheme,
-                             ThicknessWeightedEnergyConserving
+using Oceananigans.Coriolis: fᶜᶜᵃ, fᶠᶠᵃ, HydrostaticFormulation, TriadScheme, ActiveWeightedEnergyConserving, ActiveWeightedEnstrophyConserving, DualGridScheme
 using Oceananigans.Coriolis: 𝒯⁺⁺, 𝒯⁻⁺, 𝒯⁺⁻, 𝒯⁻⁻
 using Oceananigans.Operators: Ayᶜᶠᶜ, Ayᶠᶜᶜ, Axᶠᶜᶜ, Δxᶠᶜᶜ, Δyᶜᶠᶜ, Vᶠᶜᶜ, Vᶜᶠᶜ, Azᶜᶜᶜ
 using Oceananigans.Grids: peripheral_node
@@ -483,11 +482,10 @@ function test_coriolis_work_with_partial_cells(FT)
         grid = partial_cell_grid(underlying_grid)
         U = random_masked_velocities(grid)
 
-        # Exact up to roundoff for the thickness-weighted scheme
-        @test relative_coriolis_work(grid, coriolis(ThicknessWeightedEnergyConserving()), U) < 100 * eps(FT)
+        # Exact up to roundoff for EnergyConserving, which uses the thickness-weighted flux on partial cells
+        @test relative_coriolis_work(grid, coriolis(EnergyConserving()), U) < 100 * eps(FT)
 
-        # Not for the existing schemes, whose work vanishes only for uniform Δz
-        @test relative_coriolis_work(grid, coriolis(EnergyConserving()), U) > 1e-3
+        # Not for EnstrophyConserving, whose work vanishes only for uniform Δz
         @test relative_coriolis_work(grid, coriolis(EnstrophyConserving()), U) > 1e-3
 
         # The VectorInvariant vorticity term uses the same flux with q = ζ / h
@@ -496,24 +494,26 @@ function test_coriolis_work_with_partial_cells(FT)
 end
 
 #####
-##### 11. ThicknessWeightedEnergyConserving = EnergyConserving for uniform Δz, including next to a GridFittedBottom
+##### 11. With uniform Δz, EnergyConserving on a PartialCellBottom grid matches the GridFittedBottom grid
 #####
 
-function test_thickness_weighted_equals_energy_conserving_uniform_Δz(FT)
+function test_partial_cell_energy_conserving_uniform_Δz(FT)
     underlying_grid = LatitudeLongitudeGrid(CPU(), FT; size=(8, 8, 1), latitude=(30, 60), longitude=(0, 30), z=(-100, 0))
     Nx, Ny, _ = size(underlying_grid)
     bottom_height = fill(FT(-200), Nx, Ny)
     bottom_height[1:3, 1:2] .= 0 # some land
 
-    cor_ene = HydrostaticSphericalCoriolis(FT, scheme=EnergyConserving())
-    cor_twe = HydrostaticSphericalCoriolis(FT, scheme=ThicknessWeightedEnergyConserving())
+    coriolis = HydrostaticSphericalCoriolis(FT, scheme=EnergyConserving())
 
-    for grid in (underlying_grid, ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height)))
-        U = random_masked_velocities(grid)
-        for j in 1:Ny, i in 1:Nx
-            @test x_f_cross_U(i, j, 1, grid, cor_twe, U) ≈ x_f_cross_U(i, j, 1, grid, cor_ene, U)
-            @test y_f_cross_U(i, j, 1, grid, cor_twe, U) ≈ y_f_cross_U(i, j, 1, grid, cor_ene, U)
-        end
+    grid_fitted_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height))
+    partial_cell_grid = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(bottom_height))
+
+    U_grid_fitted = random_masked_velocities(grid_fitted_grid)
+    U_partial_cell = random_masked_velocities(partial_cell_grid)
+
+    for j in 1:Ny, i in 1:Nx
+        @test x_f_cross_U(i, j, 1, partial_cell_grid, coriolis, U_partial_cell) ≈ x_f_cross_U(i, j, 1, grid_fitted_grid, coriolis, U_grid_fitted)
+        @test y_f_cross_U(i, j, 1, partial_cell_grid, coriolis, U_partial_cell) ≈ y_f_cross_U(i, j, 1, grid_fitted_grid, coriolis, U_grid_fitted)
     end
 end
 
@@ -521,9 +521,9 @@ end
 ##### 12. Spurious growing mode with a single-level PartialCellBottom (issue #6397)
 #####
 ##### Unforced, inviscid, f-plane, explicit free surface, random initial velocities over random depths
-##### from 8 m to 4000 m. With EnergyConserving or EnstrophyConserving the energy grows exponentially;
-##### with ThicknessWeightedEnergyConserving it does not grow. Nor does it with VectorInvariant momentum
-##### advection, whose vorticity term uses the same flux.
+##### from 8 m to 4000 m. With EnstrophyConserving the energy grows exponentially; with EnergyConserving,
+##### which uses the thickness-weighted flux on partial cells, it does not grow. Nor does it with
+##### VectorInvariant momentum advection, whose vorticity term uses the same flux.
 #####
 
 function total_energy(model)
@@ -578,9 +578,6 @@ for arch in archs
             coriolis = HydrostaticSphericalCoriolis(FT, scheme=TriadScheme())
             @test coriolis.scheme isa TriadScheme
 
-            coriolis = HydrostaticSphericalCoriolis(FT, scheme=ThicknessWeightedEnergyConserving())
-            @test coriolis.scheme isa ThicknessWeightedEnergyConserving
-
             # Default scheme for HydrostaticSphericalCoriolis is EnstrophyConserving
             coriolis = HydrostaticSphericalCoriolis(FT)
             @test coriolis.scheme isa EnstrophyConserving
@@ -610,8 +607,8 @@ for arch in archs
                 test_coriolis_work_with_partial_cells(FT)
             end
 
-            @testset "ThicknessWeightedEnergyConserving = EnergyConserving for uniform Δz [$FT]" begin
-                test_thickness_weighted_equals_energy_conserving_uniform_Δz(FT)
+            @testset "EnergyConserving on PartialCellBottom with uniform Δz [$FT]" begin
+                test_partial_cell_energy_conserving_uniform_Δz(FT)
             end
         end
     end
@@ -620,7 +617,6 @@ for arch in archs
                                       EnergyConserving(),
                                       ActiveWeightedEnstrophyConserving(),
                                       ActiveWeightedEnergyConserving(),
-                                      ThicknessWeightedEnergyConserving(),
                                       TriadScheme())
 
         @testset "Antisymmetry [$FT]" begin
@@ -652,14 +648,13 @@ for arch in archs
     if arch isa CPU
         for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
             @testset "Spurious growing mode with single-level PartialCellBottom (#6397) [$timestepper]" begin
-                @test energy_growth_with_partial_cells(EnergyConserving(), timestepper) > 2
                 @test energy_growth_with_partial_cells(EnstrophyConserving(), timestepper) > 2
-                @test energy_growth_with_partial_cells(ThicknessWeightedEnergyConserving(), timestepper) < 1.01
+                @test energy_growth_with_partial_cells(EnergyConserving(), timestepper) < 1.01
             end
 
             @testset "No growing mode with VectorInvariant vorticity and single-level PartialCellBottom [$timestepper]" begin
                 momentum_advection = VectorInvariant(vorticity_scheme=EnergyConserving())
-                @test energy_growth_with_partial_cells(ThicknessWeightedEnergyConserving(), timestepper; momentum_advection,
+                @test energy_growth_with_partial_cells(EnergyConserving(), timestepper; momentum_advection,
                                                        gravitational_acceleration=9.81, amplitude=2, Δt=30, steps=4000) < 1
             end
         end

@@ -165,7 +165,7 @@ since ``u`` and ``v`` are not collocated. The `scheme` keyword argument controls
 interpolation is performed. Different schemes have different conservation properties and different
 behavior near immersed boundaries.
 
-Six schemes are available:
+Five schemes are available:
 
 | Scheme | Conserves | Immersed boundary correction |
 |--------|-----------|------------------------------|
@@ -174,7 +174,6 @@ Six schemes are available:
 | `TriadScheme()` | Both energy and enstrophy | No |
 | `ActiveWeightedEnstrophyConserving()` | Potential enstrophy | Yes |
 | `ActiveWeightedEnergyConserving()` | Kinetic energy | Yes |
-| `ThicknessWeightedEnergyConserving()` | Kinetic energy, for any horizontal variation of ``Δz`` | No |
 
 The default scheme is `EnstrophyConserving()` for `SphericalCoriolis`, `HydrostaticSphericalCoriolis`,
 `FPlane`, and `BetaPlane`.
@@ -225,36 +224,29 @@ SphericalCoriolis
     The active-weighted correction can reduce spurious numerical boundary layers along simple, flat immersed boundaries. However, for complex topography (narrow passages, sharp capes, jagged coastlines) or large ``\beta`` values, the amplification factor ``1/N_{\text{active}}`` can inject energy and produce grid-scale checkerboard artifacts along coastlines. For this reason, the standard (non-active-weighted) schemes are the default. Users should test the active-weighted  schemes carefully before adopting them
     in production simulations.
 
-### Thickness-weighted energy-conserving scheme for partial cells
+### Partial cells
 
-The energy-conserving and enstrophy-conserving schemes interpolate thickness-weighted transports and divide
-by the thickness-weighted face area at the velocity point. Their discrete Coriolis work vanishes only when
-the cell thickness ``Δz`` is the same in neighboring cells. With `PartialCellBottom`, ``Δz`` varies near
-topography, and in a single-level model whose partial cell spans the whole ocean depth it varies everywhere.
-The Coriolis term then does net work and can drive a spurious, exponentially growing mode.
-This includes the default `EnstrophyConserving` scheme.
+The schemes above interpolate thickness-weighted transports and divide by the thickness-weighted face area
+at the velocity point. Their discrete Coriolis work vanishes only when the cell thickness ``Δz`` is the same
+in neighboring cells. With `PartialCellBottom`, ``Δz`` varies near topography, and in a single-level model
+whose partial cell spans the whole ocean depth it varies everywhere. The Coriolis term then does net work
+and can drive a spurious, exponentially growing mode.
 
-`ThicknessWeightedEnergyConserving` is the [Sadourny1975](@citet) energy-conserving form written for volume
-transports ``𝒰 = A_x u`` and ``𝒱 = A_y v``, with potential vorticity ``q = f / h`` at cell corners, where
-``h`` is the mean thickness of the active velocity faces meeting at the corner. It divides by the horizontal
-spacing only, so that its discrete work vanishes identically for any ``Δz``. The conserved kinetic energy is
-``\sum Δx A_x u^2 / 2 + \sum Δy A_y v^2 / 2``, the same energy that the pressure gradient and continuity
-equation exchange consistently. With uniform ``Δz`` the scheme is identical to `EnergyConserving`.
+For this reason, on `PartialCellBottom` grids `EnergyConserving()` uses the [Sadourny1975](@citet)
+energy-conserving form written for volume transports ``𝒰 = A_x u`` and ``𝒱 = A_y v``, with potential
+vorticity ``q = f / h`` at cell corners, where ``h`` is the mean thickness of the active velocity faces
+meeting at the corner. It divides by the horizontal spacing only, so that its discrete work vanishes
+identically for any ``Δz``. The conserved kinetic energy is ``\sum Δx A_x u^2 / 2 + \sum Δy A_y v^2 / 2``,
+the same energy that the pressure gradient and continuity equation exchange consistently. With uniform ``Δz``
+the two forms are identical. The vorticity term of `VectorInvariant(vorticity_scheme=EnergyConserving())`
+uses the same flux with ``q = ζ / h``, so the total ``(f + ζ)`` term is energy-neutral.
 
 The price of using a single corner ``q`` for both velocity components is that where ``Δz`` varies the local
 Coriolis strength changes. A thin face next to thicker ones feels its neighbors' Coriolis acceleration
-amplified by up to a factor of 4, and a thick face next to thinner ones feels it reduced. The scheme does not
-conserve potential enstrophy. On `PartialCellBottom` grids, the vorticity term of
-`VectorInvariant(vorticity_scheme=EnergyConserving())` uses the same flux with ``q = ζ / h``, so the
-total ``(f + ζ)`` term is energy-neutral.
+amplified by up to a factor of 4, and a thick face next to thinner ones feels it reduced.
 
-```jldoctest
-julia> coriolis = HydrostaticSphericalCoriolis(scheme=Oceananigans.Coriolis.ThicknessWeightedEnergyConserving())
-SphericalCoriolis
-├─ rotation rate: 7.29e-05 s⁻¹ = 1.00 Ω_Earth
-├─ formulation: HydrostaticFormulation
-└─ scheme: ThicknessWeightedEnergyConserving
-```
+The default `EnstrophyConserving()` and the other schemes are unchanged on `PartialCellBottom` grids and still
+do net work there. With partial cells, especially in single-level models, use `EnergyConserving()`.
 
 ### Triad (Energy- and Enstrophy-Conserving) scheme
 

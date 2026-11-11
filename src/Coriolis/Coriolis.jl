@@ -3,8 +3,7 @@ module Coriolis
 export
     FPlane, ConstantCartesianCoriolis, BetaPlane, NonTraditionalBetaPlane,
     SphericalCoriolis, HydrostaticSphericalCoriolis,
-    ActiveWeightedEnstrophyConserving, ActiveWeightedEnergyConserving, ThicknessWeightedEnergyConserving,
-    TriadScheme, DualGridScheme,
+    ActiveWeightedEnstrophyConserving, ActiveWeightedEnergyConserving, TriadScheme, DualGridScheme,
     x_f_cross_U, y_f_cross_U, z_f_cross_U
 
 using DocStringExtensions: MethodSignatures
