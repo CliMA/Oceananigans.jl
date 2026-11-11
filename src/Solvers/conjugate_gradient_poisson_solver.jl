@@ -94,7 +94,7 @@ function compute_symmetric_laplacian_with_free_surface!(∇²ϕ, ϕ, free_surfac
     fill_halo_regions!(ϕ)
     launch!(arch, grid, :xyz, _symmetric_laplacian_operator!, ∇²ϕ, grid, ϕ)
     g = free_surface.gravitational_acceleration
-    launch!(arch, grid, :xy, _apply_robin_top_bc!, ∇²ϕ, grid, ϕ, Δt, g)
+    launch!(arch, grid, :xy, _apply_mixed_top_bc!, ∇²ϕ, grid, ϕ, Δt, g)
     return nothing
 end
 
