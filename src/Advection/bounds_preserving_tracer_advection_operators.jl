@@ -201,10 +201,6 @@ end
     return Ay_ρvc⁺ - Ay_ρvc⁻
 end
 
-@inline explicit_vertical_velocityᶜᶜᶠ(i, j, k, grid, advection, td, w) = @inbounds w[i, j, k]
-@inline explicit_vertical_velocityᶜᶜᶠ(i, j, k, grid, advection, td::AdaptiveVerticallyImplicitDiscretization, w) =
-    @inbounds explicit_velocity_scaleᶜᶜᶠ(i, j, k, grid, advection, td, w) * w[i, j, k]
-
 @inline function bounded_tracer_flux_divergence_z(i, j, k, grid, advection::BoundsPreservingWENO, ρ, w, c)
     θ = advection.bounds.limiter
 
@@ -219,8 +215,8 @@ end
     c₋ᴿ = rescaled_reconstruction(c₋ᴿ, i, j, k,   grid, θ, c)
 
     td = advection.time_discretization
-    w⁺ = explicit_vertical_velocityᶜᶜᶠ(i, j, k+1, grid, advection, td, w)
-    w⁻ = explicit_vertical_velocityᶜᶜᶠ(i, j, k,   grid, advection, td, w)
+    w⁺ = explicit_velocity_scaleᶜᶜᶜ(i, j, k+1, grid, advection, td, w) * w[i, j, k+1]
+    w⁻ = explicit_velocity_scaleᶜᶜᶜ(i, j, k,   grid, advection, td, w) * w[i, j, k]
     Az_ρwc⁺ = ℑzᵃᵃᶠ(i, j, k+1, grid, ρ) * Azᶜᶜᶠ(i, j, k+1, grid) * upwind_biased_product(w⁺, c₊ᴸ, c₊ᴿ)
     Az_ρwc⁻ = ℑzᵃᵃᶠ(i, j, k,   grid, ρ) * Azᶜᶜᶠ(i, j, k,   grid) * upwind_biased_product(w⁻, c₋ᴸ, c₋ᴿ)
 
