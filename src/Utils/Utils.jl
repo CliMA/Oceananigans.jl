@@ -8,7 +8,7 @@ export instantiate
 export with_tracers
 export AbstractTimeDiscretization, ExplicitTimeDiscretization, VerticallyImplicitTimeDiscretization, AdaptiveVerticallyImplicitDiscretization
 export versioninfo_with_gpu, oceananigans_versioninfo
-export seconds_to_nanosecond, period_to_seconds, time_difference_seconds, add_time_interval
+export seconds_to_nanosecond, period_to_seconds, time_difference_in_seconds, add_time_interval
 export TimeInterval, IterationInterval, WallTimeInterval, SpecifiedTimes, AndSchedule, OrSchedule, ConsecutiveIterations, PrecedingIterations, TimeOffset
 export apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject
 export isregional, getregion, _getregion, regions, sync_device!
@@ -19,7 +19,7 @@ export interpolator, _interpolate
 export ϕ₁, ϕ₂, ϕ₃, ϕ₄, ϕ₅, ϕ₆, ϕ₇, ϕ₈
 
 using Adapt: Adapt
-using DocStringExtensions: TYPEDSIGNATURES
+using DocStringExtensions: MethodSignatures, TYPEDSIGNATURES
 using KernelAbstractions: KernelAbstractions
 using Oceananigans: Oceananigans
 using Oceananigans.Architectures: Architectures

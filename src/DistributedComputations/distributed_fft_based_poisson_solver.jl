@@ -18,7 +18,7 @@ Architectures.architecture(solver::DistributedFFTBasedPoissonSolver) =
     architecture(solver.global_grid)
 
 """
-    DistributedFFTBasedPoissonSolver(global_grid, local_grid, planner_flag=FFTW.PATIENT)
+$(MethodSignatures(; defaults = true))
 
 Return an FFT-based solver for the Poisson equation,
 

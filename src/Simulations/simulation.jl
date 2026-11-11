@@ -78,15 +78,7 @@ mutable struct Simulation{ML, DT, SI, ST, DI, OW, CB, FT, BL, AD}
 end
 
 """
-    Simulation(model;
-               Δt,
-               verbose = true,
-               stop_iteration = Inf,
-               stop_time = Inf,
-               wall_time_limit = Inf,
-               align_time_step = true,
-               minimum_relative_step = 0,
-               automatic_differentiation = nothing)
+$(MethodSignatures(; defaults = true))
 
 Construct a `Simulation` for a `model` with time step `Δt`.
 
@@ -240,7 +232,7 @@ Return the current simulation iteration.
 Oceananigans.Solvers.iteration(sim::Simulation) = iteration(sim.model)
 
 """
-    prettytime(sim::Simulation, longform=true)
+$(MethodSignatures(; defaults = true))
 
 Return `sim.model.clock.time` as a prettily formatted string."
 
@@ -260,9 +252,10 @@ $(TYPEDSIGNATURES)
 
 Reset `sim`ulation, `model.clock`, and `model.timestepper` to their initial state.
 The stop criteria `stop_iteration`, `stop_time`, and `wall_time_limit` are kept.
+`t_init` is the time the clock returns to; it is required for a calendar clock, which has no zero.
 """
-function Oceananigans.TimeSteppers.reset!(sim::Simulation)
-    reset_clock!(sim.model)
+function Oceananigans.TimeSteppers.reset!(sim::Simulation; t_init = nothing)
+    reset_clock!(sim.model, t_init)
     sim.run_wall_time = 0.0
     sim.initialized = false
     sim.running = true
@@ -274,9 +267,11 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Reset `model.clock` to its initial state.
+Reset `model.clock` to its initial state, at `t_init` when given.
 """
 reset_clock!(model::AbstractModel) = reset!(model.clock)
+reset_clock!(model::AbstractModel, t_init) = reset!(model.clock, t_init)
+reset_clock!(model::AbstractModel, ::Nothing) = reset_clock!(model)
 
 #####
 ##### Default stop criteria callback functions
