@@ -87,9 +87,13 @@ function reduce_regions!(reduction!, r, operand)
         reduce_region!(reduction!, partial, getregion(operand, region))
         interior(r) .= combine.(interior(r), interior(partial))
     end
+    all_reduce_regions!(combine, r, operand.grid)
 
     return r
 end
+
+# Combine the results of the ranks of a distributed grid
+all_reduce_regions!(combine, r, grid) = nothing
 
 function reduce_regions!(reduction!, r::MultiRegionAbstractField, operand)
     for region in regions(operand.grid)
