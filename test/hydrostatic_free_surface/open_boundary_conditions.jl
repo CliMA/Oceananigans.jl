@@ -778,7 +778,7 @@ function test_gravity_wave_time_dependent_target_transport()
     Nx, Ny, H = 8, 8, 10.0
     Lx = Ly = 1e4
     grid = RectilinearGrid(size = (Nx, Ny, 1), x = (0, Lx), y = (0, Ly), z = (-H, 0),
-                           topology = (Bounded, Bounded, Bounded))
+                           topology = (Open, Bounded, Bounded))
     Δy = Ly / Ny
     Q = 200.0
     Δt, steps = 30.0, 5
@@ -786,7 +786,8 @@ function test_gravity_wave_time_dependent_target_transport()
     flather(target) = GravityWaveRadiationBoundaryCondition((0, 0); target_transport = target)
 
     function run_model(west)
-        boundary_conditions = (; U = FieldBoundaryConditions(west = flather(west), east = flather(Q)))
+        boundary_conditions = (; U = FieldBoundaryConditions(west = flather(west), east = flather(Q)),
+                                 u = zero_normal_flow(:west, :east))
         model = HydrostaticFreeSurfaceModel(grid; boundary_conditions, timestepper = :QuasiAdamsBashforth2,
                                             free_surface = SplitExplicitFreeSurface(grid; substeps = 4),
                                             buoyancy = nothing, tracers = ())
