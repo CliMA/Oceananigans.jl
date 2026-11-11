@@ -1,5 +1,5 @@
 using Oceananigans: prognostic_state, restore_prognostic_state!
-using Oceananigans.Utils: time_difference_seconds
+using Oceananigans.Utils: time_difference_in_seconds
 
 """
     RungeKutta3TimeStepper{FT, TG} <: AbstractTimeStepper
@@ -24,10 +24,7 @@ struct RungeKutta3TimeStepper{FT, TG, TI} <: AbstractTimeStepper
 end
 
 """
-    RungeKutta3TimeStepper(grid, prognostic_fields;
-                           implicit_solver = nothing,
-                           Gⁿ = map(similar, prognostic_fields),
-                           G⁻ = map(similar, prognostic_fields))
+$(MethodSignatures(; defaults = true))
 
 Return a 3rd-order Runge-Kutta timestepper (`RungeKutta3TimeStepper`) on `grid`
 and with `prognostic_fields`. The tendency fields `Gⁿ` and `G⁻`, typically equal
@@ -85,7 +82,7 @@ end
 #####
 
 """
-    time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbacks=[])
+$(MethodSignatures(; defaults = true))
 
 Step forward `model` one time step `Δt` with a 3rd-order Runge-Kutta method.
 
@@ -98,7 +95,11 @@ Each stage performs the following:
    - Applies model-specific corrections (e.g., pressure correction for `NonhydrostaticModel`)
 2. Cache the current tendencies in `G⁻`.
 3. Update the model state (fill halos, compute diagnostics).
-4. Step Lagrangian particles.
+
+Lagrangian particles are advanced at the beginning of each stage, before `rk3_substep!`,
+with the same low-storage scheme, `X += Δt * (γⁿ * Uⁿ + ζⁿ * U⁻)`, where `Uⁿ` is the
+particle velocity at the beginning of the stage and `U⁻` is the particle velocity at the
+beginning of the previous stage. See `substep_lagrangian_particles!`.
 
 The RK3 coefficients are `γ¹ = 8/15`, `γ² = 5/12`, `γ³ = 3/4`, `ζ² = -17/60`, `ζ³ = -5/12`.
 The effective substep sizes are `γ¹ * Δt`, `(γ² + ζ²) * Δt`, and `(γ³ + ζ³) * Δt`.
@@ -136,8 +137,8 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     #
 
     cache_boundary_conditions!(model)
+    substep_lagrangian_particles!(model, kernel_Δt, 1)
     rk3_substep!(model, kernel_Δt, γ¹, nothing, callbacks)
-    step_lagrangian_particles!(model, kernel_first_stage_Δt)
     cache_previous_tendencies!(model)
 
     tick_stage!(model.clock, first_stage_Δt)
@@ -151,8 +152,8 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     #
 
     cache_boundary_conditions!(model)
+    substep_lagrangian_particles!(model, kernel_Δt, 2)
     rk3_substep!(model, kernel_Δt, γ², ζ², callbacks)
-    step_lagrangian_particles!(model, kernel_second_stage_Δt)
     cache_previous_tendencies!(model)
 
     tick_stage!(model.clock, second_stage_Δt)
@@ -166,14 +167,14 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     #
 
     cache_boundary_conditions!(model)
+    substep_lagrangian_particles!(model, kernel_Δt, 3)
     rk3_substep!(model, kernel_Δt, γ³, ζ³, callbacks)
-    step_lagrangian_particles!(model, kernel_third_stage_Δt)
     cache_previous_tendencies!(model)
 
     # Correct the third stage Δt to reduce floating point error accumulation.
     # This matters especially for Float32 (e.g., Metal GPU).
-    # Use time_difference_seconds for DateTime compatibility.
-    corrected_third_stage_Δt = time_difference_seconds(tⁿ⁺¹, model.clock.time)
+    # Use time_difference_in_seconds for DateTime compatibility.
+    corrected_third_stage_Δt = time_difference_in_seconds(tⁿ⁺¹, model.clock.time)
     tick_stage!(model.clock, corrected_third_stage_Δt, Δt)
 
     step_closure_prognostics!(model, kernel_third_stage_Δt)

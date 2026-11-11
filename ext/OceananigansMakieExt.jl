@@ -13,6 +13,8 @@ using Oceananigans.MultiRegion: YinYangField, owned_weights
 
 import Oceananigans: quadmesh, quadmesh!   # extend the main-package stubs
 
+using DocStringExtensions: MethodSignatures
+
 using Makie: Observable, AbstractPlot, Axis, Axis3, Figure, NoShading, @lift,
              Point, GLTriangleFace, mesh!, lines!
 
@@ -242,7 +244,7 @@ end
 #####
 
 """
-    spherical_coordinates(λ, φ, r=1)
+$(MethodSignatures(; defaults = true))
 
 Convert longitude `λ` (degrees), latitude `φ` (degrees), and radius `r` to
 Cartesian coordinates `(x, y, z)` for 3D plotting on a sphere.
@@ -418,7 +420,7 @@ function geo_surface!(ax, f::Field; kwargs...)
 end
 
 """
-    geo_surface!(ax, grid, data; ℓx=Center(), ℓy=Center(), kwargs...)
+$(MethodSignatures(; defaults = true))
 
 Plot 2D `data` on a 3D sphere using coordinates from `grid`.
 
@@ -646,7 +648,7 @@ quadmesh!(ax, xc::AbstractMatrix, yc::AbstractMatrix, vals; kw...) = build_quadm
 quadmesh!(ax, xc::AbstractMatrix, yc::AbstractMatrix, zc::AbstractMatrix, vals; kw...) = build_quadmesh!(ax, (xc, yc, zc), vals; kw...)
 
 """
-    quadmesh(xc, yc, vals; figure_kwargs=(;), axis_kwargs=(;), kwargs...)
+$(MethodSignatures(; defaults = true))
 
 Non-mutating [`quadmesh!`](@ref): build a `Figure` and `Axis`, draw, return
 `(figure, axis, plot)`.
@@ -806,7 +808,7 @@ function wireframe_lines!(ax, coords...; kwargs...)
 end
 
 """
-    quadmesh!(ax, grid; color=(:black, 0.6), linewidth=0.75, kwargs...)
+$(MethodSignatures(; defaults = true))
 
 Draw `grid` itself as a wireframe — cell edges, no fill — from the same corners
 `quadmesh!` would fill. A spherical grid is drawn as a 3-D shell graticule (use an

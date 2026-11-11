@@ -415,7 +415,8 @@ end
     cᴿ = _biased_interpolate_zᵃᵃᶠ(i, j, k, grid, advection, RightBias, c)
     cᴸ = rescaled_reconstruction(cᴸ, i, j, k-1, grid, θ, c)
     cᴿ = rescaled_reconstruction(cᴿ, i, j, k,   grid, θ, c)
-    w̃ = @inbounds w[i, j, k]
+    td = advection.time_discretization
+    w̃ = @inbounds explicit_velocity_scaleᶜᶜᶠ(i, j, k, grid, advection, td, w) * w[i, j, k]
     return ℑzᵃᵃᶠ(i, j, k, grid, ρ) * Azᶜᶜᶠ(i, j, k, grid) * upwind_biased_product(w̃, cᴸ, cᴿ)
 end
 

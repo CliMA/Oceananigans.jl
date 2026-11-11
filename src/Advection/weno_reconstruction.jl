@@ -16,17 +16,7 @@ struct WENO{N, FT, WCT, TD, PP, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N
 end
 
 """
-    WENO([FT=Oceananigans.defaults.FloatType;]
-         weight_computation=Nothing,
-         order = 5,
-         buffer_scheme = DecreasingOrderAdvectionScheme(),
-         time_discretization = ExplicitTimeDiscretization(),
-         bounds = nothing,
-         adaptive_weight = nothing,
-         maximum_cfl = nothing,
-         flux_limiter = nothing,
-         minimum_buffer_upwind_order = 3,
-         maximum_courant_number = nothing)
+$(MethodSignatures(; defaults = true))
 
 Construct a weighted essentially non-oscillatory advection scheme of order `order` with precision `FT`.
 
@@ -41,36 +31,18 @@ Keyword arguments
                         Default: `Nothing` (deferred; a architecture-dependent default is assigned in
                         `materialize_advection`)
 - `order`: The order of the WENO advection scheme. Default: 5.
-- `bounds` (experimental): A [`BoundsPreservation`](@ref), or a tuple `(cᵐⁱⁿ, cᵐᵃˣ)` as shorthand for one with
-                           the options below, switching on the maximum-principle-satisfying limiter of
+- `bounds` (experimental): A [`BoundsPreservation`](@ref), or a tuple `(cᵐⁱⁿ, cᵐᵃˣ)` as shorthand for
+                           `BoundsPreservation(cᵐⁱⁿ, cᵐᵃˣ)`, switching on the maximum-principle-satisfying limiter of
                            [Zhang and Shu (2010)](@cite ZhangShu2010), which rescales the reconstruction of
                            every cell towards the cell mean so that the advective update stays within `bounds`.
                            One rescaling factor is shared by the three directions, so the bound is
-                           three-dimensional. It is guaranteed
-                           for a forward Euler or strong-stability-preserving update whose Courant numbers
-                           satisfy `λˣ + λʸ + λᶻ ≤ maximum_cfl`.
+                           three-dimensional. The options `maximum_cfl`, `adaptive_weight` and `flux_limiter`
+                           are set in the [`BoundsPreservation`](@ref).
                            Default: `nothing`, which does not use a bounds-preserving scheme.
-- `adaptive_weight` (experimental): With a tuple `bounds`, whether the quadrature weight `ω̂₁` of the rescaling
-                                    adapts to each cell's outgoing Courant number, so that smooth extrema touching
-                                    a bound are not clipped (see [`BoundsPreservation`](@ref)). The weight is
-                                    clamped between `4 / ((N + 1) (N + 3))` for `order = N` (or the larger end
-                                    weight of the buffer scheme reconstructing near a `Bounded` boundary) and
-                                    `maximum_cfl`. Default: `nothing`, for the `BoundsPreservation` default `false`.
-- `maximum_cfl`: With a tuple `bounds`, the Courant number up to which `bounds` is guaranteed: the fixed weight
-                 `ω̂₁ ∈ (0, 1/2)`, or the upper clamp of the adaptive weight. Raising it admits a larger time step
-                 and limits more aggressively. Default: `nothing`, for the `BoundsPreservation` defaults `5//18`
-                 with the fixed weight and `1//6` with the adaptive weight; with the latter, the rescaling alone
-                 no longer guarantees `bounds` above Courant number `1/6` unless `maximum_cfl` is raised or a
-                 `flux_limiter` is on.
-- `flux_limiter` (experimental): With a tuple `bounds`, whether to also limit the fluxes between cells to what
-                                 the coming update can afford, so that the tracer stays within `bounds` for any
-                                 time step; `maximum_cfl` then only sets how hard the rescaling clips. `true`
-                                 for the default [`FluxLimiter`](@ref). Default: `nothing`, for none.
 - `minimum_buffer_upwind_order`: The minimum upwind order for buffer schemes. When the buffer
                                  scheme order reaches this value, subsequent buffers use
                                  `Centered(order=2)` instead of continuing to decrease the
                                  upwind order. Default: 3.
-- `maximum_courant_number`: Deprecated name of `maximum_cfl`.
 
 Examples
 ========
@@ -125,17 +97,7 @@ WENO{5, Float64, Nothing}(order=9, bounds=(0.0, 1.0))
 To also limit the fluxes between cells, so that the tracer stays within `bounds` for any time step:
 
 ```jldoctest weno
-julia> WENO(order=5, bounds=(0, 1), flux_limiter=true)
-WENO{3, Float64, Nothing}(order=5, bounds=(0.0, 1.0), flux_limiter=FluxLimiter())
-├── buffer_scheme: WENO{2, Float64, Nothing}(order=3, bounds=(0.0, 1.0), flux_limiter=FluxLimiter())
-│   └── buffer_scheme: Centered(order=2)
-└── advecting_velocity_scheme: Centered(order=2)
-```
-
-The same, grouping the interval with its options in a `BoundsPreservation`:
-
-```jldoctest weno
-julia> WENO(order=5, bounds=BoundsPreservation(0, 1; maximum_cfl=1//4, flux_limiter=true))
+julia> WENO(order=5, bounds=BoundsPreservation(0, 1; flux_limiter=true))
 WENO{3, Float64, Nothing}(order=5, bounds=(0.0, 1.0), flux_limiter=FluxLimiter())
 ├── buffer_scheme: WENO{2, Float64, Nothing}(order=3, bounds=(0.0, 1.0), flux_limiter=FluxLimiter())
 │   └── buffer_scheme: Centered(order=2)
@@ -146,7 +108,7 @@ To let the quadrature weight of the rescaling adapt to each cell's Courant numbe
 touching a bound are not clipped:
 
 ```jldoctest weno
-julia> WENO(order=5, bounds=(0, 1), adaptive_weight=true)
+julia> WENO(order=5, bounds=BoundsPreservation(0, 1; adaptive_weight=true))
 WENO{3, Float64, Nothing}(order=5, bounds=(0.0, 1.0), adaptive_weight=true)
 ├── buffer_scheme: WENO{2, Float64, Nothing}(order=3, bounds=(0.0, 1.0), adaptive_weight=true)
 │   └── buffer_scheme: Centered(order=2)
@@ -173,32 +135,12 @@ function WENO(FT::DataType=Oceananigans.defaults.FloatType;
               buffer_scheme = DecreasingOrderAdvectionScheme(),
               time_discretization = ExplicitTimeDiscretization(),
               bounds = nothing,
-              adaptive_weight = nothing,
-              maximum_cfl = nothing,
-              flux_limiter = nothing,
-              minimum_buffer_upwind_order = 3,
-              maximum_courant_number = nothing)
+              minimum_buffer_upwind_order = 3)
 
     mod(order, 2) == 0 && throw(ArgumentError("WENO reconstruction scheme is defined only for odd orders"))
 
-    if !isnothing(maximum_courant_number)
-        @warn "The WENO keyword argument `maximum_courant_number` is deprecated, use `maximum_cfl`" maxlog=1
-        maximum_cfl = something(maximum_cfl, maximum_courant_number)
-    end
-
-    # A tuple is shorthand for a `BoundsPreservation` with the flat keyword arguments as options
     if bounds isa NTuple{2}
-        adaptive_weight = something(adaptive_weight, false)
-        bounds = BoundsPreservation(bounds...; adaptive_weight, maximum_cfl, flux_limiter)
-    elseif bounds isa BoundsPreservation
-        isnothing(adaptive_weight) && isnothing(maximum_cfl) && isnothing(flux_limiter) ||
-            throw(ArgumentError("adaptive_weight, maximum_cfl and flux_limiter are options of the BoundsPreservation passed as bounds"))
-    elseif !isnothing(bounds)
-        throw(ArgumentError("bounds must be nothing, a tuple of two values or a BoundsPreservation"))
-    elseif !(isnothing(flux_limiter) || flux_limiter === false)
-        throw(ArgumentError("a flux_limiter requires bounds"))
-    elseif !(isnothing(adaptive_weight) || adaptive_weight === false)
-        throw(ArgumentError("an adaptive_weight requires bounds"))
+        bounds = BoundsPreservation(bounds...)
     end
 
     if order < 3

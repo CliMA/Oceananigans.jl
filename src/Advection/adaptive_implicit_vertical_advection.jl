@@ -14,10 +14,15 @@ const AVID = AdaptiveVerticallyImplicitDiscretization
 ##### This ensures the explicit CFL is always ≤ cfl.
 #####
 
+@inline explicit_velocity_scaleᶜᶜᶠ(i, j, k, grid, args...) = one(grid)
+@inline explicit_velocity_scaleᶠᶜᶠ(i, j, k, grid, args...) = one(grid)
+@inline explicit_velocity_scaleᶜᶠᶠ(i, j, k, grid, args...) = one(grid)
+@inline explicit_velocity_scaleᶜᶜᶜ(i, j, k, grid, args...) = one(grid)
+
 # Scale factor: min(1, cfl * Δz / (|w| * Δt))
 # When |w| * Δt / Δz ≤ cfl: scale = 1 (fully explicit)
 # When |w| * Δt / Δz > cfl: scale = cfl * Δz / (|w| * Δt) < 1
-@inline function explicit_velocity_scaleᶜᶜᶠ(i, j, k, grid, scheme, td, W)
+@inline function explicit_velocity_scaleᶜᶜᶠ(i, j, k, grid, scheme, td::AVID, W)
     Δt = _unwrap_for_gpu(td.Δt)
     Δz⁻¹ = Δz⁻¹ᶜᶜᶠ(i, j, k, grid)
     w  = @inbounds W[i, j, k]
@@ -25,7 +30,7 @@ const AVID = AdaptiveVerticallyImplicitDiscretization
     return ifelse(α > td.cfl, td.cfl / α, one(α))
 end
 
-@inline function explicit_velocity_scaleᶠᶜᶠ(i, j, k, grid, scheme, td, W)
+@inline function explicit_velocity_scaleᶠᶜᶠ(i, j, k, grid, scheme, td::AVID, W)
     Δt = _unwrap_for_gpu(td.Δt)
     Δz⁻¹ = Δz⁻¹ᶠᶜᶠ(i, j, k, grid)
     w  = _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, W)
@@ -33,7 +38,7 @@ end
     return ifelse(α > td.cfl, td.cfl / α, one(α))
 end
 
-@inline function explicit_velocity_scaleᶜᶠᶠ(i, j, k, grid, scheme, td, W)
+@inline function explicit_velocity_scaleᶜᶠᶠ(i, j, k, grid, scheme, td::AVID, W)
     Δt = _unwrap_for_gpu(td.Δt)
     Δz⁻¹ = Δz⁻¹ᶜᶠᶠ(i, j, k, grid)
     w  = _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, W)
@@ -41,7 +46,7 @@ end
     return ifelse(α > td.cfl, td.cfl / α, one(α))
 end
 
-@inline function explicit_velocity_scaleᶜᶜᶜ(i, j, k, grid, scheme, td, W)
+@inline function explicit_velocity_scaleᶜᶜᶜ(i, j, k, grid, scheme, td::AVID, W)
     Δt = _unwrap_for_gpu(td.Δt)
     Δz⁻¹ = Δz⁻¹ᶜᶜᶜ(i, j, k, grid)
     w  = _symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, W)
