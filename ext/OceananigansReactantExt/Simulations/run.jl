@@ -290,6 +290,35 @@ function time_step_while!(sim::ReactantSimulation, Nsteps, ::Val{true}, criterio
     return nothing
 end
 
+"""
+    time_step_while!(sim::ReactantSimulation, criterion)
+
+Step `sim` in a traced `while` loop driven purely by `criterion`: a function
+`f(sim) -> Bool` that returns `true` when the simulation should stop. There is no
+step-count bound — the loop runs until the criterion fires.
+
+This is the natural entry point for convergence-driven simulations where the number of
+iterations is genuinely unknown and Online_r2 checkpointing adapts at runtime.
+"""
+time_step_while!(sim::ReactantSimulation, criterion::Function) =
+    time_step_while!(sim, criterion, Val(sim.automatic_differentiation.track_numbers))
+
+function time_step_while!(sim::ReactantSimulation, criterion::Function, ::Val{false})
+    ad = sim.automatic_differentiation
+    @trace track_numbers = false mincut = ad.mincut checkpointing = ad.checkpointing while !criterion(sim)
+        time_step!(sim)
+    end
+    return nothing
+end
+
+function time_step_while!(sim::ReactantSimulation, criterion::Function, ::Val{true})
+    ad = sim.automatic_differentiation
+    @trace track_numbers = true mincut = ad.mincut checkpointing = ad.checkpointing while !criterion(sim)
+        time_step!(sim)
+    end
+    return nothing
+end
+
 # The final step onto `stop_time` when Δt does not divide the interval: the eager aligned last
 # step, with its size decided at construction (see `stop_criteria`) rather than per step.
 remainder_step!(sim, ::Nothing) = nothing
