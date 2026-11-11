@@ -13,7 +13,6 @@ export
     z_curl_Uˢ_cross_U,
     compute_stokes_drift!
 
-using Oceananigans.Utils: SIGNATURES
 using Adapt: Adapt, adapt
 using KernelAbstractions: @kernel, @index
 using Oceananigans.Architectures: architecture
@@ -22,7 +21,7 @@ using Oceananigans.Fields: Field
 using Oceananigans.Grids: AbstractGrid, node, znode, Face, Center
 using Oceananigans.Operators: ℑxᶜᵃᵃ, ℑyᵃᶜᵃ, ℑzᵃᵃᶜ, ℑxyᶠᶜᵃ, ℑxyᶜᶠᵃ, ℑxzᶠᵃᶜ, ℑxzᶜᵃᶠ, ℑyzᵃᶠᶜ, ℑyzᵃᶜᶠ,
                               ∂xᶠᶠᶜ, ∂xᶠᶜᶠ, ∂yᶠᶠᶜ, ∂yᶜᶠᶠ, ∂zᶠᶜᶠ, ∂zᶜᶠᶠ, flux_div_xyᶜᶜᶜ, Az⁻¹ᶜᶜᶜ
-using Oceananigans.Utils: prettysummary, launch!, KernelParameters
+using Oceananigans.Utils: prettysummary, launch!, KernelParameters, SIGNATURES
 
 #####
 ##### Abstract Stokes-drift type

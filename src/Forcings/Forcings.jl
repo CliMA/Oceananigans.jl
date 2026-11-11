@@ -3,7 +3,6 @@ module Forcings
 export Forcing, ContinuousForcing, DiscreteForcing, Relaxation, InflowOutflowRate, GaussianMask, PiecewiseLinearMask, CosineRampMask, LinearTarget, AdvectiveForcing, compute_forcing!, tidal_forcing
 
 using Adapt: Adapt, adapt
-using Oceananigans.Utils: SIGNATURES, TYPEDSIGNATURES
 
 using Oceananigans: Oceananigans
 using Oceananigans.BuoyancyFormulations: BuoyancyForce, BuoyancyTracerFormulation, SeawaterBuoyancy,
@@ -13,7 +12,7 @@ using Oceananigans.Grids: Center, Face, inactive_cell, znode
 using Oceananigans.Operators: ∂zᶜᶜᶜ
 using Oceananigans.OutputReaders: FlavorOfFTS
 using Oceananigans.Units: Time
-using Oceananigans.Utils: named_tuple
+using Oceananigans.Utils: named_tuple, SIGNATURES, TYPEDSIGNATURES
 using Oceananigans.Architectures: Architectures, on_architecture
 
 include("multiple_forcings.jl")

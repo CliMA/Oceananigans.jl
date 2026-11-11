@@ -2,10 +2,11 @@ module Logger
 
 export OceananigansLogger
 
-using Oceananigans.Utils: SIGNATURES
 using Dates: Dates
 using Logging: Logging
 using Crayons: Crayons, Crayon
+
+using Oceananigans.Utils: SIGNATURES
 
 const RED    = Crayon(foreground=:red)
 const YELLOW = Crayon(foreground=:light_yellow)

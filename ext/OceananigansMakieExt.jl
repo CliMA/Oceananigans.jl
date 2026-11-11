@@ -10,10 +10,9 @@ using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Architectures: on_architecture, architecture
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 using Oceananigans.MultiRegion: YinYangField, owned_weights
+using Oceananigans.Utils: SIGNATURES
 
 import Oceananigans: quadmesh, quadmesh!   # extend the main-package stubs
-
-using Oceananigans.Utils: SIGNATURES
 
 using Makie: Observable, AbstractPlot, Axis, Axis3, Figure, NoShading, @lift,
              Point, GLTriangleFace, mesh!, lines!

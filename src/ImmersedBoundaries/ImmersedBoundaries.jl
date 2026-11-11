@@ -14,11 +14,10 @@ using Oceananigans.Grids: Grids, AbstractGrid, Center, Face, Flat, architecture,
                           static_column_depthᶜᶠᵃ, static_column_depthᶠᶜᵃ, static_column_depthᶠᶠᵃ, with_halo, x_domain,
                           xnode, xnodes, y_domain, ynode, ynodes, z_domain, znode, znodes, ηname, ηnode, ηnodes, λnode,
                           λnodes, ξname, ξnode, ξnodes, φnode, φnodes
-using Oceananigans.Utils: @apply_regionally, launch!
+using Oceananigans.Utils: @apply_regionally, launch!, SIGNATURES, TYPEDSIGNATURES
 
 using Adapt: Adapt, adapt
 
-using Oceananigans.Utils: SIGNATURES, TYPEDSIGNATURES
 using Oceananigans.AbstractOperations: AbstractOperations
 using Oceananigans.BoundaryConditions: BoundaryConditions
 using Oceananigans.Fields: Fields, AbstractField, ConstantField, fractional_x_index, fractional_y_index,

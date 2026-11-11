@@ -5,12 +5,12 @@ export
     ∂xᵣ_b, ∂yᵣ_b, ∂x_b, ∂y_b, ∂z_b, buoyancy_perturbationᶜᶜᶜ, x_dot_g_bᶠᶜᶜ, y_dot_g_bᶜᶠᶜ, z_dot_g_bᶜᶜᶠ, z_dot_g_bᶜᶜᶜ,
     top_buoyancy_flux
 
-using Oceananigans.Utils: SIGNATURES, TYPEDSIGNATURES
 using SeawaterPolynomials: SeawaterPolynomials, ρ′, thermal_expansion, haline_contraction, with_float_type
 
 using Oceananigans: Oceananigans
 using Oceananigans.Operators: ℑxᶠᵃᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶠ, ∂xᵣᶠᶜᶜ, ∂yᵣᶜᶠᶜ, ∂xᶠᶜᶜ, ∂yᶜᶠᶜ, ∂zᶜᶜᶠ
 using Oceananigans.BoundaryConditions: total_boundary_flux, Bottom, Top
+using Oceananigans.Utils: SIGNATURES, TYPEDSIGNATURES
 
 """
     AbstractBuoyancyFormulation{EOS}

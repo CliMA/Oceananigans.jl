@@ -4,7 +4,6 @@ export LagrangianParticles, DroguedParticleDynamics, CountingSort, ComparisonSor
        ParticleBoundaryConditions, ReflectingBoundary, AbsorbingBoundary
 
 using Adapt: Adapt, adapt
-using Oceananigans.Utils: SIGNATURES, TYPEDSIGNATURES
 using KernelAbstractions: @atomic, @index, @kernel
 using Printf: @sprintf
 using StructArrays: StructArray, components
@@ -18,7 +17,7 @@ using Oceananigans.Grids: AbstractGrid, Bounded, Center, Face, Flat, LatitudeLon
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, immersed_cell
 using Oceananigans.OutputWriters: OutputWriters, serializeproperty!
 using Oceananigans.TimeSteppers: TimeSteppers, AbstractLagrangianParticles
-using Oceananigans.Utils: datatuple, launch!, prettysummary
+using Oceananigans.Utils: datatuple, launch!, prettysummary, SIGNATURES, TYPEDSIGNATURES
 
 abstract type AbstractParticle end
 

@@ -21,9 +21,8 @@ export
 
 using Adapt: Adapt
 using Base: Callable
-using Oceananigans.Utils: SIGNATURES, TYPEDSIGNATURES
 using MuladdMacro: @muladd
-using Oceananigans.Utils: StaticStridesOffsetArray
+using Oceananigans.Utils: StaticStridesOffsetArray, SIGNATURES, TYPEDSIGNATURES
 
 using Oceananigans: Oceananigans, fully_supported_float_types
 using Oceananigans.Architectures: Architectures, architecture, on_architecture, CPU

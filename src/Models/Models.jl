@@ -17,7 +17,6 @@ export
     initialize_boundary_transport, enforce_net_zero_transport!
 
 using Adapt: Adapt, adapt
-using Oceananigans.Utils: TYPEDSIGNATURES
 using GPUArraysCore: GPUArraysCore
 using JLD2: JLD2, jldopen
 
@@ -36,7 +35,7 @@ using Oceananigans.OutputWriters: OutputWriters, checkpointer_address
 using Oceananigans.Solvers: Solvers
 using Oceananigans.TimeSteppers: TimeSteppers, Clock, reset!
 using Oceananigans.Units: Time
-using Oceananigans.Utils: @apply_regionally
+using Oceananigans.Utils: @apply_regionally, TYPEDSIGNATURES
 
 # A prototype interface for AbstractModel.
 #

@@ -10,7 +10,6 @@ using Oceananigans.Architectures: Architectures, AbstractArchitecture, CPU, GPU,
 
 using Adapt: Adapt, adapt
 using Distances: haversine
-using Oceananigans.Utils: SIGNATURES, TYPEDSIGNATURES
 using KernelAbstractions: @index, @kernel
 
 using Oceananigans.AbstractOperations: AbstractOperations
@@ -20,6 +19,7 @@ using Oceananigans.Fields: Fields
 using Oceananigans.Grids: Grids, Grids, add_halos, fill_metric_halo_regions!, generate_coordinate, halo_size, topology,
                           total_length
 using Oceananigans.Operators: Operators
+using Oceananigans.Utils: SIGNATURES, TYPEDSIGNATURES
 
 include("generate_tripolar_coordinates.jl")
 include("tripolar_grid.jl")

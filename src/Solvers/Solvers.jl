@@ -7,7 +7,6 @@ export
     ConjugateGradientSolver,
     KrylovSolver
 
-using Oceananigans.Utils: SIGNATURES, TYPEDSIGNATURES
 using FFTW: FFTW
 using KernelAbstractions: @kernel, @index
 
@@ -17,7 +16,7 @@ using Oceananigans.Fields: AbstractField, CenterField, field, topology
 using Oceananigans.Grids: AbstractGrid, BoundaryTopology, Bounded, Flat, Periodic,
                           XYRegularRG, XZRegularRG, YZRegularRG, XYZRegularRG,
                           RectilinearGrid, RegularVerticalCoordinate, inactive_cell
-using Oceananigans.Utils: launch!, worksize
+using Oceananigans.Utils: launch!, worksize, SIGNATURES, TYPEDSIGNATURES
 
 """
 $(TYPEDSIGNATURES)

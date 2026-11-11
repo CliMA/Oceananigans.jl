@@ -9,7 +9,6 @@ export VelocityFields, TracerFields, tracernames
 export interpolate, interpolate!
 
 using Adapt: Adapt, adapt
-using Oceananigans.Utils: SIGNATURES, TYPEDSIGNATURES
 using OffsetArrays: AbstractOffsetArray
 using SparseArrays: CHOLMOD
 using StaticArrays: StaticArray
@@ -20,7 +19,7 @@ using Oceananigans.BoundaryConditions: BoundaryConditions, fill_halo_regions!
 using Oceananigans.Grids: Grids, AbstractGrid, BoundaryTopology, Center, Face, LatitudeLongitudeGrid, Periodic,
     RectilinearGrid, new_data, interior_indices, total_size, topology, nodes, xnodes,
     ynodes, znodes, node, xnode, ynode, znode
-using Oceananigans.Utils: KernelParameters, StaticStridesOffsetArray, launch!, prettysummary, interpolator, named_tuple
+using Oceananigans.Utils: KernelParameters, StaticStridesOffsetArray, launch!, prettysummary, interpolator, named_tuple, SIGNATURES, TYPEDSIGNATURES
 
 "Return the location `(LX, LY, LZ)` of an `AbstractField{LX, LY, LZ}`."
 @inline Oceananigans.location(a) = (Nothing, Nothing, Nothing) # used in AbstractOperations for location inference

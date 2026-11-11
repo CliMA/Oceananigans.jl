@@ -8,10 +8,8 @@ export
     Cyclical, Linear, Clamp,
     time_average
 
-using Oceananigans.Utils: SIGNATURES, TYPEDSIGNATURES
-
 using Oceananigans: Oceananigans, boundary_conditions
-using Oceananigans.Utils: @apply_regionally
+using Oceananigans.Utils: @apply_regionally, SIGNATURES, TYPEDSIGNATURES
 
 struct JLD2Path
     path :: String

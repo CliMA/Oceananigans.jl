@@ -8,7 +8,6 @@ export
     TimeInterval, IterationInterval, WallTimeInterval, AveragedTimeInterval,
     FilteredTimeInterval, AbstractFilterKernel, LanczosKernel, BoxcarKernel, HanningKernel
 
-using Oceananigans.Utils: SIGNATURES, TYPEDSIGNATURES
 using OffsetArrays: OffsetArrays, AbstractOffsetArray
 using OrderedCollections: OrderedDict
 
@@ -40,7 +39,7 @@ using Oceananigans.OrthogonalSphericalShellGrids: OrthogonalSphericalShellGrid,
                                                    ConformalConic
 using Oceananigans.Solvers: iteration
 using Oceananigans.Utils: Utils, StaticStridesOffsetArray, TimeInterval, IterationInterval, WallTimeInterval, instantiate,
-                          pretty_filesize
+                          pretty_filesize, SIGNATURES, TYPEDSIGNATURES
 
 const c = Center()
 const f = Face()
