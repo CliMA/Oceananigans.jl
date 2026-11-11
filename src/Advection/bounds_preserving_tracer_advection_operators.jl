@@ -201,6 +201,14 @@ end
     return Ay_ρvc⁺ - Ay_ρvc⁻
 end
 
+# With adaptive-implicit vertical advection only the CFL-limited part of `w` is advected explicitly;
+# the remainder is added by the implicit solve. The bounded divergence assembles its own vertical
+# fluxes (bypassing `advective_tracer_flux_z`), so it must apply the same explicit scaling, or the
+# vertical flux is counted twice wherever the vertical Courant number exceeds `cfl`.
+@inline explicit_vertical_velocityᶜᶜᶠ(i, j, k, grid, advection, td, w) = @inbounds w[i, j, k]
+@inline explicit_vertical_velocityᶜᶜᶠ(i, j, k, grid, advection, td::AdaptiveVerticallyImplicitDiscretization, w) =
+    @inbounds explicit_velocity_scaleᶜᶜᶠ(i, j, k, grid, advection, td, w) * w[i, j, k]
+
 @inline function bounded_tracer_flux_divergence_z(i, j, k, grid, advection::BoundsPreservingWENO, ρ, w, c)
     θ = advection.bounds.limiter
 
@@ -214,8 +222,9 @@ end
     c₋ᴸ = rescaled_reconstruction(c₋ᴸ, i, j, k-1, grid, θ, c)
     c₋ᴿ = rescaled_reconstruction(c₋ᴿ, i, j, k,   grid, θ, c)
 
-    w⁺ = @inbounds w[i, j, k+1]
-    w⁻ = @inbounds w[i, j, k]
+    td = advection.time_discretization
+    w⁺ = explicit_vertical_velocityᶜᶜᶠ(i, j, k+1, grid, advection, td, w)
+    w⁻ = explicit_vertical_velocityᶜᶜᶠ(i, j, k,   grid, advection, td, w)
     Az_ρwc⁺ = ℑzᵃᵃᶠ(i, j, k+1, grid, ρ) * Azᶜᶜᶠ(i, j, k+1, grid) * upwind_biased_product(w⁺, c₊ᴸ, c₊ᴿ)
     Az_ρwc⁻ = ℑzᵃᵃᶠ(i, j, k,   grid, ρ) * Azᶜᶜᶠ(i, j, k,   grid) * upwind_biased_product(w⁻, c₋ᴸ, c₋ᴿ)
 
