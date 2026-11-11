@@ -21,7 +21,7 @@ export
     DistributedFillHalo
 
 using Adapt: Adapt, adapt
-using DocStringExtensions: TYPEDEF, TYPEDFIELDS, TYPEDSIGNATURES
+using DocStringExtensions: MethodSignatures, TYPEDEF, TYPEDFIELDS, TYPEDSIGNATURES
 using KernelAbstractions: @index, @kernel
 
 using Oceananigans: Oceananigans, defaults

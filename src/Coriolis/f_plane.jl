@@ -11,11 +11,7 @@ struct FPlane{S, FT} <: AbstractRotation{S}
 end
 
 """
-    FPlane([FT = Float64;]
-           f = nothing,
-           scheme = EnstrophyConserving(),
-           rotation_rate = Oceananigans.defaults.planet_rotation_rate,
-           latitude = nothing)
+$(MethodSignatures(; defaults = true))
 
 Return a parameter object for constant rotation at the angular frequency
 `f/2`, and therefore with background vorticity `f`, around a vertical axis.
