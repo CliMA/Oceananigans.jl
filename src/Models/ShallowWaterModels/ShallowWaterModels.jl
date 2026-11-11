@@ -4,7 +4,7 @@ export ShallowWaterModel, ShallowWaterScalarDiffusivity,
        ConservativeFormulation, VectorInvariantFormulation
 
 using Adapt: Adapt
-using DocStringExtensions: TYPEDSIGNATURES
+using DocStringExtensions: MethodSignatures, TYPEDSIGNATURES
 using KernelAbstractions: @index, @kernel
 
 using Oceananigans: Oceananigans, fields, prognostic_fields
