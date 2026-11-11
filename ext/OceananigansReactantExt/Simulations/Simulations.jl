@@ -1,6 +1,6 @@
 module Simulations
 
-export first_time_step!, time_step_for!
+export first_time_step!, time_step_for!, time_step_while!
 
 using Reactant
 using Reactant: Periodic, Binomial, Online

@@ -201,30 +201,55 @@ end
 """
     time_step_for!(sim::ReactantSimulation, Nsteps)
 
-`Nsteps` calls to `time_step!(sim)` as one traced `while` loop: one `stablehlo.while` body
-rather than `Nsteps` copies of the step. Does not initialize; see [`run!`](@ref).
-
-Uses `@trace while step < Nsteps` so the loop compiles to a single `stablehlo.while` op,
-which is required for Online_r2 checkpointing (adaptive checkpoint placement for loops with
-unknown trip counts). `@trace for _ = 1:N` desugars into the same while, but passing the
-checkpointing scheme to a raw `@trace while` avoids the `Periodic(isqrt(N))` default that
-`@trace for` would apply when `checkpointing = true`.
-
-When `sim.automatic_differentiation.stopping_criterion` is a function, the loop condition
-becomes `(step < Nsteps) & !stopping_criterion(sim)`, enabling data-dependent early exit
-(convergence, error threshold, etc.) while `stop_iteration` remains the safety bound.
+`Nsteps` calls to `time_step!(sim)` as one traced loop: one `stablehlo.while` body rather than
+`Nsteps` copies of the step. Does not initialize; see [`run!`](@ref).
 
 The loop is traced with the `track_numbers`, `mincut` and `checkpointing` options of
 `sim.automatic_differentiation`, which only matter when the program is differentiated in
 reverse mode. See [`AutomaticDifferentiation`](@ref).
 """
 time_step_for!(sim::ReactantSimulation, Nsteps) =
-    time_step_for!(sim, Nsteps, Val(sim.automatic_differentiation.track_numbers),
-                   sim.automatic_differentiation.stopping_criterion)
+    time_step_for!(sim, Nsteps, Val(sim.automatic_differentiation.track_numbers))
 
 # `@trace` needs `track_numbers` as a literal: it picks the promotion type at macro expansion.
+function time_step_for!(sim::ReactantSimulation, Nsteps, ::Val{false})
+    ad = sim.automatic_differentiation
+    @trace track_numbers = false mincut = ad.mincut checkpointing = ad.checkpointing for _ = 1:Nsteps
+        time_step!(sim)
+    end
+    return nothing
+end
+
+function time_step_for!(sim::ReactantSimulation, Nsteps, ::Val{true})
+    ad = sim.automatic_differentiation
+    @trace track_numbers = true mincut = ad.mincut checkpointing = ad.checkpointing for _ = 1:Nsteps
+        time_step!(sim)
+    end
+    return nothing
+end
+
+"""
+    time_step_while!(sim::ReactantSimulation, Nsteps)
+
+Up to `Nsteps` calls to `time_step!(sim)` as one traced `while` loop, with an optional
+early-exit `stopping_criterion`. Uses `@trace while` so the loop compiles to a single
+`stablehlo.while` op, which is required for Online_r2 checkpointing (adaptive checkpoint
+placement for loops with unknown trip count).
+
+When `sim.automatic_differentiation.stopping_criterion` is a function, the loop condition is
+`(step < Nsteps) & !stopping_criterion(sim)`, enabling data-dependent early exit (convergence,
+error threshold, etc.) while `stop_iteration` remains the safety bound. When it is `nothing`,
+the loop runs for exactly `Nsteps` steps.
+
+The loop is traced with the `track_numbers`, `mincut` and `checkpointing` options of
+`sim.automatic_differentiation`. See [`AutomaticDifferentiation`](@ref).
+"""
+time_step_while!(sim::ReactantSimulation, Nsteps) =
+    time_step_while!(sim, Nsteps, Val(sim.automatic_differentiation.track_numbers),
+                     sim.automatic_differentiation.stopping_criterion)
+
 # Without stopping_criterion: loop runs for exactly Nsteps.
-function time_step_for!(sim::ReactantSimulation, Nsteps, ::Val{false}, ::Nothing)
+function time_step_while!(sim::ReactantSimulation, Nsteps, ::Val{false}, ::Nothing)
     ad = sim.automatic_differentiation
     step = zero(Nsteps)
     @trace track_numbers = false mincut = ad.mincut checkpointing = ad.checkpointing while step < Nsteps
@@ -234,7 +259,7 @@ function time_step_for!(sim::ReactantSimulation, Nsteps, ::Val{false}, ::Nothing
     return nothing
 end
 
-function time_step_for!(sim::ReactantSimulation, Nsteps, ::Val{true}, ::Nothing)
+function time_step_while!(sim::ReactantSimulation, Nsteps, ::Val{true}, ::Nothing)
     ad = sim.automatic_differentiation
     step = zero(Nsteps)
     @trace track_numbers = true mincut = ad.mincut checkpointing = ad.checkpointing while step < Nsteps
@@ -245,7 +270,7 @@ function time_step_for!(sim::ReactantSimulation, Nsteps, ::Val{true}, ::Nothing)
 end
 
 # With stopping_criterion: loop exits early when criterion(sim) returns true.
-function time_step_for!(sim::ReactantSimulation, Nsteps, ::Val{false}, criterion)
+function time_step_while!(sim::ReactantSimulation, Nsteps, ::Val{false}, criterion)
     ad = sim.automatic_differentiation
     step = zero(Nsteps)
     @trace track_numbers = false mincut = ad.mincut checkpointing = ad.checkpointing while (step < Nsteps) & !criterion(sim)
@@ -255,7 +280,7 @@ function time_step_for!(sim::ReactantSimulation, Nsteps, ::Val{false}, criterion
     return nothing
 end
 
-function time_step_for!(sim::ReactantSimulation, Nsteps, ::Val{true}, criterion)
+function time_step_while!(sim::ReactantSimulation, Nsteps, ::Val{true}, criterion)
     ad = sim.automatic_differentiation
     step = zero(Nsteps)
     @trace track_numbers = true mincut = ad.mincut checkpointing = ad.checkpointing while (step < Nsteps) & !criterion(sim)
@@ -290,11 +315,17 @@ the program, read at each call: set `sim.stop_iteration = n` to run `n` steps wi
 compiled `run!`. It counts steps from wherever the model is: each call steps `stop_iteration`
 more times.
 """
+# Use time_step_while! when Online checkpointing or a stopping_criterion is set;
+# otherwise use the original time_step_for! with @trace for.
+uses_while(ad) = ad.checkpointing isa Online || !isnothing(ad.stopping_criterion)
+time_step_loop!(sim, Nsteps) =
+    uses_while(sim.automatic_differentiation) ? time_step_while!(sim, Nsteps) : time_step_for!(sim, Nsteps)
+
 function Oceananigans.Simulations.run!(sim::ReactantSimulation)
     check_stop_iteration(sim)
 
     initialize!(sim)
-    time_step_for!(sim, sim.stop_iteration)
+    time_step_loop!(sim, sim.stop_iteration)
     remainder_step!(sim, sim.stop_time)
     foreach(callback -> finalize!(callback, sim), values(sim.callbacks))
 
@@ -311,7 +342,7 @@ function Oceananigans.Simulations.run!(sim::Simulation{<:ReactantModel{<:QuasiAd
         euler_step!(sim)
     end
     # Never a negative trip count: Enzyme-JAX folds the loop's iteration increments into one add of it
-    time_step_for!(sim, N - first_step)
+    time_step_loop!(sim, N - first_step)
     remainder_step!(sim, sim.stop_time)
     foreach(callback -> finalize!(callback, sim), values(sim.callbacks))
 
