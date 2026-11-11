@@ -1956,12 +1956,16 @@ function test_checkpointer_async(arch)
     @test sim_async.output_writers[:checkpointer] isa AsyncOutputWriter
 
     # Restart from each and assert the recovered model state matches.
+    function restored_model(prefix, iter)
+        model = make_model()
+        sim = Simulation(model, Δt=Δt, stop_iteration=3)
+        sim.output_writers[:checkpointer] = Checkpointer(model; schedule=IterationInterval(1), prefix)
+        set!(sim; iteration=iter)
+        return model
+    end
+
     for iter in (1, 2, 3)
-        m_from_sync  = make_model()
-        m_from_async = make_model()
-        set!(m_from_sync;  checkpoint="$(sync_prefix)_iteration$(iter).jld2")
-        set!(m_from_async; checkpoint="$(async_prefix)_iteration$(iter).jld2")
-        test_model_equality(m_from_sync, m_from_async)
+        test_model_equality(restored_model(sync_prefix, iter), restored_model(async_prefix, iter))
     end
 
     rm.(glob("$(sync_prefix)_iteration*.jld2");  force=true)
