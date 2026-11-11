@@ -28,26 +28,7 @@ mutable struct ZarrWriter{Mode, O, T, S, A, FS, C, CH, G, DN, DT} <: AbstractOut
     dimension_name_generator :: DN
     dimension_type :: DT
     initialized :: Bool
-    task :: Union{Task, Nothing}  # in-flight async write task; `nothing` for `Synchronous`
-    commit_delay :: Float64       # test-only: artificial sleep inside commit_async_write!
-    commit_throws :: Union{Nothing, Exception}  # test-only: exception to throw in commit_async_write!
-end
-
-# Parametric outer constructor that fills in `task = nothing`. Lets us write
-# `ZarrWriter{Synchronous}(...)` or `ZarrWriter{Asynchronous}(...)` and have
-# Julia infer the remaining type parameters from the arguments.
-function ZarrWriter{Mode}(filepath, store::S, grids::G, output_grid_map::Dict, outputs::O,
-                          schedule::T, array_type::A, indices::Tuple,
-                          global_attributes::Dict, output_attributes::Dict, dimensions::Dict,
-                          with_halos::Bool, include_grid_metrics::Bool, overwrite_files::Bool,
-                          verbose::Bool, part::Int, file_splitting::FS, compressor::C, chunks::CH,
-                          dimension_name_generator::DN, dimension_type::DT,
-                          initialized::Bool) where {Mode, O, T, S, A, FS, C, CH, G, DN, DT}
-    return ZarrWriter{Mode, O, T, S, A, FS, C, CH, G, DN, DT}(
-        filepath, store, grids, output_grid_map, outputs, schedule, array_type, indices,
-        global_attributes, output_attributes, dimensions, with_halos, include_grid_metrics,
-        overwrite_files, verbose, part, file_splitting, compressor, chunks,
-        dimension_name_generator, dimension_type, initialized, nothing, 0.0, nothing)
+    asynchronous :: Mode
 end
 
 # method in OceananigansZarrExt
@@ -164,8 +145,8 @@ Keyword arguments
                               along `dim`. This advanced option can be used to rename dimensions and variables
                               to satisfy certain naming conventions. Default: `trilocation_dim_name`.
 
-- `asynchronous`: If `true`, wrap the writer in an [`AsyncOutputWriter`](@ref) so that the
-                  disk-write phase runs on a background task. The synchronous GPU→CPU copy
+- `asynchronous`: If `true`, run the disk-write phase on a background task (an
+                  [`AsyncOutputWriter`](@ref)). The synchronous GPU→CPU copy
                   still happens on the main thread, so output content is identical to the
                   synchronous case. Use [`wait_for_async_writes!`](@ref) to flush pending
                   writes (called automatically at the end of `run!`). Async is currently

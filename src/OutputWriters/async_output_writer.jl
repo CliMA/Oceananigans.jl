@@ -23,23 +23,29 @@ using Base.Threads: @spawn
 """
     Synchronous
 
-Singleton tag indicating that an output writer's disk-write phase runs on the
-main thread. The default mode for all output writers.
+Singleton stored in an output writer's `asynchronous` property, indicating that its
+disk-write phase runs on the main thread. The default mode for all output writers.
 """
 struct Synchronous end
 
 """
     Asynchronous
 
-Singleton tag indicating that an output writer's disk-write phase runs on a
-background task. The synchronous GPU→CPU copy still happens on the main thread,
-so output content is identical to the synchronous case. Only the slow disk
-write is deferred.
+Stored in an output writer's `asynchronous` property, indicating that its disk-write
+phase runs on a background task. Holds the in-flight write `task`. The synchronous
+GPU→CPU copy still happens on the main thread, so output content is identical to the
+synchronous case. Only the slow disk write is deferred.
 
 Use `wait_for_async_writes!` to flush pending writes — this is called
 automatically at the end of `run!`.
 """
-struct Asynchronous end
+mutable struct Asynchronous
+    task :: Union{Task, Nothing}
+end
+
+Asynchronous() = Asynchronous(nothing)
+
+io_mode(asynchronous) = asynchronous ? Asynchronous() : Synchronous()
 
 """
     AsyncOutputWriter
@@ -76,12 +82,12 @@ background task threw an exception, it is re-thrown here. No-op for
 synchronous writers.
 """
 function wait_for_async_writes!(writer::AsyncOutputWriter)
-    task = writer.task
+    task = writer.asynchronous.task
     if task !== nothing
         try
             wait(task)
         finally
-            writer.task = nothing
+            writer.asynchronous.task = nothing
         end
     end
     return nothing
@@ -140,12 +146,12 @@ function spawn_async_write!(writer, model)
     # and we don't overwrite).
     snapshot === nothing && return nothing
 
-    writer.task = @spawn _async_commit!(writer, snapshot)
+    writer.asynchronous.task = @spawn commit_in_background!(writer, snapshot)
 
     return nothing
 end
 
-function _async_commit!(writer, snapshot)
+function commit_in_background!(writer, snapshot)
     try
         commit_async_write!(writer, snapshot)
     catch err
@@ -154,10 +160,6 @@ function _async_commit!(writer, snapshot)
     end
     return nothing
 end
-
-#####
-##### Generic prepare/commit interface
-#####
 
 #####
 ##### CPU aliasing validation
@@ -169,9 +171,9 @@ end
 ##### construct such a writer.
 #####
 
-_output_aliases_live_data(out, FT) = false
-_output_aliases_live_data(field::AbstractField, FT) = eltype(field) === FT
-_output_aliases_live_data(wta::WindowedTimeAverage{<:AbstractField}, FT) = eltype(wta.operand) === FT
+output_aliases_live_data(out, FT) = false
+output_aliases_live_data(field::AbstractField, FT) = eltype(field) === FT
+output_aliases_live_data(wta::WindowedTimeAverage{<:AbstractField}, FT) = eltype(wta.operand) === FT
 
 """
     validate_async_outputs(outputs, array_type, model)
@@ -187,7 +189,7 @@ function validate_async_outputs(outputs, array_type, model)
     array_eltype = eltype(array_type)
     aliasing = String[]
     for (name, out) in pairs(outputs)
-        _output_aliases_live_data(out, array_eltype) && push!(aliasing, string(name))
+        output_aliases_live_data(out, array_eltype) && push!(aliasing, string(name))
     end
     isempty(aliasing) && return nothing
     throw(ArgumentError(
@@ -200,10 +202,25 @@ function validate_async_outputs(outputs, array_type, model)
 end
 
 """
+    OutputSnapshot
+
+Everything needed to commit a write to disk after the GPU→CPU copy has completed.
+Created by `prepare_async_write` on the main thread and consumed by `commit_async_write!`.
+`destination` (a filepath or a store) is captured by value so that a later file split
+does not redirect an in-flight write.
+"""
+struct OutputSnapshot{T, D, P}
+    iteration :: Int
+    time :: T
+    data :: D
+    destination :: P
+end
+
+"""
     prepare_async_write(writer, model)
 
-Synchronously perform the GPU→CPU portion of `write_output!` and return a
-"snapshot" that contains everything needed to commit the write to disk.
+Synchronously perform the GPU→CPU portion of `write_output!` and return an
+`OutputSnapshot` that contains everything needed to commit the write to disk.
 Return `nothing` to indicate no write should occur.
 
 Each writer that supports async I/O must specialize this function.

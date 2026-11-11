@@ -202,8 +202,8 @@ abstract type AbstractDiagnostic end
     AbstractOutputWriter{A}
 
 Abstract supertype for output writers that write data to disk. The type parameter
-`A` is a singleton tag (`Synchronous` or `Asynchronous`) indicating whether the
-writer's disk-write phase runs on the main thread or on a background task.
+`A` is the type of the writer's `asynchronous` property (`Synchronous` or `Asynchronous`),
+indicating whether the writer's disk-write phase runs on the main thread or on a background task.
 """
 abstract type AbstractOutputWriter{A} end
 

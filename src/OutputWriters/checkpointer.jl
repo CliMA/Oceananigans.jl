@@ -14,16 +14,7 @@ mutable struct Checkpointer{Mode, T} <: AbstractOutputWriter{Mode}
     overwrite_files :: Bool
     verbose :: Bool
     cleanup :: Bool
-    task :: Union{Task, Nothing}  # in-flight async write task; `nothing` for `Synchronous`
-    commit_delay :: Float64       # test-only: artificial sleep inside commit_async_write!
-    commit_throws :: Union{Nothing, Exception}  # test-only: exception to throw in commit_async_write!
-end
-
-# Parametric outer constructor that defaults the async task / test knobs. Lets us
-# write `Checkpointer{Synchronous}(...)` or `Checkpointer{Asynchronous}(...)`.
-function Checkpointer{Mode}(schedule::T, dir, prefix, overwrite_files, verbose, cleanup) where {Mode, T}
-    return Checkpointer{Mode, T}(schedule, dir, prefix, overwrite_files, verbose, cleanup,
-                                  nothing, 0.0, nothing)
+    asynchronous :: Mode
 end
 
 """
@@ -80,9 +71,8 @@ function Checkpointer(model; schedule,
         @warn "Checkpointer: `asynchronous=true` is supported only on GPU; falling back to synchronous I/O."
         asynchronous = false
     end
-    Mode = asynchronous ? Asynchronous : Synchronous
 
-    return Checkpointer{Mode}(schedule, dir, prefix, overwrite_files, verbose, cleanup)
+    return Checkpointer(schedule, dir, prefix, overwrite_files, verbose, cleanup, io_mode(asynchronous))
 end
 
 #####
@@ -208,18 +198,6 @@ function cleanup_checkpoints(checkpointer)
     return nothing
 end
 
-"""
-    CheckpointerSnapshot
-
-State captured by `prepare_async_write` on the main thread and consumed by
-`commit_async_write!`. `state` holds the prognostic data already materialized
-to CPU so the commit phase is device-agnostic.
-"""
-struct CheckpointerSnapshot{S}
-    filepath :: String
-    state :: S
-end
-
 # Synchronous Checkpointer: prepare + commit inline. The async path shares the
 # same prepare/commit pair via the generic
 # `write_output!(::AsyncOutputWriter, ::AbstractModel)`. `Checkpointer`'s
@@ -252,20 +230,17 @@ function prepare_async_write(c::Checkpointer, simulation)
     state = prognostic_state(simulation)
     cpu_state = on_architecture(CPU(), state)
 
-    return CheckpointerSnapshot(filepath, cpu_state)
+    return OutputSnapshot(iter, nothing, cpu_state, filepath)
 end
 
-function commit_async_write!(c::Checkpointer, snap::CheckpointerSnapshot)
-    c.commit_delay > 0 && sleep(c.commit_delay)
-    c.commit_throws === nothing || throw(c.commit_throws)
-
+function commit_async_write!(c::Checkpointer, snap::OutputSnapshot)
     t1 = time_ns()
 
-    jldopen(snap.filepath, "w") do file
-        serializeproperty!(file, "simulation", snap.state)
+    jldopen(snap.destination, "w") do file
+        serializeproperty!(file, "simulation", snap.data)
     end
 
-    t2, sz = time_ns(), filesize(snap.filepath)
+    t2, sz = time_ns(), filesize(snap.destination)
     c.verbose && @info "Checkpointing done: time=$(prettytime((t2 - t1) * 1e-9)), size=$(pretty_filesize(sz))"
 
     c.cleanup && cleanup_checkpoints(c)

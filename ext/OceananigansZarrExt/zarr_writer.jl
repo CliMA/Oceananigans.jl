@@ -101,30 +101,30 @@ function OutputWriters.ZarrWriter(model::AbstractModel, outputs;
         asynchronous = false
     end
     asynchronous && OutputWriters.validate_async_outputs(d_outputs, array_type, model)
-    Mode = asynchronous ? Asynchronous : Synchronous
 
-    return ZarrWriter{Mode}(filepath,
-                            store,
-                            unique_grids,
-                            output_grid_map,
-                            d_outputs,
-                            schedule,
-                            array_type,
-                            indices,
-                            global_attributes,
-                            output_attributes,
-                            dimensions,
-                            with_halos,
-                            include_grid_metrics,
-                            overwrite_files,
-                            verbose,
-                            part,
-                            file_splitting,
-                            compressor,
-                            chunks,
-                            dimension_name_generator,
-                            dimension_type,
-                            false)
+    return ZarrWriter(filepath,
+                      store,
+                      unique_grids,
+                      output_grid_map,
+                      d_outputs,
+                      schedule,
+                      array_type,
+                      indices,
+                      global_attributes,
+                      output_attributes,
+                      dimensions,
+                      with_halos,
+                      include_grid_metrics,
+                      overwrite_files,
+                      verbose,
+                      part,
+                      file_splitting,
+                      compressor,
+                      chunks,
+                      dimension_name_generator,
+                      dimension_type,
+                      false,
+                      io_mode(asynchronous))
 end
 
 zarr_attribute_dict(attributes) =
@@ -637,23 +637,6 @@ end
 ##### therefore only exercised on non-distributed runs.
 #####
 
-"""
-    ZarrWriteSnapshot
-
-Captures everything needed to commit a Zarr write to disk after the GPU→CPU copy has
-completed. Created by `prepare_async_write` on the main thread; consumed by
-`commit_async_write!` inline (sync mode) or on a background task (async mode).
-
-`store` and `outputs` are captured by reference (their fields aren't mutated during a
-write); `time` and `data` are snapshots taken on the main thread.
-"""
-struct ZarrWriteSnapshot{FT, D, O, S}
-    time :: FT
-    data :: D
-    outputs :: O
-    store :: S
-end
-
 function OutputWriters.prepare_async_write(writer::ZarrWriter, model::AbstractModel)
     model.clock.iteration == 0 && !has_initial_output(writer.schedule) && return nothing
 
@@ -693,24 +676,21 @@ function OutputWriters.prepare_async_write(writer::ZarrWriter, model::AbstractMo
                        keys(writer.outputs), prettytime((time_ns() - t0) / 1e9))
     end
 
-    # Snapshot `store` by value so an in-flight async commit isn't disturbed by a
+    # Capture `store` so an in-flight async commit isn't disturbed by a
     # subsequent file split that swaps `writer.store`.
-    return ZarrWriteSnapshot(time, data, writer.outputs, writer.store)
+    return OutputSnapshot(model.clock.iteration, time, data, writer.store)
 end
 
-function OutputWriters.commit_async_write!(writer::ZarrWriter, snap::ZarrWriteSnapshot)
-    writer.commit_delay > 0 && sleep(writer.commit_delay)
-    writer.commit_throws === nothing || throw(writer.commit_throws)
-
+function OutputWriters.commit_async_write!(writer::ZarrWriter, snap::OutputSnapshot)
     if writer.verbose
         t0 = time_ns()
     end
 
-    g = Zarr.zopen(snap.store, "w")
+    g = Zarr.zopen(snap.destination, "w")
     append!(g["time"], [snap.time]; dims=1)
-    for (name, _) in pairs(snap.outputs)
-        arr = g[string(name)]
-        append!(arr, snap.data[string(name)]; dims=ndims(arr))
+    for (name, data) in snap.data
+        arr = g[name]
+        append!(arr, data; dims=ndims(arr))
     end
     Zarr.consolidate_metadata(g)
 

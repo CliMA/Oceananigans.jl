@@ -71,7 +71,8 @@ using Oceananigans.OutputWriters:
     serialize_vertical_coordinate,
     ZarrWriter,
     Synchronous,
-    Asynchronous,
+    OutputSnapshot,
+    io_mode,
     is_asynchronous
 using Oceananigans.Utils:
     materialize_schedule,

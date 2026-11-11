@@ -144,28 +144,28 @@ function NetCDFWriter(model::AbstractModel, outputs;
 
     asynchronous && Oceananigans.OutputWriters.validate_async_outputs(outputs, array_type, model)
 
-    Mode = asynchronous ? Asynchronous : Synchronous
-    return NetCDFWriter{Mode}(unique_grids,
-                              output_grid_map,
-                              filepath,
-                              outputs,
-                              schedule,
-                              array_type,
-                              indices,
-                              global_attributes,
-                              output_attributes,
-                              dimensions,
-                              with_halos,
-                              include_grid_metrics,
-                              overwrite_files,
-                              overwrite_snapshots,
-                              verbose,
-                              deflatelevel,
-                              part,
-                              file_splitting,
-                              dimension_name_generator,
-                              dimension_type,
-                              false)
+    return NetCDFWriter(unique_grids,
+                        output_grid_map,
+                        filepath,
+                        outputs,
+                        schedule,
+                        array_type,
+                        indices,
+                        global_attributes,
+                        output_attributes,
+                        dimensions,
+                        with_halos,
+                        include_grid_metrics,
+                        overwrite_files,
+                        overwrite_snapshots,
+                        verbose,
+                        deflatelevel,
+                        part,
+                        file_splitting,
+                        dimension_name_generator,
+                        dimension_type,
+                        false,
+                        io_mode(asynchronous))
 end
 
 """
@@ -492,27 +492,6 @@ function time_index_for_writing(ds, t, ow, filepath)
     return something(findfirst(≥(t), collect(ds["time"])), time_index)
 end
 
-"""
-    NetCDFWriteSnapshot
-
-Captures everything needed to commit a NetCDF write to disk after the GPU→CPU
-copy has completed. Created by `prepare_async_write` on the main thread;
-consumed by `commit_async_write!` (inline for `Synchronous` mode, on a
-background task for `Asynchronous` mode).
-
-The fetched data is keyed by output name. Per-output dispatch (regular field,
-`LagrangianParticles`, constant field) at commit time is driven by the `outputs`
-reference, which is the writer's own outputs Dict — safe to share since it's not
-mutated during a write.
-"""
-struct NetCDFWriteSnapshot{D, O}
-    time :: Any
-    data :: D
-    outputs :: O
-    filepath :: String
-    verbose :: Bool
-end
-
 function prepare_async_write(ow::NetCDFWriter, model::AbstractModel)
     model.clock.iteration == 0 && !has_initial_output(ow.schedule) && return nothing
 
@@ -532,14 +511,11 @@ function prepare_async_write(ow::NetCDFWriter, model::AbstractModel)
 
     t = float_or_date_time(output_time(model.clock, ow.schedule))
 
-    return NetCDFWriteSnapshot(t, fetched, ow.outputs, ow.filepath, ow.verbose)
+    return OutputSnapshot(model.clock.iteration, t, fetched, ow.filepath)
 end
 
-function commit_async_write!(ow::NetCDFWriter, snap::NetCDFWriteSnapshot)
-    ow.commit_delay > 0 && sleep(ow.commit_delay)
-    ow.commit_throws === nothing || throw(ow.commit_throws)
-
-    filepath, verbose, t = snap.filepath, snap.verbose, snap.time
+function commit_async_write!(ow::NetCDFWriter, snap::OutputSnapshot)
+    filepath, verbose, t = snap.destination, ow.verbose, snap.time
 
     if verbose
         @info "Writing to NetCDF: $filepath..."
@@ -557,9 +533,9 @@ function commit_async_write!(ow::NetCDFWriter, snap::NetCDFWriteSnapshot)
 
     ds["time"][time_index] = t
 
-    verbose && @info "Writing NetCDF outputs at time index $(time_index): $(keys(snap.outputs))..."
+    verbose && @info "Writing NetCDF outputs at time index $(time_index): $(keys(ow.outputs))..."
 
-    for (output_name, output) in snap.outputs
+    for (output_name, output) in ow.outputs
         write_time_dependent_output!(ds, output, snap.data[output_name], time_index, output_name)
     end
 

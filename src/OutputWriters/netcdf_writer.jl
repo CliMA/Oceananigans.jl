@@ -24,27 +24,7 @@ mutable struct NetCDFWriter{Mode, G, GM, O, T, A, FS, DN, DT} <: AbstractOutputW
     dimension_name_generator :: DN
     dimension_type :: DT
     initialized :: Bool
-    task :: Union{Task, Nothing}  # in-flight async write task; `nothing` for `Synchronous`
-    commit_delay :: Float64       # test-only: artificial sleep inside commit_async_write!
-    commit_throws :: Union{Nothing, Exception}  # test-only: exception to throw in commit_async_write!
-end
-
-# Parametric outer constructor that fills in `task = nothing`. Lets us write
-# `NetCDFWriter{Synchronous}(...)` or `NetCDFWriter{Asynchronous}(...)` and
-# have Julia infer the remaining type parameters from the arguments.
-function NetCDFWriter{Mode}(grids::G, output_grid_map::GM, filepath,
-                            outputs::O, schedule::T, array_type::A, indices::Tuple,
-                            global_attributes::Dict, output_attributes::Dict, dimensions::Dict,
-                            with_halos::Bool, include_grid_metrics::Bool,
-                            overwrite_files::Union{Nothing, Bool}, overwrite_snapshots::Bool,
-                            verbose::Bool, deflatelevel::Int, part::Int, file_splitting::FS,
-                            dimension_name_generator::DN, dimension_type::DT,
-                            initialized::Bool) where {Mode, G, GM, O, T, A, FS, DN, DT}
-    return NetCDFWriter{Mode, G, GM, O, T, A, FS, DN, DT}(
-        grids, output_grid_map, filepath, outputs, schedule, array_type, indices,
-        global_attributes, output_attributes, dimensions, with_halos, include_grid_metrics,
-        overwrite_files, overwrite_snapshots, verbose, deflatelevel, part, file_splitting,
-        dimension_name_generator, dimension_type, initialized, nothing, 0.0, nothing)
+    asynchronous :: Mode
 end
 
 # method in OceananigansNCDatasetsExt

@@ -1,6 +1,7 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Oceananigans: write_output!
+using Oceananigans.OutputWriters: OutputSnapshot
 using Oceananigans.Fields: FunctionField, ZeroField, OneField, ConstantField
 
 #####
@@ -252,90 +253,80 @@ function test_jld2_async_io_matches_sync(arch)
     return nothing
 end
 
-function test_jld2_async_overlap(arch)
-    # Prove the main thread does not block on the disk write. With a known
-    # `commit_delay` injected into `commit_async_write!`, an async `write_output!`
+# A minimal asynchronous writer whose commit sleeps for `delay` and then throws
+# `exception` (if any), for testing the async machinery shared by all writers.
+mutable struct DelayedWriter <: Oceananigans.AbstractOutputWriter{Asynchronous}
+    asynchronous :: Asynchronous
+    delay :: Float64
+    exception :: Union{Nothing, Exception}
+end
+
+DelayedWriter(; delay=0, exception=nothing) = DelayedWriter(Asynchronous(), delay, exception)
+
+Oceananigans.OutputWriters.prepare_async_write(::DelayedWriter, model) =
+    OutputSnapshot(model.clock.iteration, model.clock.time, nothing, nothing)
+
+function Oceananigans.OutputWriters.commit_async_write!(writer::DelayedWriter, snapshot)
+    sleep(writer.delay)
+    isnothing(writer.exception) || throw(writer.exception)
+    return nothing
+end
+
+function test_async_overlap(arch)
+    # Prove the main thread does not block on the disk write: an async `write_output!`
     # should return ~immediately while the spawned task is still running, and the
-    # subsequent `wait_for_async_writes!` should block for roughly `commit_delay`.
-    grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 1, 1),
-                           topology=(Periodic, Periodic, Periodic))
-    model = NonhydrostaticModel(grid; tracers=:c)
-
-    filepath = "test_jld2_async_overlap.jld2"
-    isfile(filepath) && rm(filepath)
-
-    writer = JLD2Writer(model, model.velocities;
-                        filename = filepath,
-                        schedule = IterationInterval(1),
-                        overwrite_files = true,
-                        asynchronous = true)
+    # subsequent `wait_for_async_writes!` should block for roughly `delay`.
+    grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 1, 1))
+    model = NonhydrostaticModel(grid)
+    writer = DelayedWriter()
 
     # Warm up so the timed write doesn't pay first-call compilation cost.
     write_output!(writer, model)
     wait_for_async_writes!(writer)
 
-    # An iteration already in the file is skipped, so advance the clock before
-    # the timed write.
-    model.clock.iteration += 1
-
-    commit_delay = 0.5
-    writer.commit_delay = commit_delay
+    delay = 0.5
+    writer.delay = delay
 
     t_return = @elapsed write_output!(writer, model)
-    @test t_return < commit_delay / 5
-    @test writer.task isa Task
-    @test !istaskdone(writer.task)
+    @test t_return < delay / 5
+    @test writer.asynchronous.task isa Task
+    @test !istaskdone(writer.asynchronous.task)
 
     t_wait = @elapsed wait_for_async_writes!(writer)
-    @test t_wait > commit_delay * 3 / 5
-    @test writer.task === nothing
+    @test t_wait > delay * 3 / 5
+    @test writer.asynchronous.task === nothing
 
-    isfile(filepath) && rm(filepath)
     return nothing
 end
 
-function test_jld2_async_exception_propagation(arch)
+function test_async_exception_propagation(arch)
     # Prove that an exception thrown by `commit_async_write!` on the worker task
     # surfaces on the main thread at the next synchronization point — either an
     # explicit `wait_for_async_writes!` or the implicit wait at the start of the
-    # next `write_output!`. The writer's task field must also be cleared so the
-    # writer is usable after the error is observed.
-    grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 1, 1),
-                           topology=(Periodic, Periodic, Periodic))
-    model = NonhydrostaticModel(grid; tracers=:c)
+    # next `write_output!`. The task must also be cleared so the writer is usable
+    # after the error is observed.
+    grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 1, 1))
+    model = NonhydrostaticModel(grid)
+    writer = DelayedWriter(exception=ErrorException("synthetic commit failure"))
 
-    filepath = "test_jld2_async_throws.jld2"
-    isfile(filepath) && rm(filepath)
-
-    writer = JLD2Writer(model, model.velocities;
-                        filename = filepath,
-                        schedule = IterationInterval(1),
-                        overwrite_files = true,
-                        asynchronous = true)
-
-    # Path 1: explicit wait surfaces the error.
-    # `_async_commit!` also logs `@error "Async output writer failed"` from the
-    # worker task. That log is emitted asynchronously and isn't caught by
-    # `@test_logs`, so the test stays noisy but still asserts the right things.
-    writer.commit_throws = ErrorException("synthetic commit failure")
+    # Path 1: explicit wait surfaces the error. The worker task also logs
+    # `@error "Async output writer failed"`, which `@test_logs` can't catch.
     write_output!(writer, model)
-    @test writer.task isa Task
+    @test writer.asynchronous.task isa Task
     @test_throws TaskFailedException wait_for_async_writes!(writer)
-    @test writer.task === nothing
+    @test writer.asynchronous.task === nothing
 
     # Path 2: implicit wait at the start of the next write surfaces the error.
     write_output!(writer, model)
-    @test writer.task isa Task
     @test_throws TaskFailedException write_output!(writer, model)
-    @test writer.task === nothing
+    @test writer.asynchronous.task === nothing
 
-    # With the knob cleared, subsequent writes succeed and the file is on disk.
-    writer.commit_throws = nothing
+    # Without the exception, subsequent writes succeed.
+    writer.exception = nothing
     write_output!(writer, model)
     wait_for_async_writes!(writer)
-    @test isfile(filepath)
+    @test writer.asynchronous.task === nothing
 
-    rm(filepath)
     return nothing
 end
 
@@ -848,8 +839,8 @@ for arch in archs
         #####
 
         test_jld2_async_io_matches_sync(arch)
-        test_jld2_async_overlap(arch)
-        test_jld2_async_exception_propagation(arch)
+        test_async_overlap(arch)
+        test_async_exception_propagation(arch)
         test_jld2_async_cpu_aliasing_error(arch)
 
         #####
