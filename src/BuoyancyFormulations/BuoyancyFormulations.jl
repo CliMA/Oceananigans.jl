@@ -8,8 +8,8 @@ export
 using SeawaterPolynomials: SeawaterPolynomials, ρ′, thermal_expansion, haline_contraction, with_float_type
 
 using Oceananigans: Oceananigans
-using Oceananigans.Operators: ℑxᶠᵃᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶠ, ∂xᵣᶠᶜᶜ, ∂yᵣᶜᶠᶜ, ∂xᶠᶜᶜ, ∂yᶜᶠᶜ, ∂zᶜᶜᶠ
 using Oceananigans.BoundaryConditions: total_boundary_flux, Bottom, Top
+using Oceananigans.Operators: ℑxᶠᵃᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶠ, ∂xᵣᶠᶜᶜ, ∂yᵣᶜᶠᶜ, ∂xᶠᶜᶜ, ∂yᶜᶠᶜ, ∂zᶜᶜᶠ
 using Oceananigans.Utils: SIGNATURES, TYPEDSIGNATURES
 
 """

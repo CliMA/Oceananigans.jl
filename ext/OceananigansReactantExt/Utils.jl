@@ -1,10 +1,9 @@
 module Utils
 
 using Oceananigans
-using Reactant
-
 using Oceananigans.Architectures: ReactantState
 using Oceananigans.Utils: prettytime, prettysummary
+using Reactant
 
 # Reactant tracing breaks if Δt is converted outside the kernel, so pass it through.
 @inline Oceananigans.Utils.kernel_time_step(::ReactantState, grid, Δt) = Δt

@@ -57,9 +57,9 @@ export intrinsic_vector, extrinsic_vector
 export σⁿ, σ⁻, σ⁻¹ⁿ, ∂t_σ
 
 using Oceananigans.Grids: LatitudeLongitudeGrid, LLGOTF, XRegLLGOTF, YRegLLGOTF,
-    OrthogonalSphericalShellGrid, RectilinearGrid, XRegularLLG, XRegularRG, YRegularLLG,
-    YRegularRG, ZRegOrthogonalSphericalShellGrid, ZRegularLLG, ZRegularRG, AbstractGrid,
-    Center, Face, flip_location
+                          OrthogonalSphericalShellGrid, RectilinearGrid, XRegularLLG, XRegularRG, YRegularLLG,
+                          YRegularRG, ZRegOrthogonalSphericalShellGrid, ZRegularLLG, ZRegularRG, AbstractGrid,
+                          Center, Face, flip_location
 using Oceananigans.Utils: TYPEDSIGNATURES
 
 #####

@@ -24,22 +24,22 @@ using Oceananigans.Grids: Grids, AbstractGrid, Center, Face, Flat, LatitudeLongi
                           λspacings, φspacings, λnodes, φnodes, ξnodes, ηnodes,
                           ξname, ηname, validate_index, peripheral_node, inactive_node,
                           interior_indices
-import Oceananigans.Grids: new_data as allocate_grid_data
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary,
-                                        GridFittedBottom, PartialCellBottom,
-                                        GridFittedVerticalBoundaries, PartialCellVerticalBoundaries,
-                                        CenterImmersedCondition, InterfaceImmersedCondition,
-                                        GFBIBG, PCBIBG, bottom_height_field
+                                       GridFittedBottom, PartialCellBottom,
+                                       GridFittedVerticalBoundaries, PartialCellVerticalBoundaries,
+                                       CenterImmersedCondition, InterfaceImmersedCondition,
+                                       GFBIBG, PCBIBG, bottom_height_field
 using Oceananigans.OrthogonalSphericalShellGrids: OrthogonalSphericalShellGrid,
-                                                   TripolarGrid, RotatedLatitudeLongitudeGrid,
-                                                   ConformalCubedSpherePanelGrid,
-                                                   ConformalConicGrid,
-                                                   Tripolar, LatitudeLongitudeRotation,
-                                                   CubedSphereConformalMapping,
-                                                   ConformalConic
+                                                  TripolarGrid, RotatedLatitudeLongitudeGrid,
+                                                  ConformalCubedSpherePanelGrid,
+                                                  ConformalConicGrid,
+                                                  Tripolar, LatitudeLongitudeRotation,
+                                                  CubedSphereConformalMapping,
+                                                  ConformalConic
 using Oceananigans.Solvers: iteration
 using Oceananigans.Utils: Utils, StaticStridesOffsetArray, TimeInterval, IterationInterval, WallTimeInterval, instantiate,
                           pretty_filesize, SIGNATURES, TYPEDSIGNATURES
+import Oceananigans.Grids: new_data as allocate_grid_data
 
 const c = Center()
 const f = Face()

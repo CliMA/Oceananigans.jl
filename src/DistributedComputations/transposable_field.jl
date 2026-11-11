@@ -1,6 +1,6 @@
-using Oceananigans.Grids: architecture, deflate_tuple
 using Oceananigans.Architectures: on_architecture
 using Oceananigans.Fields: instantiated_location
+using Oceananigans.Grids: architecture, deflate_tuple
 
 struct TransposableField{FX, FY, FZ, YZ, XY, C, Comms}
     xfield :: FX # X-direction is free (x-local)

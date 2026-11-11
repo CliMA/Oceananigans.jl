@@ -1,9 +1,9 @@
 using Oceananigans: instantiated_location
-using Oceananigans.Grids: _node, node, xnodes, ynodes, Face, Center
-using Oceananigans.Fields: AbstractField, Field, FunctionField, compute!, show_location
 using Oceananigans.AbstractOperations: Average
-using Oceananigans.OutputReaders: interpolate
+using Oceananigans.Fields: AbstractField, Field, FunctionField, compute!, show_location
+using Oceananigans.Grids: _node, node, xnodes, ynodes, Face, Center
 using Oceananigans.Operators: ℑxᶜᵃᵃ, ℑyᵃᶜᵃ, active_weighted_ℑxyᶠᶜᶜ, active_weighted_ℑxyᶜᶠᶜ
+using Oceananigans.OutputReaders: interpolate
 using Oceananigans.Utils: prettysummary, TYPEDSIGNATURES
 using DocStringExtensions: TYPEDEF, TYPEDFIELDS
 

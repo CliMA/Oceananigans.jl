@@ -6,13 +6,8 @@ export TripolarGrid, RotatedLatitudeLongitudeGrid, ConformalCubedSpherePanelGrid
        geographic_to_conformal_conic, conformal_conic_to_geographic, conformal_conic_scale_factor, conformal_conic_rotation_angle
 
 import Oceananigans
-using Oceananigans.Architectures: Architectures, AbstractArchitecture, CPU, GPU, on_architecture
-
-using Adapt: Adapt, adapt
-using Distances: haversine
-using KernelAbstractions: @index, @kernel
-
 using Oceananigans.AbstractOperations: AbstractOperations
+using Oceananigans.Architectures: Architectures, AbstractArchitecture, CPU, GPU, on_architecture
 using Oceananigans.BoundaryConditions: BoundaryConditions, BoundaryCondition, fill_halo_regions!
 using Oceananigans.DistributedComputations: DistributedComputations
 using Oceananigans.Fields: Fields
@@ -20,6 +15,10 @@ using Oceananigans.Grids: Grids, Grids, add_halos, fill_metric_halo_regions!, ge
                           total_length
 using Oceananigans.Operators: Operators
 using Oceananigans.Utils: SIGNATURES, TYPEDSIGNATURES
+
+using Adapt: Adapt, adapt
+using Distances: haversine
+using KernelAbstractions: @index, @kernel
 
 include("generate_tripolar_coordinates.jl")
 include("tripolar_grid.jl")

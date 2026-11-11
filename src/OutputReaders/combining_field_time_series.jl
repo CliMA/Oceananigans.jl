@@ -3,8 +3,8 @@ using Glob: Glob, glob
 using GPUArraysCore: @allowscalar
 using Statistics: mean
 
-using Oceananigans.DistributedComputations: reconstruct_global_topology
 using Oceananigans.BoundaryConditions: fill_halo_regions!
+using Oceananigans.DistributedComputations: reconstruct_global_topology
 using Oceananigans.Fields: Fields, interior, Field, instantiated_location, FixedTime
 using Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid,
                           cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z,

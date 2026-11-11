@@ -1,9 +1,9 @@
 using Oceananigans: location
 using Oceananigans.Architectures: Architectures, on_architecture
+using Oceananigans.Grids: XFlatGrid, YFlatGrid, ZFlatGrid, YZFlatGrid, XZFlatGrid, XYFlatGrid,
+                          ξnode, ηnode, rnode
 using Oceananigans.Operators: index_and_interp_dependencies
 using Oceananigans.Utils: Utils, tupleit, user_function_arguments, prettysummary
-using Oceananigans.Grids: XFlatGrid, YFlatGrid, ZFlatGrid, YZFlatGrid, XZFlatGrid, XYFlatGrid
-using Oceananigans.Grids: ξnode, ηnode, rnode
 
 struct LeftBoundary end
 struct RightBoundary end

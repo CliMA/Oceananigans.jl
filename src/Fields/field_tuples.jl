@@ -1,6 +1,6 @@
 using Oceananigans.Architectures: CPU, GPU, architecture, convert_to_device
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions, NoKernelFBC, regularize_field_boundary_conditions,
-    tupled_fill_halo_regions!, needs_halo_fill_args
+                                       tupled_fill_halo_regions!, needs_halo_fill_args
 using Oceananigans.Utils: foreach_element
 using LinearAlgebra: LinearAlgebra
 

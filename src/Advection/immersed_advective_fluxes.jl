@@ -1,6 +1,6 @@
-using Oceananigans.ImmersedBoundaries: immersed_peripheral_node, inactive_node
 using Oceananigans.Fields: ZeroField
 using Oceananigans.Grids: Open
+using Oceananigans.ImmersedBoundaries: immersed_peripheral_node, inactive_node
 
 const IBG = ImmersedBoundaryGrid
 

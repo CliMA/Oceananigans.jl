@@ -1,7 +1,7 @@
 using Oceananigans.BoundaryConditions: BoundaryCondition, Zipper, UPivot, TPivot, FPivot, NoFluxBoundaryCondition
 using Oceananigans.Grids: Grids, Bounded, Closed, Flat, OrthogonalSphericalShellGrid, Periodic, RectilinearGrid, TwoSided,
-    architecture, cpu_face_constructor_z, validate_dimension_specification,
-    CenterFolded, FaceFolded, new_data, topology
+                          architecture, cpu_face_constructor_z, validate_dimension_specification,
+                          CenterFolded, FaceFolded, new_data, topology
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 
 """

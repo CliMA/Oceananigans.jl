@@ -1,11 +1,10 @@
+using Oceananigans: prognostic_state, restore_prognostic_state!
 using Oceananigans.Architectures: architecture
 using Oceananigans.BuoyancyFormulations: top_buoyancy_flux, ∂z_b
 using Oceananigans.Grids: inactive_node
 using Oceananigans.Operators
 using Oceananigans.Operators: ℑzᵃᵃᶜ
 using Oceananigans.Utils: time_difference_in_seconds
-
-using Oceananigans: prognostic_state, restore_prognostic_state!
 
 struct RiBasedVerticalDiffusivity{TD, FT, R, HR} <: AbstractScalarDiffusivity{TD, VerticalFormulation, 1}
     ν₀  :: FT

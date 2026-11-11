@@ -3,11 +3,11 @@ module OceananigansMakieExt
 export geo_surface!, geo_surface, spherical_coordinates
 
 using Oceananigans
-using Oceananigans.Grids: AbstractGrid, OrthogonalSphericalShellGrid, LatitudeLongitudeGrid,
-                          topology, xnode, ynode, znode, λnode, φnode, λnodes, φnodes
-using Oceananigans.Fields: AbstractField, location, interior
 using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Architectures: on_architecture, architecture
+using Oceananigans.Fields: AbstractField, location, interior
+using Oceananigans.Grids: AbstractGrid, OrthogonalSphericalShellGrid, LatitudeLongitudeGrid,
+                          topology, xnode, ynode, znode, λnode, φnode, λnodes, φnodes
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 using Oceananigans.MultiRegion: YinYangField, owned_weights
 using Oceananigans.Utils: SIGNATURES

@@ -5,6 +5,7 @@ export Forcing, ContinuousForcing, DiscreteForcing, Relaxation, InflowOutflowRat
 using Adapt: Adapt, adapt
 
 using Oceananigans: Oceananigans
+using Oceananigans.Architectures: Architectures, on_architecture
 using Oceananigans.BuoyancyFormulations: BuoyancyForce, BuoyancyTracerFormulation, SeawaterBuoyancy,
                                          get_temperature_and_salinity, thermal_expansionᶜᶜᶠ
 using Oceananigans.Fields: field, location
@@ -13,7 +14,6 @@ using Oceananigans.Operators: ∂zᶜᶜᶜ
 using Oceananigans.OutputReaders: FlavorOfFTS
 using Oceananigans.Units: Time
 using Oceananigans.Utils: named_tuple, SIGNATURES, TYPEDSIGNATURES
-using Oceananigans.Architectures: Architectures, on_architecture
 
 include("multiple_forcings.jl")
 include("continuous_forcing.jl")

@@ -1,6 +1,6 @@
+using Oceananigans.Fields: show_location
 using Oceananigans.Grids: node
 using Oceananigans.Operators: index_and_interp_dependencies
-using Oceananigans.Fields: show_location
 using Oceananigans.Utils: user_function_arguments, tupleit, prettysummary
 
 """

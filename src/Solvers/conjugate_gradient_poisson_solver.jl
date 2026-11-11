@@ -1,10 +1,10 @@
-using Oceananigans.Operators: Vᶜᶜᶜ, V⁻¹ᶜᶜᶜ, Ax_∂xᶠᶜᶜ, Axᶠᶜᶜ, Ay_∂yᶜᶠᶜ, Ayᶜᶠᶜ, Az_∂zᶜᶜᶠ,
-    Azᶜᶜᶠ, Δx⁻¹ᶠᶜᶜ, Δy⁻¹ᶜᶠᶜ, Δz⁻¹ᶜᶜᶠ, δxᶜᶜᶜ, δyᶜᶜᶜ, δzᶜᶜᶜ
-using Oceananigans.Fields: Field, condition_operand, conditional_length
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.AbstractOperations: KernelFunctionOperation
-using Oceananigans.Grids: Center
 using Oceananigans.Architectures: device
+using Oceananigans.Fields: Field, condition_operand, conditional_length
+using Oceananigans.Grids: Center
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+using Oceananigans.Operators: Vᶜᶜᶜ, V⁻¹ᶜᶜᶜ, Ax_∂xᶠᶜᶜ, Axᶠᶜᶜ, Ay_∂yᶜᶠᶜ, Ayᶜᶠᶜ, Az_∂zᶜᶜᶠ,
+                              Azᶜᶜᶠ, Δx⁻¹ᶠᶜᶜ, Δy⁻¹ᶜᶠᶜ, Δz⁻¹ᶜᶜᶠ, δxᶜᶜᶜ, δyᶜᶜᶜ, δzᶜᶜᶜ
 using KernelAbstractions: @localmem, @synchronize, StaticSize
 
 #####

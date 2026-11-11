@@ -1,9 +1,8 @@
+using Oceananigans: prognostic_state, restore_prognostic_state!
 using Oceananigans.Architectures: architecture
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields: CenterField, Field, compute!, interpolate, xnode, ynode, znode
 using Statistics: mean
-
-using Oceananigans: prognostic_state, restore_prognostic_state!
 
 mutable struct DynamicCoefficient{A, FT, S}
     averaging :: A

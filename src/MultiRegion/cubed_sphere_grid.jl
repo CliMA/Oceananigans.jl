@@ -4,16 +4,16 @@ using Oceananigans.Grids: halo_size,
                           grid_name,
                           nodes,
                           validate_topology
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: SplitExplicitFreeSurfaces,
+                                                                                  FixedSubstepNumber, ConnectedTopology
+using Oceananigans.MultiRegion: MultiRegionGrids, multiregion_split_explicit_halos, augmented_kernel_size,
+                                augmented_kernel_offsets
+using Oceananigans.OrthogonalSphericalShellGrids: ConformalCubedSpherePanelGrid, CubedSphereConformalMapping,
+                                                  non_uniform_conformal_mapping_coordinates
 
 using CubedSphere: GeometricSpacing, conformal_cubed_sphere_mapping
 using CubedSphere.SphericalGeometry: cartesian_to_lat_lon
-using Oceananigans.OrthogonalSphericalShellGrids: ConformalCubedSpherePanelGrid, CubedSphereConformalMapping,
-                                                  non_uniform_conformal_mapping_coordinates
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: SplitExplicitFreeSurfaces,
-    FixedSubstepNumber, ConnectedTopology
-using Oceananigans.MultiRegion: MultiRegionGrids, multiregion_split_explicit_halos, augmented_kernel_size,
-    augmented_kernel_offsets
 
 const ConformalCubedSphereGrid{FT, TX, TY, TZ, CZ} = MultiRegionGrid{FT, TX, TY, TZ, CZ, <:CubedSpherePartition}
 

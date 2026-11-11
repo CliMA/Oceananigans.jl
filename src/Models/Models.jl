@@ -22,12 +22,12 @@ using JLD2: JLD2, jldopen
 
 using Oceananigans: Oceananigans, AbstractModel, fields, prognostic_fields
 using Oceananigans.AbstractOperations: AbstractOperation
-using Oceananigans.Architectures: on_architecture
-using Oceananigans.DistributedComputations: DistributedComputations
 using Oceananigans.Advection: AbstractAdvectionScheme, Centered
-using Oceananigans.Architectures: Architectures
+using Oceananigans.Architectures: on_architecture,
+                                  Architectures
 using Oceananigans.BoundaryConditions: BoundaryConditions
 using Oceananigans.Diagnostics: Diagnostics, NaNChecker
+using Oceananigans.DistributedComputations: DistributedComputations
 using Oceananigans.Fields: Fields, Field, TracerFields, ZeroField, set!
 using Oceananigans.Grids: Grids, AbstractGrid, grid, halo_size, inflate_halo_size
 using Oceananigans.OutputReaders: extract_field_time_series, update_field_time_series!

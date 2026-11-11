@@ -1,8 +1,8 @@
-using Oceananigans.Utils: tupleit
-using Oceananigans.Grids: regular_dimensions, topology, Periodic, has_static_discretization
 using Oceananigans.Fields: Field, Scan, Reducing, ScannedComputedField, condition_operand, reverse_cumsum!,
-                          AbstractAccumulating, AbstractReducing
-using Oceananigans.Fields: filter_nothing_dims, instantiated_location, interior
+                           AbstractAccumulating, AbstractReducing,
+                           filter_nothing_dims, instantiated_location, interior
+using Oceananigans.Grids: regular_dimensions, topology, Periodic, has_static_discretization
+using Oceananigans.Utils: tupleit
 
 #####
 ##### Metric inference

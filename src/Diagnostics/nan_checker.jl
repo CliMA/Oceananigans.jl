@@ -1,5 +1,5 @@
-using Oceananigans.Utils: prettykeys
 using Oceananigans.Solvers: iteration
+using Oceananigans.Utils: prettykeys
 
 mutable struct NaNChecker{F}
     fields :: F
