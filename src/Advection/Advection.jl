@@ -21,7 +21,8 @@ export
 
 using Adapt: Adapt
 using Base: Callable
-using Oceananigans.Utils: TYPEDSIGNATURES
+using DocStringExtensions: TYPEDSIGNATURES
+using Oceananigans.Utils: SIGNATURES
 using MuladdMacro: @muladd
 using Oceananigans.Utils: StaticStridesOffsetArray
 

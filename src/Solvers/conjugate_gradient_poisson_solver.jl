@@ -415,7 +415,7 @@ end
 struct DefaultPreconditioner end
 
 """
-$(TYPEDSIGNATURES)
+$(SIGNATURES)
 
 Creates a `ConjugateGradientPoissonSolver` on `grid` using a `preconditioner`.
 `ConjugateGradientPoissonSolver` is iterative, and will stop when both the relative error in the

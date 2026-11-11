@@ -1,6 +1,5 @@
 using Adapt
-using DocStringExtensions: TYPEDFIELDS
-using Oceananigans.Utils: TYPEDSIGNATURES
+using DocStringExtensions: TYPEDFIELDS, TYPEDSIGNATURES
 import KernelAbstractions
 using KernelAbstractions: @index, @kernel
 

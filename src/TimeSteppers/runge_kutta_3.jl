@@ -24,7 +24,7 @@ struct RungeKutta3TimeStepper{FT, TG, TI} <: AbstractTimeStepper
 end
 
 """
-$(TYPEDSIGNATURES)
+$(SIGNATURES)
 
 Return a 3rd-order Runge-Kutta timestepper (`RungeKutta3TimeStepper`) on `grid`
 and with `prognostic_fields`. The tendency fields `Gⁿ` and `G⁻`, typically equal
@@ -82,7 +82,7 @@ end
 #####
 
 """
-$(TYPEDSIGNATURES)
+$(SIGNATURES)
 
 Step forward `model` one time step `Δt` with a 3rd-order Runge-Kutta method.
 

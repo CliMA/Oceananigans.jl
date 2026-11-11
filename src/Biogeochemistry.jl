@@ -1,6 +1,6 @@
 module Biogeochemistry
 
-using Oceananigans.Utils: TYPEDSIGNATURES
+using DocStringExtensions: TYPEDSIGNATURES
 using KernelAbstractions: @index, @kernel
 using Oceananigans: Oceananigans
 using Oceananigans.Architectures: architecture

@@ -10,7 +10,7 @@ Extension that adds Zarr read/write support to Oceananigans.jl via [Zarr.jl](htt
 module OceananigansZarrExt
 
 import Zarr
-using Oceananigans.Utils: TYPEDSIGNATURES
+using Oceananigans.Utils: SIGNATURES
 using OrderedCollections: OrderedDict
 
 using Dates: Dates, AbstractTime, UTC, now, DateTime

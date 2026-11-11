@@ -10,7 +10,8 @@ using Oceananigans.Architectures: Architectures, AbstractArchitecture, CPU, GPU,
 
 using Adapt: Adapt, adapt
 using Distances: haversine
-using Oceananigans.Utils: TYPEDSIGNATURES
+using DocStringExtensions: TYPEDSIGNATURES
+using Oceananigans.Utils: SIGNATURES
 using KernelAbstractions: @index, @kernel
 
 using Oceananigans.AbstractOperations: AbstractOperations

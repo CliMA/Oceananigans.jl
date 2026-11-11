@@ -27,7 +27,7 @@ noinit(args...) = nothing
 ext(::Type{JLD2Writer}) = ".jld2"
 
 """
-$(TYPEDSIGNATURES)
+$(SIGNATURES)
 
 Construct a `JLD2Writer` for an Oceananigans `model` that writes `label, output` pairs
 in `outputs` to a JLD2 file.

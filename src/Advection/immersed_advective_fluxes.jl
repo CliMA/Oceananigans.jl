@@ -58,7 +58,7 @@ end
 #####
 
 """
-$(TYPEDSIGNATURES)
+$(SIGNATURES)
 
 Check if the stencil required for reconstruction contains immersed nodes
 

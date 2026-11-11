@@ -7,7 +7,8 @@ export
     ConjugateGradientSolver,
     KrylovSolver
 
-using Oceananigans.Utils: TYPEDSIGNATURES
+using DocStringExtensions: TYPEDSIGNATURES
+using Oceananigans.Utils: SIGNATURES
 using FFTW: FFTW
 using KernelAbstractions: @kernel, @index
 

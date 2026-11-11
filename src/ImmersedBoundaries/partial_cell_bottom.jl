@@ -76,7 +76,7 @@ function Base.show(io::IO, ib::PartialCellVerticalBoundaries)
 end
 
 """
-$(TYPEDSIGNATURES)
+$(SIGNATURES)
 
 Return `PartialCellVerticalBoundaries` representing an immersed boundary with "partial"
 bottom cells. That is, the height of the bottommost cell in each column is reduced
@@ -117,7 +117,7 @@ function PartialCellVerticalBoundaries(; bottom_height=nothing, top_height=nothi
 end
 
 """
-$(TYPEDSIGNATURES)
+$(SIGNATURES)
 
 Return a [`PartialCellVerticalBoundaries`](@ref) without an immersed top, bounded below by `bottom_height`.
 """

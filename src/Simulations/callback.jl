@@ -43,7 +43,7 @@ Oceananigans.initialize!(func, sim) = nothing
 finalize!(func, sim) = nothing
 
 """
-$(TYPEDSIGNATURES)
+$(SIGNATURES)
 
 Return `Callback` that executes `func` on `schedule`
 at the `callsite` with optional `parameters`. By default,
@@ -96,7 +96,7 @@ Callback(wta::WindowedTimeAverage, schedule; kw...) =
 const TimeDerivativeCallback = Callback{<:Any, <:TimeDerivative}
 
 """
-$(TYPEDSIGNATURES)
+$(SIGNATURES)
 
 Return a [`Callback`](@ref) that updates a [`TimeDerivative`](@ref) of `operand` on
 `schedule`, so that the derivative is differenced over the interval between actuations.

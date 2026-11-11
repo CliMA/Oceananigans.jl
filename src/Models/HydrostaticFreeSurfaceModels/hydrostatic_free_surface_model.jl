@@ -84,7 +84,7 @@ default_free_surface(grid; gravitational_acceleration=defaults.gravitational_acc
     SplitExplicitFreeSurface(grid; cfl = 0.7, gravitational_acceleration)
 
 """
-$(TYPEDSIGNATURES)
+$(SIGNATURES)
 
 Construct a hydrostatic model with a free surface on `grid`.
 

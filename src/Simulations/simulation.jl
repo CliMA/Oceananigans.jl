@@ -78,7 +78,7 @@ mutable struct Simulation{ML, DT, SI, ST, DI, OW, CB, FT, BL, AD}
 end
 
 """
-$(TYPEDSIGNATURES)
+$(SIGNATURES)
 
 Construct a `Simulation` for a `model` with time step `Δt`.
 
@@ -232,7 +232,7 @@ Return the current simulation iteration.
 Oceananigans.Solvers.iteration(sim::Simulation) = iteration(sim.model)
 
 """
-$(TYPEDSIGNATURES)
+$(SIGNATURES)
 
 Return `sim.model.clock.time` as a prettily formatted string."
 

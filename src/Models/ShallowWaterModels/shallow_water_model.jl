@@ -56,7 +56,7 @@ struct ConservativeFormulation end
 struct VectorInvariantFormulation end
 
 """
-$(TYPEDSIGNATURES)
+$(SIGNATURES)
 
 Construct a shallow water model on `grid` with `gravitational_acceleration` constant.
 

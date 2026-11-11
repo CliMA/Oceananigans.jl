@@ -63,7 +63,7 @@ struct VectorInvariant{N, FT, TD, Z, ZS, V, K, D, U, M} <: AbstractAdvectionSche
 end
 
 """
-$(TYPEDSIGNATURES)
+$(SIGNATURES)
 
 Return a vector-invariant momentum advection scheme.
 
@@ -193,7 +193,7 @@ end
 nothing_to_default(user_value; default=nothing) = isnothing(user_value) ? default : user_value
 
 """
-$(TYPEDSIGNATURES)
+$(SIGNATURES)
 
 Return a vector-invariant weighted essentially non-oscillatory (WENO) scheme.
 See [`VectorInvariant`](@ref) and [`WENO`](@ref) for kwargs definitions.

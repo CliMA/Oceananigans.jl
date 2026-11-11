@@ -12,7 +12,8 @@ export
     TimeDerivativeCallback,
     iteration
 
-using Oceananigans.Utils: TYPEDSIGNATURES
+using DocStringExtensions: TYPEDSIGNATURES
+using Oceananigans.Utils: SIGNATURES
 using OrderedCollections: OrderedDict
 
 using Oceananigans: Oceananigans, AbstractDiagnostic, AbstractOutputWriter

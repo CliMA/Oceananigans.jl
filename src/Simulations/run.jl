@@ -56,7 +56,7 @@ function aligned_time_step(sim::Simulation, Δt)
 end
 
 """
-$(TYPEDSIGNATURES)
+$(SIGNATURES)
 
 Restore `simulation` state from a checkpoint file.
 
@@ -109,7 +109,7 @@ function Oceananigans.Fields.set!(sim::Simulation; checkpoint=nothing, iteration
 end
 
 """
-$(TYPEDSIGNATURES)
+$(SIGNATURES)
 
 Run a [`simulation`](@ref Oceananigans.Simulation) until one of `simulation.callbacks`
 such as `stop_time` or `wall_time_limit` are exceeded, sets `simulation.running` to `false`.

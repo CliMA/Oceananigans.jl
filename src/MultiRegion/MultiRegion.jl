@@ -6,8 +6,8 @@ export CubedSpherePartition, ConformalCubedSphereGrid, CubedSphereField
 export YinYangGrid, YinYangConservationFixer, owned_weights
 
 using Adapt: Adapt, adapt
-using DocStringExtensions: TYPEDFIELDS
-using Oceananigans.Utils: TYPEDSIGNATURES
+using DocStringExtensions: TYPEDFIELDS, TYPEDSIGNATURES
+using Oceananigans.Utils: SIGNATURES
 using KernelAbstractions: KernelAbstractions as KA
 using KernelAbstractions: @kernel, @index
 using OffsetArrays: OffsetArrays, AbstractOffsetArray

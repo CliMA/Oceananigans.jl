@@ -14,7 +14,7 @@ struct ConstantCartesianCoriolis{FT} <: AbstractRotation{EnergyConserving}
 end
 
 """
-$(TYPEDSIGNATURES)
+$(SIGNATURES)
 
 Return a parameter object for a constant rotation decomposed into the `x`, `y`, and `z` directions.
 In oceanography the components `x`, `y`, `z` correspond to the directions east, north, and up. This

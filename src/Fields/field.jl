@@ -192,7 +192,7 @@ Field(z::ZeroField; kw...) = z
 Field(f::Field; indices=f.indices) = view(f, indices...) # hmm...
 
 """
-$(TYPEDSIGNATURES)
+$(SIGNATURES)
 
 Return a `Field{Center, Center, Center}` on `grid`.
 Additional keyword arguments are passed to the `Field` constructor.
@@ -200,7 +200,7 @@ Additional keyword arguments are passed to the `Field` constructor.
 CenterField(grid::AbstractGrid, ::Type{T}=eltype(grid); kw...) where T = Field((Center(), Center(), Center()), grid, T; kw...)
 
 """
-$(TYPEDSIGNATURES)
+$(SIGNATURES)
 
 Return a `Field{Face, Center, Center}` on `grid`.
 Additional keyword arguments are passed to the `Field` constructor.
@@ -208,7 +208,7 @@ Additional keyword arguments are passed to the `Field` constructor.
 XFaceField(grid::AbstractGrid, ::Type{T}=eltype(grid); kw...) where T = Field((Face(), Center(), Center()), grid, T; kw...)
 
 """
-$(TYPEDSIGNATURES)
+$(SIGNATURES)
 
 Return a `Field{Center, Face, Center}` on `grid`.
 Additional keyword arguments are passed to the `Field` constructor.
@@ -216,7 +216,7 @@ Additional keyword arguments are passed to the `Field` constructor.
 YFaceField(grid::AbstractGrid, ::Type{T}=eltype(grid); kw...) where T = Field((Center(), Face(), Center()), grid, T; kw...)
 
 """
-$(TYPEDSIGNATURES)
+$(SIGNATURES)
 
 Return a `Field{Center, Center, Face}` on `grid`.
 Additional keyword arguments are passed to the `Field` constructor.
@@ -711,7 +711,7 @@ const ReducedAbstractField = Union{XReducedAbstractField,
                                    XYZReducedAbstractField}
 
 """
-$(TYPEDSIGNATURES)
+$(SIGNATURES)
 
 Store the dot product of `a` and `b` in the one-element array `r`, which lives on the same
 architecture as `a` and `b`, and return `r`. Unlike `LinearAlgebra.dot`, `dot!` does not copy

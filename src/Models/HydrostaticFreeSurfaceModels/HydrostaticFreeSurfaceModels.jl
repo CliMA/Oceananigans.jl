@@ -6,8 +6,8 @@ export
     PrescribedVelocityFields, ZStarCoordinate, ZCoordinate
 
 using Adapt: Adapt
-using DocStringExtensions: TYPEDFIELDS
-using Oceananigans.Utils: TYPEDSIGNATURES
+using DocStringExtensions: TYPEDFIELDS, TYPEDSIGNATURES
+using Oceananigans.Utils: SIGNATURES
 using KernelAbstractions: @index, @kernel
 
 using Oceananigans: Oceananigans, fields, prognostic_fields

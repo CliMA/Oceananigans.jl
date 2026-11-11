@@ -7,9 +7,11 @@ paths:
 
 ## Use DocStringExtensions.jl
 
-- Include `$(TYPEDSIGNATURES)` for automatic signature documentation, imported with
-  `using Oceananigans.Utils: TYPEDSIGNATURES`, not from DocStringExtensions. With DocStringExtensions v0.10
-  it shows default argument values; with v0.9 it falls back to plain typed signatures
+- Include `$(TYPEDSIGNATURES)` for automatic signature documentation
+- For signatures with default argument values, use `$(SIGNATURES)` imported with
+  `using Oceananigans.Utils: SIGNATURES`, not from DocStringExtensions. It shows the defaults with
+  DocStringExtensions v0.10 and falls back to plain signatures with v0.9, where
+  `MethodSignatures(; defaults = true)` does not exist
 - Add examples in docstrings when helpful
 
 ## CRITICAL: Always use `jldoctest`, NEVER plain `julia` blocks

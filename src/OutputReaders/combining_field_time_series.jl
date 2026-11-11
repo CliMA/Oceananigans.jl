@@ -93,7 +93,7 @@ end
 #
 
 """
-$(TYPEDSIGNATURES)
+$(SIGNATURES)
 
 Find the RankOutputData with local_index == (i, j, k).
 """

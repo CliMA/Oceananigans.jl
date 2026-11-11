@@ -5,8 +5,7 @@ using Oceananigans.AbstractOperations: Average
 using Oceananigans.OutputReaders: interpolate
 using Oceananigans.Operators: ℑxᶜᵃᵃ, ℑyᵃᶜᵃ, active_weighted_ℑxyᶠᶜᶜ, active_weighted_ℑxyᶜᶠᶜ
 using Oceananigans.Utils: prettysummary
-using DocStringExtensions: TYPEDEF, TYPEDFIELDS
-using Oceananigans.Utils: TYPEDSIGNATURES
+using DocStringExtensions: TYPEDEF, TYPEDFIELDS, TYPEDSIGNATURES
 
 @inline zerofunction(args...) = 0
 @inline onefunction(args...) = 1
@@ -39,7 +38,7 @@ struct Relaxation{R, F, M, T, L, Tr}
 end
 
 """
-$(TYPEDSIGNATURES)
+$(SIGNATURES)
 
 Returns a `Forcing` that restores a field to `target(X..., t)`
 at the specified `rate`, in the region `mask(X...)`.

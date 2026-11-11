@@ -28,7 +28,7 @@ materialize_operand(operand) = operand
 materialize_operand(operand::Union{AbstractOperation, Scan}) = Field(operand)
 
 """
-$(TYPEDSIGNATURES)
+$(SIGNATURES)
 
 Return an object that computes the time derivative of `operand` while a simulation runs,
 

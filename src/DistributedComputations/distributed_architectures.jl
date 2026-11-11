@@ -208,7 +208,7 @@ end
 #####
 
 """
-$(TYPEDSIGNATURES)
+$(SIGNATURES)
 
 Return a distributed architecture that uses MPI for communications.
 

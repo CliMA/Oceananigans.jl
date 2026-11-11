@@ -38,7 +38,7 @@ function Base.show(io::IO, closure::AMD{TD}) where TD
 end
 
 """
-$(TYPEDSIGNATURES)
+$(SIGNATURES)
 
 Return parameters of type `FT` for the `AnisotropicMinimumDissipation`
 turbulence closure.

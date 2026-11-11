@@ -24,7 +24,7 @@ const ConformalCubedSphereGridOfSomeKind{FT, TX, TY, TZ, CZ} =
     Union{ConformalCubedSphereGrid{FT, TX, TY, TZ, CZ}, ImmersedConformalCubedSphereGrid{FT, TX, TY, TZ, CZ}}
 
 """
-$(TYPEDSIGNATURES)
+$(SIGNATURES)
 
 Return a `ConformalCubedSphereGrid` that comprises of six [`ConformalCubedSpherePanelGrid`](@ref)s; we refer to each
 of these grids as a "panel". Each panel corresponds to a face of the cube.
@@ -363,7 +363,7 @@ function BoundaryConditions.fill_halo_regions!(grid::ConformalCubedSphereGridOfS
 end
 
 """
-$(TYPEDSIGNATURES)
+$(SIGNATURES)
 
 Load a `ConformalCubedSphereGrid` from `filepath`.
 """

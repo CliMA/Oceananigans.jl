@@ -2,7 +2,7 @@ module Logger
 
 export OceananigansLogger
 
-using Oceananigans.Utils: TYPEDSIGNATURES
+using Oceananigans.Utils: SIGNATURES
 using Dates: Dates
 using Logging: Logging
 using Crayons: Crayons, Crayon
@@ -23,7 +23,7 @@ struct OceananigansLogger <: Logging.AbstractLogger
 end
 
 """
-$(TYPEDSIGNATURES)
+$(SIGNATURES)
 
 Based on Logging.SimpleLogger, it tries to log all messages in the following format:
 

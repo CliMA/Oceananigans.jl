@@ -40,7 +40,7 @@ function Base.show(io::IO, b::SeawaterBuoyancy{FT}) where FT
 end
 
 """
-$(TYPEDSIGNATURES)
+$(SIGNATURES)
 
 Return parameters for a temperature- and salt-stratified seawater buoyancy model
 with a `gravitational_acceleration` constant (typically called ``g``), and an

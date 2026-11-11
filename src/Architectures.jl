@@ -8,7 +8,7 @@ export
     architecture, child_architecture, on_architecture
 
 using Adapt: Adapt
-using DocStringExtensions: TYPEDSIGNATURES # Architectures loads before Oceananigans.Utils.TYPEDSIGNATURES
+using DocStringExtensions: TYPEDSIGNATURES
 using KernelAbstractions: KernelAbstractions as KA
 using OffsetArrays: OffsetArrays, AbstractOffsetArray
 using SparseArrays: SparseArrays, SparseMatrixCSC
