@@ -1,10 +1,10 @@
 const ReactantSimulation = Simulation{<:ReactantModel}
 
-validate_checkpointing(::Union{Periodic, Binomial}) = nothing
+validate_checkpointing(::Union{Periodic, Binomial, Online}) = nothing
 
 validate_checkpointing(checkpointing) = checkpointing === false ? nothing : throw(ArgumentError(
     "checkpointing = $checkpointing is not supported: use `Reactant.Periodic(n)`, " *
-    "`Reactant.Binomial(budget)`, or `false` for no checkpointing."))
+    "`Reactant.Binomial(budget)`, `Reactant.Online(budget)`, or `false` for no checkpointing."))
 
 """
     Simulation(model::ReactantModel; Δt, stop_iteration = Inf, stop_time = nothing, verbose = true,
@@ -34,9 +34,11 @@ What differs from the eager `Simulation`:
   see [`time_step!`](@ref) for what a callback may do.
 - `output_writers` and `diagnostics` are `nothing`: IO cannot happen inside a program.
 - `automatic_differentiation` holds the options of the traced step loop that matter when `run!`
-  is differentiated in reverse mode: `track_numbers`, `mincut`, and `checkpointing` (`false`,
-  `Reactant.Periodic(n)` or `Reactant.Binomial(budget)`), as a `NamedTuple` of those fields or an
-  [`AutomaticDifferentiation`](@ref). See [`time_step_for!`](@ref).
+  is differentiated in reverse mode: `track_numbers`, `mincut`, `checkpointing` (`false`,
+  `Reactant.Periodic(n)`, `Reactant.Binomial(budget)` or `Reactant.Online(budget)`), and
+  `stopping_criterion` (a function `f(sim) -> Bool` for data-dependent early exit, or `nothing`),
+  as a `NamedTuple` of those fields or an [`AutomaticDifferentiation`](@ref).
+  See [`time_step_for!`](@ref).
 """
 function Oceananigans.Simulations.Simulation(model::ReactantModel; Δt,
                                              verbose = true,

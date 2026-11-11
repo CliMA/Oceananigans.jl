@@ -419,6 +419,8 @@ end
     @test Simulation(r_model; Δt, stop_iteration, verbose=false, automatic_differentiation=ad).automatic_differentiation == ad
     @test Simulation(r_model; Δt, stop_iteration, verbose=false, automatic_differentiation=(; checkpointing=Reactant.Binomial(2))).automatic_differentiation ==
         AutomaticDifferentiation(checkpointing=Reactant.Binomial(2))
+    @test Simulation(r_model; Δt, stop_iteration, verbose=false, automatic_differentiation=(; checkpointing=Reactant.Online(2))).automatic_differentiation ==
+        AutomaticDifferentiation(checkpointing=Reactant.Online(2))
     @test_throws ArgumentError Simulation(r_model; Δt, stop_iteration, verbose=false, automatic_differentiation=(; checkpointing=2))
     @test_throws ArgumentError Simulation(r_model; Δt, stop_iteration, verbose=false, automatic_differentiation=(; checkpointing=true))
 
@@ -427,7 +429,8 @@ end
     run!(simulation)
 
     for automatic_differentiation in (AutomaticDifferentiation(checkpointing=Reactant.Periodic(2), mincut=false),
-                                      AutomaticDifferentiation(checkpointing=Reactant.Binomial(2)))
+                                      AutomaticDifferentiation(checkpointing=Reactant.Binomial(2)),
+                                      AutomaticDifferentiation(checkpointing=Reactant.Online(2)))
         r_model = fresh_model(ReactantState())
         r_simulation = Simulation(r_model; Δt, stop_iteration, verbose=false, automatic_differentiation)
         compiled_run! = @compile run!(r_simulation)
@@ -436,4 +439,59 @@ end
         @test Array(interior(r_model.velocities.u)) ≈ Array(interior(model.velocities.u))
         @test Array(interior(r_model.tracers.T)) ≈ Array(interior(model.tracers.T))
     end
+end
+
+@testset "Reactant Simulation: reverse-mode AD through run! with Online checkpointing" begin
+    using Enzyme
+    using Statistics: mean
+
+    Nx, Ny, Nz = (8, 8, 4)
+    halo = (5, 5, 5)
+    rectilinear_kw = (; size=(Nx, Ny, Nz), halo, x=(0, 1), y=(0, 1), z=(0, 1))
+    model_kw = (; free_surface=ExplicitFreeSurface(gravitational_acceleration=1), tracers=:T)
+
+    arch = ReactantState()
+    grid = RectilinearGrid(arch; rectilinear_kw...)
+    model = HydrostaticFreeSurfaceModel(grid; model_kw...)
+
+    T_init = CenterField(grid)
+    set!(T_init, (x, y, z) -> 0.01 * x + 0.01 * y)
+    set!(model, T=T_init)
+
+    Δt = 1e-6 * minimum_xspacing(model.grid)
+    stop_iteration = 5
+
+    function loss_through_run!(model, T_init, Δt, stop_iteration)
+        set!(model, T=T_init)
+        ad = AutomaticDifferentiation(checkpointing=Reactant.Online(2))
+        sim = Simulation(model; Δt, stop_iteration, verbose=false, automatic_differentiation=ad)
+        run!(sim)
+        return mean(interior(model.tracers.T) .^ 2)
+    end
+
+    dmodel = Enzyme.make_zero(model)
+    dT_init = CenterField(grid)
+    set!(dT_init, 0.0)
+
+    function grad_loss!(model, dmodel, T_init, dT_init, Δt, stop_iteration)
+        parent(dT_init) .= 0
+        _, loss_value = Enzyme.autodiff(
+            Enzyme.set_strong_zero(Enzyme.ReverseWithPrimal),
+            loss_through_run!, Enzyme.Active,
+            Enzyme.Duplicated(model, dmodel),
+            Enzyme.Duplicated(T_init, dT_init),
+            Enzyme.Const(Δt),
+            Enzyme.Const(stop_iteration))
+        return dT_init, loss_value
+    end
+
+    compiled_grad = @compile raise=true raise_first=true sync=true grad_loss!(
+        model, dmodel, T_init, dT_init, Δt, stop_iteration)
+    @test compiled_grad !== nothing
+
+    dT, loss_val = compiled_grad(model, dmodel, T_init, dT_init, Δt, stop_iteration)
+    @test loss_val > 0
+    @test !isnan(loss_val)
+    @test maximum(abs, interior(dT)) > 0
+    @test !any(isnan, interior(dT))
 end

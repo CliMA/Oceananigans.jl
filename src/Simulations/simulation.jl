@@ -13,7 +13,7 @@ default_progress(simulation) = nothing
 const max_datetime = Dates.DateTime(9999, 12, 31, 23, 59, 59, 999)
 
 """
-    AutomaticDifferentiation(; checkpointing, track_numbers = false, mincut = true)
+    AutomaticDifferentiation(; checkpointing, track_numbers = false, mincut = true, stopping_criterion = nothing)
 
 Options for differentiating a compiled `run!` of a `Simulation` on `ReactantState` in reverse mode,
 given to the `Simulation` constructor as `automatic_differentiation`, either as this struct or as
@@ -29,7 +29,20 @@ steps, and only take effect under differentiation: the forward program is the sa
 
 - `checkpointing` (required): `false` stores every step's state for the reverse sweep;
   `Reactant.Periodic(n)` stores a checkpoint every `n` steps and recomputes the steps in between;
-  `Reactant.Binomial(budget)` keeps at most `budget` checkpoints, placed by the revolve algorithm.
+  `Reactant.Binomial(budget)` keeps at most `budget` checkpoints, placed by the revolve algorithm;
+  `Reactant.Online(budget)` places checkpoints adaptively at runtime, for loops whose trip count
+  is unknown at compile time (e.g. convergence-driven stopping).
+
+- `stopping_criterion`: a function `f(simulation) -> Bool` that returns `true` when the simulation
+  should stop early. When provided, the time-stepping loop runs
+  `while (step < stop_iteration) & !stopping_criterion(sim)`, enabling data-dependent termination
+  (convergence, error threshold, etc.). The function must return a traced `Bool` — it operates on
+  device arrays inside the compiled program. `stop_iteration` still serves as the upper bound.
+  Default: `nothing` (loop runs for exactly `stop_iteration` steps).
+
+  Online_r2 checkpointing (`Reactant.Online(budget)`) is the natural companion for a
+  `stopping_criterion`, since it adapts checkpoint placement to the actual trip count rather than
+  requiring a compile-time bound.
 
 Note that "checkpointing" here is the recomputation strategy of reverse-mode differentiation.
 Saving the state of a simulation to disk so it can be restarted is done by the [`Checkpointer`](@ref).
@@ -40,24 +53,26 @@ using Oceananigans
 AutomaticDifferentiation(checkpointing = false)
 
 # output
-AutomaticDifferentiation(track_numbers=false, mincut=true, checkpointing=false)
+AutomaticDifferentiation(track_numbers=false, mincut=true, checkpointing=false, stopping_criterion=nothing)
 ```
 """
-struct AutomaticDifferentiation{C}
+struct AutomaticDifferentiation{C, S}
     track_numbers :: Bool
     mincut :: Bool
     checkpointing :: C
+    stopping_criterion :: S
 end
 
-AutomaticDifferentiation(; checkpointing, track_numbers = false, mincut = true) =
-    AutomaticDifferentiation(track_numbers, mincut, checkpointing)
+AutomaticDifferentiation(; checkpointing, track_numbers = false, mincut = true, stopping_criterion = nothing) =
+    AutomaticDifferentiation(track_numbers, mincut, checkpointing, stopping_criterion)
 
 Base.convert(::Type{AutomaticDifferentiation}, options::NamedTuple) = AutomaticDifferentiation(; options...)
 
 Base.show(io::IO, ad::AutomaticDifferentiation) =
     print(io, "AutomaticDifferentiation(track_numbers=", ad.track_numbers,
               ", mincut=", ad.mincut,
-              ", checkpointing=", ad.checkpointing, ")")
+              ", checkpointing=", ad.checkpointing,
+              ", stopping_criterion=", ad.stopping_criterion, ")")
 
 mutable struct Simulation{ML, DT, SI, ST, DI, OW, CB, FT, BL, AD}
     model :: ML

@@ -201,29 +201,66 @@ end
 """
     time_step_for!(sim::ReactantSimulation, Nsteps)
 
-`Nsteps` calls to `time_step!(sim)` as one traced loop: one `stablehlo.while` body rather than
-`Nsteps` copies of the step. Does not initialize; see [`run!`](@ref).
+`Nsteps` calls to `time_step!(sim)` as one traced `while` loop: one `stablehlo.while` body
+rather than `Nsteps` copies of the step. Does not initialize; see [`run!`](@ref).
+
+Uses `@trace while step < Nsteps` so the loop compiles to a single `stablehlo.while` op,
+which is required for Online_r2 checkpointing (adaptive checkpoint placement for loops with
+unknown trip counts). `@trace for _ = 1:N` desugars into the same while, but passing the
+checkpointing scheme to a raw `@trace while` avoids the `Periodic(isqrt(N))` default that
+`@trace for` would apply when `checkpointing = true`.
+
+When `sim.automatic_differentiation.stopping_criterion` is a function, the loop condition
+becomes `(step < Nsteps) & !stopping_criterion(sim)`, enabling data-dependent early exit
+(convergence, error threshold, etc.) while `stop_iteration` remains the safety bound.
 
 The loop is traced with the `track_numbers`, `mincut` and `checkpointing` options of
 `sim.automatic_differentiation`, which only matter when the program is differentiated in
 reverse mode. See [`AutomaticDifferentiation`](@ref).
 """
 time_step_for!(sim::ReactantSimulation, Nsteps) =
-    time_step_for!(sim, Nsteps, Val(sim.automatic_differentiation.track_numbers))
+    time_step_for!(sim, Nsteps, Val(sim.automatic_differentiation.track_numbers),
+                   sim.automatic_differentiation.stopping_criterion)
 
 # `@trace` needs `track_numbers` as a literal: it picks the promotion type at macro expansion.
-function time_step_for!(sim::ReactantSimulation, Nsteps, ::Val{false})
+# Without stopping_criterion: loop runs for exactly Nsteps.
+function time_step_for!(sim::ReactantSimulation, Nsteps, ::Val{false}, ::Nothing)
     ad = sim.automatic_differentiation
-    @trace track_numbers = false mincut = ad.mincut checkpointing = ad.checkpointing for _ = 1:Nsteps
+    step = zero(Nsteps)
+    @trace track_numbers = false mincut = ad.mincut checkpointing = ad.checkpointing while step < Nsteps
         time_step!(sim)
+        step = step + one(step)
     end
     return nothing
 end
 
-function time_step_for!(sim::ReactantSimulation, Nsteps, ::Val{true})
+function time_step_for!(sim::ReactantSimulation, Nsteps, ::Val{true}, ::Nothing)
     ad = sim.automatic_differentiation
-    @trace track_numbers = true mincut = ad.mincut checkpointing = ad.checkpointing for _ = 1:Nsteps
+    step = zero(Nsteps)
+    @trace track_numbers = true mincut = ad.mincut checkpointing = ad.checkpointing while step < Nsteps
         time_step!(sim)
+        step = step + one(step)
+    end
+    return nothing
+end
+
+# With stopping_criterion: loop exits early when criterion(sim) returns true.
+function time_step_for!(sim::ReactantSimulation, Nsteps, ::Val{false}, criterion)
+    ad = sim.automatic_differentiation
+    step = zero(Nsteps)
+    @trace track_numbers = false mincut = ad.mincut checkpointing = ad.checkpointing while (step < Nsteps) & !criterion(sim)
+        time_step!(sim)
+        step = step + one(step)
+    end
+    return nothing
+end
+
+function time_step_for!(sim::ReactantSimulation, Nsteps, ::Val{true}, criterion)
+    ad = sim.automatic_differentiation
+    step = zero(Nsteps)
+    @trace track_numbers = true mincut = ad.mincut checkpointing = ad.checkpointing while (step < Nsteps) & !criterion(sim)
+        time_step!(sim)
+        step = step + one(step)
     end
     return nothing
 end
