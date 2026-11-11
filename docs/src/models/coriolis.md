@@ -244,8 +244,9 @@ equation exchange consistently. With uniform ``Δz`` the scheme is identical to 
 The price of using a single corner ``q`` for both velocity components is that where ``Δz`` varies the local
 Coriolis strength changes. A thin face next to thicker ones feels its neighbors' Coriolis acceleration
 amplified by up to a factor of 4, and a thick face next to thinner ones feels it reduced. The scheme does not
-conserve potential enstrophy, and it covers the Coriolis term only. The vorticity term of `VectorInvariant`
-momentum advection is discretized separately.
+conserve potential enstrophy. On `PartialCellBottom` grids, the vorticity term of
+`VectorInvariant(vorticity_scheme=EnergyConserving())` uses the same flux with ``q = ζ / h``, so the
+total ``(f + ζ)`` term is energy-neutral.
 
 ```jldoctest
 julia> coriolis = HydrostaticSphericalCoriolis(scheme=Oceananigans.Coriolis.ThicknessWeightedEnergyConserving())

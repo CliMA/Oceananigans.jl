@@ -420,6 +420,10 @@ end
 @inline horizontal_advection_U(i, j, k, grid, ::VectorInvariantEnergyConserving, u, v) = - ℑyᵃᶜᵃ(i, j, k, grid, ζ_ℑx_vᶠᶠᵃ, u, v) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
 @inline horizontal_advection_V(i, j, k, grid, ::VectorInvariantEnergyConserving, u, v) = + ℑxᶜᵃᵃ(i, j, k, grid, ζ_ℑy_uᶠᶠᵃ, u, v) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
 
+# With partial cells Δz varies horizontally, so the flux uses transports and q = ζ / h to stay energy-neutral
+@inline horizontal_advection_U(i, j, k, grid::PCBIBG, ::VectorInvariantEnergyConserving, u, v) = - vorticity_flux_xᶠᶜᶜ(i, j, k, grid, v, ζ₃ᶠᶠᶜ, u, v)
+@inline horizontal_advection_V(i, j, k, grid::PCBIBG, ::VectorInvariantEnergyConserving, u, v) = + vorticity_flux_yᶜᶠᶜ(i, j, k, grid, u, ζ₃ᶠᶠᶜ, u, v)
+
 @inline horizontal_advection_U(i, j, k, grid, ::VectorInvariantEnstrophyConserving, u, v) = - ℑyᵃᶜᵃ(i, j, k, grid, ζ₃ᶠᶠᶜ, u, v) * ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, v) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
 @inline horizontal_advection_V(i, j, k, grid, ::VectorInvariantEnstrophyConserving, u, v) = + ℑxᶜᵃᵃ(i, j, k, grid, ζ₃ᶠᶠᶜ, u, v) * ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, u) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
 

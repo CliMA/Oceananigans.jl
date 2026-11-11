@@ -17,7 +17,7 @@ using Oceananigans.Operators: ℑxᶜᵃᵃ, ℑxᶠᵃᵃ,
                               ℑxyᶜᶠᵃ, ℑxyᶠᶜᵃ, ℑxzᶜᵃᶠ,
                               Ay⁻¹ᶠᶜᶜ, Ax⁻¹ᶜᶠᶜ,
                               Ax_qᶠᶜᶜ, Ay_qᶜᶠᶜ,
-                              Δxᶠᶜᶜ, Δyᶜᶠᶜ, Δzᶠᶜᶜ, Δzᶜᶠᶜ
+                              vorticity_flux_xᶠᶜᶜ, vorticity_flux_yᶜᶠᶜ
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 
 """
