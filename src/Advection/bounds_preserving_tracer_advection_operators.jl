@@ -215,8 +215,8 @@ end
     c₋ᴿ = rescaled_reconstruction(c₋ᴿ, i, j, k,   grid, θ, c)
 
     td = advection.time_discretization
-    w⁺ = explicit_velocity_scaleᶜᶜᶜ(i, j, k+1, grid, advection, td, w) * w[i, j, k+1]
-    w⁻ = explicit_velocity_scaleᶜᶜᶜ(i, j, k,   grid, advection, td, w) * w[i, j, k]
+    w⁺ = @inbounds explicit_velocity_scaleᶜᶜᶠ(i, j, k+1, grid, advection, td, w) * w[i, j, k+1]
+    w⁻ = @inbounds explicit_velocity_scaleᶜᶜᶠ(i, j, k,   grid, advection, td, w) * w[i, j, k]
     Az_ρwc⁺ = ℑzᵃᵃᶠ(i, j, k+1, grid, ρ) * Azᶜᶜᶠ(i, j, k+1, grid) * upwind_biased_product(w⁺, c₊ᴸ, c₊ᴿ)
     Az_ρwc⁻ = ℑzᵃᵃᶠ(i, j, k,   grid, ρ) * Azᶜᶜᶠ(i, j, k,   grid) * upwind_biased_product(w⁻, c₋ᴸ, c₋ᴿ)
 
