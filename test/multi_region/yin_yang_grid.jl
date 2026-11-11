@@ -61,7 +61,7 @@ all_nodes = [(i, j) for j in 1-Hy:Ny+Hy for i in 1-Hx:Nx+Hx]
 
     w = owned_weights(grid)
     @test w isa YinYangField{Center, Center, Nothing}
-    @test getregion(w, 1).data === getregion(w, 2).data
+    @test getregion(w, 1).data == getregion(w, 2).data
     weights = on_architecture(CPU(), yin_yang_masks(grid).cell_weights)
     @test eltype(weights) == FT
     @test axes(weights) == (1-Hx:Nx+Hx, 1-Hy:Ny+Hy, 1:1)

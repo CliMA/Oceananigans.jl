@@ -44,6 +44,7 @@ Simulations.add_conservation_fixer!(simulation, ::YinYangGridOfSomeKind) =
 
 function YinYangConservationFixer(model::HydrostaticFreeSurfaceModel)
     grid = model.grid
+    length(grid) == 2 || throw(ArgumentError("YinYangConservationFixer does not support YinYangGrid subregions."))
     closure_tracers = closure_required_tracers(model.closure) # evolved by the closure itself, so left alone
     tracers = NamedTuple(name => n for (n, name) in enumerate(keys(model.tracers)) if name ∉ closure_tracers)
 

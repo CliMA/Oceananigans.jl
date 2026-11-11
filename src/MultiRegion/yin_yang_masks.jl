@@ -142,7 +142,7 @@ halo_nodes((Nx, Ny), (Hx, Hy)) = [(i, j) for j in 1-Hy:Ny+Hy for i in 1-Hx:Nx+Hx
 #####
 
 struct YinYangMasks{W}
-    cell_weights :: W # owned area fractions of the (Center, Center) cells, zero in the halos
+    cell_weights :: W # owned area fractions of the (Center, Center) cells, zero in the panel halos (sibling values at a split edge)
 end
 
 Grids.on_architecture(arch, masks::YinYangMasks) = YinYangMasks(on_architecture(arch, masks.cell_weights))

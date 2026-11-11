@@ -84,6 +84,31 @@ function DC.gpu_configuration(::CUDAGPU)
     return (; uuid = UInt128(CUDA.uuid(device)), pci_address, gpu_aware_mpi, memory_pool)
 end
 
+# CUDA.jl allocates from stream-ordered memory pools (cuMemAllocAsync). Its own cross-device conversion only
+# calls cuCtxEnablePeerAccess, which does not cover pool memory, so a kernel dereferencing another device's
+# CuArray faults with ERROR_ILLEGAL_ADDRESS. Grant each device's pool read/write access for the other devices.
+# (With JULIA_CUDA_MEMORY_POOL=none, ctx peer access suffices and CUDA.jl enables it lazily.)
+const peer_access_granted = Set{Tuple{Int, Int}}()
+function UT.enable_region_peer_access!(::CUDAGPU, devices)
+    length(devices) > 1 || return nothing
+    for d in devices
+        owner = CuDevice(d)
+        peers = [CuDevice(p) for p in devices if p != d && (d, p) ∉ peer_access_granted]
+        isempty(peers) && continue
+        for p in peers
+            CUDA.can_access_peer(p, owner) || error("GPU $(CUDA.deviceid(p)) cannot access GPU $d peer-to-peer")
+        end
+        if CUDA.CUDACore.stream_ordered(owner)
+            pool = CUDA.CUDACore.pool_create(owner)
+            CUDA.CUDACore.access!(pool, peers, CUDA.CUDACore.ACCESS_FLAGS_PROT_READWRITE)
+        end
+        for p in peers
+            push!(peer_access_granted, (d, CUDA.deviceid(p)))
+        end
+    end
+    return nothing
+end
+
 AC.architecture(::CuArray) = CUDAGPU()
 AC.architecture(::Type{CuArray}) = CUDAGPU()
 AC.architecture(::CuDeviceArray) = CUDAGPU()
@@ -162,6 +187,26 @@ end
 @inline UT.sync_device!(::CuDevice)      = CUDA.synchronize()
 @inline UT.sync_device!(::CUDAGPU)       = CUDA.synchronize()
 @inline UT.sync_device!(::CUDABackend)   = CUDA.synchronize()
+
+# Stream-ordered barrier across region devices (see `order_region_devices!`): each device records an event on its
+# current stream, then every device's stream waits for the other devices' events. The host never blocks.
+# One event per device, re-recorded each call: a wait captures the event's most recent record.
+const region_barrier_events = Dict{Int, CUDA.CuEvent}()
+
+function UT.stream_barrier!(::CUDAGPU, devices)
+    for d in devices
+        CUDA.device!(d)
+        event = get!(() -> CUDA.CuEvent(CUDA.EVENT_DISABLE_TIMING), region_barrier_events, d)
+        CUDA.record(event, CUDA.stream())
+    end
+    for d in devices, d′ in devices
+        d′ == d && continue
+        CUDA.device!(d)
+        CUDA.wait(region_barrier_events[d′], CUDA.stream())
+    end
+    CUDA.device!(first(devices))
+    return nothing
+end
 
 # MPI needs the event's context bound to the thread that posts (for CUDA IPC)
 struct ContextEvent

@@ -29,7 +29,7 @@ zonal_average(source) = Field(Average(source, dims=1))
         c = CenterField(grid)
         for ℓ in yin_yang_locations
             remapping = yin_yang_remapping(location_field(ℓ..., destination_grid), c)
-            yin, yang = map(table -> on_architecture(CPU(), table), remapping)
+            yin, yang = map(((_, table),) -> on_architecture(CPU(), table), remapping)
 
             # Every destination node is filled once, by the panel that owns it, and Yin's basis is geographic
             Nx, Ny, _ = size(destination_grid, (ℓ..., Center()))

@@ -3,6 +3,7 @@ module MultiRegion
 export MultiRegionGrid, MultiRegionField
 export XPartition, YPartition, Connectivity
 export CubedSpherePartition, ConformalCubedSphereGrid, CubedSphereField
+export SubregionPartition
 export YinYangGrid, YinYangConservationFixer, owned_weights
 
 using Adapt: Adapt, adapt
@@ -21,6 +22,7 @@ using Oceananigans.Grids: Grids, AbstractGrid, AbstractUnderlyingGrid, BoundaryS
     Flat, OrthogonalSphericalShellGrid, Periodic, TwoSided, on_architecture
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Utils: KernelParameters, Iterate, MultiRegionObject, Reference, StaticStridesOffsetArray, Utils,
+    set_region_devices!, on_region_device, order_region_devices!, activate_region_device!,
     @apply_regionally, apply_regionally!, construct_regionally, isregional, getregion, _getregion, regions, prettysummary
 
 abstract type AbstractMultiRegionGrid{FT, TX, TY, TZ, Arch, SZ} <: AbstractGrid{FT, TX, TY, TZ, Arch, SZ} end
@@ -57,6 +59,8 @@ include("cubed_sphere_partitions.jl")
 include("cubed_sphere_connectivity.jl")
 include("yin_yang_masks.jl")
 include("yin_yang_interpolation.jl")
+include("subregion_partitions.jl")
+include("yin_yang_partitions.jl")
 include("multi_region_grid.jl")
 include("cubed_sphere_grid.jl")
 include("cubed_sphere_field.jl")
