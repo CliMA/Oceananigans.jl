@@ -193,7 +193,8 @@ end
 # One event per device, re-recorded each call: a wait captures the event's most recent record.
 const region_barrier_events = Dict{Int, CUDA.CuEvent}()
 
-function UT.stream_barrier!(::CUDAGPU, devices)
+function UT.stream_barrier!(archs::Vector{<:CUDAGPU})
+    devices = [arch.ordinal for arch in archs]
     for d in devices
         CUDA.device!(d)
         event = get!(() -> CUDA.CuEvent(CUDA.EVENT_DISABLE_TIMING), region_barrier_events, d)

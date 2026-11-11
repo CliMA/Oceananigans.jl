@@ -12,7 +12,7 @@ export seconds_to_nanosecond, period_to_seconds, time_difference_in_seconds, add
 export TimeInterval, IterationInterval, WallTimeInterval, SpecifiedTimes, AndSchedule, OrSchedule, ConsecutiveIterations, PrecedingIterations, TimeOffset
 export apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject
 export isregional, getregion, _getregion, regions, sync_device!
-export set_region_devices!, order_region_devices!, activate_region_device!, on_region_device
+export order_region_devices!, activate_region_device!
 export newton_div, NormalDivision, ConvertingDivision, BackendOptimizedDivision
 export f32_safe_cbrt
 export TabulatedFunction

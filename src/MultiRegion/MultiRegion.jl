@@ -3,7 +3,7 @@ module MultiRegion
 export MultiRegionGrid, MultiRegionField
 export XPartition, YPartition, Connectivity
 export CubedSpherePartition, ConformalCubedSphereGrid, CubedSphereField
-export SubregionPartition
+export SubregionPartition, MultiRegionPartition
 export YinYangGrid, YinYangConservationFixer, owned_weights
 
 using Adapt: Adapt, adapt
@@ -13,7 +13,7 @@ using KernelAbstractions: @kernel, @index
 using OffsetArrays: OffsetArrays, AbstractOffsetArray
 
 using Oceananigans: Oceananigans
-using Oceananigans.Architectures: AbstractArchitecture, AbstractSerialArchitecture, CPU, GPU, architecture
+using Oceananigans.Architectures: AbstractArchitecture, AbstractSerialArchitecture, CPU, GPU, architecture, on_device
 using Oceananigans.BoundaryConditions: BoundaryConditions, East, North, South, SouthAndNorth, West, WestAndEast,
     fill_halo_regions!
 using Oceananigans.DistributedComputations: DistributedComputations, insert_connected_topology
@@ -22,7 +22,7 @@ using Oceananigans.Grids: Grids, AbstractGrid, AbstractUnderlyingGrid, BoundaryS
     Flat, OrthogonalSphericalShellGrid, Periodic, TwoSided, on_architecture
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Utils: KernelParameters, Iterate, MultiRegionObject, Reference, StaticStridesOffsetArray, Utils,
-    set_region_devices!, on_region_device, order_region_devices!, activate_region_device!,
+    order_region_devices!, activate_region_device!, enable_region_peer_access!, regional_architecture,
     @apply_regionally, apply_regionally!, construct_regionally, isregional, getregion, _getregion, regions, prettysummary
 
 abstract type AbstractMultiRegionGrid{FT, TX, TY, TZ, Arch, SZ} <: AbstractGrid{FT, TX, TY, TZ, Arch, SZ} end

@@ -147,7 +147,7 @@ end
 
 # Remap a scalar, or the eastward (1) or northward (2) `component` of a vector
 function remap!(destination, source::YinYangField, remapping, ::Nothing)
-    order_region_devices!()
+    order_region_devices!(source.grid)
     for (r, table) in remapping
         launch_remapping!(destination, source, table, _interpolate_yin_yang_scalar!, destination.data,
                           getregion(source.data, r), getregion(source.grid, r), instantiated_location(source), table)
@@ -156,7 +156,7 @@ function remap!(destination, source::YinYangField, remapping, ::Nothing)
 end
 
 function remap!(destination, (u, v)::Tuple, (u_remapping, v_remapping), component)
-    order_region_devices!()
+    order_region_devices!(u.grid)
     for ((r, u_table), (_, v_table)) in zip(u_remapping, v_remapping)
         launch_remapping!(destination, u, u_table, _interpolate_yin_yang_vector_component!, destination.data,
                           getregion(u.data, r), getregion(v.data, r), nothing, nothing,

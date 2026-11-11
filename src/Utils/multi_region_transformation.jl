@@ -27,25 +27,30 @@ struct Iterate{I}
 end
 
 #####
-##### Region devices: the device on which each region of a multi-device MultiRegionGrid lives.
-##### Without devices (the default) every region lives on the current device and no switching occurs.
+##### Region devices: each region of a multi-device MultiRegionGrid is built on an architecture that records its
+##### device (see `MultiRegionPartition`). Regional calls activate the device of the architecture of each region.
 #####
 
-const region_devices = Int[] # the device of each region, 0-based; empty for a single device
-const region_device_architecture = Ref{Architectures.AbstractArchitecture}(CPU())
+# The architecture of a region of a regional object, if it records its device; extended by MultiRegion for grids and fields
+regional_architecture(a) = nothing
+regional_architecture(arch::Architectures.GPU{<:Any, Int}) = arch
+regional_architecture(::Tuple{}) = nothing
+regional_architecture(nt::NamedTuple) = regional_architecture(values(nt))
 
-"""
-    set_region_devices!(arch, devices)
-
-Assign region `r` of every multi-region object to device `devices[r]` (0-based) of `arch`.
-`set_region_devices!(arch, ())` restores single-device behavior.
-"""
-function set_region_devices!(arch, devices)
-    region_device_architecture[] = arch
-    append!(empty!(region_devices), devices)
-    enable_region_peer_access!(arch, unique(devices))
-    return nothing
+function regional_architecture(t::Tuple)
+    arch = regional_architecture(first(t))
+    return isnothing(arch) ? regional_architecture(Base.tail(t)) : arch
 end
+
+activate_device!(::Nothing) = nothing
+activate_device!(arch) = Architectures.device!(arch)
+
+"""
+    activate_region_device!(object, r)
+
+Activate the device of region `r` of `object`, a regional object or a tuple of them.
+"""
+activate_region_device!(object, r) = activate_device!(regional_architecture(getregion(object, r)))
 
 """
     enable_region_peer_access!(arch, devices)
@@ -55,38 +60,27 @@ Extended by the GPU extensions.
 """
 enable_region_peer_access!(arch, devices) = nothing
 
-function activate_region_device!(r)
-    isempty(region_devices) || Architectures.device!(region_device_architecture[], region_devices[r])
-    return nothing
-end
-
 """
-    order_region_devices!()
+    order_region_devices!(object)
 
-Order the work queued on every region device after the work queued so far on every other region device, without
-blocking the host. Use it where one region's kernels read or overwrite another region's data (halo copies and
-interpolations, remapping, combining partial reductions).
+Order the work queued on the device of every region of `object` after the work queued so far on the devices of
+the other regions, without blocking the host. Use it where one region's kernels read or overwrite another region's
+data (halo copies and interpolations, remapping, combining partial reductions).
 """
-function order_region_devices!()
-    length(unique(region_devices)) > 1 && stream_barrier!(region_device_architecture[], unique(region_devices))
+function order_region_devices!(object)
+    archs = unique(regional_architecture(getregion(object, r)) for r in regions(object))
+    length(archs) > 1 && stream_barrier!(archs)
     return nothing
 end
 
 # Extended by the GPU extensions with a stream-ordered barrier
-function stream_barrier!(arch, devices)
-    for d in devices
-        Architectures.device!(arch, d)
+function stream_barrier!(archs)
+    for arch in archs
+        activate_device!(arch)
         sync_device!(arch)
     end
+    activate_device!(first(archs))
     return nothing
-end
-
-# Run `f()` with the device of region `r` active, restoring the first region's device afterwards
-function on_region_device(f, r)
-    activate_region_device!(r)
-    result = f()
-    activate_region_device!(1)
-    return result
 end
 
 #####
@@ -137,9 +131,7 @@ Base.length(mo::MultiRegionObject)               = Base.length(mo.regional_objec
 Base.similar(mo::MultiRegionObject) = construct_regionally(similar, mo)
 Base.parent(mo::MultiRegionObject) = construct_regionally(parent, mo)
 
-# Each region moves to the device of that region
-Architectures.on_architecture(arch, mo::MultiRegionObject) =
-    MultiRegionObject(Tuple(on_region_device(() -> on_architecture(arch, obj), r) for (r, obj) in enumerate(mo.regional_objects)))
+Architectures.on_architecture(arch, mo::MultiRegionObject) = MultiRegionObject(on_architecture(arch, mo.regional_objects))
 
 # `isregional(args)` and `isregional(values(kwargs))` fold to compile-time constants for
 # non-regional arguments, so the multi-region branch is dead code (and is not inferred) for them.
@@ -158,10 +150,10 @@ end
     R = isnothing(multi_region_args) ? regions(multi_region_kwargs) : regions(multi_region_args)
 
     for r in R
-        activate_region_device!(r)
+        activate_region_device!((args..., values(kwargs)...), r)
         regional_func!(map(Base.Fix2(getregion, r), args)...; map(Base.Fix2(getregion, r), values(kwargs))...)
     end
-    activate_region_device!(1)
+    activate_region_device!((args..., values(kwargs)...), 1)
 
     return nothing
 end
@@ -172,10 +164,10 @@ end
 @inline function apply_regionally!(regional_func!::MultiRegionObject, args...; kwargs...)
     R = regions(regional_func!)
     for r in R
-        activate_region_device!(r)
+        activate_region_device!((args..., values(kwargs)...), r)
         getregion(regional_func!, r)(map(Base.Fix2(getregion, r), args)...; map(Base.Fix2(getregion, r), values(kwargs))...)
     end
-    activate_region_device!(1)
+    activate_region_device!((args..., values(kwargs)...), 1)
     return nothing
 end
 
@@ -197,14 +189,14 @@ end
 
     R = isnothing(multi_region_args) ? regions(multi_region_kwargs) : regions(multi_region_args)
 
-    # Evaluate regional_func on the device of that region (see `set_region_devices!`) and collect
+    # Evaluate regional_func on the device of that region and collect
     # return values
     regional_return_values = Vector(undef, length(R))
     for r in R
-        activate_region_device!(r)
+        activate_region_device!((args..., values(kwargs)...), r)
         regional_return_values[r] = regional_func(map(Base.Fix2(getregion, r), args)...; map(Base.Fix2(getregion, r), values(kwargs))...)
     end
-    activate_region_device!(1)
+    activate_region_device!((args..., values(kwargs)...), 1)
 
     if Nreturns == 1
         return MultiRegionObject(Tuple(regional_return_values))

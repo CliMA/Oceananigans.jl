@@ -1,8 +1,10 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 include(joinpath(@__DIR__, "..", "setup", "yin_yang_test_utils.jl"))
 
-using Oceananigans.MultiRegion: SubregionPartition, YinYangPartition, subregion_layout, remapped_field
-using Oceananigans.Utils: set_region_devices!, regions
+using Oceananigans.MultiRegion: SubregionPartition, MultiRegionPartition, YinYangPartition, XPartition,
+                                subregion_layout, remapped_field, region_architectures, region_devices
+using Oceananigans.Utils: regions, regional_architecture
+using KernelAbstractions: KernelAbstractions as KA
 
 # The panel of `grid` holding subregion `r` of `partitioned`, and the window of the panel's parent that it covers
 function panel_window(field, partitioned, r)
@@ -62,8 +64,8 @@ end
 
     for subregions in ((2, 2), (3, 1), (1, 3))
         R = 2prod(subregions)
-        # Every "device" is the CPU, which exercises the device switching around regional calls
-        partitioned = YinYangGrid(CPU(); size=(48, 16, 2), z=(-1, 0), subregions, devices=zeros(Int, R))
+        partition = MultiRegionPartition(SubregionPartition(YinYangPartition(), subregions); devices = Tuple(0:R-1))
+        partitioned = YinYangGrid(CPU(); size=(48, 16, 2), z=(-1, 0), partition)
 
         @testset "Halos with $subregions subregions" begin
             @test length(partitioned) == R
@@ -97,7 +99,38 @@ end
             @test Field(Integral(cᵖ))[1, 1, 1] ≈ Field(Integral(c))[1, 1, 1]
             @test interior(remapped_field(cᵖ)) == interior(remapped_field(c))
         end
+    end
 
-        set_region_devices!(CPU(), ())
+    @testset "Region devices" begin
+        @test_throws ArgumentError MultiRegionPartition(XPartition(2); devices = (0, 1, 2))
+        @test summary(MultiRegionPartition(XPartition(2); devices = (1, 0))) ==
+              "Equal partitioning in X with (2 regions) on devices (1, 0)"
+
+        # Each region's architecture records its device, so partitions with different devices coexist
+        gpu = GPU(KA.CPU())
+        a = region_architectures(gpu, MultiRegionPartition(XPartition(2); devices = (1, 0)))
+        b = region_architectures(gpu, MultiRegionPartition(XPartition(3); devices = (2, 3, 4)))
+        @test map(arch -> arch.ordinal, a.regional_objects) == (1, 0)
+        @test map(arch -> arch.ordinal, b.regional_objects) == (2, 3, 4)
+        @test regional_architecture(getregion(a, 2)) === getregion(a, 2)
+        @test isnothing(regional_architecture(gpu))
+        @test isnothing(region_devices(grid))
+
+        # On the CPU, two grids with different devices fill their halos independently and correctly
+        two = YinYangGrid(CPU(); size=(48, 16, 2), z=(-1, 0),
+                          partition = MultiRegionPartition(SubregionPartition(YinYangPartition(), (2, 1)); devices = (0, 1, 2, 3)))
+        three = YinYangGrid(CPU(); size=(48, 16, 2), z=(-1, 0),
+                            partition = MultiRegionPartition(SubregionPartition(YinYangPartition(), (3, 1)); devices = (5, 4, 3, 2, 1, 0)))
+        c = CenterField(grid)
+        set!(c, (λ, φ, z) -> spherical_harmonics(λ, φ))
+        c₂, c₃ = partitioned_copy(c, two), partitioned_copy(c, three)
+        fill_halo_regions!(c)
+        fill_halo_regions!(c₂)
+        fill_halo_regions!(c₃)
+        @test same_as_panels(c₂, c) && same_as_panels(c₃, c)
+
+        xgrid = RectilinearGrid(size=(12, 12), extent=(1, 1), topology=(Periodic, Bounded, Flat))
+        mrg = MultiRegionGrid(xgrid, partition = MultiRegionPartition(XPartition(2); devices = (0, 1)))
+        @test mrg.partition isa XPartition && length(mrg) == 2
     end
 end

@@ -1,6 +1,6 @@
 #####
 ##### Partitions that subdivide every region of a parent partition into px × py subregions, each of which may live on
-##### its own device (see `set_region_devices!`). Subregion r = (q - 1) px py + (j - 1) px + i is the subregion (i, j)
+##### its own device (see `MultiRegionPartition`). Subregion r = (q - 1) px py + (j - 1) px + i is the subregion (i, j)
 ##### of region q. The halo nodes of a subregion that lie inside the interior of its region are copies of the interior
 ##### of a sibling; the others are filled by the connectivity of the parent partition, split by donor subregion.
 #####
@@ -115,7 +115,7 @@ function copy_subregion_halos!(field, r, copies)
     data = getregion(field.data, r)
     ks = axes(data, 3)
     for (donor, copy) in copies
-        activate_region_device!(donor)
+        activate_region_device!(field.grid, donor)
         kernel_parameters = KernelParameters((length(copy), length(ks)), (0, first(ks) - 1))
         launch!(architecture(field.grid), getregion(field.grid, donor), kernel_parameters,
                 _copy_subregion_halo!, data, getregion(field.data, donor), copy)
@@ -127,3 +127,53 @@ end
     n, k = @index(Global, NTuple)
     @inbounds c[copy.receivers.i[n], copy.receivers.j[n], k] = source[copy.donors.i[n], copy.donors.j[n], k]
 end
+
+#####
+##### The device of each region
+#####
+
+"""
+$(TYPEDFIELDS)
+
+The partition of a `MultiRegionGrid` into the regions of `layout` (e.g. `XPartition(2)` or
+`SubregionPartition(YinYangPartition(), (2, 2))`), with region `r` on device `devices[r]` (0-based),
+or every region on the current device if `devices = nothing`.
+
+```jldoctest
+julia> using Oceananigans.MultiRegion: MultiRegionPartition, XPartition
+
+julia> summary(MultiRegionPartition(XPartition(2); devices = (0, 1)))
+"Equal partitioning in X with (2 regions) on devices (0, 1)"
+```
+"""
+struct MultiRegionPartition{L, D}
+    layout :: L
+    devices :: D
+
+    function MultiRegionPartition(layout; devices = nothing)
+        isnothing(devices) || length(devices) == length(layout) ||
+            throw(ArgumentError("$(summary(layout)) needs $(length(layout)) devices; got $devices."))
+        return new{typeof(layout), typeof(devices)}(layout, devices)
+    end
+end
+
+MultiRegionPartition(p::MultiRegionPartition) = p
+
+Base.summary(p::MultiRegionPartition) = isnothing(p.devices) ? summary(p.layout) :
+    string(summary(p.layout), " on devices ", p.devices)
+
+# The architecture of every region of `partition`, a `MultiRegionObject`
+function region_architectures(arch, p::MultiRegionPartition)
+    isnothing(p.devices) && return MultiRegionObject(Tuple(arch for _ in 1:length(p.layout)))
+    enable_region_peer_access!(arch, unique(p.devices))
+    return MultiRegionObject(Tuple(on_device(arch, d) for d in p.devices))
+end
+
+# The devices of the regions of `grid`, or `nothing` if they are all on the current device
+function region_devices(grid)
+    archs = [regional_architecture(getregion(grid, r)) for r in regions(grid)]
+    return any(isnothing, archs) ? nothing : Tuple(arch.ordinal for arch in archs)
+end
+
+Utils.regional_architecture(grid::AbstractGrid) = regional_architecture(architecture(grid))
+Utils.regional_architecture(field::Field) = regional_architecture(field.grid)

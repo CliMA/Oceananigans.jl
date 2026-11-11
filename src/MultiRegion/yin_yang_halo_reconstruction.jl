@@ -45,22 +45,22 @@ function BoundaryConditions.fill_halo_regions!(field::YinYangField, args::Vararg
     loc = instantiated_location(field)
     # Copies read the interiors of other regions, and interpolations read their copied halos: every device finishes
     # writing before each phase and reading after
-    order_region_devices!()
+    order_region_devices!(grid)
     # Pushed: each piece is launched on its donor's device, so the donor's stencil reads are local; the receiver's
     # table is read in order (coalesced) and each receiver node is one remote write. Every halo node has one donor.
     for r in regions(grid)
         copy_subregion_halos!(field, r, region_halo(getregion(yin_yang_region_halos(grid), r), loc[1], loc[2]).copies)
     end
-    order_region_devices!()
+    order_region_devices!(grid)
     for r in regions(grid)
         data = getregion(field.data, r)
         for (donor, (table,)) in region_halo(getregion(yin_yang_region_halos(grid), r), loc[1], loc[2]).interpolations
-            activate_region_device!(donor)
+            activate_region_device!(grid, donor)
             launch_yin_yang_interpolation!(getregion(grid, donor), axes(data, 3), table, _interpolate_yin_yang_scalar!,
                                            data, getregion(field.data, donor), getregion(grid, donor), loc, table)
         end
     end
-    order_region_devices!()
+    order_region_devices!(grid)
     return nothing
 end
 
@@ -164,31 +164,31 @@ function BoundaryConditions.fill_halo_regions!((u, v)::Tuple{YinYangXComponent, 
 
     grid = u.grid
     ℓu, ℓv = instantiated_location(u), instantiated_location(v)
-    order_region_devices!()
+    order_region_devices!(grid)
     # Pushed from each donor's device (see the scalar method)
     for r in regions(grid)
         halo = getregion(yin_yang_region_halos(grid), r).vector
         copy_subregion_halos!(u, r, halo.u_copies)
         copy_subregion_halos!(v, r, halo.v_copies)
     end
-    order_region_devices!()
+    order_region_devices!(grid)
     # Each component is interpolated from both donor components, at its own location and at the other's
     for r in regions(grid)
         halo = getregion(yin_yang_region_halos(grid), r).vector
         uʳ, vʳ = getregion(u.data, r), getregion(v.data, r)
         panel = getregion(grid, r)
         for (donor, (uu, uv)) in halo.u
-            activate_region_device!(donor)
+            activate_region_device!(grid, donor)
             launch_yin_yang_interpolation!(getregion(grid, donor), axes(uʳ, 3), uu, _interpolate_yin_yang_vector_component!,
                                            uʳ, getregion(u.data, donor), getregion(v.data, donor), panel, ℓu, (uu, uv), Val(1))
         end
         for (donor, (vu, vv)) in halo.v
-            activate_region_device!(donor)
+            activate_region_device!(grid, donor)
             launch_yin_yang_interpolation!(getregion(grid, donor), axes(vʳ, 3), vv, _interpolate_yin_yang_vector_component!,
                                            vʳ, getregion(u.data, donor), getregion(v.data, donor), panel, ℓv, (vu, vv), Val(2))
         end
     end
-    order_region_devices!()
+    order_region_devices!(grid)
     return nothing
 end
 
