@@ -41,13 +41,15 @@ function grad_loss(simulation, dsimulation, T_init, dT_init)
 end
 
 # The loss of a fresh eager run of `stop_iteration` steps from the initial tracer `T₀`. A fresh
-# Adams-Bashforth run takes a forward-Euler first step, as every compiled call does.
+# Adams-Bashforth run takes a forward-Euler first step, as every compiled call does. The eager
+# run! checks its stop criteria only after a step, so it takes one step at `stop_iteration = 0`:
+# zero steps is no run! at all.
 function eager_loss(T₀, stop_iteration, timestepper, Δt)
     model = diffusing_model(CPU(), timestepper)
-    T_init = CenterField(model.grid)
-    set!(T_init, T₀)
+    set!(model, T=T₀)
     simulation = Simulation(model; Δt, stop_iteration, verbose=false)
-    return loss(simulation, T_init)
+    stop_iteration > 0 && run!(simulation)
+    return mean(interior(model.tracers.T) .^ 2)
 end
 
 function central_difference(T₀, index, stop_iteration, timestepper, Δt; ε=1e-3)
