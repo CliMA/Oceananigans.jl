@@ -1,9 +1,11 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
-using Oceananigans.Advection: div_Uc, materialize_advection
+using Oceananigans.Advection: div_Uc, materialize_advection, update_advection!
 
 function advective_tendency(grid, advection, c, U)
-    operation = KernelFunctionOperation{Center, Center, Center}(div_Uc, grid, materialize_advection(advection, grid), U, c)
+    scheme = materialize_advection(advection, grid)
+    update_advection!(scheme, (; grid), c)
+    operation = KernelFunctionOperation{Center, Center, Center}(div_Uc, grid, scheme, U, c)
     return Array(interior(compute!(Field(operation))))
 end
 

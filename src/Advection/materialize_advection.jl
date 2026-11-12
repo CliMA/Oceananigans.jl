@@ -59,7 +59,8 @@ end
 
 function materialize_advection(s::THINCBVD{N, FT, TD}, grid) where {N, FT, TD}
     weno = materialize_advection(s.buffer_scheme, grid)
-    return THINCBVD{N, FT, TD, typeof(weno), typeof(s.steepnesses)}(weno, s.steepnesses, s.base_steepness)
+    reconstructions = Reconstructions(grid, N)
+    return THINCBVD{N, FT, TD, typeof(weno), typeof(s.steepnesses), typeof(reconstructions)}(weno, s.steepnesses, s.base_steepness, reconstructions)
 end
 
 materialize_advection(scheme::UpwindBiased{N, FT}, grid) where {N, FT} =

@@ -2,12 +2,16 @@
 ##### WENO-THINC-BVD: per cell, WENO or THINC face values, whichever jumps less across the cell's faces
 #####
 
-using Oceananigans.Utils: newton_div, BackendOptimizedDivision
+using Oceananigans.Utils: newton_div, BackendOptimizedDivision, launch!, KernelParameters
+using Oceananigans.Fields: Field, CenterField
+using Oceananigans.Grids: halo_size, topology
+using KernelAbstractions: @index, @kernel
 
-struct THINCBVD{N, FT, TD, W, S} <: AbstractUpwindBiasedAdvectionScheme{N, FT, TD}
+struct THINCBVD{N, FT, TD, W, S, R} <: AbstractUpwindBiasedAdvectionScheme{N, FT, TD}
     buffer_scheme :: W   # WENO: the smooth reconstruction, and the scheme beside boundaries
     steepnesses :: S     # (Val(n), β, tanh β, 1 / tanh β, 1 / cosh β) of each THINC steepness β = nβ₀
     base_steepness :: FT # β₀, the largest steepness of which every β is an integer multiple
+    reconstructions :: R # once materialized, the advected tracer with ghost values and the WENO edges of its cells
 end
 
 """
@@ -16,9 +20,11 @@ $(MethodSignatures(; defaults = true))
 Construct a WENO-THINC-BVD tracer advection scheme. A cell whose value lies between its neighbours' reconstructs its face
 values with `WENO(FT; order)` or with THINC, a hyperbolic tangent step of one of `steepnesses` between the neighbours'
 values, and takes the reconstruction with the smallest total jump across its two faces (boundary variation). The other cells
-use WENO. On grids with an immersed bottom, a cell under the bed takes the value of its column's bottom cell. The scheme
-needs halos one cell wider than `WENO(FT; order)`. All steepnesses share one exponential per cell, cheapest when they are
-small integer multiples of a common value, as 1.6 and 2.5 are of 1/10.
+use WENO. On grids with an immersed bottom, a cell under the bed takes the value of its column's bottom cell, and a land
+column those of the nearest wet column. A model materializes the scheme with up to seven fields per tracer: the tracer with
+these ghost values and the two WENO edges of every cell, refreshed by `update_tracer_advection!` before the tendencies are
+computed. The scheme needs halos one cell wider than `WENO(FT; order)`. All steepnesses share one exponential per cell,
+cheapest when they are small integer multiples of a common value, as 1.6 and 2.5 are of 1/10.
 
 ```jldoctest
 julia> using Oceananigans
@@ -43,7 +49,13 @@ function THINCBVD(FT::DataType=Oceananigans.defaults.FloatType; order=7, steepne
         β = convert(FT, n * β₀)
         return Val(n), β, tanh(β), 1 / tanh(β), 1 / cosh(β)
     end
-    return THINCBVD{N, FT, typeof(weno.time_discretization), typeof(weno), typeof(thinc)}(weno, thinc, convert(FT, β₀))
+    return THINCBVD{N, FT, typeof(weno.time_discretization), typeof(weno), typeof(thinc), Nothing}(weno, thinc, convert(FT, β₀), nothing)
+end
+
+function Adapt.adapt_structure(to, s::THINCBVD{N, FT, TD}) where {N, FT, TD}
+    weno = Adapt.adapt(to, s.buffer_scheme)
+    reconstructions = Adapt.adapt(to, s.reconstructions)
+    return THINCBVD{N, FT, TD, typeof(weno), typeof(s.steepnesses), typeof(reconstructions)}(weno, s.steepnesses, s.base_steepness, reconstructions)
 end
 
 @inline TimeSteppers.time_discretization(s::THINCBVD) = TimeSteppers.time_discretization(s.buffer_scheme)
@@ -73,7 +85,8 @@ end
 @inline function bvd_face_values(c, R₋, L₀, R₀, L₊, scheme)
     between(n) = (c[n+1] - c[n]) * (c[n] - c[n-1]) > 0
     steps = (thinc_step(c[1], c[2], c[3]), thinc_step(c[2], c[3], c[4]), thinc_step(c[3], c[4], c[5]))
-    E = map(((low, Δ, θ, ξ),) -> exp(θ * scheme.base_steepness * ξ), steps) # exp(θβξ) = Eⁿ for every steepness β = nβ₀
+    # exp(θβξ) = Eⁿ for every steepness β = nβ₀; a Float32 E keeps the face values within ~1e-6 of the jump Δ
+    E = map(((low, Δ, θ, ξ),) -> convert(typeof(ξ), @fastmath exp(Float32(θ * scheme.base_steepness * ξ))), steps)
 
     function thinc_candidate(steepness)
         B = map(e -> integer_power(e, first(steepness)), E)
@@ -90,38 +103,119 @@ end
     return L, R
 end
 
-for (interpolate, d) in ((:biased_interpolate_xᶠᵃᵃ, 1), (:biased_interpolate_yᵃᶠᵃ, 2), (:biased_interpolate_zᵃᵃᶠ, 3))
-    index(s) = d == 1 ? (:(i + o + $s), :j, :k) : d == 2 ? (:i, :(j + o + $s), :k) : (:i, :j, :(k + o + $s))
-
-    @eval @inline function $interpolate(i, j, k, grid, scheme::THINCBVD, bias, ψ, args...)
-        weno = scheme.buffer_scheme
-        o = ifelse(bias == LeftBias, -1, 0) # the upwind cell is i + o
-        R₋ = $interpolate($(index(0)...), grid, weno, LeftBias,  ψ, args...)
-        L₀ = $interpolate($(index(0)...), grid, weno, RightBias, ψ, args...)
-        R₀ = $interpolate($(index(1)...), grid, weno, LeftBias,  ψ, args...)
-        L₊ = $interpolate($(index(1)...), grid, weno, RightBias, ψ, args...)
-        c = ($((:(getvalue(ψ, $(index(s)...), grid, args...)) for s in -2:2)...),)
-        L, R = bvd_face_values(c, R₋, L₀, R₀, L₊, scheme)
-        return ifelse(bias == LeftBias, R, L)
-    end
-end
-
 #####
-##### Immersed bottoms: a cell under the bed takes the value of its column's bottom cell
+##### Stored reconstructions: the tracer with ghost values (a cell under the bed takes the value of its column's bottom cell, a land
+##### column those of the nearest wet column) and the two WENO edges of every cell
 #####
 
 const BottomImmersedBoundaryGrid = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Union{GridFittedBottom, PartialCellBottom}}
 
-@inline bed_value(i, j, k, grid, ibg, c) = @inbounds c[i, j, max(k, bottom_cell(i, j, grid, ibg.immersed_boundary))]
-@inline land_column(i, j, ibg) = bottom_cell(i, j, ibg.underlying_grid, ibg.immersed_boundary) > ibg.Nz
+struct Reconstructions{C, X, Y, Z, W}
+    ghost_filled :: C
+    x :: X          # (left, right) WENO edges of every cell, or nothing in a Flat direction
+    y :: Y
+    z :: Z
+    wet_column :: W # (i, j) of the column whose values each column takes, or nothing without an immersed bottom
+end
 
-# A stencil reaching a column of land falls back on WENO as on any immersed grid
-for (interpolate, d) in ((:_biased_interpolate_xᶠᵃᵃ, 1), (:_biased_interpolate_yᵃᶠᵃ, 2), (:_biased_interpolate_zᵃᵃᶠ, 3))
-    near_land = d == 1 ? :(any(ntuple(n -> land_column(i - N - 1 + n, j, ibg), Val(2N)))) :
-                d == 2 ? :(any(ntuple(n -> land_column(i, j - N - 1 + n, ibg), Val(2N)))) : false
+Adapt.adapt_structure(to, r::Reconstructions) = Reconstructions(Adapt.adapt(to, r.ghost_filled), Adapt.adapt(to, r.x), Adapt.adapt(to, r.y),
+                                                                Adapt.adapt(to, r.z), Adapt.adapt(to, r.wet_column))
 
-    @eval @inline function $interpolate(i, j, k, ibg::BottomImmersedBoundaryGrid, scheme::THINCBVD{N}, bias, c::AbstractArray) where N
-        ψ̂ = $interpolate(i, j, k, ibg.underlying_grid, scheme, bias, bed_value, ibg, c)
-        return $(near_land == false ? :ψ̂ : :(ifelse($near_land, $interpolate(i, j, k, ibg, scheme.buffer_scheme, bias, c), ψ̂)))
+@inline Base.getindex(r::Reconstructions, i, j, k) = @inbounds r.ghost_filled[i, j, k]
+
+function Reconstructions(grid, radius)
+    edges(d) = topology(grid, d) === Flat ? nothing : (CenterField(grid), CenterField(grid))
+    return Reconstructions(CenterField(grid), edges(1), edges(2), edges(3), wet_columns(grid, radius))
+end
+
+wet_columns(grid, radius) = nothing
+
+function wet_columns(ibg::BottomImmersedBoundaryGrid, radius)
+    iˢ = Field{Center, Center, Nothing}(ibg, Int32)
+    jˢ = Field{Center, Center, Nothing}(ibg, Int32)
+    Nx, Ny = size(ibg)
+    Hx, Hy = halo_size(ibg)
+    launch!(architecture(ibg), ibg, KernelParameters((Nx + 2Hx, Ny + 2Hy), (-Hx, -Hy)), _compute_wet_columns!, iˢ, jˢ, ibg, radius)
+    return iˢ, jˢ
+end
+
+# The nearest column with water within `radius` of each column, or the column itself
+@kernel function _compute_wet_columns!(iˢ, jˢ, ibg, radius)
+    i, j = @index(Global, NTuple)
+    grid = ibg.underlying_grid
+    i′, j′, d² = i, j, typemax(Int)
+    for di in -radius:radius, dj in -radius:radius
+        iⁿ = clamp(i + di, 1 - grid.Hx, grid.Nx + grid.Hx)
+        jⁿ = clamp(j + dj, 1 - grid.Hy, grid.Ny + grid.Hy)
+        dⁿ = (iⁿ - i)^2 + (jⁿ - j)^2
+        nearer = (bottom_cell(iⁿ, jⁿ, grid, ibg.immersed_boundary) ≤ grid.Nz) & (dⁿ < d²)
+        i′ = ifelse(nearer, iⁿ, i′)
+        j′ = ifelse(nearer, jⁿ, j′)
+        d² = ifelse(nearer, dⁿ, d²)
     end
+    @inbounds iˢ[i, j, 1] = i′
+    @inbounds jˢ[i, j, 1] = j′
+end
+
+@inline ghost_value(i, j, k, grid, c, args...) = @inbounds c[i, j, k]
+
+@inline function ghost_value(i, j, k, ibg::BottomImmersedBoundaryGrid, c, (iˢ, jˢ))
+    i′ = @inbounds iˢ[i, j, 1]
+    j′ = @inbounds jˢ[i, j, 1]
+    return @inbounds c[i′, j′, max(k, bottom_cell(i′, j′, ibg.underlying_grid, ibg.immersed_boundary))]
+end
+
+@kernel function _fill_ghost_values!(ĉ, grid, c, wet_column)
+    i, j, k = @index(Global, NTuple)
+    @inbounds ĉ[i, j, k] = ghost_value(i, j, k, grid, c, wet_column)
+end
+
+@kernel function _compute_weno_edges!(edges, grid, weno, ĉ, stencil, shift)
+    i, j, k = @index(Global, NTuple)
+    S  = stencil(i + shift[1], j + shift[2], k + shift[3], grid, weno, LeftBias, ĉ)
+    δ  = weno_differences(weno, S)
+    ψ₀ = weno_anchor(weno, S)
+    β  = beta_loop(weno, δ)
+    τ  = global_smoothness_indicator(Val(N), β)
+    αᴸ = zweno_alpha_loop(weno, reverse(β), τ)
+    αᴿ = zweno_alpha_loop(weno, β, τ)
+    L  = weno_reconstruction(weno, ψ₀, map(-, reverse(δ)), αᴸ .* weight_normalization(weno, αᴸ))
+    R  = weno_reconstruction(weno, ψ₀, δ, αᴿ .* weight_normalization(weno, αᴿ))
+    @inbounds edges[1][i, j, k] = L
+    @inbounds edges[2][i, j, k] = R
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Fill the tracer with ghost values and the WENO edges of its cells that a materialized THINC-BVD `scheme` reads, from the tracer `c`.
+"""
+function update_tracer_advection!(scheme::THINCBVD, grid, c)
+    r, weno = scheme.reconstructions, scheme.buffer_scheme
+    ĉ = r.ghost_filled
+    arch = architecture(grid)
+    Nx, Ny, Nz = size(grid)
+    Hx, Hy, Hz = halo_size(grid)
+    launch!(arch, grid, KernelParameters((Nx + 2Hx, Ny + 2Hy, Nz + 2Hz), (-Hx, -Hy, -Hz)), _fill_ghost_values!, ĉ, grid, c, r.wet_column)
+    isnothing(r.x) || launch!(arch, grid, KernelParameters((Nx + 4, Ny, Nz), (-2, 0, 0)), _compute_weno_edges!, r.x, grid, weno, ĉ, weno_stencil_x, (1, 0, 0))
+    isnothing(r.y) || launch!(arch, grid, KernelParameters((Nx, Ny + 4, Nz), (0, -2, 0)), _compute_weno_edges!, r.y, grid, weno, ĉ, weno_stencil_y, (0, 1, 0))
+    isnothing(r.z) || launch!(arch, grid, KernelParameters((Nx, Ny, Nz + 4), (0, 0, -2)), _compute_weno_edges!, r.z, grid, weno, ĉ, weno_stencil_z, (0, 0, 1))
+    return nothing
+end
+
+for (interpolate, d) in ((:biased_interpolate_xᶠᵃᵃ, 1), (:biased_interpolate_yᵃᶠᵃ, 2), (:biased_interpolate_zᵃᵃᶠ, 3))
+    index(s) = d == 1 ? (:(i + o + $s), :j, :k) : d == 2 ? (:i, :(j + o + $s), :k) : (:i, :j, :(k + o + $s))
+    edges = (:x, :y, :z)[d]
+
+    @eval @inline function $interpolate(i, j, k, grid, scheme::THINCBVD, bias, r::Reconstructions)
+        L, R = r.$edges
+        o = ifelse(bias == LeftBias, -1, 0) # the upwind cell is i + o
+        c = @inbounds ($((:(r.ghost_filled[$(index(s)...)]) for s in -2:2)...),)
+        Lₘ, Rₘ = @inbounds bvd_face_values(c, R[$(index(-1)...)], L[$(index(0)...)], R[$(index(0)...)], L[$(index(1)...)], scheme)
+        return ifelse(bias == LeftBias, Rₘ, Lₘ)
+    end
+end
+
+for interpolate in (:_biased_interpolate_xᶠᵃᵃ, :_biased_interpolate_yᵃᶠᵃ, :_biased_interpolate_zᵃᵃᶠ)
+    @eval @inline $interpolate(i, j, k, ibg::BottomImmersedBoundaryGrid, scheme::THINCBVD, bias, r::Reconstructions) = $interpolate(i, j, k, ibg.underlying_grid, scheme, bias, r)
 end

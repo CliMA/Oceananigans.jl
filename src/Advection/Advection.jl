@@ -31,7 +31,7 @@ using Oceananigans.Grids: Grids, AbstractGrid, Center, Face, Flat, with_halo, ho
                           required_halo_size_x, required_halo_size_y, required_halo_size_z,
                           XFlatGrid, YFlatGrid, ZFlatGrid
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, PartialCellBottom, bottom_cell
-using Oceananigans.Operators: getvalue, flux_div_xyᶜᶜᶜ, ∂t_σ, Ax_qᶠᶜᶜ, Axᶠᶜᶜ, Ay_qᶜᶠᶜ, Ayᶜᶠᶜ, Az_qᶜᶜᶠ,
+using Oceananigans.Operators: flux_div_xyᶜᶜᶜ, ∂t_σ, Ax_qᶠᶜᶜ, Axᶠᶜᶜ, Ay_qᶜᶠᶜ, Ayᶜᶠᶜ, Az_qᶜᶜᶠ,
                               Azᶜᶜᶜ, Azᶜᶜᶠ, Az⁻¹ᶜᶠᶜ, Az⁻¹ᶠᶜᶜ, V⁻¹ᶜᶜᶠ, V⁻¹ᶜᶠᶜ, V⁻¹ᶠᶜᶜ,
                               Δx_qᶜᶠᶜ, Δx⁻¹ᶠᶜᶜ, Δy_qᶠᶜᶜ, Δy⁻¹ᶜᶠᶜ,
                               δxᶜᵃᵃ, δxᶠᵃᵃ, δyᵃᶜᵃ, δyᵃᶠᵃ, δzᵃᵃᶜ, ℑxᶜᵃᵃ, ℑxᶠᵃᵃ, ℑyᵃᶜᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶜ, ℑzᵃᵃᶠ

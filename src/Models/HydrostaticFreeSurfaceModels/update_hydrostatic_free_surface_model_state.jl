@@ -1,5 +1,5 @@
 using Oceananigans: UpdateStateCallsite
-using Oceananigans.Advection: update_adaptive_timesteps!, update_bounds_preserving_limiters!
+using Oceananigans.Advection: update_adaptive_timesteps!, update_tracer_advection!
 using Oceananigans.Biogeochemistry: update_biogeochemical_state!
 using Oceananigans.BoundaryConditions: fill_halo_regions!, update_boundary_conditions!
 using Oceananigans.BuoyancyFormulations: compute_buoyancy_gradients!
@@ -84,9 +84,9 @@ function TimeSteppers.update_state!(model::HydrostaticFreeSurfaceModel, grid, ca
         compute_momentum_tendencies!(model, callbacks)
         compute_coriolis_prognostic_tendencies!(model.coriolis, model)
 
-        # The bounds-preserving limiters read the tracer halos, which are synchronized
+        # The advection state built from each tracer reads the tracer halos, which are synchronized
         # when the momentum tendencies are completed.
-        update_bounds_preserving_limiters!(model.advection, model)
+        update_tracer_advection!(model.advection, model)
     end
 
     return nothing
