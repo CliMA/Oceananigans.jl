@@ -52,19 +52,9 @@ const DistributedLatitudeLongitudeGrid{FT, TX, TY, TZ, Z,
                                                 DXFF, DYFC, DYCF}
 
 # Local size from global size and architecture
-function validate_partition_ranks(arch::Distributed)
-    Rx, Ry, Rz = ranks(arch)
-    Nr = MPI.Comm_size(arch.communicator)
-    Rx * Ry * Rz == Nr || throw(ArgumentError("Partition($Rx, $Ry, $Rz) [$(Rx * Ry * Rz) ranks] inconsistent with $Nr MPI ranks"))
-    return nothing
-end
-
-function local_size(arch::Distributed, global_sz)
-    validate_partition_ranks(arch)
-    return (local_size(global_sz[1], arch.partition.x, arch.local_index[1]),
-            local_size(global_sz[2], arch.partition.y, arch.local_index[2]),
-            local_size(global_sz[3], arch.partition.z, arch.local_index[3]))
-end
+local_size(arch::Distributed, global_sz) = (local_size(global_sz[1], arch.partition.x, arch.local_index[1]),
+                                            local_size(global_sz[2], arch.partition.y, arch.local_index[2]),
+                                            local_size(global_sz[3], arch.partition.z, arch.local_index[3]))
 
 # Individual, per-direction local size
 function local_size(N, R, local_index)
@@ -111,6 +101,7 @@ function Grids.RectilinearGrid(arch::Distributed,
     topology, global_sz, halo, x, y, z =
         validate_rectilinear_grid_args(topology, size, halo, FT, extent, x, y, z)
 
+    arch = rank_layout(arch)
     local_sz = local_size(arch, global_sz)
 
     nx, ny, nz = local_sz
@@ -161,6 +152,7 @@ function Grids.LatitudeLongitudeGrid(arch::Distributed,
     topology, global_sz, halo, latitude, longitude, z, precompute_metrics =
         validate_lat_lon_grid_args(topology, size, halo, FT, latitude, longitude, z, precompute_metrics)
 
+    arch = rank_layout(arch)
     local_sz = local_size(arch, global_sz)
 
     nλ, nφ, nz = local_sz

@@ -22,6 +22,12 @@ end
 
 yin_yang_local_regions(arch::Distributed, layout) = (arch.local_rank + 1,)
 
+# `fill_halo_regions!` exchanges the halos of the pieces when it is called, so a model does not overlap it with
+# computation
+yin_yang_architecture(arch::Distributed) =
+    Distributed{true}(arch.child_architecture, arch.partition, arch.ranks, arch.local_rank, arch.local_index,
+                      arch.connectivity, arch.communicator, arch.field_count, arch.devices)
+
 # The halo pieces that this rank's piece `r` donates to the other pieces, as Vectors of `(receiver, table)`
 struct YinYangExchange{S, V}
     scalars :: S # (; center_center, face_center, center_face, face_face) of (; copies, interpolations)
@@ -61,6 +67,8 @@ const DistributedYinYangField = Field{<:Any, <:Any, <:Any, <:Any, <:DistributedY
 # so its fields are built as on any multi-region grid
 const DistributedMultiRegionGrids = Union{MultiRegionGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Distributed},
     ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:MultiRegionGrid, <:Any, <:Any, <:Any, <:Distributed}}
+
+DistributedComputations.synchronize_communication!(::Field{<:Any, <:Any, <:Any, <:Any, <:DistributedMultiRegionGrids}) = nothing
 
 Fields.Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::DistributedMultiRegionGrids, data, bcs, indices::Tuple, op, status) where {LX, LY, LZ} =
     invoke(Field, Tuple{Tuple{LX, LY, LZ}, AbstractGrid, Any, Any, Any, Any, Any}, loc, grid, data, bcs, indices, op, status)

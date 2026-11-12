@@ -53,6 +53,7 @@ concatenate_local_sizes(local_size, arch::Distributed) =
 concatenate_local_sizes(sz, arch, dim) = concatenate_local_sizes(sz[dim], arch, dim)
 
 function concatenate_local_sizes(n::Number, arch::Distributed, dim)
+    arch = rank_layout(arch)
     R = arch.ranks[dim]
     r = arch.local_index[dim]
     N = zeros(Int, R)
@@ -76,6 +77,7 @@ local length `n` and is distributed on `arch`itecture
 in the x-, y-, or z- `dim`ension.
 """
 function partition_coordinate(c::AbstractVector, n, arch, dim)
+    arch = rank_layout(arch)
     nl = concatenate_local_sizes(n, arch, dim)
     r  = arch.local_index[dim]
 
@@ -102,6 +104,7 @@ struct PartitionedInterval{C}
 end
 
 function partition_coordinate(c::Tuple, n, arch, dim)
+    arch = rank_layout(arch)
     nl = concatenate_local_sizes(n, arch, dim)
     r  = arch.local_index[dim]
     return PartitionedInterval(c, sum(nl), sum(nl[1:r-1]))
@@ -115,6 +118,7 @@ vector `c_local`, the local sizes `n`, and the architecture `arch`. Since we use
 reduction, only ranks at position 1 in the other two directions fill the 1D array.
 """
 function assemble_coordinate(c_local::AbstractVector, n, arch, dim)
+    arch = rank_layout(arch)
     nl = concatenate_local_sizes(n, arch, dim)
     R  = arch.ranks[dim]
     r  = arch.local_index[dim]
@@ -134,6 +138,7 @@ end
 
 # Simple case, just take the first and the last core
 function assemble_coordinate(c_local::Tuple, n, arch, dim)
+    arch = rank_layout(arch)
     c_global = zeros(Float64, 2)
 
     rank = arch.local_index
@@ -170,6 +175,7 @@ $(TYPEDSIGNATURES)
 Partition the globally-sized `A` into local arrays with `local_size` on `arch`itecture.
 """
 function partition(A::AbstractArray, arch::Distributed, local_size)
+    arch = rank_layout(arch)
     A = on_architecture(CPU(), A)
 
     ri, rj, rk = arch.local_index
@@ -221,6 +227,7 @@ construct_global_array(c_local::Function, arch,  N)     = c_local
 
 # TODO: This does not work for 3D parallelizations
 function construct_global_array(c_local::AbstractArray, arch::Distributed, n)
+    arch = rank_layout(arch)
     c_local = on_architecture(CPU(), c_local)
 
     ri, rj, rk = arch.local_index

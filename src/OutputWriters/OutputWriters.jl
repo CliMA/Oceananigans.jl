@@ -14,7 +14,7 @@ using OrderedCollections: OrderedDict
 
 using Oceananigans: Oceananigans, AbstractOutputWriter, boundary_conditions, write_output!
 using Oceananigans.AbstractOperations: KernelFunctionOperation
-using Oceananigans.Architectures: Architectures, CPU, GPU, architecture, on_architecture
+using Oceananigans.Architectures: Architectures, CPU, GPU, architecture, cpu_architecture, on_architecture
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields: Fields, Field, AbstractField, location, reduced_dimensions, set!, instantiated_location
 using Oceananigans.Grids: Grids, AbstractGrid, Center, Face, Flat, LatitudeLongitudeGrid,

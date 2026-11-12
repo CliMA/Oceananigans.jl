@@ -3,6 +3,7 @@ using Test
 using JLD2
 using MPI
 using Oceananigans.DistributedComputations: reconstruct_global_field, reconstruct_global_grid
+using Oceananigans.Architectures: architecture
 using Oceananigans.Units
 using Oceananigans.TimeSteppers: first_time_step!
 using Oceananigans.BoundaryConditions: fill_halo_regions!, UPivot, TPivot, FPivot

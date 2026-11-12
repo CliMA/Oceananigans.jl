@@ -151,7 +151,7 @@ function YinYangGrid(arch::AbstractArchitecture = CPU(),
     region_grids = MultiRegionObject(Tuple(region_grid(r) for r in local_regions))
     yin = first(region_grids.regional_objects)
 
-    return MultiRegionGrid{FT, topology..., typeof(yin.z)}(arch, partition, connectivity, region_grids)
+    return MultiRegionGrid{FT, topology..., typeof(yin.z)}(yin_yang_architecture(arch), partition, connectivity, region_grids)
 end
 
 yin_yang_partition(arch, p, panel_size) = yin_yang_partition(p, panel_size)
@@ -159,6 +159,7 @@ yin_yang_partition(p::Partition, panel_size) = yin_yang_partition(MultiRegionPar
 yin_yang_partition(p::SubregionPartition, panel_size) = p
 yin_yang_local_regions(arch, layout) = eachindex(layout)
 yin_yang_exchange(arch, halos) = nothing
+yin_yang_architecture(arch) = arch
 
 function yin_yang_partition(p::MultiRegionPartition, panel_size)
     length(p.partitions) == 2 || throw(ArgumentError("A YinYangGrid has 2 regions; got $(length(p.partitions)) partitions."))

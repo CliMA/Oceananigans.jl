@@ -59,6 +59,40 @@ yin_yang_script(partition) = """
     @test Field(Integral(c))[1, 1, 1] ≈ Field(Integral(cs))[1, 1, 1]
 """
 
+# A few time steps of a HydrostaticFreeSurfaceModel on each rank's piece match those of the serial YinYangGrid
+yin_yang_model_script(partition) = """
+    using MPI
+    MPI.Init()
+    using Test
+    using Oceananigans
+    using Oceananigans.MultiRegion: MultiRegionPartition
+    using Oceananigans.Utils: getregion
+
+    partition = $partition
+    arch = Distributed(CPU(); partition)
+    r = arch.local_rank + 1
+
+    function stepped_model(grid)
+        model = HydrostaticFreeSurfaceModel(grid; tracers = :c, buoyancy = nothing)
+        set!(model, c = (λ, φ, z) -> cosd(φ)^2 * sind(λ),
+                    u = (λ, φ, z) -> 10cosd(φ), v = (λ, φ, z) -> 2sind(2λ) * cosd(φ))
+        for _ in 1:3
+            time_step!(model, 600)
+        end
+        return model
+    end
+
+    serial = stepped_model(YinYangGrid(CPU(); size=(48, 16, 2), z=(-1000, 0), partition))
+    model = stepped_model(YinYangGrid(arch; size=(48, 16, 2), z=(-1000, 0)))
+
+    for name in (:u, :v, :c)
+        s = getregion(getproperty(merge(serial.velocities, serial.tracers), name), r)
+        d = getregion(getproperty(merge(model.velocities, model.tracers), name), 1)
+        @test interior(d) ≈ interior(s)
+    end
+    @test interior(getregion(model.free_surface.displacement, 1)) ≈ interior(getregion(serial.free_surface.displacement, r))
+"""
+
 function run_mpi_script(script, nranks)
     mktempdir() do dir
         path = joinpath(dir, "script.jl")
@@ -72,4 +106,9 @@ end
         ((2, "Partition(1)"), (3, "MultiRegionPartition(Partition(1), Partition(2))"),
          (4, "Partition(2)"), (8, "Partition(2, 2)"))
     @test (run_mpi_script(yin_yang_script(partition), nranks); true)
+end
+
+@testset "HydrostaticFreeSurfaceModel on a distributed YinYangGrid with $partition on $nranks ranks" for (nranks, partition) in
+        ((2, "Partition(1)"), (3, "MultiRegionPartition(Partition(1), Partition(2))"), (4, "Partition(2)"))
+    @test (run_mpi_script(yin_yang_model_script(partition), nranks); true)
 end
