@@ -248,9 +248,19 @@ time_step_while!(sim::ReactantSimulation, Nsteps) =
     time_step_while!(sim, Nsteps, Val(sim.automatic_differentiation.track_numbers),
                      sim.automatic_differentiation.stopping_criterion)
 
+# Ensure Nsteps is a traced value so that the `@trace while` condition compiles to a
+# traced comparison (`TracedRNumber{Bool}`) rather than evaluating eagerly to a plain `Bool`.
+# `@trace for` does this internally via `ReactantCore.promote_to_traced`; `@trace while`
+# does not, so we promote here.  A plain `Int` Nsteps (e.g. from `Enzyme.Const(stop_iteration)`)
+# would otherwise make `step < Nsteps` fold to `true` at trace time, leaving the
+# `stablehlo.while` condition region with an empty return and crashing later passes.
+ensure_traced(Nsteps::Reactant.TracedRNumber) = Nsteps
+ensure_traced(Nsteps) = Reactant.promote_to(Reactant.TracedRNumber{typeof(Nsteps)}, Nsteps)
+
 # Without stopping_criterion: loop runs for exactly Nsteps.
 function time_step_while!(sim::ReactantSimulation, Nsteps, ::Val{false}, ::Nothing)
     ad = sim.automatic_differentiation
+    Nsteps = ensure_traced(Nsteps)
     step = zero(Nsteps)
     @trace track_numbers = false mincut = ad.mincut checkpointing = ad.checkpointing while step < Nsteps
         time_step!(sim)
@@ -261,6 +271,7 @@ end
 
 function time_step_while!(sim::ReactantSimulation, Nsteps, ::Val{true}, ::Nothing)
     ad = sim.automatic_differentiation
+    Nsteps = ensure_traced(Nsteps)
     step = zero(Nsteps)
     @trace track_numbers = true mincut = ad.mincut checkpointing = ad.checkpointing while step < Nsteps
         time_step!(sim)
@@ -272,6 +283,7 @@ end
 # With stopping_criterion: loop exits early when criterion(sim) returns true.
 function time_step_while!(sim::ReactantSimulation, Nsteps, ::Val{false}, criterion)
     ad = sim.automatic_differentiation
+    Nsteps = ensure_traced(Nsteps)
     step = zero(Nsteps)
     @trace track_numbers = false mincut = ad.mincut checkpointing = ad.checkpointing while (step < Nsteps) & !criterion(sim)
         time_step!(sim)
@@ -282,6 +294,7 @@ end
 
 function time_step_while!(sim::ReactantSimulation, Nsteps, ::Val{true}, criterion)
     ad = sim.automatic_differentiation
+    Nsteps = ensure_traced(Nsteps)
     step = zero(Nsteps)
     @trace track_numbers = true mincut = ad.mincut checkpointing = ad.checkpointing while (step < Nsteps) & !criterion(sim)
         time_step!(sim)
