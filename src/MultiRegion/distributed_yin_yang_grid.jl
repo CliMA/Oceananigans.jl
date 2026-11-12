@@ -1,6 +1,8 @@
 using MPI: MPI
-using Oceananigans.DistributedComputations: Distributed
-using Oceananigans.Utils: sync_device!
+using Oceananigans.DistributedComputations: AsynchronousDistributed, CommunicationState, Distributed, halo_tag_slots,
+    irecv!, isend!, new_event, next_field_tag!, posted_by_main_thread, progress_mailbox, record_event!, wait_for_messages!
+using Oceananigans.Models.NonhydrostaticModels: NonhydrostaticModels
+using Oceananigans.Utils: worksize
 
 #####
 ##### A YinYangGrid on a `Distributed` architecture, whose `Partition` splits both panels or whose
@@ -21,12 +23,6 @@ function yin_yang_partition(arch::Distributed, partition, panel_size)
 end
 
 yin_yang_local_regions(arch::Distributed, layout) = (arch.local_rank + 1,)
-
-# `fill_halo_regions!` exchanges the halos of the pieces when it is called, so a model does not overlap it with
-# computation
-yin_yang_architecture(arch::Distributed) =
-    Distributed{true}(arch.child_architecture, arch.partition, arch.ranks, arch.local_rank, arch.local_index,
-                      arch.connectivity, arch.communicator, arch.field_count, arch.devices)
 
 # The halo pieces that this rank's piece `r` donates to the other pieces, as Vectors of `(receiver, table)`
 struct YinYangExchange{S, V}
@@ -68,7 +64,17 @@ const DistributedYinYangField = Field{<:Any, <:Any, <:Any, <:Any, <:DistributedY
 const DistributedMultiRegionGrids = Union{MultiRegionGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Distributed},
     ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:MultiRegionGrid, <:Any, <:Any, <:Any, <:Distributed}}
 
-DistributedComputations.synchronize_communication!(::Field{<:Any, <:Any, <:Any, <:Any, <:DistributedMultiRegionGrids}) = nothing
+# The tendencies of a piece are computed on its serial region grid with the `Distributed` architecture of the model.
+# Every side of a piece has halos filled by the exchange, so the cells that do not read them are `H` cells away from each side
+const SerialGrid = AbstractGrid{<:Any, <:Any, <:Any, <:Any, <:AbstractSerialArchitecture}
+
+function Models.interior_tendency_kernel_parameters(::AsynchronousDistributed, grid::SerialGrid)
+    Hx, Hy, _ = halo_size(grid)
+    Wx, Wy, Wz = worksize(grid)
+    return KernelParameters((Wx - 2Hx, Wy - 2Hy, Wz), (Hx, Hy, 0))
+end
+
+NonhydrostaticModels.buffer_parameters(parameters, ::SerialGrid, ::Distributed) = map(p -> KernelParameters(p...), parameters)
 
 Fields.Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::DistributedMultiRegionGrids, data, bcs, indices::Tuple, op, status) where {LX, LY, LZ} =
     invoke(Field, Tuple{Tuple{LX, LY, LZ}, AbstractGrid, Any, Any, Any, Any, Any}, loc, grid, data, bcs, indices, op, status)
@@ -80,29 +86,74 @@ Fields.Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::DistributedMultiRegionGrids, da
 first_table(tables::Tuple) = first(tables)
 first_table(table) = table
 
-# Fill the halo pieces of `data` listed in `receives` from their donor ranks, after packing with `pack!(buffer, table)`
-# the pieces this rank donates in `sends`; `unpack!(buffer, table)` writes a received buffer into `data`
-function exchange_pieces!(pack!, unpack!, communicator, data, receives, sends, tag)
-    arch = architecture(data)
-    Nk = size(data, 3)
-    buffer(tables) = zeros(arch, eltype(data), length(first_table(tables)), Nk)
+# The halo messages of a field, with one [send, receive] pair of requests per donor or receiver piece, and the
+# unpacking of the pieces it receives, left to `finish_pieces!`
+struct YinYangCommunication{S}
+    state :: S
+    unpacks :: Vector{Any}
+end
+
+Adapt.adapt_structure(to, ::YinYangCommunication) = nothing
+Grids.on_architecture(arch, communication::YinYangCommunication) = communication
+
+piece_lists(halos) = (Iterators.flatmap(s -> (s.copies, s.interpolations), halos.scalars)...,
+                      (getproperty(halos.vector, name) for name in (:u_copies, :v_copies, :u, :v))...)
+
+function Fields.communication_buffers(grid::DistributedYinYangGridOfSomeKind, data, ::MultiRegionObject)
+    arch = architecture(grid)
+    connectivity = yin_yang_connectivity(grid)
+    Nmessages = maximum(length, (piece_lists(getregion(connectivity.region_halos, 1))..., piece_lists(connectivity.exchange)...))
+    requests = Tuple(MPI.UnsafeMultiRequest(2) for _ in 1:Nmessages)
+    tag = UInt64(mod(next_field_tag!(arch), MPI.tag_ub() ÷ halo_tag_slots))
+    pack_event = new_event(arch)
+    state = CommunicationState(Threads.Atomic{UInt64}(0), requests, tag, pack_event, progress_mailbox(pack_event))
+    return YinYangCommunication(state, Any[])
+end
+
+# Pack with `pack!(buffer, tables)` the halo pieces of `field` that this rank donates in `sends` and post their
+# messages and those of the pieces listed in `receives`, which `finish_pieces!` unpacks with `unpack!(buffer, tables)`
+function start_pieces!(pack!, unpack!, field, receives, sends, slot; async)
+    data = getregion(field.data, 1)
+    arch = architecture(field.grid)
+    communication = field.communication_buffers
+    state = communication.state
+    tag = Int(halo_tag_slots * state.tag + slot)
+    buffer(tables) = zeros(architecture(data), eltype(data), length(first_table(tables)), size(data, 3))
 
     sent = [(receiver, buffer(tables)) for (receiver, tables) in sends]
     for ((_, b), (_, tables)) in zip(sent, sends)
         pack!(b, tables)
     end
-    sync_device!(arch)
+    record_event!(state.pack_event, arch)
 
+    poster = async ? state : posted_by_main_thread(state)
     received = [(donor, buffer(tables)) for (donor, tables) in receives]
-    requests = [[MPI.Irecv!(b, communicator; source = donor - 1, tag) for (donor, b) in received];
-                [MPI.Isend(b, communicator; dest = receiver - 1, tag) for (receiver, b) in sent]]
-    MPI.Waitall(requests)
-
-    for ((_, b), (_, tables)) in zip(received, receives)
-        unpack!(b, tables)
+    for (requests, (donor, b)) in zip(state.requests, received)
+        irecv!(poster, b, donor - 1, tag, arch.communicator, requests)
     end
+    for (requests, (receiver, b)) in zip(state.requests, sent)
+        isend!(poster, b, receiver - 1, tag, arch.communicator, requests)
+    end
+
+    # The unpacking holds on to the send buffers until `finish_pieces!` has completed their messages
+    push!(communication.unpacks, () -> GC.@preserve sent foreach(((_, b), (_, tables)) -> unpack!(b, tables), received, receives))
     return nothing
 end
+
+function finish_pieces!(communication::YinYangCommunication)
+    wait_for_messages!(communication.state)
+    foreach(unpack! -> unpack!(), communication.unpacks)
+    empty!(communication.unpacks)
+    return nothing
+end
+
+finish_pieces!(::Nothing) = nothing
+
+# The regions of a field share its communication, so a region synchronizes it too
+const RegionOfDistributedField = Field{<:Any, <:Any, <:Any, <:Any, <:SerialGrid, <:Any, <:Any, <:Any, <:Any, <:Any, <:YinYangCommunication}
+
+DistributedComputations.synchronize_communication!(field::Union{RegionOfDistributedField, Field{<:Any, <:Any, <:Any, <:Any, <:DistributedMultiRegionGrids}}) =
+    finish_pieces!(field.communication_buffers)
 
 function launch_pieces!(grid, data, tables, kernel!, args...)
     ks = axes(data, 3)
@@ -140,19 +191,22 @@ end
     end
 end
 
-function exchange_copies!(field, receives, sends, tag)
+# The interpolations may read the copied halos, so the copies complete before they are packed
+function exchange_copies!(field, receives, sends)
     grid, data = getregion(field.grid, 1), getregion(field.data, 1)
     pack!(b, copy) = launch_pieces!(grid, data, copy, _pack_copy!, b, data, copy)
     unpack!(b, copy) = launch_pieces!(grid, data, copy, _unpack!, data, b, copy, nothing, nothing)
-    return exchange_pieces!(pack!, unpack!, architecture(field.grid).communicator, data, receives, sends, tag)
+    start_pieces!(pack!, unpack!, field, receives, sends, 0; async = false)
+    return finish_pieces!(field.communication_buffers)
 end
 
 #####
-##### Halo filling
+##### Halo filling: an asynchronous fill leaves the interpolated halos to `synchronize_communication!`
 #####
 
-function BoundaryConditions.fill_halo_regions!(field::DistributedYinYangField, args::Vararg{Any, N}; kwargs...) where N
+function BoundaryConditions.fill_halo_regions!(field::DistributedYinYangField, args::Vararg{Any, N}; async = false, kwargs...) where N
     without_boundary_conditions(field.boundary_conditions) && return nothing
+    finish_pieces!(field.communication_buffers)
     fill_yin_yang_vertical_halos!(field, args...)
     seam_halos(field) || return nothing
 
@@ -160,12 +214,14 @@ function BoundaryConditions.fill_halo_regions!(field::DistributedYinYangField, a
     loc = instantiated_location(field)
     receives = region_halo(getregion(yin_yang_region_halos(field.grid), 1), loc[1], loc[2])
     sends = region_halo(exchange.scalars, loc[1], loc[2])
-    exchange_copies!(field, receives.copies, sends.copies, 1)
+    exchange_copies!(field, receives.copies, sends.copies)
 
     grid, data = getregion(field.grid, 1), getregion(field.data, 1)
+    async &= architecture(field.grid) isa AsynchronousDistributed
     pack!(b, (table,)) = launch_pieces!(grid, data, table, _pack_scalar!, b, data, grid, loc, table)
     unpack!(b, (table,)) = launch_pieces!(grid, data, table, _unpack!, data, b, table, nothing, nothing)
-    exchange_pieces!(pack!, unpack!, architecture(field.grid).communicator, data, receives.interpolations, sends.interpolations, 2)
+    start_pieces!(pack!, unpack!, field, receives.interpolations, sends.interpolations, 1; async)
+    async || finish_pieces!(field.communication_buffers)
     return nothing
 end
 
@@ -173,8 +229,10 @@ const DistributedYinYangXComponent = DistributedYinYangField{<:Face, <:Center}
 const DistributedYinYangYComponent = DistributedYinYangField{<:Center, <:Face}
 
 function BoundaryConditions.fill_halo_regions!((u, v)::Tuple{DistributedYinYangXComponent, DistributedYinYangYComponent},
-                                               args::Vararg{Any, N}; kwargs...) where N
+                                               args::Vararg{Any, N}; async = false, kwargs...) where N
     without_boundary_conditions(u.boundary_conditions) && return nothing
+    finish_pieces!(u.communication_buffers)
+    finish_pieces!(v.communication_buffers)
     fill_yin_yang_vertical_halos!(u, args...)
     fill_yin_yang_vertical_halos!(v, args...)
     seam_halos(u) || return nothing
@@ -182,19 +240,21 @@ function BoundaryConditions.fill_halo_regions!((u, v)::Tuple{DistributedYinYangX
     exchange = yin_yang_connectivity(u.grid).exchange
     receives = getregion(yin_yang_region_halos(u.grid), 1).vector
     sends = exchange.vector
-    exchange_copies!(u, receives.u_copies, sends.u_copies, 3)
-    exchange_copies!(v, receives.v_copies, sends.v_copies, 4)
+    exchange_copies!(u, receives.u_copies, sends.u_copies)
+    exchange_copies!(v, receives.v_copies, sends.v_copies)
 
     # Each component is interpolated from both donor components, and zeroed on the immersed receivers
     grid = getregion(u.grid, 1)
+    async &= architecture(u.grid) isa AsynchronousDistributed
     uᵈ, vᵈ = getregion(u.data, 1), getregion(v.data, 1)
-    for (c, receive, send, component, tag) in ((u, receives.u, sends.u, Val(1), 5), (v, receives.v, sends.v, Val(2), 6))
+    for (c, receive, send, component) in ((u, receives.u, sends.u, Val(1)), (v, receives.v, sends.v, Val(2)))
         data = getregion(c.data, 1)
         loc = instantiated_location(c)
         pack!(b, tables) = launch_pieces!(grid, data, tables, _pack_vector_component!, b, uᵈ, vᵈ, tables, component)
         unpack!(b, tables) = launch_pieces!(grid, data, tables, _unpack!, data, b, first(tables), grid, loc)
-        exchange_pieces!(pack!, unpack!, architecture(c.grid).communicator, data, receive, send, tag)
+        start_pieces!(pack!, unpack!, c, receive, send, 1; async)
     end
+    async || foreach(c -> finish_pieces!(c.communication_buffers), (u, v))
     return nothing
 end
 

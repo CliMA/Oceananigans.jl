@@ -83,14 +83,19 @@ yin_yang_model_script(partition) = """
     end
 
     serial = stepped_model(YinYangGrid(CPU(); size=(48, 16, 2), z=(-1000, 0), partition))
-    model = stepped_model(YinYangGrid(arch; size=(48, 16, 2), z=(-1000, 0)))
 
-    for name in (:u, :v, :c)
-        s = getregion(getproperty(merge(serial.velocities, serial.tracers), name), r)
-        d = getregion(getproperty(merge(model.velocities, model.tracers), name), 1)
-        @test interior(d) ≈ interior(s)
+    # Asynchronous communication overlaps the halo exchange with the interior tendencies
+    for synchronized_communication in (true, false)
+        arch = Distributed(CPU(); partition, synchronized_communication)
+        model = stepped_model(YinYangGrid(arch; size=(48, 16, 2), z=(-1000, 0)))
+
+        for name in (:u, :v, :c)
+            s = getregion(getproperty(merge(serial.velocities, serial.tracers), name), r)
+            d = getregion(getproperty(merge(model.velocities, model.tracers), name), 1)
+            @test interior(d) == interior(s)
+        end
+        @test interior(getregion(model.free_surface.displacement, 1)) == interior(getregion(serial.free_surface.displacement, r))
     end
-    @test interior(getregion(model.free_surface.displacement, 1)) ≈ interior(getregion(serial.free_surface.displacement, r))
 """
 
 function run_mpi_script(script, nranks)

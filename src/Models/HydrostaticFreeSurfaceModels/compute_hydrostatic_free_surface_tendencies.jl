@@ -22,7 +22,7 @@ Momentum tendencies are stored in `model.timestepper.Gⁿ.u` and `model.timestep
 function compute_momentum_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
 
     grid = model.grid
-    arch = architecture(grid)
+    arch = model.architecture
 
     kernel_parameters = interior_tendency_kernel_parameters(arch, grid)
 
@@ -66,7 +66,7 @@ Tracer tendencies are stored in `model.timestepper.Gⁿ[tracer_name]`.
 function compute_tracer_tendencies!(model::HydrostaticFreeSurfaceModel)
 
     grid = model.grid
-    arch = architecture(grid)
+    arch = model.architecture
 
     kernel_parameters = interior_tendency_kernel_parameters(arch, grid)
 
