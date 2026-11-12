@@ -5,7 +5,7 @@ using Oceananigans.Diagnostics: nan_detected, reset_nan_checker!
 using Oceananigans.DistributedComputations: all_reduce, check_field_tags
 using Oceananigans.Fields: set!
 using Oceananigans.OutputWriters: WindowedTimeAverage, TimeFilteredOutput, TimeDerivative, checkpoint_path, load_checkpoint_state
-using Oceananigans.TimeSteppers: time_step!, update_state!, unit_time
+using Oceananigans.TimeSteppers: time_step!, update_state!, unit_time, next_time
 using Oceananigans.Utils: PrecedingIterations, schedule_aligned_time_step
 
 # Simulations are for running
@@ -56,7 +56,7 @@ function aligned_time_step(sim::Simulation, Δt)
 end
 
 """
-    set!(simulation; checkpoint=nothing, iteration=nothing)
+$(MethodSignatures(; defaults = true))
 
 Restore `simulation` state from a checkpoint file.
 
@@ -109,7 +109,7 @@ function Oceananigans.Fields.set!(sim::Simulation; checkpoint=nothing, iteration
 end
 
 """
-    run!(simulation; pickup=false, checkpoint_at_end=false)
+$(MethodSignatures(; defaults = true))
 
 Run a [`simulation`](@ref Oceananigans.Simulation) until one of `simulation.callbacks`
 such as `stop_time` or `wall_time_limit` are exceeded, sets `simulation.running` to `false`.
@@ -234,9 +234,9 @@ function Oceananigans.TimeSteppers.time_step!(sim::Simulation)
     end
 
     if Δt < sim.minimum_relative_step * sim.Δt
-        next_time = sim.model.clock.time + Δt
-        @warn "Resetting clock to $next_time and skipping time step of size Δt = $Δt"
-        sim.model.clock.time = next_time
+        skipped_to = next_time(sim.model.clock, Δt)
+        @warn "Resetting clock to $skipped_to and skipping time step of size Δt = $Δt"
+        sim.model.clock.time = skipped_to
     else
         model_callbacks = Tuple(cb for cb in values(sim.callbacks) if cb.callsite isa ModelCallsite)
         time_step!(sim.model, Δt, callbacks=model_callbacks)

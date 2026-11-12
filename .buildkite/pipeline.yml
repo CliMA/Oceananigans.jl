@@ -108,6 +108,11 @@ steps:
 
       julia +$JULIA_VERSION --color=yes --project=docs/ -e \
         'using Pkg; Pkg.instantiate()'
+      # Expensive examples are built only on main, tags, or PRs labeled "build all examples"
+      if [[ "$BUILDKITE_BRANCH" == "main" || -n "$BUILDKITE_TAG" || "$BUILDKITE_PULL_REQUEST_LABELS" == *"build all examples"* ]]; then
+        export OCEANANIGANS_BUILD_ALL_EXAMPLES=true
+      fi
+
       julia +$JULIA_VERSION --color=yes --project=docs/ docs/make.jl
 
       tar czf docs/docs-build.tar.gz docs/build
