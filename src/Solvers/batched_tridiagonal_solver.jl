@@ -239,8 +239,7 @@ end
     get_coefficient(i, j, k, grid, b, p, tridiagonal_direction, args...) -
     off_diagonal_multiply(tridiagonal_direction, aᵏ⁻¹, tᵏ)
 
-@inline pivot(i, j, k, grid, b, p, tridiagonal_direction, args, factors::TridiagonalFactors, aᵏ⁻¹, tᵏ) =
-    @inbounds factors.β[i, j, k]
+@inline pivot(i, j, k, grid, factors::TridiagonalFactors, args...) = @inbounds factors.β[i, j, k]
 
 @kernel function compute_batched_tridiagonal_factorization_kernel!(factors, a, b, c, t, grid, p, args, tridiagonal_direction)
     m₁, m₂ = @index(Global, NTuple)
