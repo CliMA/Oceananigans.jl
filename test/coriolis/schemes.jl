@@ -498,7 +498,7 @@ end
 #####
 
 function test_partial_cell_energy_conserving_uniform_Δz(FT)
-    underlying_grid = LatitudeLongitudeGrid(CPU(), FT; size=(8, 8, 1), latitude=(30, 60), longitude=(0, 30), z=(-100, 0))
+    underlying_grid = LatitudeLongitudeGrid(CPU(), FT; size=(8, 8, 2), latitude=(30, 60), longitude=(0, 30), z=(-100, 0))
     Nx, Ny, _ = size(underlying_grid)
     bottom_height = fill(FT(-200), Nx, Ny)
     bottom_height[1:3, 1:2] .= 0 # some land
