@@ -22,7 +22,7 @@ struct SSPRungeKuttaTimeStepper{C, TG, PF, TI, GS} <: AbstractTimeStepper
     Gⁿ :: TG
     Ψ⁻ :: PF
     implicit_solver :: TI
-    G★ :: GS  # the previous-stage (η, U, V) and the (U, V) corrector forcing when split-explicit, or `nothing`
+    G★ :: GS  # the previous-stage (η, U, V) when split-explicit, or `nothing`
 end
 
 """
@@ -49,17 +49,16 @@ ssp_stage_fractions(coefficients) = accumulate((τ, (a, b)) -> b * (τ + 1), coe
 """
 Auxiliary storage the split-explicit arrangement needs beyond `Gⁿ` and `Ψ⁻`: scratch copies of the previous
 stage's barotropic state, since every solve restarts from `(ηⁿ, Uⁿ, Vⁿ)` whereas the blend applies its increment
-to `(ηᵐ⁻¹, Uᵐ⁻¹, Vᵐ⁻¹)`, and the `(U, V)` accumulator for the stage-weighted slow forcing that drives the
-corrector sub-cycle. Returns `nothing` for any other free surface.
+to `(ηᵐ⁻¹, Uᵐ⁻¹, Vᵐ⁻¹)`. Returns `nothing` for any other free surface.
 """
 @inline function ssp_auxiliary_state(Gⁿ::NamedTuple, Ψ⁻)
     (:U in keys(Gⁿ)) && (:V in keys(Gⁿ)) || return nothing
-    return (U = similar(Gⁿ.U), V = similar(Gⁿ.V), Uᵐ = similar(Ψ⁻.U), Vᵐ = similar(Ψ⁻.V), η = similar(Ψ⁻.η))
+    return (Uᵐ = similar(Ψ⁻.U), Vᵐ = similar(Ψ⁻.V), η = similar(Ψ⁻.η))
 end
 
 @inline ssp_auxiliary_state(Gⁿ, Ψ⁻) = nothing
 
-const SSPBarotropicForcing = NamedTuple{(:U, :V, :Uᵐ, :Vᵐ, :η)}
+const SSPPreviousStageState = NamedTuple{(:Uᵐ, :Vᵐ, :η)}
 
 # Shu-Osher pairs (a, b) for the classical three-stage strong-stability-preserving scheme.
 const SSPRK3_COEFFICIENTS = ((0//1, 1//1), (3//4, 1//4), (1//3, 2//3))

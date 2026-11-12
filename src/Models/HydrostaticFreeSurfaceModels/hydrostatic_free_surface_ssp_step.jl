@@ -1,5 +1,5 @@
 using Oceananigans.TimeSteppers: _ssp_euler_substep_field!, _ssp_blend_field!, _ssp_blend_tracer_field!,
-                                 SSPBarotropicForcing, implicit_step!, ssp_stage_fractions, ssp_substep!
+                                 SSPPreviousStageState, implicit_step!, ssp_stage_fractions, ssp_substep!
 
 # `ImplicitFreeSurface` solves on a predictor velocity, so the Shu-Osher blend would have to be deferred
 # until after a pressure correction that has already overwritten Ψᵐ⁻¹.
@@ -33,9 +33,9 @@ The barotropic pair is blended by *increment* rather than by state: every sub-cy
 stage, `Ψᵐ = a Ψⁿ + b (Ψᵐ⁻¹ + Ψ⋆ - Ψⁿ)`. Because the Shu-Osher weights sum to one, the free barotropic
 propagator is applied exactly once per step, so the over-integration that blending the barotropic *state*
 would incur -- the Shu-Osher weights are derived for forward-Euler stages, not for near-exact advances --
-does not arise, while the barotropic stage values are the ones the Shu-Osher recursion requires. The last
-stage is driven by the stage-weighted slow forcing, so its sub-cycle is simultaneously the predictor that
-supplies that stage's transport and the corrector that sets the barotropic pair at `n+1`.
+does not arise, while the barotropic stage values are the ones the Shu-Osher recursion requires. Every
+sub-cycle is driven by the slow forcing of the preceding stage, and the increment blend gives that forcing
+the Shu-Osher weights `(1/6, 1/6, 2/3)`, the same weights the blend gives the baroclinic tendencies.
 """
 TimeSteppers.ssp_substep!(model::HydrostaticFreeSurfaceModel, Δt, a, b, callbacks) =
     ssp_substep!(model, model.free_surface, model.grid, Δt, a, b, callbacks)
@@ -197,7 +197,7 @@ end
 ##### Blending the barotropic *state* instead would compose three near-exact advances and over-integrate.
 
 @inline previous_stage_fields(::Nothing) = NamedTuple()
-@inline previous_stage_fields(G★::SSPBarotropicForcing) = (η = G★.η, U = G★.Uᵐ, V = G★.Vᵐ)
+@inline previous_stage_fields(G★::SSPPreviousStageState) = (η = G★.η, U = G★.Uᵐ, V = G★.Vᵐ)
 
 blend_free_surface!(free_surface, timestepper, stage) = nothing
 
