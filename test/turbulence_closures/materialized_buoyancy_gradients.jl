@@ -19,6 +19,7 @@ end
     @test materialize_buoyancy_gradients(issd) == true
     @test materialize_buoyancy_gradients((ScalarDiffusivity(κ=1), issd)) == true
     @test materialize_buoyancy_gradients(CATKEVerticalDiffusivity()) == true
+    @test materialize_buoyancy_gradients(TKEDissipationVerticalDiffusivity()) == true
 
     for arch in archs
         @testset "Isopycnal diffusion materializes buoyancy gradients [$arch]" begin

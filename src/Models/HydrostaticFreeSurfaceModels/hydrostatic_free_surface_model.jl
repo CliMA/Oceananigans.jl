@@ -5,8 +5,6 @@ using Oceananigans.Architectures: AbstractArchitecture, ReactantState
 using Oceananigans.Biogeochemistry: AbstractBiogeochemistry, biogeochemical_auxiliary_fields, validate_biogeochemistry
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions, needs_implicit_solver,
                                        regularize_field_boundary_conditions, validate_implicit_explicit_flux_locations
-using Oceananigans.TurbulenceClosures: FlavorOfISSD
-using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE, FlavorOfTD
 using Oceananigans.BuoyancyFormulations: materialize_buoyancy, validate_buoyancy
 using Oceananigans.DistributedComputations: Distributed
 using Oceananigans.Fields: CenterField, Field, TracerFields, ZeroField, tracernames
