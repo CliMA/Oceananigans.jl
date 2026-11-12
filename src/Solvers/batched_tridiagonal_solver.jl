@@ -2,11 +2,11 @@ using Oceananigans.Architectures: on_architecture
 using Oceananigans.Grids: XDirection, YDirection, ZDirection
 
 """
-    struct BatchedTridiagonalSolver{A, B, C, T, G, P, D, Β}
+    struct BatchedTridiagonalSolver{A, B, C, T, G, P, D, F}
 
 A batched solver for large numbers of triadiagonal systems.
 """
-struct BatchedTridiagonalSolver{A, B, C, T, G, P, D, Β}
+struct BatchedTridiagonalSolver{A, B, C, T, G, P, D, F}
     a :: A
     b :: B
     c :: C
@@ -14,8 +14,25 @@ struct BatchedTridiagonalSolver{A, B, C, T, G, P, D, Β}
     grid :: G
     parameters :: P
     tridiagonal_direction :: D
-    precomputed_pivots :: Β
+    factors :: F
 end
+
+"""
+    TridiagonalFactors
+
+The stored factorization of the systems of a factorized [`BatchedTridiagonalSolver`](@ref):
+the pivots `β` and the lower diagonal `a`, evaluated once by [`compute_factorization!`](@ref).
+The elimination ratios `t` are kept in the solver's scratch array. Together these are the
+factors `A = L U` of each system, where `L` has diagonal `β` and sub-diagonal `a`, and `U` is unit
+upper triangular with super-diagonal `t`.
+"""
+struct TridiagonalFactors{B, A}
+    β :: B
+    a :: A
+end
+
+Adapt.adapt_structure(to, factors::TridiagonalFactors) =
+    TridiagonalFactors(adapt(to, factors.β), adapt(to, factors.a))
 
 function Base.summary(solver::BatchedTridiagonalSolver)
     dirstr = prettysummary(solver.tridiagonal_direction)
@@ -24,7 +41,8 @@ end
 
 function Base.show(io::IO, solver::BatchedTridiagonalSolver)
     print(io, summary(solver), '\n')
-    print(io, "└── grid: ", prettysummary(solver.grid))
+    print(io, "├── grid: ", prettysummary(solver.grid), '\n')
+    print(io, "└── factorized: ", !isnothing(solver.factors))
 end
 
 # Some aliases...
@@ -75,27 +93,28 @@ other implementations where, e.g., `aⁱʲ²` may appear at the second row, inst
 
 Other coefficient types can be implemented by extending `get_coefficient`.
 
-Precomputed pivots
-==================
+Stored factorization
+====================
 
-The forward sweep computes the pivots
+With `factorized = true`, the solver stores the factorization of its systems, which depends only
+on the coefficients `a`, `b`, and `c` and not on the right-hand side. [`compute_factorization!`](@ref)
+evaluates the coefficients and computes the pivots
 
 ```
     βⁱʲ¹ = bⁱʲ¹,
-    βⁱʲᵏ = bⁱʲᵏ - aⁱʲᵏ⁻¹ cⁱʲᵏ⁻¹ / βⁱʲᵏ⁻¹,  k = 2, ..., N
+    βⁱʲᵏ = bⁱʲᵏ - aⁱʲᵏ⁻¹ tⁱʲᵏ,   tⁱʲᵏ = cⁱʲᵏ⁻¹ / βⁱʲᵏ⁻¹,   k = 2, ..., N,
 ```
 
-which depend only on the coefficients. Each pivot depends on the one before it, so this
-recurrence sets the length of the sweep's dependency chain. When the same system is solved
-many times with unchanged coefficients, the caller can compute the pivots once and pass the
-array that holds them as `precomputed_pivots` (for example, a `CenterField(grid)` for a
-`ZDirection` system of `Nz` levels). `solve!` then reads `β` from `precomputed_pivots`
-instead of computing it, and does not evaluate the diagonal `b`.
+and stores `β`, `t`, and `a`. `solve!` then only substitutes: it reads the stored factors, evaluates
+neither the coefficients nor the recurrence, and reads only the right-hand side per level. This is
+for systems solved many times with unchanged coefficients and different right-hand sides.
 
-The caller fills `precomputed_pivots`, indexed as `β[i, j, k]` over the interior, and
-recomputes it whenever the coefficients change. Pivots computed with the recurrence above,
-in the same floating-point operations as the sweep, give a solution bitwise identical to the
-default, `precomputed_pivots = nothing`.
+The caller calls `compute_factorization!` before the first `solve!` and again whenever the
+coefficients change, including through `args`. A factorized `solve!` does not detect changed
+coefficients and solves the system that was last factored. The factorization uses the same
+floating-point operations as the unfactored sweep, so the solution is bitwise identical to that of
+the default, `factorized = false`.
+
 """
 function BatchedTridiagonalSolver(grid;
                                   lower_diagonal,
@@ -104,11 +123,12 @@ function BatchedTridiagonalSolver(grid;
                                   scratch = zeros(architecture(grid), eltype(grid), worksize(grid)...),
                                   parameters = nothing,
                                   tridiagonal_direction = ZDirection(),
-                                  precomputed_pivots = nothing)
+                                  factorized = false)
+
+    factors = factorized ? TridiagonalFactors(similar(scratch), similar(scratch)) : nothing
 
     return BatchedTridiagonalSolver(lower_diagonal, diagonal, upper_diagonal,
-                                    scratch, grid, parameters, tridiagonal_direction,
-                                    precomputed_pivots)
+                                    scratch, grid, parameters, tridiagonal_direction, factors)
 end
 
 """
@@ -150,7 +170,35 @@ function solve!(ϕ, solver::BatchedTridiagonalSolver, rhs, args...)
             solver.parameters,
             Tuple(args),
             solver.tridiagonal_direction,
-            solver.precomputed_pivots)
+            solver.factors)
+
+    return nothing
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Compute and store the factorization of the systems of the factorized `solver` (see
+[`BatchedTridiagonalSolver`](@ref)) from the current coefficients, evaluated with `args...`.
+Call it before the first [`solve!`](@ref) and whenever the coefficients change.
+"""
+function compute_factorization!(solver::BatchedTridiagonalSolver, args...)
+    isnothing(solver.factors) &&
+        throw(ArgumentError("The solver was built with `factorized = false` and stores no factorization."))
+
+    launch_config = main_diagonal_launch_configuration(solver.tridiagonal_direction)
+
+    launch!(architecture(solver), solver.grid, launch_config,
+            compute_batched_tridiagonal_factorization_kernel!,
+            solver.factors,
+            solver.a,
+            solver.b,
+            solver.c,
+            solver.t,
+            solver.grid,
+            solver.parameters,
+            Tuple(args),
+            solver.tridiagonal_direction)
 
     return nothing
 end
@@ -175,29 +223,78 @@ end
 @inline column_index(n, m₁, m₂, ::YDirection) = (m₁, n, m₂)
 @inline column_index(n, m₁, m₂, ::ZDirection) = (m₁, m₂, n)
 
-# Pivot `βᵏ = bᵏ - aᵏ⁻¹ tᵏ`, or read from `precomputed_pivots`
+# The quantities of the elimination: computed from the coefficients (`factors = nothing`), or read
+# from a stored factorization. Only the unfactored ratio is written to the scratch `t`.
+@inline lower_diagonal(i, j, k, grid, a, p, tridiagonal_direction, args, ::Nothing) =
+    get_coefficient(i, j, k, grid, a, p, tridiagonal_direction, args...)
+
+@inline lower_diagonal(i, j, k, grid, a, p, tridiagonal_direction, args, factors::TridiagonalFactors) =
+    @inbounds factors.a[i, j, k]
+
+@inline function elimination_ratio!(t, i, j, k, i⁻, j⁻, k⁻, grid, c, p, tridiagonal_direction, args, β, ::Nothing)
+    cᵏ⁻¹ = get_coefficient(i⁻, j⁻, k⁻, grid, c, p, tridiagonal_direction, args...)
+    tᵏ = convert(eltype(t), cᵏ⁻¹ / β)
+    @inbounds t[i, j, k] = tᵏ
+    return tᵏ
+end
+
+@inline elimination_ratio!(t, i, j, k, i⁻, j⁻, k⁻, grid, c, p, tridiagonal_direction, args, β, ::TridiagonalFactors) =
+    @inbounds t[i, j, k]
+
+# Pivot `βᵏ = bᵏ - aᵏ⁻¹ tᵏ`
 @inline pivot(i, j, k, grid, b, p, tridiagonal_direction, args, ::Nothing, aᵏ⁻¹, tᵏ) =
     get_coefficient(i, j, k, grid, b, p, tridiagonal_direction, args...) -
     off_diagonal_multiply(tridiagonal_direction, aᵏ⁻¹, tᵏ)
 
-@inline pivot(i, j, k, grid, b, p, tridiagonal_direction, args, β, aᵏ⁻¹, tᵏ) = @inbounds β[i, j, k]
+@inline pivot(i, j, k, grid, b, p, tridiagonal_direction, args, factors::TridiagonalFactors, aᵏ⁻¹, tᵏ) =
+    @inbounds factors.β[i, j, k]
 
-@kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction, pivots)
+@kernel function compute_batched_tridiagonal_factorization_kernel!(factors, a, b, c, t, grid, p, args, tridiagonal_direction)
     m₁, m₂ = @index(Global, NTuple)
     N = size(grid, dimension(tridiagonal_direction))
-    solve_batched_tridiagonal_system!(m₁, m₂, N, ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction, pivots)
+    compute_batched_tridiagonal_factorization!(m₁, m₂, N, factors, a, b, c, t, grid, p, args, tridiagonal_direction)
+end
+
+# The forward recurrence of the sweep, without a right-hand side: stores `β`, `t`, and `a`
+@inline function compute_batched_tridiagonal_factorization!(m₁, m₂, N, factors, a, b, c, t, grid, p, args,
+                                                            tridiagonal_direction)
+    Τ = eltype(t)
+
+    @inbounds begin
+        i, j, k = column_index(1, m₁, m₂, tridiagonal_direction)
+        β = pivot(i, j, k, grid, b, p, tridiagonal_direction, args, nothing, zero(Τ), zero(Τ))
+        factors.β[i, j, k] = β
+
+        for n = 2:N
+            i⁻, j⁻, k⁻ = column_index(n-1, m₁, m₂, tridiagonal_direction)
+            i,  j,  k  = column_index(n,   m₁, m₂, tridiagonal_direction)
+
+            aᵏ⁻¹ = lower_diagonal(i⁻, j⁻, k⁻, grid, a, p, tridiagonal_direction, args, nothing)
+            tᵏ = elimination_ratio!(t, i, j, k, i⁻, j⁻, k⁻, grid, c, p, tridiagonal_direction, args, β, nothing)
+            β = pivot(i, j, k, grid, b, p, tridiagonal_direction, args, nothing, aᵏ⁻¹, tᵏ)
+
+            factors.a[i⁻, j⁻, k⁻] = aᵏ⁻¹
+            factors.β[i, j, k] = β
+        end
+    end
+end
+
+@kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction, factors)
+    m₁, m₂ = @index(Global, NTuple)
+    N = size(grid, dimension(tridiagonal_direction))
+    solve_batched_tridiagonal_system!(m₁, m₂, N, ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction, factors)
 end
 
 # Thomas sweep along column `(m₁, m₂)`. β, tᵏ and the last solved level are carried in local
 # variables rather than re-read from `t` and `ϕ`, which the compiler cannot prove are unaliased.
 @inline function solve_batched_tridiagonal_system!(m₁, m₂, N, ϕ, a, b, c, f, t, grid, p, args,
-                                                   tridiagonal_direction, pivots)
+                                                   tridiagonal_direction, factors)
     Φ = eltype(ϕ)
     Τ = eltype(t)
 
     @inbounds begin
         i, j, k = column_index(1, m₁, m₂, tridiagonal_direction)
-        β  = pivot(i, j, k, grid, b, p, tridiagonal_direction, args, pivots, zero(Τ), zero(Τ))
+        β  = pivot(i, j, k, grid, b, p, tridiagonal_direction, args, factors, zero(Τ), zero(Τ))
         f₁ = get_coefficient(i, j, k, grid, f, p, tridiagonal_direction, args...)
         ϕ⁻ = convert(Φ, f₁ / β)
         ϕ[i, j, k] = ϕ⁻
@@ -206,12 +303,9 @@ end
             i⁻, j⁻, k⁻ = column_index(n-1, m₁, m₂, tridiagonal_direction)
             i,  j,  k  = column_index(n,   m₁, m₂, tridiagonal_direction)
 
-            cᵏ⁻¹ = get_coefficient(i⁻, j⁻, k⁻, grid, c, p, tridiagonal_direction, args...)
-            aᵏ⁻¹ = get_coefficient(i⁻, j⁻, k⁻, grid, a, p, tridiagonal_direction, args...)
-
-            tᵏ = convert(Τ, cᵏ⁻¹ / β)
-            t[i, j, k] = tᵏ
-            β = pivot(i, j, k, grid, b, p, tridiagonal_direction, args, pivots, aᵏ⁻¹, tᵏ)
+            aᵏ⁻¹ = lower_diagonal(i⁻, j⁻, k⁻, grid, a, p, tridiagonal_direction, args, factors)
+            tᵏ = elimination_ratio!(t, i, j, k, i⁻, j⁻, k⁻, grid, c, p, tridiagonal_direction, args, β, factors)
+            β = pivot(i, j, k, grid, b, p, tridiagonal_direction, args, factors, aᵏ⁻¹, tᵏ)
 
             fᵏ = get_coefficient(i, j, k, grid, f, p, tridiagonal_direction, args...)
 

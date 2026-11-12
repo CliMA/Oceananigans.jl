@@ -141,45 +141,49 @@ function can_isolate_decoupled_rows(arch, FT, Nx, Ny, Nz; garbage_end = :bottom)
     return all(isfinite, ϕ[remaining]) && ϕ[remaining] ≈ expected_solution[remaining]
 end
 
-function precomputed_pivots_reproduce_solve(arch, FT, Nx, Ny, Nz; tridiagonal_direction = ZDirection())
+function factorized_solve_reproduces_solve(arch, FT, Nx, Ny, Nz; tridiagonal_direction = ZDirection())
     ArrayType = array_type(arch)
     grid = RectilinearGrid(arch, FT, size=(Nx, Ny, Nz), extent=(1, 1, 1))
 
-    a = rand(FT, Nx, Ny, Nz)
-    b = 3 .+ rand(FT, Nx, Ny, Nz) # +3 to ensure diagonal dominance.
-    c = rand(FT, Nx, Ny, Nz)
-    f = rand(FT, Nx, Ny, Nz)
-
-    # Pivots from the forward-sweep recurrence, along the tridiagonal direction
-    d = tridiagonal_direction isa XDirection ? 1 : tridiagonal_direction isa YDirection ? 2 : 3
-    a, b, c, β = (permutedims(x, circshift(1:3, 1 - d)) for x in (a, b, c, copy(b)))
-
-    for m₁ in axes(β, 2), m₂ in axes(β, 3), n in 2:size(β, 1)
-        t = c[n-1, m₁, m₂] / β[n-1, m₁, m₂]
-        β[n, m₁, m₂] = b[n, m₁, m₂] - a[n-1, m₁, m₂] * t
-    end
-
-    a, b, c, β = (permutedims(x, circshift(1:3, d - 1)) for x in (a, b, c, β))
-    a, b, c, f = ArrayType.((a, b, c, f))
-
-    pivots = CenterField(grid)
-    interior(pivots) .= ArrayType(β)
+    a = ArrayType(rand(FT, Nx, Ny, Nz))
+    b = ArrayType(3 .+ rand(FT, Nx, Ny, Nz)) # +3 to ensure diagonal dominance.
+    c = ArrayType(rand(FT, Nx, Ny, Nz))
 
     solver = BatchedTridiagonalSolver(grid; lower_diagonal=a, diagonal=b, upper_diagonal=c, tridiagonal_direction)
-    precomputed_solver = BatchedTridiagonalSolver(grid; lower_diagonal=a, diagonal=b, upper_diagonal=c,
-                                                  tridiagonal_direction, precomputed_pivots=pivots)
+    factorized_solver = BatchedTridiagonalSolver(grid; lower_diagonal=a, diagonal=b, upper_diagonal=c,
+                                                 tridiagonal_direction, factorized=true)
+    compute_factorization!(factorized_solver)
 
+    same = true
+
+    # Several right-hand sides with one factorization
+    for _ in 1:3
+        f = ArrayType(rand(FT, Nx, Ny, Nz))
+
+        ϕ = zeros(arch, FT, Nx, Ny, Nz)
+        solve!(ϕ, solver, f)
+
+        ψ = zeros(arch, FT, Nx, Ny, Nz)
+        solve!(ψ, factorized_solver, f)
+
+        # In place: the right-hand side is the solution array
+        χ = copy(f)
+        solve!(χ, factorized_solver, χ)
+
+        same &= Array(ϕ) == Array(ψ) == Array(χ)
+    end
+
+    # Changed coefficients: refactor, then the solution matches the new system
+    b .+= 1
+    compute_factorization!(factorized_solver)
+    f = ArrayType(rand(FT, Nx, Ny, Nz))
     ϕ = zeros(arch, FT, Nx, Ny, Nz)
-    solve!(ϕ, solver, f)
-
     ψ = zeros(arch, FT, Nx, Ny, Nz)
-    solve!(ψ, precomputed_solver, f)
+    solve!(ϕ, solver, f)
+    solve!(ψ, factorized_solver, f)
+    same &= Array(ϕ) == Array(ψ)
 
-    # In place: the right-hand side is the solution array
-    χ = copy(f)
-    solve!(χ, precomputed_solver, χ)
-
-    return Array(ϕ) == Array(ψ) == Array(χ)
+    return same
 end
 
 @testset "Batched tridiagonal solvers" begin
@@ -202,8 +206,11 @@ end
             @test can_isolate_decoupled_rows(arch, FT, Nx, Ny, Nz; garbage_end)
         end
 
+        @test_throws ArgumentError compute_factorization!(BatchedTridiagonalSolver(RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 1, 1));
+                                                                                   lower_diagonal=zeros(1), diagonal=ones(2), upper_diagonal=zeros(1)))
+
         for FT in float_types, tridiagonal_direction in (XDirection(), YDirection(), ZDirection())
-            @test precomputed_pivots_reproduce_solve(arch, FT, 5, 6, 7; tridiagonal_direction)
+            @test factorized_solve_reproduces_solve(arch, FT, 5, 6, 7; tridiagonal_direction)
         end
     end
 end

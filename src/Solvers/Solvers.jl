@@ -1,12 +1,13 @@
 module Solvers
 
 export
-    BatchedTridiagonalSolver, solve!,
+    BatchedTridiagonalSolver, solve!, compute_factorization!,
     FFTBasedPoissonSolver,
     FourierTridiagonalPoissonSolver,
     ConjugateGradientSolver,
     KrylovSolver
 
+using Adapt: Adapt, adapt
 using DocStringExtensions: TYPEDSIGNATURES
 using FFTW: FFTW
 using KernelAbstractions: @kernel, @index
