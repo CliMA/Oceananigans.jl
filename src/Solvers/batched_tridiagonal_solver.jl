@@ -228,8 +228,7 @@ end
 @inline lower_diagonal(i, j, k, grid, a, p, tridiagonal_direction, args, ::Nothing) =
     get_coefficient(i, j, k, grid, a, p, tridiagonal_direction, args...)
 
-@inline lower_diagonal(i, j, k, grid, a, p, tridiagonal_direction, args, factors::TridiagonalFactors) =
-    @inbounds factors.a[i, j, k]
+@inline lower_diagonal(i, j, k, grid, factors::TridiagonalFactors, args...) = @inbounds factors.a[i, j, k]
 
 @inline function elimination_ratio!(t, i, j, k, i⁻, j⁻, k⁻, grid, c, p, tridiagonal_direction, args, β, ::Nothing)
     cᵏ⁻¹ = get_coefficient(i⁻, j⁻, k⁻, grid, c, p, tridiagonal_direction, args...)
