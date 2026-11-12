@@ -225,12 +225,12 @@ end
 
 # The quantities of the elimination: computed from the coefficients (`factors = nothing`), or read
 # from a stored factorization. Only the unfactored ratio is written to the scratch `t`.
-@inline lower_diagonal(i, j, k, grid, a, p, tridiagonal_direction, args, ::Nothing) =
+@inline lower_diagonal(i, j, k, grid, ::Nothing, a, p, tridiagonal_direction, args) =
     get_coefficient(i, j, k, grid, a, p, tridiagonal_direction, args...)
 
 @inline lower_diagonal(i, j, k, grid, factors::TridiagonalFactors, args...) = @inbounds factors.a[i, j, k]
 
-@inline function elimination_ratio!(t, i, j, k, i⁻, j⁻, k⁻, grid, c, p, tridiagonal_direction, args, β, ::Nothing)
+@inline function elimination_ratio!(t, i, j, k, ::Nothing, i⁻, j⁻, k⁻, grid, c, p, tridiagonal_direction, args, β)
     cᵏ⁻¹ = get_coefficient(i⁻, j⁻, k⁻, grid, c, p, tridiagonal_direction, args...)
     tᵏ = convert(eltype(t), cᵏ⁻¹ / β)
     @inbounds t[i, j, k] = tᵏ
@@ -240,7 +240,7 @@ end
 @inline elimination_ratio!(t, i, j, k, ::TridiagonalFactors, args...) = @inbounds t[i, j, k]
 
 # Pivot `βᵏ = bᵏ - aᵏ⁻¹ tᵏ`
-@inline pivot(i, j, k, grid, b, p, tridiagonal_direction, args, ::Nothing, aᵏ⁻¹, tᵏ) =
+@inline pivot(i, j, k, grid, ::Nothing, b, p, tridiagonal_direction, args, aᵏ⁻¹, tᵏ) =
     get_coefficient(i, j, k, grid, b, p, tridiagonal_direction, args...) -
     off_diagonal_multiply(tridiagonal_direction, aᵏ⁻¹, tᵏ)
 
@@ -259,16 +259,16 @@ end
 
     @inbounds begin
         i, j, k = column_index(1, m₁, m₂, tridiagonal_direction)
-        β = pivot(i, j, k, grid, b, p, tridiagonal_direction, args, nothing, zero(Τ), zero(Τ))
+        β = pivot(i, j, k, grid, nothing, b, p, tridiagonal_direction, args, zero(Τ), zero(Τ))
         factors.β[i, j, k] = β
 
         for n = 2:N
             i⁻, j⁻, k⁻ = column_index(n-1, m₁, m₂, tridiagonal_direction)
             i,  j,  k  = column_index(n,   m₁, m₂, tridiagonal_direction)
 
-            aᵏ⁻¹ = lower_diagonal(i⁻, j⁻, k⁻, grid, a, p, tridiagonal_direction, args, nothing)
-            tᵏ = elimination_ratio!(t, i, j, k, i⁻, j⁻, k⁻, grid, c, p, tridiagonal_direction, args, β, nothing)
-            β = pivot(i, j, k, grid, b, p, tridiagonal_direction, args, nothing, aᵏ⁻¹, tᵏ)
+            aᵏ⁻¹ = lower_diagonal(i⁻, j⁻, k⁻, grid, nothing, a, p, tridiagonal_direction, args)
+            tᵏ = elimination_ratio!(t, i, j, k, nothing, i⁻, j⁻, k⁻, grid, c, p, tridiagonal_direction, args, β)
+            β = pivot(i, j, k, grid, nothing, b, p, tridiagonal_direction, args, aᵏ⁻¹, tᵏ)
 
             factors.a[i⁻, j⁻, k⁻] = aᵏ⁻¹
             factors.β[i, j, k] = β
@@ -291,7 +291,7 @@ end
 
     @inbounds begin
         i, j, k = column_index(1, m₁, m₂, tridiagonal_direction)
-        β  = pivot(i, j, k, grid, b, p, tridiagonal_direction, args, factors, zero(Τ), zero(Τ))
+        β  = pivot(i, j, k, grid, factors, b, p, tridiagonal_direction, args, zero(Τ), zero(Τ))
         f₁ = get_coefficient(i, j, k, grid, f, p, tridiagonal_direction, args...)
         ϕ⁻ = convert(Φ, f₁ / β)
         ϕ[i, j, k] = ϕ⁻
@@ -300,9 +300,9 @@ end
             i⁻, j⁻, k⁻ = column_index(n-1, m₁, m₂, tridiagonal_direction)
             i,  j,  k  = column_index(n,   m₁, m₂, tridiagonal_direction)
 
-            aᵏ⁻¹ = lower_diagonal(i⁻, j⁻, k⁻, grid, a, p, tridiagonal_direction, args, factors)
-            tᵏ = elimination_ratio!(t, i, j, k, i⁻, j⁻, k⁻, grid, c, p, tridiagonal_direction, args, β, factors)
-            β = pivot(i, j, k, grid, b, p, tridiagonal_direction, args, factors, aᵏ⁻¹, tᵏ)
+            aᵏ⁻¹ = lower_diagonal(i⁻, j⁻, k⁻, grid, factors, a, p, tridiagonal_direction, args)
+            tᵏ = elimination_ratio!(t, i, j, k, factors, i⁻, j⁻, k⁻, grid, c, p, tridiagonal_direction, args, β)
+            β = pivot(i, j, k, grid, factors, b, p, tridiagonal_direction, args, aᵏ⁻¹, tᵏ)
 
             fᵏ = get_coefficient(i, j, k, grid, f, p, tridiagonal_direction, args...)
 
