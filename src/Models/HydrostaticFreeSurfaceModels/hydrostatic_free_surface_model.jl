@@ -232,8 +232,9 @@ function materialize_hydrostatic_free_surface_model(grid, ::Val{tracer_names}, t
     # the grid and backend is known
     advection = map(scheme -> materialize_advection(scheme, grid), advection)
 
-    buoyancy = materialize_buoyancy(buoyancy, grid)
-
+    materialize_gradients = any(c -> c isa Union{FlavorOfCATKE, FlavorOfTD, FlavorOfISSD}, closure isa Tuple ? closure : (closure,))
+    buoyancy = materialize_buoyancy(buoyancy, grid; materialize_gradients)
+  
     # Collect boundary conditions for all model prognostic fields and, if specified, some model
     # auxiliary fields. Boundary conditions are "regularized" based on the _name_ of the field:
     # boundary conditions on u, v are regularized assuming they represent momentum at appropriate
