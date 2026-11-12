@@ -108,7 +108,7 @@ halo_test_grid(arch, topology) = RectilinearGrid(arch; topology, size = (4, 5, 6
         @test groups[2] === (fields.u₁, fields.u₂)
 
         halo_fill_groups(tupled_fillable_fields)
-        @test (@allocated halo_fill_groups(tupled_fillable_fields)) == 0
+        @test (@allocated halo_fill_groups(tupled_fillable_fields)) == 0 skip = Base.JLOptions().opt_level < 2
     end
 
     @testset "Tupled halo filling does not allocate on CPU" begin
@@ -117,6 +117,6 @@ halo_test_grid(arch, topology) = RectilinearGrid(arch; topology, size = (4, 5, 6
         tupled_fillable_fields = select_fields(tupled_fillable, values(fields))
 
         fill_halo_regions!(tupled_fillable_fields)
-        @test (@allocated fill_halo_regions!(tupled_fillable_fields)) == 0
+        @test (@allocated fill_halo_regions!(tupled_fillable_fields)) == 0 skip = Base.JLOptions().opt_level < 2
     end
 end
