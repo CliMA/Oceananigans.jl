@@ -147,4 +147,3 @@ end
     n, k = @index(Global, NTuple)
     @inbounds c[copy.receivers.i[n], copy.receivers.j[n], k] = source[copy.donors.i[n], copy.donors.j[n], k]
 end
-
