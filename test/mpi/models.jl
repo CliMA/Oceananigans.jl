@@ -115,6 +115,7 @@ mpi_ranks = MPI.Comm_size(comm)
 
 function test_triply_periodic_rank_connectivity_with_411_ranks()
     arch = Distributed(CPU(), partition=Partition(4))
+    arch = architecture(RectilinearGrid(arch, size=(8, 8, 8), extent=(1, 2, 3)))
 
     local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
     @test local_rank == index2rank(arch.local_index..., arch.ranks...)
@@ -148,6 +149,7 @@ end
 
 function test_triply_periodic_rank_connectivity_with_141_ranks()
     arch = Distributed(CPU(), partition=Partition(1, 4))
+    arch = architecture(RectilinearGrid(arch, size=(8, 8, 8), extent=(1, 2, 3)))
 
     local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
     @test local_rank == index2rank(arch.local_index..., arch.ranks...)
@@ -187,6 +189,7 @@ end
 
 function test_triply_periodic_rank_connectivity_with_221_ranks()
     arch = Distributed(CPU(), partition=Partition(2, 2))
+    arch = architecture(RectilinearGrid(arch, size=(8, 8, 8), extent=(1, 2, 3)))
 
     local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
     @test local_rank == index2rank(arch.local_index..., arch.ranks...)
@@ -266,7 +269,7 @@ function test_triply_periodic_local_grid_with_221_ranks()
     arch = Distributed(CPU(), partition=Partition(2, 2))
     local_grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3))
 
-    i, j, k = arch.local_index
+    i, j, k = architecture(local_grid).local_index
     nx, ny, nz = size(local_grid)
 
     @test local_grid.xᶠᵃᵃ[1] == 0.5*(i-1)
@@ -388,8 +391,8 @@ function test_triply_periodic_halo_communication_with_411_ranks(halo, child_arch
         fill!(field, arch.local_rank)
         fill_halo_regions!(field)
 
-        @test all(east_halo(field, include_corners=false) .== arch.connectivity.east)
-        @test all(west_halo(field, include_corners=false) .== arch.connectivity.west)
+        @test all(east_halo(field, include_corners=false) .== architecture(grid).connectivity.east)
+        @test all(west_halo(field, include_corners=false) .== architecture(grid).connectivity.west)
 
         @test all(interior(field) .== arch.local_rank)
         @test all(north_halo(field, include_corners=false) .== arch.local_rank)
@@ -410,8 +413,8 @@ function test_triply_periodic_halo_communication_with_141_ranks(halo, child_arch
         fill!(field, arch.local_rank)
         fill_halo_regions!(field)
 
-        @test all(north_halo(field, include_corners=false) .== arch.connectivity.north)
-        @test all(south_halo(field, include_corners=false) .== arch.connectivity.south)
+        @test all(north_halo(field, include_corners=false) .== architecture(grid).connectivity.north)
+        @test all(south_halo(field, include_corners=false) .== architecture(grid).connectivity.south)
 
         @test all(interior(field) .== arch.local_rank)
         @test all(east_halo(field, include_corners=false) .== arch.local_rank)
@@ -434,17 +437,17 @@ function test_triply_periodic_halo_communication_with_221_ranks(halo, child_arch
 
         @test all(interior(field) .== arch.local_rank)
 
-        @test all(east_halo(field, include_corners=false)  .== arch.connectivity.east)
-        @test all(west_halo(field, include_corners=false)  .== arch.connectivity.west)
-        @test all(north_halo(field, include_corners=false) .== arch.connectivity.north)
-        @test all(south_halo(field, include_corners=false) .== arch.connectivity.south)
+        @test all(east_halo(field, include_corners=false)  .== architecture(grid).connectivity.east)
+        @test all(west_halo(field, include_corners=false)  .== architecture(grid).connectivity.west)
+        @test all(north_halo(field, include_corners=false) .== architecture(grid).connectivity.north)
+        @test all(south_halo(field, include_corners=false) .== architecture(grid).connectivity.south)
 
         @test all(top_halo(field, include_corners=false)    .== arch.local_rank)
         @test all(bottom_halo(field, include_corners=false) .== arch.local_rank)
-        @test all(southwest_halo(field) .== arch.connectivity.southwest)
-        @test all(southeast_halo(field) .== arch.connectivity.southeast)
-        @test all(northwest_halo(field) .== arch.connectivity.northwest)
-        @test all(northeast_halo(field) .== arch.connectivity.northeast)
+        @test all(southwest_halo(field) .== architecture(grid).connectivity.southwest)
+        @test all(southeast_halo(field) .== architecture(grid).connectivity.southeast)
+        @test all(northwest_halo(field) .== architecture(grid).connectivity.northwest)
+        @test all(northeast_halo(field) .== architecture(grid).connectivity.northeast)
     end
 
     return nothing

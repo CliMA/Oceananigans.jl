@@ -23,9 +23,7 @@ This method is called after interior momentum tendencies are computed to:
 2. compute diagnostic fields (buoyancy gradients, pressure, closure_fields) in the buffer regions, and
 3. compute momentum tendencies in cells that depend on halo data.
 """
-function complete_communication_and_compute_momentum_buffer!(model::HydrostaticFreeSurfaceModel, ::DistributedGrid, ::AsynchronousDistributed)
-    grid = model.grid
-    arch = architecture(grid)
+function complete_communication_and_compute_momentum_buffer!(model::HydrostaticFreeSurfaceModel, grid, arch::AsynchronousDistributed)
 
     # Synchronize tracers
     for tracer in model.tracers
@@ -94,9 +92,7 @@ This function is called after interior tracer tendencies are computed to:
 2. update the vertical transport velocities in buffer regions, and
 3. compute the tracer tendencies in cells that depend on halo data.
 """
-function complete_communication_and_compute_tracer_buffer!(model::HydrostaticFreeSurfaceModel, ::DistributedGrid, ::AsynchronousDistributed)
-    grid = model.grid
-    arch = architecture(grid)
+function complete_communication_and_compute_tracer_buffer!(model::HydrostaticFreeSurfaceModel, grid, arch::AsynchronousDistributed)
 
     # Synchronize velocities and free surface
     synchronize_communication!(model.free_surface)

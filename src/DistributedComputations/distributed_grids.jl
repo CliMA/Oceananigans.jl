@@ -101,6 +101,7 @@ function Grids.RectilinearGrid(arch::Distributed,
     topology, global_sz, halo, x, y, z =
         validate_rectilinear_grid_args(topology, size, halo, FT, extent, x, y, z)
 
+    arch = rank_layout(arch)
     local_sz = local_size(arch, global_sz)
 
     nx, ny, nz = local_sz
@@ -151,6 +152,7 @@ function Grids.LatitudeLongitudeGrid(arch::Distributed,
     topology, global_sz, halo, latitude, longitude, z, precompute_metrics =
         validate_lat_lon_grid_args(topology, size, halo, FT, latitude, longitude, z, precompute_metrics)
 
+    arch = rank_layout(arch)
     local_sz = local_size(arch, global_sz)
 
     nλ, nφ, nz = local_sz

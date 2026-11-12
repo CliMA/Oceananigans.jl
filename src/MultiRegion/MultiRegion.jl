@@ -13,7 +13,7 @@ using KernelAbstractions: @kernel, @index
 using OffsetArrays: OffsetArrays, AbstractOffsetArray
 
 using Oceananigans: Oceananigans
-using Oceananigans.Architectures: AbstractArchitecture, AbstractSerialArchitecture, CPU, GPU, architecture
+using Oceananigans.Architectures: AbstractArchitecture, AbstractSerialArchitecture, CPU, GPU, architecture, child_architecture
 using Oceananigans.BoundaryConditions: BoundaryConditions, East, North, South, SouthAndNorth, West, WestAndEast,
     fill_halo_regions!
 using Oceananigans.DistributedComputations: DistributedComputations, Partition, insert_connected_topology, ranks
@@ -74,6 +74,7 @@ include("multi_region_reductions.jl")
 include("yin_yang_reductions.jl")
 include("multi_region_models.jl")
 include("yin_yang_conservation_fixers.jl")
+include("distributed_yin_yang_grid.jl")
 include("multi_region_output_writers.jl")
 
 end #module

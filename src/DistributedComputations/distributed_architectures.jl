@@ -269,25 +269,15 @@ function distributed_architecture(child_architecture;
         partition = Partition(mpi_ranks)
     end
 
-    ranks = Rx, Ry, Rz = size(partition)
-    partition_ranks = Rx * Ry * Rz
+    ranks = size(partition)
 
-    if partition_ranks == 1
+    if mpi_ranks == 1
         @warn "We are building a Distributed architecture on a single MPI rank. \n" *
               "This can occur when MPI is incorrectly configured. \n" *
               "See https://juliaparallel.org/MPI.jl/stable/configuration/ for more details."
     end
 
-    # TODO: make this error refer to `partition` (user input) rather than `ranks`
-    if partition_ranks != mpi_ranks
-        throw(ArgumentError("Partition($Rx, $Ry, $Rz) [$partition_ranks ranks] inconsistent " *
-                            "with $mpi_ranks MPI ranks"))
-    end
-
-    local_rank         = MPI.Comm_rank(communicator)
-    local_index        = rank2index(local_rank, Rx, Ry, Rz)
-    # The rank connectivity _ALWAYS_ wraps around (The cartesian processor "grid" is `Periodic`)
-    local_connectivity = NeighboringRanks(local_index, ranks)
+    local_rank = MPI.Comm_rank(communicator)
 
     # Assign GPU device if on GPUs
     if child_architecture isa GPU
@@ -300,11 +290,30 @@ function distributed_architecture(child_architecture;
                                                    partition,
                                                    ranks,
                                                    local_rank,
-                                                   local_index,
-                                                   local_connectivity,
+                                                   nothing,
+                                                   nothing,
                                                    communicator,
                                                    field_count,
                                                    devices)
+end
+
+# The position of this rank in the `Partition` and its neighbors, which a grid partitioned by `arch.partition`
+# computes once it has checked that the communicator has the ranks the partition needs (a multi-region grid
+# partitions its regions differently, so `Distributed` itself does not know the layout of its ranks)
+rank_layout(arch) = arch
+
+function rank_layout(arch::Distributed{<:Any, S}) where S
+    isnothing(arch.local_index) || return arch
+    Rx, Ry, Rz = ranks = size(arch.partition)
+    Nr = MPI.Comm_size(mpi_communicator(arch.communicator))
+    Rx * Ry * Rz == Nr || throw(ArgumentError("Partition($Rx, $Ry, $Rz) needs $(Rx * Ry * Rz) MPI ranks; got $Nr."))
+
+    local_index = rank2index(arch.local_rank, Rx, Ry, Rz)
+    # The rank connectivity _ALWAYS_ wraps around (The cartesian processor "grid" is `Periodic`)
+    connectivity = NeighboringRanks(local_index, ranks)
+
+    return Distributed{S}(arch.child_architecture, arch.partition, ranks, arch.local_rank, local_index,
+                          connectivity, arch.communicator, arch.field_count, arch.devices)
 end
 
 const DistributedCPU = Distributed{CPU}
@@ -484,6 +493,11 @@ function Base.show(io::IO, arch::Distributed)
     end
 
     print(io, summary(arch), " across ", rank_info, ", with $sync_type communications:", '\n')
+    # A grid lays out the ranks of its architecture (see `rank_layout`)
+    if isnothing(arch.local_index)
+        return print(io, "└── local_rank: ", local_rank, " of 0-$last_rank")
+    end
+
     print(io, "├── local_rank: ", local_rank, " of 0-$last_rank", '\n')
 
     ix, iy, iz = arch.local_index

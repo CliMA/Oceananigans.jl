@@ -42,7 +42,7 @@ tripolar_reconstructed_grid_script(fold_topology, pivot) = """
         @test distribute_tripolar_grid(arch, global_grid) == local_grid
 
         nx, ny, _ = size(local_grid)
-        rx, ry, _ = arch.local_index .- 1
+        rx, ry, _ = architecture(local_grid).local_index .- 1
 
         jrange = 1 + ry * ny : (ry + 1) * ny
         irange = 1 + rx * nx : (rx + 1) * nx
@@ -128,7 +128,7 @@ tripolar_metric_halo_script(fold_topology, pivot, Rx) = """
     local_grid  = TripolarGrid(arch; size = (20, 20, 2), z = (-1000, 0), halo = (4, 4, 4), fold_topology = $fold_topology, pivot = $pivot)
 
     nx, ny, _ = size(local_grid)
-    rx, ry, _ = arch.local_index
+    rx, ry, _ = architecture(local_grid).local_index
     i₀, j₀ = (rx - 1) * nx, (ry - 1) * ny
 
     Hx, Hy, _ = halo_size(local_grid)

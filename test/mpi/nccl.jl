@@ -132,6 +132,7 @@ function test_nccl_halo_neighbor_values(grid_points, ranks, topo;
                                         multi_field=false, async=false)
     arch = NCCLDistributed(GPU(); partition=Partition(ranks...))
     grid = RectilinearGrid(arch, topology=topo, size=grid_points, halo=halo, extent=(1, 1, 1))
+    arch = architecture(grid)
 
     H = halo[1]
     rank = arch.local_rank
@@ -173,8 +174,8 @@ function nccl_halos_match_global_positions(partition; N = 16, Nz = 4, H = 3)
     fill_halo_regions!(c)
     CUDA.synchronize()
     Nx, Ny = N, N
-    ox = (arch.local_index[1] - 1) * size(grid, 1)
-    oy = (arch.local_index[2] - 1) * size(grid, 2)
+    ox = (architecture(grid).local_index[1] - 1) * size(grid, 1)
+    oy = (architecture(grid).local_index[2] - 1) * size(grid, 2)
     P = Array(parent(c))
     correct = true
     for j in axes(P, 2), i in axes(P, 1)

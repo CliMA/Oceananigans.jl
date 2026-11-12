@@ -9,6 +9,7 @@ using Oceananigans.DistributedComputations:
     inject_halo_communication_boundary_conditions,
     insert_connected_topology,
     local_size,
+    rank_layout,
     ranks
 using Oceananigans.Fields: Field, validate_boundary_conditions, validate_field_data, validate_indices
 
@@ -63,7 +64,7 @@ moved to that architecture.
 distribute_tripolar_grid(arch, global_grid) = on_architecture(arch, global_grid)
 
 function distribute_tripolar_grid(arch::Distributed, global_grid)
-
+    arch = rank_layout(arch)
     workers = ranks(arch.partition)
     px = ifelse(isnothing(arch.partition.x), 1, arch.partition.x)
     py = ifelse(isnothing(arch.partition.y), 1, arch.partition.y)
