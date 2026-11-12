@@ -493,6 +493,11 @@ function Base.show(io::IO, arch::Distributed)
     end
 
     print(io, summary(arch), " across ", rank_info, ", with $sync_type communications:", '\n')
+    # A grid lays out the ranks of its architecture (see `rank_layout`)
+    if isnothing(arch.local_index)
+        return print(io, "└── local_rank: ", local_rank, " of 0-$last_rank")
+    end
+
     print(io, "├── local_rank: ", local_rank, " of 0-$last_rank", '\n')
 
     ix, iy, iz = arch.local_index
