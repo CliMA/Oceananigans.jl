@@ -35,6 +35,14 @@ The coefficient is updated according to `schedule`. Less frequent updates than `
 may be used as a performance optimization for cases where dynamic coefficient computation is relatively expensive.
 `minimum_numerator` defines the minimum value that is acceptable in the denominator of the final calculation.
 
+Test filter
+===========
+
+The test filter applies the weights (¼, ½, ¼) along each direction, which makes it twice as wide as the
+grid spacing. It is not applied across the boundaries of the domain: next to a boundary the flow is filtered
+only along the directions parallel to it, and the ratio of the test filter width to the grid filter width is
+reduced accordingly, from 2 to 2^(2/3) next to one boundary of a three-dimensional domain.
+
 Multi-stage timestepper compatibility
 =====================================
 
@@ -320,7 +328,7 @@ function compute_coefficient_fields!(closure_fields, closure::DirectionallyAvera
         launch!(arch, grid, :xyz, _compute_Σ!, Σ, grid, velocities...)
         launch!(arch, grid, :xyz, _compute_Σ̄!, Σ̄, grid, velocities...)
 
-        # Fill Σ, Σ̄ halos because the M tensor computation uses `filter`
+        # Fill Σ, Σ̄ halos because the M tensor computation uses the test filter,
         # which reads from neighboring cells (including halo cells).
         fill_halo_regions!(Σ; only_local_halos=true)
         fill_halo_regions!(Σ̄; only_local_halos=true)
@@ -422,7 +430,7 @@ function TurbulenceClosures.initialize_closure_fields!(closure_fields, closure::
     launch!(arch, grid, :xyz, _compute_Σ!, Σ, grid, u, v, w)
     launch!(arch, grid, :xyz, _compute_Σ̄!, Σ̄, grid, u, v, w)
 
-    # Fill Σ, Σ̄ halos because the M tensor computation uses `filter`
+    # Fill Σ, Σ̄ halos because the M tensor computation uses the test filter,
     # which reads from neighboring cells (including halo cells).
     fill_halo_regions!(Σ; only_local_halos=true)
     fill_halo_regions!(Σ̄; only_local_halos=true)
@@ -461,7 +469,7 @@ function TurbulenceClosures.step_closure_prognostics!(closure_fields, closure::L
         launch!(arch, grid, :xyz, _compute_Σ!, Σ, grid, u, v, w)
         launch!(arch, grid, :xyz, _compute_Σ̄!, Σ̄, grid, u, v, w)
 
-        # Fill Σ, Σ̄ halos because the M tensor computation uses `filter`
+        # Fill Σ, Σ̄ halos because the M tensor computation uses the test filter,
         # which reads from neighboring cells (including halo cells).
         fill_halo_regions!(Σ; only_local_halos=true)
         fill_halo_regions!(Σ̄; only_local_halos=true)
