@@ -137,13 +137,7 @@ Press William, H., Teukolsky Saul, A., Vetterling William, T., & Flannery Brian,
 """
 function solve!(ϕ, solver::BatchedTridiagonalSolver, rhs, args...)
 
-    launch_config = if solver.tridiagonal_direction isa XDirection
-                        :yz
-                    elseif solver.tridiagonal_direction isa YDirection
-                        :xz
-                    elseif solver.tridiagonal_direction isa ZDirection
-                        :xy
-                    end
+    launch_config = main_diagonal_launch_configuration(solver.tridiagonal_direction)
 
     launch!(architecture(solver), solver.grid, launch_config,
             solve_batched_tridiagonal_system_kernel!, ϕ,
@@ -181,49 +175,21 @@ end
 @inline column_index(n, m₁, m₂, ::YDirection) = (m₁, n, m₂)
 @inline column_index(n, m₁, m₂, ::ZDirection) = (m₁, m₂, n)
 
-# Pivots are either computed by the forward sweep or read from `precomputed_pivots`
-@inline first_pivot(i, j, k, grid, b, p, tridiagonal_direction, args, ::Nothing) =
-    get_coefficient(i, j, k, grid, b, p, tridiagonal_direction, args...)
-
-@inline first_pivot(i, j, k, grid, b, p, tridiagonal_direction, args, β) = @inbounds β[i, j, k]
-
-@inline next_pivot(i, j, k, grid, b, p, tridiagonal_direction, args, ::Nothing, aᵏ⁻¹, tᵏ) =
+# Pivot `βᵏ = bᵏ - aᵏ⁻¹ tᵏ`, or read from `precomputed_pivots`
+@inline pivot(i, j, k, grid, b, p, tridiagonal_direction, args, ::Nothing, aᵏ⁻¹, tᵏ) =
     get_coefficient(i, j, k, grid, b, p, tridiagonal_direction, args...) -
     off_diagonal_multiply(tridiagonal_direction, aᵏ⁻¹, tᵏ)
 
-@inline next_pivot(i, j, k, grid, b, p, tridiagonal_direction, args, β, aᵏ⁻¹, tᵏ) = @inbounds β[i, j, k]
+@inline pivot(i, j, k, grid, b, p, tridiagonal_direction, args, β, aᵏ⁻¹, tᵏ) = @inbounds β[i, j, k]
 
-@kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p, args,
-                                                          tridiagonal_direction::XDirection, pivots)
-    j, k = @index(Global, NTuple)
-    solve_batched_tridiagonal_system!(j, k, size(grid, 1), ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction, pivots)
+@kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction, pivots)
+    m₁, m₂ = @index(Global, NTuple)
+    N = size(grid, dimension(tridiagonal_direction))
+    solve_batched_tridiagonal_system!(m₁, m₂, N, ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction, pivots)
 end
 
-@kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p, args,
-                                                          tridiagonal_direction::YDirection, pivots)
-    i, k = @index(Global, NTuple)
-    solve_batched_tridiagonal_system!(i, k, size(grid, 2), ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction, pivots)
-end
-
-@kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p, args,
-                                                          tridiagonal_direction::ZDirection, pivots)
-    i, j = @index(Global, NTuple)
-    solve_batched_tridiagonal_system!(i, j, size(grid, 3), ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction, pivots)
-end
-
-# Thomas sweep along the column `(m₁, m₂)`, which has `N` levels.
-#
-# Level `n` depends on level `n ∓ 1`, and each column is swept by a single thread, so the sweep's
-# run time is the length of that dependency chain. The pivot `β`, the elimination ratio `tᵏ`, and
-# the solution `ϕ⁻` / `ϕ⁺` of the level just solved are therefore carried in local variables,
-# rather than read back from the arrays they were just stored in: the compiler cannot prove that
-# `ϕ` and `t` do not alias the coefficients, so it cannot forward a stored value to the next
-# load by itself. Each carried value is converted to the element type of the array it is stored
-# in, so it equals the value a re-read would return and the result is unchanged.
-#
-# Coefficients of level `n`, and its right-hand side, are evaluated before `ϕ` is written at
-# level `n`, so in-place solves (`rhs === ϕ`) and coefficients that read `ϕ` see the same values
-# as they would without the carried variables.
+# Thomas sweep along column `(m₁, m₂)`. β, tᵏ and the last solved level are carried in local
+# variables rather than re-read from `t` and `ϕ`, which the compiler cannot prove are unaliased.
 @inline function solve_batched_tridiagonal_system!(m₁, m₂, N, ϕ, a, b, c, f, t, grid, p, args,
                                                    tridiagonal_direction, pivots)
     Φ = eltype(ϕ)
@@ -231,7 +197,7 @@ end
 
     @inbounds begin
         i, j, k = column_index(1, m₁, m₂, tridiagonal_direction)
-        β  = first_pivot(i, j, k, grid, b, p, tridiagonal_direction, args, pivots)
+        β  = pivot(i, j, k, grid, b, p, tridiagonal_direction, args, pivots, zero(Τ), zero(Τ))
         f₁ = get_coefficient(i, j, k, grid, f, p, tridiagonal_direction, args...)
         ϕ⁻ = convert(Φ, f₁ / β)
         ϕ[i, j, k] = ϕ⁻
@@ -245,7 +211,7 @@ end
 
             tᵏ = convert(Τ, cᵏ⁻¹ / β)
             t[i, j, k] = tᵏ
-            β = next_pivot(i, j, k, grid, b, p, tridiagonal_direction, args, pivots, aᵏ⁻¹, tᵏ)
+            β = pivot(i, j, k, grid, b, p, tridiagonal_direction, args, pivots, aᵏ⁻¹, tᵏ)
 
             fᵏ = get_coefficient(i, j, k, grid, f, p, tridiagonal_direction, args...)
 
