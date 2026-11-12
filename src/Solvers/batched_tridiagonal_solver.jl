@@ -238,8 +238,7 @@ end
     return tᵏ
 end
 
-@inline elimination_ratio!(t, i, j, k, i⁻, j⁻, k⁻, grid, c, p, tridiagonal_direction, args, β, ::TridiagonalFactors) =
-    @inbounds t[i, j, k]
+@inline elimination_ratio!(t, i, j, k, ::TridiagonalFactors, args...) = @inbounds t[i, j, k]
 
 # Pivot `βᵏ = bᵏ - aᵏ⁻¹ tᵏ`
 @inline pivot(i, j, k, grid, b, p, tridiagonal_direction, args, ::Nothing, aᵏ⁻¹, tᵏ) =
