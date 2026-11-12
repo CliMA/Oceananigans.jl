@@ -5,6 +5,8 @@ using Oceananigans.Architectures: AbstractArchitecture, ReactantState
 using Oceananigans.Biogeochemistry: AbstractBiogeochemistry, biogeochemical_auxiliary_fields, validate_biogeochemistry
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions, needs_implicit_solver,
                                        regularize_field_boundary_conditions, validate_implicit_explicit_flux_locations
+using Oceananigans.TurbulenceClosures: FlavorOfISSD
+using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE, FlavorOfTD
 using Oceananigans.BuoyancyFormulations: materialize_buoyancy, validate_buoyancy
 using Oceananigans.DistributedComputations: Distributed
 using Oceananigans.Fields: CenterField, Field, TracerFields, ZeroField, tracernames
@@ -232,7 +234,8 @@ function materialize_hydrostatic_free_surface_model(grid, ::Val{tracer_names}, t
     # the grid and backend is known
     advection = map(scheme -> materialize_advection(scheme, grid), advection)
 
-    buoyancy = materialize_buoyancy(buoyancy, grid)
+    materialize_gradients = any(c -> c isa Union{FlavorOfCATKE, FlavorOfTD, FlavorOfISSD}, closure isa Tuple ? closure : (closure,))
+    buoyancy = materialize_buoyancy(buoyancy, grid; materialize_gradients)
 
     # Collect boundary conditions for all model prognostic fields and, if specified, some model
     # auxiliary fields. Boundary conditions are "regularized" based on the _name_ of the field:
