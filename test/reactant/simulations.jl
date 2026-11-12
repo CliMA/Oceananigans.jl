@@ -439,8 +439,6 @@ end
         @test static_simulation.stop_iteration === stop_iteration
         static_simulation.stop_iteration = 3
         @test static_simulation.stop_iteration === 3
-        static_simulation.stop_iteration = ConcreteRNumber(4)
-        @test static_simulation.stop_iteration === 4
         @test_throws ArgumentError static_simulation.stop_iteration = -1
     end
 

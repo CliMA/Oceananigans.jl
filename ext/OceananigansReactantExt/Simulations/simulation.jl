@@ -65,8 +65,7 @@ function Oceananigans.Simulations.Simulation(model::ReactantModel; Δt,
     diagnostics = nothing
     output_writers = nothing
     callbacks = OrderedDict{Symbol, Callback}()
-    checkpointing = automatic_differentiation.checkpointing
-    stop_iteration = isfinite(stop_iteration) ? step_count(model, stop_iteration, checkpointing) : nothing
+    stop_iteration = isfinite(stop_iteration) ? step_count(model, stop_iteration, automatic_differentiation) : nothing
 
     return Simulation(model,
                       Δt,
@@ -85,34 +84,26 @@ function Oceananigans.Simulations.Simulation(model::ReactantModel; Δt,
                       automatic_differentiation)
 end
 
-# The step count of a compiled `run!` as the `Simulation` holds it. Under binomial checkpointing
-# it is a device number, an input of the program: revolve differentiates a loop whose trip count
-# is known only at run time, since its checkpoint buffers are sized by the budget and its reverse
-# sweep replays one step at a time. Without checkpointing the reverse pass stores every step's
-# state in a buffer as long as the loop, and periodic checkpointing cuts the loop into segments
-# of a fixed length; neither compiles unless the trip count is a constant, so there it is an `Int`.
-step_count(model, steps, ::Binomial) = device_step_count(model, steps)
-step_count(model, steps::ConcreteRNumber, ::Binomial) = steps
-step_count(model, steps, checkpointing) = static_step_count(steps)
-step_count(model, steps::ConcreteRNumber, checkpointing) = static_step_count(Reactant.to_number(steps))
-
-check_step_count(steps) = steps ≥ 0 || throw(ArgumentError(
-    "stop_iteration = $steps: a compiled run! takes a nonnegative number of steps."))
-
-static_step_count(steps) = (check_step_count(steps); Int(steps))
+# The step count of a compiled `run!`. Binomial checkpointing is the only scheme that differentiates
+# a loop whose trip count is known only at run time, so only under it is the count a device number,
+# an input of the program. Otherwise it is an `Int`, a constant of the program.
+function step_count(model, steps, automatic_differentiation)
+    steps ≥ 0 || throw(ArgumentError("stop_iteration = $steps: a compiled run! takes a nonnegative number of steps."))
+    automatic_differentiation.checkpointing isa Binomial || return Int(steps)
+    return device_step_count(model, steps)
+end
 
 # The step count as a device number, replicated across the devices of a distributed model as its
 # clock is, so that it is an input of the compiled program rather than a constant of it.
 function device_step_count(model, steps)
-    check_step_count(steps)
     arch = architecture(model)
     sharding = arch isa Distributed ? Sharding.Replicated(arch.connectivity) : Sharding.NoSharding()
     return ConcreteRNumber(Int(steps); sharding)
 end
 
 function Base.setproperty!(sim::ReactantSimulation, name::Symbol, value)
-    if name === :stop_iteration
-        value = step_count(sim.model, value, sim.automatic_differentiation.checkpointing)
+    if name === :stop_iteration && !(value isa ConcreteRNumber)
+        value = step_count(sim.model, value, sim.automatic_differentiation)
     end
     return setfield!(sim, name, convert(fieldtype(typeof(sim), name), value))
 end
