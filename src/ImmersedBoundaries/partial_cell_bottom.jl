@@ -177,8 +177,11 @@ compute_partial_cell_reciprocal_spacings!(::Nothing, ::Nothing, ibg, s, face_off
     i, j = @index(Global, NTuple)
     k = @inbounds unsafe_trunc(Int, s[i, j, 1])
 
+    # Fully immersed columns have k = 0 or Nz + 1, and their face reciprocal is never read
+    kᶠ = clamp(k + face_offset, 1, size(ibg, 3) + 1)
+
     @inbounds Δr⁻¹ᶜᶜᶜ[i, j, 1] = 1 / Δrᶜᶜᶜ(i, j, k, ibg)
-    @inbounds Δr⁻¹ᶜᶜᶠ[i, j, 1] = 1 / Δrᶜᶜᶠ(i, j, k + face_offset, ibg)
+    @inbounds Δr⁻¹ᶜᶜᶠ[i, j, 1] = 1 / Δrᶜᶜᶠ(i, j, kᶠ, ibg)
 end
 
 @kernel function _compute_numerical_heights!(bottom, top, grid, ib::PartialCellVerticalBoundaries)
