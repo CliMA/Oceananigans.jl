@@ -68,7 +68,7 @@ function create_nccl_comm_from_mpi(mpi_subcomm)
 
         MPI.Bcast!(id_bytes, mpi_subcomm; root=0)
 
-        # Without this barrier, ranks on other nodes can wait in `MPI.Bcast!` forever as every rank 
+        # Without this barrier, ranks on other nodes can wait in `MPI.Bcast!` forever as every rank
         # now blocks in `ncclCommInitRank` and makes no further MPI call.
         MPI.Barrier(mpi_subcomm)
 
