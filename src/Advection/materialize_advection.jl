@@ -41,7 +41,20 @@ end
 
 # Only the outermost scheme launches `div_Uc`, so only it carries a limiter field.
 materialize_bounds(bounds, grid) = bounds
-materialize_bounds(bounds::BoundsPreservation, grid) = BoundsPreservation(bounds.minimum_value, bounds.maximum_value, bounds.maximum_courant_number, CenterField(grid))
+materialize_bounds(bounds::BoundsPreservation, grid) =
+    BoundsPreservation(bounds.minimum_value, bounds.maximum_value, bounds.maximum_cfl, bounds.minimum_weight,
+                       CenterField(grid), materialize_flux_limiter(bounds.flux_limiter, grid))
+
+materialize_flux_limiter(::Nothing, grid) = nothing
+
+function materialize_flux_limiter(limiter::FluxLimiter, grid)
+    outgoing_fraction = CenterField(grid)
+    incoming_fraction = CenterField(grid)
+    fill!(outgoing_fraction, 1)
+    fill!(incoming_fraction, 1)
+    fluxes = (x = XFaceField(grid), y = YFaceField(grid), z = ZFaceField(grid))
+    return FluxLimiter(outgoing_fraction, incoming_fraction, fluxes)
+end
 
 materialize_advection(weno::WENO{N, FT, WCT}, grid) where {N, FT, WCT} =
     WENO{N, FT, WCT}(materialize_bounds(weno.bounds, grid),
