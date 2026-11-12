@@ -25,9 +25,14 @@ What differs from the eager `Simulation`:
   steps and then one final step of exactly the remaining time, as the eager `run!` does with
   `align_time_step`. That final step is a [`RemainderStep`](@ref) stored in `sim.stop_time`,
   sized on the host here, since the model's kernels take a plain-number step. Not both.
-- `stop_iteration` is held as a device number, the step count of [`run!`](@ref), which a compiled
-  `run!` reads at each call: setting `sim.stop_iteration = n` between calls runs `n` steps with
-  the same compiled program, without recompiling. A remainder step stays as it was sized here.
+- `stop_iteration`, the step count of [`run!`](@ref), is a device number when `checkpointing` is
+  `Reactant.Binomial(budget)` and a plain `Int` otherwise. A device number is an input of a
+  compiled `run!`, read at each call: setting `sim.stop_iteration = n` between calls runs `n`
+  steps with the same compiled program, without recompiling. An `Int` is a constant of the
+  program, which reverse-mode differentiation needs unless the checkpointing is binomial: setting
+  it changes what the next `@compile run!(sim)` builds, not a program compiled before. The
+  options do not change the forward program, so a simulation that is never differentiated can
+  take `Binomial` only to vary its step count. A remainder step stays as it was sized here.
 - `callbacks` starts empty. The eager constructor installs the stop-criterion callbacks, which
   here are the loop bound, and a NaN checker, whose data-dependent error cannot exist inside a
   program. `add_callback!` works as usual, converting a `TimeInterval` to an `IterationInterval`;
@@ -60,7 +65,8 @@ function Oceananigans.Simulations.Simulation(model::ReactantModel; Δt,
     diagnostics = nothing
     output_writers = nothing
     callbacks = OrderedDict{Symbol, Callback}()
-    stop_iteration = isfinite(stop_iteration) ? device_step_count(model, stop_iteration) : nothing
+    checkpointing = automatic_differentiation.checkpointing
+    stop_iteration = isfinite(stop_iteration) ? step_count(model, stop_iteration, checkpointing) : nothing
 
     return Simulation(model,
                       Δt,
@@ -79,18 +85,34 @@ function Oceananigans.Simulations.Simulation(model::ReactantModel; Δt,
                       automatic_differentiation)
 end
 
+# The step count of a compiled `run!` as the `Simulation` holds it. Under binomial checkpointing
+# it is a device number, an input of the program: revolve differentiates a loop whose trip count
+# is known only at run time, since its checkpoint buffers are sized by the budget and its reverse
+# sweep replays one step at a time. Without checkpointing the reverse pass stores every step's
+# state in a buffer as long as the loop, and periodic checkpointing cuts the loop into segments
+# of a fixed length; neither compiles unless the trip count is a constant, so there it is an `Int`.
+step_count(model, steps, ::Binomial) = device_step_count(model, steps)
+step_count(model, steps::ConcreteRNumber, ::Binomial) = steps
+step_count(model, steps, checkpointing) = static_step_count(steps)
+step_count(model, steps::ConcreteRNumber, checkpointing) = static_step_count(Reactant.to_number(steps))
+
+check_step_count(steps) = steps ≥ 0 || throw(ArgumentError(
+    "stop_iteration = $steps: a compiled run! takes a nonnegative number of steps."))
+
+static_step_count(steps) = (check_step_count(steps); Int(steps))
+
 # The step count as a device number, replicated across the devices of a distributed model as its
 # clock is, so that it is an input of the compiled program rather than a constant of it.
 function device_step_count(model, steps)
-    steps ≥ 0 || throw(ArgumentError("stop_iteration = $steps: a compiled run! takes a nonnegative number of steps."))
+    check_step_count(steps)
     arch = architecture(model)
     sharding = arch isa Distributed ? Sharding.Replicated(arch.connectivity) : Sharding.NoSharding()
     return ConcreteRNumber(Int(steps); sharding)
 end
 
 function Base.setproperty!(sim::ReactantSimulation, name::Symbol, value)
-    if name === :stop_iteration && !(value isa ConcreteRNumber)
-        value = device_step_count(sim.model, value)
+    if name === :stop_iteration
+        value = step_count(sim.model, value, sim.automatic_differentiation.checkpointing)
     end
     return setfield!(sim, name, convert(fieldtype(typeof(sim), name), value))
 end

@@ -186,7 +186,10 @@ end
             step == 1 && euler ? time_step!(model, Δt; euler) : time_step!(model, Δt)
         end
 
-        r_simulation = Simulation(r_model; Δt, stop_iteration=first(chunks), verbose=false)
+        # Binomial checkpointing makes stop_iteration a device number, an input of the program
+        automatic_differentiation = (; checkpointing=Reactant.Binomial(2))
+        r_simulation = Simulation(r_model; Δt, stop_iteration=first(chunks), verbose=false, automatic_differentiation)
+        @test r_simulation.stop_iteration isa ConcreteRNumber{Int}
         compiled_run! = @compile run!(r_simulation)
         for n in chunks
             r_simulation.stop_iteration = n
@@ -421,6 +424,25 @@ end
         AutomaticDifferentiation(checkpointing=Reactant.Binomial(2))
     @test_throws ArgumentError Simulation(r_model; Δt, stop_iteration, verbose=false, automatic_differentiation=(; checkpointing=2))
     @test_throws ArgumentError Simulation(r_model; Δt, stop_iteration, verbose=false, automatic_differentiation=(; checkpointing=true))
+
+    # Binomial checkpointing holds stop_iteration as a device number; the others as an Int, which
+    # setproperty! keeps, and a negative count is refused either way.
+    binomial_simulation = Simulation(r_model; Δt, stop_iteration, verbose=false, automatic_differentiation=(; checkpointing=Reactant.Binomial(2)))
+    @test binomial_simulation.stop_iteration isa ConcreteRNumber{Int}
+    binomial_simulation.stop_iteration = 3
+    @test binomial_simulation.stop_iteration isa ConcreteRNumber{Int}
+    @test Reactant.to_number(binomial_simulation.stop_iteration) == 3
+    @test_throws ArgumentError binomial_simulation.stop_iteration = -1
+
+    for checkpointing in (false, Reactant.Periodic(2))
+        static_simulation = Simulation(r_model; Δt, stop_iteration, verbose=false, automatic_differentiation=(; checkpointing))
+        @test static_simulation.stop_iteration === stop_iteration
+        static_simulation.stop_iteration = 3
+        @test static_simulation.stop_iteration === 3
+        static_simulation.stop_iteration = ConcreteRNumber(4)
+        @test static_simulation.stop_iteration === 4
+        @test_throws ArgumentError static_simulation.stop_iteration = -1
+    end
 
     # The forward program does not depend on the options.
     simulation = Simulation(model; Δt, stop_iteration, verbose=false)
