@@ -630,5 +630,29 @@ for arch in archs
             @test indices(c * d * a * b) == (2:3, 3:3, 2:2)
             @test indices(d * a * b * c) == (3:3, 3:3, 2:2)
         end
+
+        @testset "Rebuilding an operation gives the same type [$A]" begin
+            grid = RectilinearGrid(arch, size=(3, 3, 3), extent=(1, 1, 1))
+            u, v, w = VelocityFields(grid)
+            c = CenterField(grid)
+
+            # Operations that are compiled for their type are compiled only once
+            builders = (() -> sin(c), () -> c * c, () -> 2 * c, () -> c * 2, () -> c + c + c,
+                        () -> ∂x(c), () -> ∂x(u), () -> u * v, () -> Integral(c), () -> Average(c * c; dims=3))
+
+            for build in builders
+                @test typeof(build()) == typeof(build())
+            end
+        end
+
+        @testset "Deeply nested operations at a single location [$A]" begin
+            grid = RectilinearGrid(arch, size=(3, 3, 3), extent=(1, 1, 1))
+            c = CenterField(grid)
+            set!(c, 2)
+
+            ν = 3
+            ε = Field(ν * ((c^2 + c * c + c) * (c + c) + c / c) - sin(c - c))
+            @test all(Array(interior(ε)) .== 123)
+        end
     end
 end
