@@ -1,4 +1,4 @@
-using Oceananigans.BoundaryConditions: GWNFBC, NetInflow, get_target_transport, has_target_transport
+using Oceananigans.BoundaryConditions: GWNFBC, NetInflow, get_target_transport, has_target_transport, net_inflow_value
 
 #####
 ##### Targeted barotropic transports through GravityWaveRadiation boundaries
@@ -38,7 +38,7 @@ side_transport(bc::GWNFBC, grid) =
     has_target_transport(bc.classification.scheme) ? side_target(get_target_transport(bc.classification.scheme, grid), grid) : nothing
 
 side_target(target, grid) = convert(eltype(grid), target)
-side_target(target::NetInflow, grid) = NetInflow(convert(eltype(grid), target.transport))
+side_target(target::NetInflow, grid) = target
 
 #####
 ##### Pinning a face: one pre-configured launch per targeted side and substep
@@ -115,7 +115,8 @@ pooled(target::NetInflow, sign) = sign
 pooled(target, sign) = 0
 net_inflow_weights(targets) = map(pooled, (targets.west, targets.east, targets.south, targets.north), (1, -1, 1, -1))
 
-net_inflow_target(targets) = first(target.transport for target in values(targets) if target isa NetInflow)
+net_inflow_target(targets, grid) =
+    convert(eltype(grid), net_inflow_value(first(target.transport for target in values(targets) if target isa NetInflow)))
 
 # As `_pin_barotropic_face!`, over every pooled face at once: with sₙ = ±1 the inflow sign of side n,
 # Q = Σₙ sₙ ∮ U dl and L = Σₙ ∮ dl over the wet columns, every wet column of side n is shifted by -sₙ (Q - target) / L.
@@ -171,7 +172,7 @@ function configure_net_inflow_pin(arch, grid, U, V, targets)
     all(iszero, weights) && return nothing
     workgroup = StaticSize((FACE_WORKGROUP_SIZE,))
     kernel! = _pin_net_barotropic_inflow!(device(arch), workgroup, workgroup)
-    args = convert_to_device(arch, (U, V, grid, net_inflow_target(targets), weights))
+    args = convert_to_device(arch, (U, V, grid, net_inflow_target(targets, grid), weights))
     return (; kernel!, args)
 end
 

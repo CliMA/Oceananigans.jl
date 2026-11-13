@@ -813,7 +813,14 @@ function test_gravity_wave_net_inflow()
     rising = isapprox(net_inflow(filling), Q / 2; rtol = 1e-12) &&
              isapprox(mean_η(filling) - η_before, Q / 2 * Δt / (Lx * Ly); rtol = 1e-8)
 
-    return shared && rising
+    # A target held in a `Ref` is read at every step: changing it changes the inflow
+    target = Ref(0.0)
+    changing = run_model(NetInflow(target))
+    target[] = Q / 4
+    time_step!(changing, Δt)
+    following = isapprox(net_inflow(changing), Q / 4; rtol = 1e-12)
+
+    return shared && rising && following
 end
 
 @testset "Open Boundary Conditions for HydrostaticFreeSurfaceModel" begin
