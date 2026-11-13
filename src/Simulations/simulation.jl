@@ -30,6 +30,10 @@ steps, and only take effect under differentiation: the forward program is the sa
 - `checkpointing` (required): `false` stores every step's state for the reverse sweep;
   `Reactant.Periodic(n)` stores a checkpoint every `n` steps and recomputes the steps in between;
   `Reactant.Binomial(budget)` keeps at most `budget` checkpoints, placed by the revolve algorithm.
+  It also decides how the `Simulation` holds `stop_iteration`: binomial checkpointing
+  differentiates a loop whose step count is known only at run time, so with it `stop_iteration`
+  is a device number that a compiled `run!` reads at each call; with `false` or `Periodic` it is
+  an `Int`, a constant of the compiled program.
 
 Note that "checkpointing" here is the recomputation strategy of reverse-mode differentiation.
 Saving the state of a simulation to disk so it can be restarted is done by the [`Checkpointer`](@ref).
