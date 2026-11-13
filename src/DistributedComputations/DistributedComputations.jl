@@ -18,7 +18,7 @@ using Statistics: Statistics
 
 using Oceananigans: Oceananigans
 using Oceananigans.Architectures: Architectures, AbstractArchitecture, AbstractSerialArchitecture, CPU,
-                                  GPU, ndevices
+                                  GPU, ReactantState, ndevices
 using Oceananigans.BoundaryConditions: BoundaryConditions, Bottom, BottomAndTop, East, North, South,
                                        SouthAndNorth, Top, West, WestAndEast
 using Oceananigans.Fields: Fields, AbstractField, CenterField, data, field

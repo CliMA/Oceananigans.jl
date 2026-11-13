@@ -19,22 +19,21 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedVerticalB
 using Oceananigans.OrthogonalSphericalShellGrids: TripolarGrid
 
 using ..OceananigansReactantExt: OceananigansReactantExt, deconcretize
-
-const ShardedDistributed = Oceananigans.Distributed{<:ReactantState}
+using ..Architectures: ShardedDistributed
 
 const ReactantGrid{FT, TX, TY, TZ} = Union{
     AbstractGrid{FT, TX, TY, TZ, <:ReactantState},
-    AbstractGrid{FT, TX, TY, TZ, <:ShardedDistributed}
+    AbstractGrid{FT, TX, TY, TZ, <:Distributed{<:ReactantState}}
 }
 
 const ReactantImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, S} = Union{
     ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, S, <:ReactantState},
-    ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, S, <:ShardedDistributed},
+    ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, S, <:Distributed{<:ReactantState}},
 }
 
 const ReactantUnderlyingGrid{FT, TX, TY, TZ, CZ} = Union{
     AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, <:ReactantState},
-    AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, <:ShardedDistributed},
+    AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, <:Distributed{<:ReactantState}},
 }
 
 const ShardedGrid{FT, TX, TY, TZ} = AbstractGrid{FT, TX, TY, TZ, <:ShardedDistributed}

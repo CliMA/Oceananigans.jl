@@ -396,6 +396,9 @@ end
 
 const NoConnectivity = NeighboringRanks{Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing}
 
+# Communicates through MPI rather than sharding
+const MPIReactantDistributed = Distributed{<:ReactantState, <:Any, <:Any, <:Any, <:Any, <:Any, <:NeighboringRanks}
+
 """
 $(TYPEDSIGNATURES)
 

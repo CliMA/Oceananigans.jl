@@ -6,7 +6,8 @@ using Reactant: AnyConcreteRArray
 
 using Oceananigans
 using Oceananigans.Architectures: ReactantState, ReshapedHostArray, child_architecture, on_architecture
-using Oceananigans.DistributedComputations: Distributed
+using Oceananigans.DistributedComputations: DistributedComputations, Distributed
+using Oceananigans.Utils: Utils
 using Oceananigans.Grids: LatitudeLongitudeGrid, topology
 
 const ReactantKernelAbstractionsExt = Base.get_extension(
@@ -16,6 +17,8 @@ const ReactantKernelAbstractionsExt = Base.get_extension(
 const ReactantBackend = ReactantKernelAbstractionsExt.ReactantBackend
 const AnyConcreteReactantArray = Union{Reactant.AnyConcretePJRTArray,
                                        Reactant.AnyConcreteIFRTArray}
+
+const ShardedDistributed = Distributed{<:ReactantState, <:Any, <:Any, <:Any, <:Any, <:Any, <:Sharding.Mesh}
 
 Oceananigans.Architectures.device(::ReactantState) = ReactantBackend()
 
@@ -49,7 +52,9 @@ Oceananigans.Architectures.on_architecture(::ReactantState, a::Union{Array{Union
 # Reshaped host data is collected on the host, so it arrives as a device array of its own shape rather than as a
 # `Base.ReshapedArray` around one, which kernels cannot take (EnzymeAD/Reactant.jl#3204)
 Oceananigans.Architectures.on_architecture(arch::ReactantState, a::ReshapedHostArray{<:Union{Missing, Real}}) = on_architecture(arch, collect(a))
-Oceananigans.Architectures.cpu_architecture(arch::Distributed{<:ReactantState}) = CPU()
+Oceananigans.Architectures.cpu_architecture(arch::ShardedDistributed) = CPU()
+
+Utils.sync_device!(::ReactantState) = nothing
 
 Oceananigans.Architectures.unified_array(::ReactantState, a) = a
 
@@ -57,7 +62,18 @@ Oceananigans.Architectures.unified_array(::ReactantState, a) = a
 
 # Distributed computations
 function Oceananigans.Distributed(arch::ReactantState; devices=nothing,
-    partition=nothing, kw...)
+    partition=nothing, communicator=nothing, synchronized_communication=true, kw...)
+
+    # MPIReactantDistributed case
+    if !isnothing(communicator)
+        synchronized_communication || throw(ArgumentError("Asynchronous communication is not supported for Distributed(ReactantState(); communicator)."))
+        mpi_arch = DistributedComputations.distributed_architecture(arch; devices, partition, communicator, synchronized_communication, kw...)
+        DistributedComputations.validate_distributed_configuration(mpi_arch)
+        return mpi_arch
+    end
+
+    # ShardedDistributed case
+
     if devices === nothing
         devices = Reactant.devices()
 
@@ -129,7 +145,7 @@ function Oceananigans.Architectures.on_architecture(arch::ReactantState, grid::L
         grid.Lx, grid.Ly, grid.Lz, props..., grid.radius, grid.south_pole, grid.north_pole)
 end
 
-function Oceananigans.Architectures.on_architecture(new_arch::Distributed{<:ReactantState}, old_grid::LatitudeLongitudeGrid)
+function Oceananigans.Architectures.on_architecture(new_arch::ShardedDistributed, old_grid::LatitudeLongitudeGrid)
     child_arch = child_architecture(new_arch)
     old_properties = (old_grid.Δλᶠᵃᵃ, old_grid.Δλᶜᵃᵃ, old_grid.λᶠᵃᵃ,  old_grid.λᶜᵃᵃ,
                       old_grid.Δφᵃᶠᵃ, old_grid.Δφᵃᶜᵃ, old_grid.φᵃᶠᵃ,  old_grid.φᵃᶜᵃ,

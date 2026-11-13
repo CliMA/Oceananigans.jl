@@ -84,7 +84,7 @@ end
 function device_step_count(model, steps)
     steps ≥ 0 || throw(ArgumentError("stop_iteration = $steps: a compiled run! takes a nonnegative number of steps."))
     arch = architecture(model)
-    sharding = arch isa Distributed ? Sharding.Replicated(arch.connectivity) : Sharding.NoSharding()
+    sharding = arch isa ShardedDistributed ? Sharding.Replicated(arch.connectivity) : Sharding.NoSharding()
     return ConcreteRNumber(Int(steps); sharding)
 end
 

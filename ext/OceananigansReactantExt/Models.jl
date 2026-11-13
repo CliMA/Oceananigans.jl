@@ -10,7 +10,7 @@ using Oceananigans.TimeSteppers: RungeKutta3TimeStepper, SplitRungeKuttaTimeStep
 
 const ReactantHFSM{TS, E} = Union{
     HydrostaticFreeSurfaceModel{TS, E, <:ReactantState},
-    HydrostaticFreeSurfaceModel{TS, E, <:ShardedDistributed},
+    HydrostaticFreeSurfaceModel{TS, E, <:Distributed{<:ReactantState}},
 }
 
 function Oceananigans.initialize!(model::ReactantHFSM)

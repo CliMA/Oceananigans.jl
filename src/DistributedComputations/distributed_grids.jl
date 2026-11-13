@@ -30,6 +30,7 @@ end
 const DistributedGrid{FT, TX, TY, TZ} = Union{
     AbstractGrid{FT, TX, TY, TZ, <:Distributed{<:CPU}},
     AbstractGrid{FT, TX, TY, TZ, <:Distributed{<:GPU}},
+    AbstractGrid{FT, TX, TY, TZ, <:MPIReactantDistributed},
 }
 
 const DistributedRectilinearGrid{FT, TX, TY, TZ, CZ, DXF, DXC, XF, XC, DYF, DYC, YF, YC} =

@@ -1,6 +1,6 @@
 module TimeSteppers
 
-using ..Architectures: ReactantState
+using ..Architectures: ReactantState, ShardedDistributed
 using ..Grids: ShardedGrid, ReactantGrid
 
 using Reactant
@@ -33,7 +33,7 @@ function Oceananigans.TimeSteppers.Clock(grid::ReactantGrid)
     FT = eltype(grid)
     arch = architecture(grid)
 
-    sharding = if arch isa Distributed
+    sharding = if arch isa ShardedDistributed
         Sharding.Replicated(arch.connectivity)
     else
         Sharding.NoSharding()
