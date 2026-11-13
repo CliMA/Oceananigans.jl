@@ -14,7 +14,8 @@ export
     XDirectionBulkDragFunction, YDirectionBulkDragFunction, ZDirectionBulkDragFunction,
     LinearFormulation, QuadraticFormulation,
     BoundaryAdjacentMean, boundary_total_area,
-    initialize_boundary_transport, enforce_net_zero_transport!
+    initialize_boundary_transport, enforce_net_zero_transport!,
+    top_load_potential
 
 using Adapt: Adapt, adapt
 using DocStringExtensions: TYPEDSIGNATURES
@@ -262,6 +263,7 @@ include("buoyancy_operation.jl")
 include("boundary_condition_operation.jl")
 include("forcing_operation.jl")
 include("set_model.jl")
+include("top_load_potential.jl")
 
 # Implementation of the diagnostic for computing the dissipation rate
 include("VarianceDissipationComputations/VarianceDissipationComputations.jl")

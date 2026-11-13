@@ -2,8 +2,8 @@ using Oceananigans.Architectures: architecture
 using Oceananigans.DistributedComputations: DistributedGrid
 using Oceananigans.Grids: halo_size, isrectilinear
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Operators: Azᶜᶜᶜ, Azᶜᶜᶠ, Δx_qᶜᶠᶜ, Δxᶜᶠᵃ, Δx⁻¹ᶠᶜᶠ, Δy_qᶠᶜᶜ, Δyᶠᶜᵃ, Δy⁻¹ᶜᶠᶠ, δxᶜᵃᵃ, δxᶜᶜᶜ, δxᶠᶜᶠ,
-                              δyᵃᶜᵃ, δyᶜᶜᶜ, δyᶜᶠᶠ
+using Oceananigans.Operators: Azᶜᶜᶜ, Azᶜᶜᶠ, Δx_qᶜᶠᶜ, Δxᶜᶠᵃ, Δx⁻¹ᶠᶜᶠ, Δy_qᶠᶜᶜ, Δyᶠᶜᵃ, Δy⁻¹ᶜᶠᶠ, δxᶜᵃᵃ, δxᶜᶜᵃ, δxᶠᶜᶠ,
+                              δyᵃᶜᵃ, δyᶜᶜᵃ, δyᶜᶠᶠ
 using Oceananigans.Solvers: Solvers, ConjugateGradientSolver, solve!
 
 """
@@ -105,8 +105,8 @@ end
     i, j = @index(Global, NTuple)
     kᴺ   = grid.Nz
     Az   = Azᶜᶜᶠ(i, j, kᴺ, grid)
-    δx_U = δxᶜᶜᶜ(i, j, kᴺ, grid, Δy_qᶠᶜᶜ, barotropic_U, nothing, U.u)
-    δy_V = δyᶜᶜᶜ(i, j, kᴺ, grid, Δx_qᶜᶠᶜ, barotropic_V, nothing, U.v)
+    δx_U = δxᶜᶜᵃ(i, j, kᴺ, grid, Δy_qᶠᶜᶜ, barotropic_U, nothing, U.u)
+    δy_V = δyᶜᶜᵃ(i, j, kᴺ, grid, Δx_qᶜᶠᶜ, barotropic_V, nothing, U.v)
     fη   = Fη(i, j, kᴺ+1, grid, clock, fields)
     @inbounds rhs[i, j, kᴺ+1] = (δx_U + δy_V - Az * fη - Az * η[i, j, kᴺ+1] / Δt) / (g * Δt)
 end

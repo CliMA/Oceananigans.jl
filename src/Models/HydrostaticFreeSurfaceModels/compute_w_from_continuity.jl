@@ -1,5 +1,5 @@
 using Oceananigans.Grids: halo_size, surface_kernel_parameters, topology
-using Oceananigans.ImmersedBoundaries: immersed_cell
+using Oceananigans.ImmersedBoundaries: ImmersedTopIBG, immersed_cell
 using Oceananigans.Operators: Az⁻¹ᶜᶜᶜ, flux_div_xyᶜᶜᶜ, Δrᶜᶜᶜ, ∂t_σ
 
 """
@@ -70,6 +70,11 @@ compute_w_from_continuity!(velocities, grid; parameters = surface_kernel_paramet
 #                  H
 #
 # If the grid is static, then ∂t_σ = 0 and the moving grid contribution is equal to zero
+@inline reset_immersed_w(wᵏ, immersed, grid) = wᵏ
+
+# Restart the integral in immersed cells, so `w` vanishes inside an immersed top
+@inline reset_immersed_w(wᵏ, immersed, grid::ImmersedTopIBG) = ifelse(immersed, zero(grid), wᵏ)
+
 @kernel function _compute_w_from_continuity!(U, grid)
     i, j = @index(Global, NTuple)
 
@@ -87,6 +92,8 @@ compute_w_from_continuity!(velocities, grid; parameters = surface_kernel_paramet
         w̃ = ifelse(immersed, zero(grid), w̃)
 
         wᵏ -= (δ + w̃)
+
+        wᵏ = reset_immersed_w(wᵏ, immersed, grid)
         @inbounds w[i, j, k] = wᵏ
     end
 end
