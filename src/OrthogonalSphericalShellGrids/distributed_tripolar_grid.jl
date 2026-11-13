@@ -334,7 +334,8 @@ with_north_bc(local_bcs, north_bc) = FieldBoundaryConditions(; west=local_bcs.we
                                                                south=local_bcs.south,
                                                                north=north_bc,
                                                                top=local_bcs.top,
-                                                               bottom=local_bcs.bottom)
+                                                               bottom=local_bcs.bottom,
+                                                               immersed=local_bcs.immersed)
 
 DistributedComputations.inject_halo_communication_boundary_conditions(::Nothing, loc, grid::MPITripolarGridOfSomeKind) = nothing
 DistributedComputations.inject_halo_communication_boundary_conditions(::Missing, loc, grid::MPITripolarGridOfSomeKind) = missing

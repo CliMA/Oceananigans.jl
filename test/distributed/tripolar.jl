@@ -185,6 +185,39 @@ tripolar_metric_halo_script(fold_topology, pivot, Rx) = """
     run_mpi_script(tripolar_metric_halo_script(fold_topology, pivot, 4), 8)
 end
 
+# The fold rank replaces its north boundary condition with the zipper; it must keep every other boundary condition,
+# the immersed one included (an immersed bottom drag, say), as the other ranks do.
+tripolar_immersed_boundary_condition_script(fold_topology, pivot, Rx, Ry) = """
+    using MPI
+    MPI.Init(threadlevel=:multiple)
+    using Test
+
+    include($(repr(distributed_tests_utils)))
+
+    using Oceananigans.ImmersedBoundaries: ImmersedBoundaryCondition
+
+    arch = Distributed(CPU(), partition = Partition($Rx, $Ry))
+    underlying_grid = TripolarGrid(arch; size = (40, 40, 4), z = (-1000, 0), halo = (5, 5, 5),
+                                   fold_topology = $fold_topology, pivot = $pivot)
+    grid = analytical_immersed_tripolar_grid(underlying_grid)
+
+    @inline immersed_drag(i, j, k, grid, clock, fields, μ) = @inbounds - μ * fields.u[i, j, k]
+    immersed = ImmersedBoundaryCondition(bottom = FluxBoundaryCondition(immersed_drag; discrete_form = true, parameters = 0.003))
+    boundary_conditions = (u = FieldBoundaryConditions(; immersed), v = FieldBoundaryConditions(; immersed))
+
+    model = HydrostaticFreeSurfaceModel(grid; boundary_conditions, free_surface = ExplicitFreeSurface(),
+                                        momentum_advection = nothing, tracer_advection = nothing)
+
+    @test model.velocities.u.boundary_conditions.immersed isa ImmersedBoundaryCondition
+    @test model.velocities.v.boundary_conditions.immersed isa ImmersedBoundaryCondition
+    @test model.velocities.u.boundary_conditions.immersed.bottom.condition.func === immersed_drag
+"""
+
+@testset "Test distributed TripolarGrid immersed boundary conditions $fold_topology..." for (fold_topology, pivot) in fold_topologies
+    run_mpi_script(tripolar_immersed_boundary_condition_script(fold_topology, pivot, 1, 4), 4)
+    run_mpi_script(tripolar_immersed_boundary_condition_script(fold_topology, pivot, 2, 2), 4)
+end
+
 # Every rank must rebuild the immersed boundary when moving the grid to the CPU (as `set!(field, func)` does
 # on GPUs), otherwise the halo exchange of the bottom height never completes on the ranks that do.
 tripolar_immersed_on_architecture_script(fold_topology, pivot) = """
