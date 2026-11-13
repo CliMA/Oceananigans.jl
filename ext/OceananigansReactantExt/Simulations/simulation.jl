@@ -34,11 +34,13 @@ What differs from the eager `Simulation`:
   see [`time_step!`](@ref) for what a callback may do.
 - `output_writers` and `diagnostics` are `nothing`: IO cannot happen inside a program.
 - `automatic_differentiation` holds the options of the traced step loop that matter when `run!`
-  is differentiated in reverse mode: `track_numbers`, `mincut`, `checkpointing` (`false`,
-  `Reactant.Periodic(n)`, `Reactant.Binomial(budget)` or `Reactant.Online(budget)`), and
-  `stopping_criterion` (a function `f(sim) -> Bool` for data-dependent early exit, or `nothing`),
+  is differentiated in reverse mode: `track_numbers`, `mincut`, and `checkpointing` (`false`,
+  `Reactant.Periodic(n)`, `Reactant.Binomial(budget)` or `Reactant.Online(budget)`),
   as a `NamedTuple` of those fields or an [`AutomaticDifferentiation`](@ref).
   See [`time_step_for!`](@ref).
+To add a data-dependent stopping criterion, install a `Callback(StoppingCriterion(predicate))`
+  on the simulation. The Reactant extension lifts `StoppingCriterion` callbacks into the
+  `@trace while` condition. See [`StoppingCriterion`](@ref).
 """
 function Oceananigans.Simulations.Simulation(model::ReactantModel; Δt,
                                              verbose = true,

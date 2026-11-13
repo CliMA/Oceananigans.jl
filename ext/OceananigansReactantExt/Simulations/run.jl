@@ -229,24 +229,38 @@ function time_step_for!(sim::ReactantSimulation, Nsteps, ::Val{true})
 end
 
 """
+    stopping_criterion_predicate(sim::ReactantSimulation)
+
+Extract the predicate from a `StoppingCriterion` callback installed on `sim`, or return
+`nothing` if none exists. When multiple `StoppingCriterion` callbacks are present, they
+are combined with `&` (all must be satisfied to keep running).
+"""
+function stopping_criterion_predicate(sim::ReactantSimulation)
+    predicates = [cb.func.predicate for cb in values(sim.callbacks) if cb.func isa StoppingCriterion]
+    isempty(predicates) && return nothing
+    length(predicates) == 1 && return only(predicates)
+    return sim -> reduce(&, (p(sim) for p in predicates))
+end
+
+"""
     time_step_while!(sim::ReactantSimulation, Nsteps)
 
 Up to `Nsteps` calls to `time_step!(sim)` as one traced `while` loop, with an optional
-early-exit `stopping_criterion`. Uses `@trace while` so the loop compiles to a single
+early-exit stopping criterion. Uses `@trace while` so the loop compiles to a single
 `stablehlo.while` op, which is required for Online_r2 checkpointing (adaptive checkpoint
 placement for loops with unknown trip count).
 
-When `sim.automatic_differentiation.stopping_criterion` is a function, the loop condition is
-`(step < Nsteps) & !stopping_criterion(sim)`, enabling data-dependent early exit (convergence,
-error threshold, etc.) while `stop_iteration` remains the safety bound. When it is `nothing`,
-the loop runs for exactly `Nsteps` steps.
+When a `Callback(StoppingCriterion(predicate))` is installed on the simulation, the loop
+condition becomes `(step < Nsteps) & !predicate(sim)`, enabling data-dependent early exit
+(convergence, error threshold, etc.) while `stop_iteration` remains the safety bound.
+Without a `StoppingCriterion` callback, the loop runs for exactly `Nsteps` steps.
 
 The loop is traced with the `track_numbers`, `mincut` and `checkpointing` options of
 `sim.automatic_differentiation`. See [`AutomaticDifferentiation`](@ref).
 """
 time_step_while!(sim::ReactantSimulation, Nsteps) =
     time_step_while!(sim, Nsteps, Val(sim.automatic_differentiation.track_numbers),
-                     sim.automatic_differentiation.stopping_criterion)
+                     stopping_criterion_predicate(sim))
 
 # Ensure Nsteps is a traced value so that the `@trace while` condition compiles to a
 # traced comparison (`TracedRNumber{Bool}`) rather than evaluating eagerly to a plain `Bool`.
@@ -357,11 +371,12 @@ the program, read at each call: set `sim.stop_iteration = n` to run `n` steps wi
 compiled `run!`. It counts steps from wherever the model is: each call steps `stop_iteration`
 more times.
 """
-# Use time_step_while! when Online checkpointing or a stopping_criterion is set;
-# otherwise use the original time_step_for! with @trace for.
-uses_while(ad) = ad.checkpointing isa Online || !isnothing(ad.stopping_criterion)
+function has_stopping_criterion(sim)
+    any(cb.func isa StoppingCriterion for cb in values(sim.callbacks))
+end
+uses_while(sim) = sim.automatic_differentiation.checkpointing isa Online || has_stopping_criterion(sim)
 time_step_loop!(sim, Nsteps) =
-    uses_while(sim.automatic_differentiation) ? time_step_while!(sim, Nsteps) : time_step_for!(sim, Nsteps)
+    uses_while(sim) ? time_step_while!(sim, Nsteps) : time_step_for!(sim, Nsteps)
 
 function Oceananigans.Simulations.run!(sim::ReactantSimulation)
     check_stop_iteration(sim)

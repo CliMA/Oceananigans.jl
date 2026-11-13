@@ -137,6 +137,40 @@ end
 
 Oceananigans.restore_prognostic_state!(::TimeDerivativeCallback, ::Nothing) = nothing
 
+"""
+    StoppingCriterion(predicate)
+
+Wrap a function `predicate(sim) -> Bool` so that it acts as a stopping criterion
+when installed as a callback.
+
+In the eager simulation loop, the callback sets `sim.running = false` when
+`predicate(sim)` returns `true`.
+
+In a traced (Reactant) simulation, the Reactant extension lifts the predicate
+into the `@trace while` condition, compiling it as part of the `stablehlo.while`
+loop bound. This enables data-dependent early exit (convergence, error threshold,
+etc.) inside a compiled program.
+
+Example
+=======
+
+```julia
+converged(sim) = maximum(abs, interior(sim.model.tracers.T)) < 1e-10
+
+simulation.callbacks[:converged] = Callback(StoppingCriterion(converged))
+```
+"""
+struct StoppingCriterion{F}
+    predicate :: F
+end
+
+function (sc::StoppingCriterion)(sim)
+    if sc.predicate(sim)
+        sim.running = false
+    end
+    return nothing
+end
+
 struct GenericName end
 
 generic_callback_name(name, existing_names) = name
