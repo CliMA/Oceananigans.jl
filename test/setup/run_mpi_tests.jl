@@ -10,6 +10,7 @@ const mpi_groups = Dict(
     "distributed_vertical_coordinate_1"     => ["vertical_coordinate/conservation_explicit"],
     "distributed_vertical_coordinate_2"     => ["vertical_coordinate/conservation_implicit", "vertical_coordinate/conservation_tripolar"],
     "nccl_extension"                        => ["mpi/nccl"],
+    "distributed_reactant"                  => ["mpi/reactant_correctness"],
 )
 
 function mpi_tests(group)
