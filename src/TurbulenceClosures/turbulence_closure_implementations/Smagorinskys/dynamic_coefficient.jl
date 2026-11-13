@@ -1,6 +1,8 @@
 using Oceananigans.Architectures: architecture
 using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.Fields: CenterField, Field, compute!, interpolate, xnode, ynode, znode
+using Oceananigans.Fields: CenterField, Field, XFaceField, YFaceField, ZFaceField, compute!, interpolate, xnode, ynode, znode
+using Oceananigans.Grids: Flat, topology
+using Oceananigans.Utils: KernelParameters
 using Statistics: mean
 
 using Oceananigans: prognostic_state, restore_prognostic_state!
@@ -274,38 +276,63 @@ end
     end
 end
 
-@kernel function _compute_Σ̄!(Σ̄, grid, u, v, w)
+@kernel function _compute_Σ̄!(Σ̄, grid, ū, v̄, w̄)
     i, j, k = @index(Global, NTuple)
 
     @inbounds begin
-        Σ̄sq = Σ̄ᵢⱼΣ̄ᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w)
+        Σ̄sq = Σ̄ᵢⱼΣ̄ᵢⱼᶜᶜᶜ(i, j, k, grid, ū, v̄, w̄)
         Σ̄[i, j, k] = sqrt(2Σ̄sq)
     end
 end
 
-@kernel function _compute_LM_MM!(LM, MM, Σ, Σ̄, grid, u, v, w)
+@kernel function _compute_test_filtered!(f̄, grid, filter, f)
     i, j, k = @index(Global, NTuple)
-    LM_ijk, MM_ijk = LM_and_MM(i, j, k, grid, Σ, Σ̄, u, v, w)
+    @inbounds f̄[i, j, k] = filter(i, j, k, grid, f)
+end
+
+# The dynamic procedure differentiates and interpolates the test-filtered velocities, which reads
+# them one point beyond the interior. They are computed there too, rather than filled as halos,
+# so that they equal the test filter evaluated at those points.
+one_point_beyond_interior(N, topo) = 0:N+1
+one_point_beyond_interior(N, ::Type{Flat}) = 1:1
+
+function compute_test_filtered!(f̄, filter, f)
+    grid = f̄.grid
+    parameters = KernelParameters(map(one_point_beyond_interior, size(f̄), topology(grid))...)
+    launch!(architecture(grid), grid, parameters, _compute_test_filtered!, f̄, grid, filter, f)
+    return nothing
+end
+
+function compute_test_filtered_velocities!(closure_fields, u, v, w)
+    compute_test_filtered!(closure_fields.ū, filterᶠᶜᶜ, u)
+    compute_test_filtered!(closure_fields.v̄, filterᶜᶠᶜ, v)
+    compute_test_filtered!(closure_fields.w̄, filterᶜᶜᶠ, w)
+    return nothing
+end
+
+@kernel function _compute_LM_MM!(LM, MM, Σ, Σ̄, grid, u, v, w, ū, v̄, w̄)
+    i, j, k = @index(Global, NTuple)
+    LM_ijk, MM_ijk = LM_and_MM(i, j, k, grid, Σ, Σ̄, u, v, w, ū, v̄, w̄)
     @inbounds begin
         LM[i, j, k] = LM_ijk
         MM[i, j, k] = MM_ijk
     end
 end
 
-@inline function LM_and_MM(i, j, k, grid, Σ, Σ̄, u, v, w)
-    L₁₁ = L₁₁ᶜᶜᶜ(i, j, k, grid, u, v, w)
-    L₂₂ = L₂₂ᶜᶜᶜ(i, j, k, grid, u, v, w)
-    L₃₃ = L₃₃ᶜᶜᶜ(i, j, k, grid, u, v, w)
-    L₁₂ = L₁₂ᶜᶜᶜ(i, j, k, grid, u, v, w)
-    L₁₃ = L₁₃ᶜᶜᶜ(i, j, k, grid, u, v, w)
-    L₂₃ = L₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w)
+@inline function LM_and_MM(i, j, k, grid, Σ, Σ̄, u, v, w, ū, v̄, w̄)
+    L₁₁ = L₁₁ᶜᶜᶜ(i, j, k, grid, u, v, w, ū, v̄, w̄)
+    L₂₂ = L₂₂ᶜᶜᶜ(i, j, k, grid, u, v, w, ū, v̄, w̄)
+    L₃₃ = L₃₃ᶜᶜᶜ(i, j, k, grid, u, v, w, ū, v̄, w̄)
+    L₁₂ = L₁₂ᶜᶜᶜ(i, j, k, grid, u, v, w, ū, v̄, w̄)
+    L₁₃ = L₁₃ᶜᶜᶜ(i, j, k, grid, u, v, w, ū, v̄, w̄)
+    L₂₃ = L₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w, ū, v̄, w̄)
 
-    M₁₁ = M₁₁ᶜᶜᶜ(i, j, k, grid, u, v, w, Σ, Σ̄)
-    M₂₂ = M₂₂ᶜᶜᶜ(i, j, k, grid, u, v, w, Σ, Σ̄)
-    M₃₃ = M₃₃ᶜᶜᶜ(i, j, k, grid, u, v, w, Σ, Σ̄)
-    M₁₂ = M₁₂ᶜᶜᶜ(i, j, k, grid, u, v, w, Σ, Σ̄)
-    M₁₃ = M₁₃ᶜᶜᶜ(i, j, k, grid, u, v, w, Σ, Σ̄)
-    M₂₃ = M₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w, Σ, Σ̄)
+    M₁₁ = M₁₁ᶜᶜᶜ(i, j, k, grid, u, v, w, ū, v̄, w̄, Σ, Σ̄)
+    M₂₂ = M₂₂ᶜᶜᶜ(i, j, k, grid, u, v, w, ū, v̄, w̄, Σ, Σ̄)
+    M₃₃ = M₃₃ᶜᶜᶜ(i, j, k, grid, u, v, w, ū, v̄, w̄, Σ, Σ̄)
+    M₁₂ = M₁₂ᶜᶜᶜ(i, j, k, grid, u, v, w, ū, v̄, w̄, Σ, Σ̄)
+    M₁₃ = M₁₃ᶜᶜᶜ(i, j, k, grid, u, v, w, ū, v̄, w̄, Σ, Σ̄)
+    M₂₃ = M₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w, ū, v̄, w̄, Σ, Σ̄)
 
     LM_ijk = L₁₁ * M₁₁ + L₂₂ * M₂₂ + L₃₃ * M₃₃ + 2L₁₂ * M₁₂ + 2L₁₃ * M₁₃ + 2L₂₃ * M₂₃
     MM_ijk = M₁₁ * M₁₁ + M₂₂ * M₂₂ + M₃₃ * M₃₃ + 2M₁₂ * M₁₂ + 2M₁₃ * M₁₃ + 2M₂₃ * M₂₃
@@ -327,14 +354,16 @@ function compute_coefficient_fields!(closure_fields, closure::DirectionallyAvera
         Σ = closure_fields.Σ
         Σ̄ = closure_fields.Σ̄
         launch!(arch, grid, :xyz, _compute_Σ!, Σ, grid, velocities...)
-        launch!(arch, grid, :xyz, _compute_Σ̄!, Σ̄, grid, velocities...)
+        compute_test_filtered_velocities!(closure_fields, velocities...)
+        ū, v̄, w̄ = closure_fields.ū, closure_fields.v̄, closure_fields.w̄
+        launch!(arch, grid, :xyz, _compute_Σ̄!, Σ̄, grid, ū, v̄, w̄)
 
         # The test filter reads Σ in neighboring cells, including across rank boundaries.
         fill_halo_regions!(Σ)
 
         LM = closure_fields.LM
         MM = closure_fields.MM
-        launch!(arch, grid, :xyz, _compute_LM_MM!, LM, MM, Σ, Σ̄, grid, velocities...)
+        launch!(arch, grid, :xyz, _compute_LM_MM!, LM, MM, Σ, Σ̄, grid, velocities..., ū, v̄, w̄)
 
         𝒥ᴸᴹ = closure_fields.𝒥ᴸᴹ
         𝒥ᴹᴹ = closure_fields.𝒥ᴹᴹ
@@ -352,10 +381,14 @@ function allocate_coefficient_fields(closure::DirectionallyAveragedDynamicSmagor
     Σ = CenterField(grid)
     Σ̄ = CenterField(grid)
 
+    ū = XFaceField(grid)
+    v̄ = YFaceField(grid)
+    w̄ = ZFaceField(grid)
+
     𝒥ᴸᴹ = Field(Average(LM, dims=closure.coefficient.averaging))
     𝒥ᴹᴹ = Field(Average(MM, dims=closure.coefficient.averaging))
 
-    return (; Σ, Σ̄, LM, MM, 𝒥ᴸᴹ, 𝒥ᴹᴹ)
+    return (; Σ, Σ̄, ū, v̄, w̄, LM, MM, 𝒥ᴸᴹ, 𝒥ᴹᴹ)
 end
 
 #####
@@ -367,9 +400,9 @@ const c = Center()
 @inline displace_node(node, δ) = node - δ
 @inline displace_node(::Nothing, δ) = zero(δ)
 
-@kernel function _lagrangian_average_LM_MM!(𝒥ᴸᴹ, 𝒥ᴹᴹ, 𝒥ᴸᴹ⁻, 𝒥ᴹᴹ⁻, 𝒥ᴸᴹ_min, Σ, Σ̄, grid, Δt, u, v, w)
+@kernel function _lagrangian_average_LM_MM!(𝒥ᴸᴹ, 𝒥ᴹᴹ, 𝒥ᴸᴹ⁻, 𝒥ᴹᴹ⁻, 𝒥ᴸᴹ_min, Σ, Σ̄, grid, Δt, u, v, w, ū, v̄, w̄)
     i, j, k = @index(Global, NTuple)
-    LM, MM = LM_and_MM(i, j, k, grid, Σ, Σ̄, u, v, w)
+    LM, MM = LM_and_MM(i, j, k, grid, Σ, Σ̄, u, v, w, ū, v̄, w̄)
     FT = eltype(grid)
 
     @inbounds begin
@@ -430,7 +463,9 @@ function TurbulenceClosures.initialize_closure_fields!(closure_fields, closure::
     Σ = closure_fields.Σ
     Σ̄ = closure_fields.Σ̄
     launch!(arch, grid, :xyz, _compute_Σ!, Σ, grid, u, v, w)
-    launch!(arch, grid, :xyz, _compute_Σ̄!, Σ̄, grid, u, v, w)
+    compute_test_filtered_velocities!(closure_fields, u, v, w)
+    ū, v̄, w̄ = closure_fields.ū, closure_fields.v̄, closure_fields.w̄
+    launch!(arch, grid, :xyz, _compute_Σ̄!, Σ̄, grid, ū, v̄, w̄)
 
     # The test filter reads Σ in neighboring cells, including across rank boundaries.
     fill_halo_regions!(Σ)
@@ -440,7 +475,7 @@ function TurbulenceClosures.initialize_closure_fields!(closure_fields, closure::
     𝒥ᴸᴹ_min = cˢ.minimum_numerator
 
     # Compute instantaneous LM, MM and spatially average for initialization
-    launch!(arch, grid, :xyz, _compute_LM_MM!, 𝒥ᴸᴹ, 𝒥ᴹᴹ, Σ, Σ̄, grid, u, v, w)
+    launch!(arch, grid, :xyz, _compute_LM_MM!, 𝒥ᴸᴹ, 𝒥ᴹᴹ, Σ, Σ̄, grid, u, v, w, ū, v̄, w̄)
     parent(𝒥ᴸᴹ) .= max(mean(𝒥ᴸᴹ), 𝒥ᴸᴹ_min)
     parent(𝒥ᴹᴹ) .= mean(𝒥ᴹᴹ)
 
@@ -467,7 +502,9 @@ function TurbulenceClosures.step_closure_prognostics!(closure_fields, closure::L
         Σ = closure_fields.Σ
         Σ̄ = closure_fields.Σ̄
         launch!(arch, grid, :xyz, _compute_Σ!, Σ, grid, u, v, w)
-        launch!(arch, grid, :xyz, _compute_Σ̄!, Σ̄, grid, u, v, w)
+        compute_test_filtered_velocities!(closure_fields, u, v, w)
+        ū, v̄, w̄ = closure_fields.ū, closure_fields.v̄, closure_fields.w̄
+        launch!(arch, grid, :xyz, _compute_Σ̄!, Σ̄, grid, ū, v̄, w̄)
 
         # The test filter reads Σ in neighboring cells, including across rank boundaries.
         fill_halo_regions!(Σ)
@@ -486,7 +523,7 @@ function TurbulenceClosures.step_closure_prognostics!(closure_fields, closure::L
         closure_fields.previous_compute_time[] = clock.time
 
         launch!(arch, grid, :xyz,
-                _lagrangian_average_LM_MM!, 𝒥ᴸᴹ, 𝒥ᴹᴹ, 𝒥ᴸᴹ⁻, 𝒥ᴹᴹ⁻, 𝒥ᴸᴹ_min, Σ, Σ̄, grid, Δt_lagrangian, u, v, w)
+                _lagrangian_average_LM_MM!, 𝒥ᴸᴹ, 𝒥ᴹᴹ, 𝒥ᴸᴹ⁻, 𝒥ᴹᴹ⁻, 𝒥ᴸᴹ_min, Σ, Σ̄, grid, Δt_lagrangian, u, v, w, ū, v̄, w̄)
     end
 
     return nothing
@@ -505,18 +542,22 @@ function allocate_coefficient_fields(closure::LagrangianAveragedDynamicSmagorins
     Σ = CenterField(grid)
     Σ̄ = CenterField(grid)
 
+    ū = XFaceField(grid)
+    v̄ = YFaceField(grid)
+    w̄ = ZFaceField(grid)
+
     # Initialize to clock.time; will be properly set during initialize_closure_fields!
     previous_compute_time = Ref(clock.time)
 
-    return (; Σ, Σ̄, 𝒥ᴸᴹ, 𝒥ᴹᴹ, 𝒥ᴸᴹ⁻, 𝒥ᴹᴹ⁻, previous_compute_time)
+    return (; Σ, Σ̄, ū, v̄, w̄, 𝒥ᴸᴹ, 𝒥ᴹᴹ, 𝒥ᴸᴹ⁻, 𝒥ᴹᴹ⁻, previous_compute_time)
 end
 
 #####
 ##### Checkpointing
 #####
 
-const DirectionallyAveragedSmagorinskyFields = NamedTuple{(:νₑ, :Σ, :Σ̄, :LM, :MM, :𝒥ᴸᴹ, :𝒥ᴹᴹ)}
-const LagrangianAveragedSmagorinskyFields = NamedTuple{(:νₑ, :Σ, :Σ̄, :𝒥ᴸᴹ, :𝒥ᴹᴹ, :𝒥ᴸᴹ⁻, :𝒥ᴹᴹ⁻, :previous_compute_time)}
+const DirectionallyAveragedSmagorinskyFields = NamedTuple{(:νₑ, :Σ, :Σ̄, :ū, :v̄, :w̄, :LM, :MM, :𝒥ᴸᴹ, :𝒥ᴹᴹ)}
+const LagrangianAveragedSmagorinskyFields = NamedTuple{(:νₑ, :Σ, :Σ̄, :ū, :v̄, :w̄, :𝒥ᴸᴹ, :𝒥ᴹᴹ, :𝒥ᴸᴹ⁻, :𝒥ᴹᴹ⁻, :previous_compute_time)}
 
 function Oceananigans.prognostic_state(cf::DirectionallyAveragedSmagorinskyFields)
     return (𝒥ᴸᴹ = prognostic_state(cf.𝒥ᴸᴹ),
