@@ -331,7 +331,6 @@ function compute_coefficient_fields!(closure_fields, closure::DirectionallyAvera
 
         # The test filter reads Σ in neighboring cells, including across rank boundaries.
         fill_halo_regions!(Σ)
-        fill_halo_regions!(Σ̄; only_local_halos=true)
 
         LM = closure_fields.LM
         MM = closure_fields.MM
@@ -435,7 +434,6 @@ function TurbulenceClosures.initialize_closure_fields!(closure_fields, closure::
 
     # The test filter reads Σ in neighboring cells, including across rank boundaries.
     fill_halo_regions!(Σ)
-    fill_halo_regions!(Σ̄; only_local_halos=true)
 
     𝒥ᴸᴹ  = closure_fields.𝒥ᴸᴹ
     𝒥ᴹᴹ  = closure_fields.𝒥ᴹᴹ
@@ -473,7 +471,6 @@ function TurbulenceClosures.step_closure_prognostics!(closure_fields, closure::L
 
         # The test filter reads Σ in neighboring cells, including across rank boundaries.
         fill_halo_regions!(Σ)
-        fill_halo_regions!(Σ̄; only_local_halos=true)
 
         parent(closure_fields.𝒥ᴸᴹ⁻) .= parent(closure_fields.𝒥ᴸᴹ)
         parent(closure_fields.𝒥ᴹᴹ⁻) .= parent(closure_fields.𝒥ᴹᴹ)

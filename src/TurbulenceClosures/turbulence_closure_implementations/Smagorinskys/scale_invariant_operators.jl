@@ -1,7 +1,7 @@
 using Oceananigans.TurbulenceClosures: Σ₁₁, Σ₂₂, Σ₃₃, Σ₁₂, Σ₁₃, Σ₂₃
 using Oceananigans.TurbulenceClosures: tr_Σ², Σ₁₂², Σ₁₃², Σ₂₃²
 using Oceananigans.Grids: BoundarySide, BoundaryTopology, Flat, TwoSided, XFlatGrid, YFlatGrid, ZFlatGrid, topology
-using Oceananigans.Operators: volume, V⁻¹, ∂xᶜᶜᶜ, ∂xᶠᶜᶠ, ∂xᶠᶠᶜ, ∂yᶜᶜᶜ, ∂yᶜᶠᶠ, ∂yᶠᶠᶜ, ∂zᶜᶜᶜ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ
+using Oceananigans.Operators: identity1, volume, V⁻¹, ∂xᶜᶜᶜ, ∂xᶠᶜᶠ, ∂xᶠᶠᶜ, ∂yᶜᶜᶜ, ∂yᶜᶠᶠ, ∂yᶠᶠᶜ, ∂zᶜᶜᶜ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ
 
 #####
 ##### Double dot product of strain on cell edges (currently unused)
@@ -58,19 +58,13 @@ const RightBoundedTopology = TwoSided{<:Any, <:BoundarySide}
 # Whether the three-point filter is applied at index `i` along a direction with topology `topo`
 # and `N` cells, to a quantity located at cell centers (ᶜ) or cell faces (ᶠ) in that direction.
 @inline test_filteredᶜ(i, topo, N) = true
-@inline test_filteredᶠ(i, topo, N) = true
-
 @inline test_filteredᶜ(i, ::Type{Flat}, N) = false
-@inline test_filteredᶠ(i, ::Type{Flat}, N) = false
-
 @inline test_filteredᶜ(i, ::Type{<:LeftBoundedTopology}, N) = i > 1
-@inline test_filteredᶠ(i, ::Type{<:LeftBoundedTopology}, N) = i > 1
-
 @inline test_filteredᶜ(i, ::Type{<:RightBoundedTopology}, N) = i < N
-@inline test_filteredᶠ(i, ::Type{<:RightBoundedTopology}, N) = i < N + 1
-
 @inline test_filteredᶜ(i, ::Type{<:BoundaryTopology}, N) = (i > 1) & (i < N)
-@inline test_filteredᶠ(i, ::Type{<:BoundaryTopology}, N) = (i > 1) & (i < N + 1)
+
+# Faces run from 1 to N + 1, and those on a boundary are not filtered, as cell centers next to it are not.
+@inline test_filteredᶠ(i, topo, N) = test_filteredᶜ(i, topo, N + 1)
 
 # Integer weights of the three-point filter, which sum to 4. Where the filter is not applied
 # all of the weight goes to the central node.
@@ -120,12 +114,10 @@ end
 @inline filterᶜᶠᶜ(i, j, k, grid, f::F, args...) where F<:Function = filter_xᶜᵃᵃ(i, j, k, grid, filter_yᵃᶠᵃ, filter_zᵃᵃᶜ, f, args...)
 @inline filterᶜᶜᶠ(i, j, k, grid, f::F, args...) where F<:Function = filter_xᶜᵃᵃ(i, j, k, grid, filter_yᵃᶜᵃ, filter_zᵃᵃᶠ, f, args...)
 
-@inline node_value(i, j, k, grid, c) = @inbounds c[i, j, k]
-
-@inline filterᶜᶜᶜ(i, j, k, grid, c::AbstractArray) = filterᶜᶜᶜ(i, j, k, grid, node_value, c)
-@inline filterᶠᶜᶜ(i, j, k, grid, u::AbstractArray) = filterᶠᶜᶜ(i, j, k, grid, node_value, u)
-@inline filterᶜᶠᶜ(i, j, k, grid, v::AbstractArray) = filterᶜᶠᶜ(i, j, k, grid, node_value, v)
-@inline filterᶜᶜᶠ(i, j, k, grid, w::AbstractArray) = filterᶜᶜᶠ(i, j, k, grid, node_value, w)
+@inline filterᶜᶜᶜ(i, j, k, grid, c::AbstractArray) = filterᶜᶜᶜ(i, j, k, grid, identity1, c)
+@inline filterᶠᶜᶜ(i, j, k, grid, u::AbstractArray) = filterᶠᶜᶜ(i, j, k, grid, identity1, u)
+@inline filterᶜᶠᶜ(i, j, k, grid, v::AbstractArray) = filterᶜᶠᶜ(i, j, k, grid, identity1, v)
+@inline filterᶜᶜᶠ(i, j, k, grid, w::AbstractArray) = filterᶜᶜᶠ(i, j, k, grid, identity1, w)
 
 #####
 ##### Velocity gradients
