@@ -115,12 +115,17 @@ pooled(target::NetInflow, sign) = sign
 pooled(target, sign) = 0
 net_inflow_weights(targets) = map(pooled, (targets.west, targets.east, targets.south, targets.north), (1, -1, 1, -1))
 
-net_inflow_target(targets, grid) =
-    convert(eltype(grid), net_inflow_value(first(target.transport for target in values(targets) if target isa NetInflow)))
+function net_inflow_target(targets, grid)
+    target = first(target for target in values(targets) if target isa NetInflow)
+    return convert(eltype(grid), net_inflow_value(target.transport)), convert(eltype(grid), target.depth_exponent)
+end
 
-# As `_pin_barotropic_face!`, over every pooled face at once: with sₙ = ±1 the inflow sign of side n,
-# Q = Σₙ sₙ ∮ U dl and L = Σₙ ∮ dl over the wet columns, every wet column of side n is shifted by -sₙ (Q - target) / L.
-@kernel function _pin_net_barotropic_inflow!(U, V, grid, target, weights)
+@inline face_depth(i, j, grid, ::Val{:x}) = column_depthᶠᶜᵃ(i, j, grid)
+@inline face_depth(i, j, grid, ::Val{:y}) = column_depthᶜᶠᵃ(i, j, grid)
+
+# As `_pin_barotropic_face!`, over every pooled face at once: with sₙ = ±1 the inflow sign of side n and wᵢ = Hᵢᵖ,
+# Q = Σₙ sₙ ∮ U dl and L = Σₙ ∮ w dl over the wet columns, every wet column of side n is shifted by -sₙ wᵢ (Q - target) / L.
+@kernel function _pin_net_barotropic_inflow!(U, V, grid, target, p, weights)
     t = @index(Local, Linear)
     ΣQ = @localmem eltype(grid) (FACE_WORKGROUP_SIZE,)
     ΣL = @localmem eltype(grid) (FACE_WORKGROUP_SIZE,)
@@ -133,13 +138,13 @@ net_inflow_target(targets, grid) =
         Δlʷ = abs(sʷ) * wet_face_width(1, n, grid, Val(:x))
         Δlᵉ = abs(sᵉ) * wet_face_width(Nx + 1, n, grid, Val(:x))
         @inbounds Q += sʷ * U[1, n, 1] * Δlʷ + sᵉ * U[Nx + 1, n, 1] * Δlᵉ
-        L += Δlʷ + Δlᵉ
+        L += Δlʷ * face_depth(1, n, grid, Val(:x))^p + Δlᵉ * face_depth(Nx + 1, n, grid, Val(:x))^p
     end
     for n in t:FACE_WORKGROUP_SIZE:Nx
         Δlˢ = abs(sˢ) * wet_face_width(n, 1, grid, Val(:y))
         Δlⁿ = abs(sⁿ) * wet_face_width(n, Ny + 1, grid, Val(:y))
         @inbounds Q += sˢ * V[n, 1, 1] * Δlˢ + sⁿ * V[n, Ny + 1, 1] * Δlⁿ
-        L += Δlˢ + Δlⁿ
+        L += Δlˢ * face_depth(n, 1, grid, Val(:y))^p + Δlⁿ * face_depth(n, Ny + 1, grid, Val(:y))^p
     end
     @inbounds ΣQ[t] = Q
     @inbounds ΣL[t] = L
@@ -158,12 +163,12 @@ net_inflow_target(targets, grid) =
 
     @inbounds shift = ΣQ[1]
     for n in t:FACE_WORKGROUP_SIZE:Ny
-        @inbounds U[1, n, 1]      -= ifelse(wet_face_width(1, n, grid, Val(:x)) > 0, sʷ * shift, zero(shift))
-        @inbounds U[Nx + 1, n, 1] -= ifelse(wet_face_width(Nx + 1, n, grid, Val(:x)) > 0, sᵉ * shift, zero(shift))
+        @inbounds U[1, n, 1]      -= ifelse(wet_face_width(1, n, grid, Val(:x)) > 0, sʷ * shift * face_depth(1, n, grid, Val(:x))^p, zero(shift))
+        @inbounds U[Nx + 1, n, 1] -= ifelse(wet_face_width(Nx + 1, n, grid, Val(:x)) > 0, sᵉ * shift * face_depth(Nx + 1, n, grid, Val(:x))^p, zero(shift))
     end
     for n in t:FACE_WORKGROUP_SIZE:Nx
-        @inbounds V[n, 1, 1]      -= ifelse(wet_face_width(n, 1, grid, Val(:y)) > 0, sˢ * shift, zero(shift))
-        @inbounds V[n, Ny + 1, 1] -= ifelse(wet_face_width(n, Ny + 1, grid, Val(:y)) > 0, sⁿ * shift, zero(shift))
+        @inbounds V[n, 1, 1]      -= ifelse(wet_face_width(n, 1, grid, Val(:y)) > 0, sˢ * shift * face_depth(n, 1, grid, Val(:y))^p, zero(shift))
+        @inbounds V[n, Ny + 1, 1] -= ifelse(wet_face_width(n, Ny + 1, grid, Val(:y)) > 0, sⁿ * shift * face_depth(n, Ny + 1, grid, Val(:y))^p, zero(shift))
     end
 end
 
@@ -172,7 +177,7 @@ function configure_net_inflow_pin(arch, grid, U, V, targets)
     all(iszero, weights) && return nothing
     workgroup = StaticSize((FACE_WORKGROUP_SIZE,))
     kernel! = _pin_net_barotropic_inflow!(device(arch), workgroup, workgroup)
-    args = convert_to_device(arch, (U, V, grid, net_inflow_target(targets, grid), weights))
+    args = convert_to_device(arch, (U, V, grid, net_inflow_target(targets, grid)..., weights))
     return (; kernel!, args)
 end
 
