@@ -9,14 +9,7 @@ end
 @inline stencil_order(::ScalarDiffusivity{TD, F, N, V, K, O}) where {TD, F, N, V, K, O} = Val(O)
 
 """
-    ScalarDiffusivity(time_discretization = ExplicitTimeDiscretization(),
-                      formulation = ThreeDimensionalFormulation(), FT = Float64;
-                      ν = nothing,
-                      κ = nothing,
-                      discrete_form = false,
-                      loc = (nothing, nothing, nothing),
-                      parameters = nothing,
-                      stencil_order = 2)
+$(MethodSignatures(; defaults = true))
 
 Return `ScalarDiffusivity` turbulence closure with viscosity `ν` and tracer diffusivities `κ`
 for each tracer field in `tracers`. If a single `κ` is provided, it is applied to all tracers.
@@ -183,9 +176,7 @@ const HorizontalScalarDiffusivity{TD} = ScalarDiffusivity{TD, HorizontalFormulat
 const HorizontalDivergenceScalarDiffusivity{TD} = ScalarDiffusivity{TD, HorizontalDivergenceFormulation} where TD
 
 """
-    VerticalScalarDiffusivity([time_discretization=ExplicitTimeDiscretization(),
-                              FT::DataType=Float64;]
-                              kwargs...)
+$(MethodSignatures(; defaults = true))
 
 Shorthand for a `ScalarDiffusivity` with `VerticalFormulation()`. See [`ScalarDiffusivity`](@ref).
 """
@@ -194,9 +185,7 @@ Shorthand for a `ScalarDiffusivity` with `VerticalFormulation()`. See [`ScalarDi
     ScalarDiffusivity(time_discretization, VerticalFormulation(), FT; kwargs...)
 
 """
-    HorizontalScalarDiffusivity([time_discretization=ExplicitTimeDiscretization(),
-                                FT::DataType=Float64;]
-                                kwargs...)
+$(MethodSignatures(; defaults = true))
 
 Shorthand for a `ScalarDiffusivity` with `HorizontalFormulation()`. See [`ScalarDiffusivity`](@ref).
 """
@@ -205,9 +194,7 @@ Shorthand for a `ScalarDiffusivity` with `HorizontalFormulation()`. See [`Scalar
     ScalarDiffusivity(time_discretization, HorizontalFormulation(), FT; kwargs...)
 
 """
-    HorizontalDivergenceScalarDiffusivity([time_discretization=ExplicitTimeDiscretization(),
-                                          FT::DataType=Float64;]
-                                          kwargs...)
+$(MethodSignatures(; defaults = true))
 
 Shorthand for a `ScalarDiffusivity` with `HorizontalDivergenceFormulation()`. See [`ScalarDiffusivity`](@ref).
 """

@@ -104,14 +104,14 @@ field the scheme advects, or `nothing` for the `momentum` entry.
 """
 update_advection!(advection, model) = nothing
 
-# Split in two so that a model can refresh the bounds-preserving limiters, which read the tracer halos,
+# Split in two so that a model can refresh the state built from each tracer, which reads the tracer halos,
 # once the halo communication has completed. `advection` is `(momentum, tracer_names...)`.
 update_adaptive_timesteps!(advection, model) = nothing
-update_bounds_preserving_limiters!(advection, model) = nothing
+update_tracer_advection!(advection, model) = nothing
 
 @inline function update_advection!(advection::NamedTuple, model)
     update_adaptive_timesteps!(advection, model)
-    return update_bounds_preserving_limiters!(advection, model)
+    return update_tracer_advection!(advection, model)
 end
 
 @inline function update_adaptive_timesteps!(advection::NamedTuple, model)
@@ -127,20 +127,19 @@ end
 @inline update_tracer_adaptive_timestep!(advection, model, ::Val{name}) where name =
     update_adaptive_timestep!(advection[name], model)
 
-@inline function update_bounds_preserving_limiters!(advection::NamedTuple, model)
+@inline function update_tracer_advection!(advection::NamedTuple, model)
     foreach_name(model.tracers) do _, val_name
-        update_tracer_bounds_preserving_limiter!(advection, model, val_name)
+        update_tracer_advection!(advection, model, val_name)
     end
 
     return nothing
 end
 
-@inline update_tracer_bounds_preserving_limiter!(advection, model, ::Val{name}) where name =
-    update_bounds_preserving_limiter!(advection[name], model.grid, model.tracers[name])
+@inline update_tracer_advection!(advection::NamedTuple, model, ::Val{name}) where name = update_tracer_advection!(advection[name], model.grid, model.tracers[name])
 
 @inline function update_advection!(scheme, model, tracer)
     update_adaptive_timestep!(scheme, model)
-    update_bounds_preserving_limiter!(scheme, model.grid, tracer)
+    update_tracer_advection!(scheme, model.grid, tracer)
     return nothing
 end
 

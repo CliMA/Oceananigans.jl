@@ -59,7 +59,7 @@ end
 #####
 
 """
-    inside_immersed_boundary(buffer, shift, dir, side)
+$(MethodSignatures(; defaults = true))
 
 Check if the stencil required for reconstruction contains immersed nodes: its first cell is inactive, or one of the faces
 crossed walking along it is peripheral.

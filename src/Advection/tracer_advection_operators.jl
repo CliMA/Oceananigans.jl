@@ -43,3 +43,9 @@ end
 @inline div_Uc(i, j, k, grid, ::Nothing, ::ZeroU, c) = zero(grid)
 @inline div_Uc(i, j, k, grid, ::Nothing, U, ::ZeroField) = zero(grid)
 @inline div_Uc(i, j, k, grid, ::Nothing, ::ZeroU, ::ZeroField) = zero(grid)
+
+# THINC-BVD advects the tracer with ghost values and the WENO edges it stores
+@inline div_Uc(i, j, k, grid, scheme::THINCBVD, U, c::AbstractArray) = div_Uc(i, j, k, grid, scheme, U, scheme.reconstructions)
+@inline div_Uc(i, j, k, grid, ::THINCBVD, ::ZeroU, c::AbstractArray) = zero(grid)
+@inline div_Uc(i, j, k, grid, ::THINCBVD, U, ::ZeroField)            = zero(grid)
+@inline div_Uc(i, j, k, grid, ::THINCBVD, ::ZeroU, ::ZeroField)      = zero(grid)

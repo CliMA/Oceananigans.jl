@@ -103,9 +103,8 @@ end
     @inbounds θ[i, j, k] = bounds_preserving_limiter(i, j, k, grid, scheme, c)
 end
 
-update_bounds_preserving_limiter!(scheme, grid, c) = nothing
-
-update_bounds_preserving_limiter!(scheme::FluxFormAdvection, grid, c) = update_bounds_preserving_limiter!(scheme.z, grid, c)
+update_tracer_advection!(scheme, grid, c) = nothing
+update_tracer_advection!(scheme::FluxFormAdvection, grid, c) = update_tracer_advection!(scheme.z, grid, c)
 
 """
 $(TYPEDSIGNATURES)
@@ -114,7 +113,7 @@ Fill the rescaling factor ``θ`` carried by a bounds-preserving `scheme` from th
 ``θ`` is computed in the first horizontal halo layer too, from the halos of `c`, so that
 only its bottom and top halos are filled afterwards and no halo is communicated.
 """
-function update_bounds_preserving_limiter!(scheme::BoundsPreservingWENO, grid, c)
+function update_tracer_advection!(scheme::BoundsPreservingWENO, grid, c)
     isnothing(c) && return nothing # the `momentum` entry has no tracer to limit
     θ = scheme.bounds.limiter
     parameters = horizontally_extended_interior_kernel_parameters(grid)
