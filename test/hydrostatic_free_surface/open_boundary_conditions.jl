@@ -772,9 +772,57 @@ function test_gravity_wave_target_transport()
     return pinned && flat && drift && inert && wet_only && rejected
 end
 
+#####
+##### Test: GravityWaveRadiation sides sharing a NetInflow target
+#####
+# Flather alone lets the exterior transport Q in through the west side; sharing NetInflow(Q′) between the west and
+# east sides lets exactly Q′ in through the two together, so the mean free surface rises by Q′ Δt / A per step.
+
+function test_gravity_wave_net_inflow()
+    Nx, Ny, H = 8, 8, 10.0
+    Lx = Ly = 1e4
+    grid = RectilinearGrid(size = (Nx, Ny, 1), x = (0, Lx), y = (0, Ly), z = (-H, 0),
+                           topology = (Open, Bounded, Bounded))
+    Δy = Ly / Ny
+    Q = 200.0
+    Δt, steps = 30.0, 10
+
+    function run_model(target)
+        west = GravityWaveRadiationBoundaryCondition((Q / Ly, 0); target_transport = target)
+        east = GravityWaveRadiationBoundaryCondition((0, 0); target_transport = target)
+        boundary_conditions = (; U = FieldBoundaryConditions(; west, east), u = zero_normal_flow(:west, :east))
+        model = HydrostaticFreeSurfaceModel(grid; boundary_conditions, free_surface = SplitExplicitFreeSurface(grid; substeps = 4),
+                                            buoyancy = nothing, tracers = ())
+        for _ in 1:steps
+            time_step!(model, Δt)
+        end
+        return model
+    end
+
+    x_transport(F, i) = sum(Array(interior(F, i, :, 1))) * Δy
+    net_inflow(model) = x_transport(model.free_surface.barotropic_velocities.U, 1) - x_transport(model.free_surface.barotropic_velocities.U, Nx + 1)
+    mean_η(model) = sum(Array(interior(model.free_surface.displacement))) / (Nx * Ny)
+
+    closed = run_model(NetInflow(0))
+    U = closed.free_surface.barotropic_velocities.U
+    shared = abs(net_inflow(closed)) < 1e-12 * Q && x_transport(U, 1) > 0 && abs(mean_η(closed)) < 1e-12
+
+    filling = run_model(NetInflow(Q / 2))
+    η_before = mean_η(filling)
+    time_step!(filling, Δt)
+    rising = isapprox(net_inflow(filling), Q / 2; rtol = 1e-12) &&
+             isapprox(mean_η(filling) - η_before, Q / 2 * Δt / (Lx * Ly); rtol = 1e-8)
+
+    return shared && rising
+end
+
 @testset "Open Boundary Conditions for HydrostaticFreeSurfaceModel" begin
     @testset "GravityWaveRadiation with target_transport" begin
         @test test_gravity_wave_target_transport()
+    end
+
+    @testset "GravityWaveRadiation sides sharing a NetInflow" begin
+        @test test_gravity_wave_net_inflow()
     end
 
     @testset "Barotropic gravity wave radiation" begin

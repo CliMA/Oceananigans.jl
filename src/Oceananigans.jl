@@ -43,7 +43,7 @@ export
     BoundaryCondition,
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, NormalFlowBoundaryCondition, GravityWaveRadiationBoundaryCondition,
     IMEXFluxTimeDiscretization, IMEXFluxBoundaryCondition,
-    PerturbationAdvection, BalancedTransport, GravityWaveRadiation, NormalRadiation, SurfaceWaveRadiation,
+    PerturbationAdvection, BalancedTransport, GravityWaveRadiation, NormalRadiation, SurfaceWaveRadiation, NetInflow,
     TidalHarmonics, tidal_forcing, tidal_boundary_conditions, tidal_atlas_constants,
     FieldBoundaryConditions,
 
