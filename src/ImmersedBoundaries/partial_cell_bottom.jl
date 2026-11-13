@@ -1,5 +1,6 @@
 using Oceananigans.Fields: Field, fill_halo_regions!, set!
 using Oceananigans.Grids: Grids, AbstractStaticGrid, constructor_arguments
+
 using Oceananigans.Utils: KernelParameters, prettysummary
 
 using Oceananigans.Operators: Δrᶜᶜᶜ, Δrᶜᶜᶠ, Δrᶜᶠᶜ, Δrᶜᶠᶠ, Δrᶠᶜᶜ, Δrᶠᶜᶠ, Δrᶠᶠᶜ, Δrᶠᶠᶠ, Δr⁻¹ᶜᶜᶜ, Δr⁻¹ᶜᶜᶠ, Δr⁻¹ᶜᶠᶜ,
@@ -9,7 +10,7 @@ using Oceananigans.Operators: Δrᶜᶜᶜ, Δrᶜᶜᶠ, Δrᶜᶠᶜ, Δrᶜ�
 ##### PartialCellVerticalBoundaries
 #####
 
-struct PartialCellVerticalBoundaries{H, T, E, SB, ST, RB, RT} <: AbstractGridFittedBottom{H}
+struct PartialCellVerticalBoundaries{H, T, E, SB, ST, RB, RT, L} <: AbstractGridFittedBottom{H}
     bottom_height :: H
     top_height :: T
     minimum_fractional_cell_height :: E
@@ -20,12 +21,16 @@ struct PartialCellVerticalBoundaries{H, T, E, SB, ST, RB, RT} <: AbstractGridFit
     Δr⁻¹ᶜᶜᶠᵇ :: RB
     Δr⁻¹ᶜᶜᶜᵗ :: RT
     Δr⁻¹ᶜᶜᶠᵗ :: RT
+    top_load :: L
 end
 
-function PartialCellVerticalBoundaries(bottom_height, top_height, minimum_fractional_cell_height)
+function PartialCellVerticalBoundaries(bottom_height, top_height, minimum_fractional_cell_height, top_load=nothing)
     return PartialCellVerticalBoundaries(bottom_height, top_height, minimum_fractional_cell_height,
-                                         nothing, nothing, nothing, nothing, nothing, nothing)
+                                         nothing, nothing, nothing, nothing, nothing, nothing, top_load)
 end
+
+PartialCellVerticalBoundaries(bottom_height, top_height, minimum_fractional_cell_height, sᵇ, sᵗ, Δr⁻¹ᶜᶜᶜᵇ, Δr⁻¹ᶜᶜᶠᵇ, Δr⁻¹ᶜᶜᶜᵗ, Δr⁻¹ᶜᶜᶠᵗ) =
+    PartialCellVerticalBoundaries(bottom_height, top_height, minimum_fractional_cell_height, sᵇ, sᵗ, Δr⁻¹ᶜᶜᶜᵇ, Δr⁻¹ᶜᶜᶠᵇ, Δr⁻¹ᶜᶜᶜᵗ, Δr⁻¹ᶜᶜᶠᵗ, nothing)
 
 const PartialCellBottom{H, E} = PartialCellVerticalBoundaries{H, Nothing, E, <:Any, Nothing}
 const PartialCellWithTop = PartialCellVerticalBoundaries{<:Any, <:Any, <:Any, <:Any, <:AbstractArray}
@@ -72,6 +77,7 @@ function Base.show(io::IO, ib::PartialCellVerticalBoundaries)
     print(io, summary(ib), '\n')
     print(io, "├── bottom_height: ", prettysummary(ib.bottom_height), '\n')
     print(io, "├── top_height: ", prettysummary(ib.top_height), '\n')
+    print(io, "├── top_load: ", prettysummary(ib.top_load), '\n')
     print(io, "└── minimum_fractional_cell_height: ", prettysummary(ib.minimum_fractional_cell_height))
 end
 
@@ -95,6 +101,11 @@ minimum_fractional_cell_height * Δz,
 where `Δz` is the original height of the cell in the underlying grid.
 Columns in which the top and bottom leave less than this height are immersed entirely.
 
+`top_load` is the potential of the weight of the solid top, added to the hydrostatic pressure of
+every column: either `nothing` (default, no load), a [`TopLoad`](@ref) computed from a reference
+state, or an array, function of `(x, y)` or two-dimensional field such as the one returned by
+[`top_load_potential`](@ref). It requires `top_height`.
+
 Example
 =======
 
@@ -112,8 +123,9 @@ julia> ImmersedBoundaryGrid(grid, PartialCellVerticalBoundaries(bottom_height=-9
 └── Bounded  z ∈ [-100.0, 0.0] regularly spaced with Δz=10.0
 ```
 """
-function PartialCellVerticalBoundaries(; bottom_height=nothing, top_height=nothing, minimum_fractional_cell_height=0.2)
-    return PartialCellVerticalBoundaries(bottom_height, top_height, minimum_fractional_cell_height)
+function PartialCellVerticalBoundaries(; bottom_height=nothing, top_height=nothing, minimum_fractional_cell_height=0.2, top_load=nothing)
+    validate_top_load(top_height, top_load)
+    return PartialCellVerticalBoundaries(bottom_height, top_height, minimum_fractional_cell_height, top_load)
 end
 
 """
@@ -154,9 +166,16 @@ function materialize_immersed_boundary(grid, ib::PartialCellVerticalBoundaries)
     @apply_regionally compute_partial_cell_reciprocal_spacings!(Δr⁻¹ᶜᶜᶜᵇ, Δr⁻¹ᶜᶜᶠᵇ, ibg, materialized_ib.fractional_bottom_index, 1)
     @apply_regionally compute_partial_cell_reciprocal_spacings!(Δr⁻¹ᶜᶜᶜᵗ, Δr⁻¹ᶜᶜᶠᵗ, ibg, materialized_ib.fractional_top_index, 0)
 
+    unloaded_ib = PartialCellVerticalBoundaries(stored_data(bottom), stored_data(top), minimum_fractional_cell_height,
+                                                stored_data(fractional_bottom_index), stored_data(fractional_top_index),
+                                                stored_data(Δr⁻¹ᶜᶜᶜᵇ), stored_data(Δr⁻¹ᶜᶜᶠᵇ), stored_data(Δr⁻¹ᶜᶜᶜᵗ), stored_data(Δr⁻¹ᶜᶜᶠᵗ))
+
+    top_load = materialize_top_load(grid, unloaded_ib, ib.top_load)
+
     return PartialCellVerticalBoundaries(stored_data(bottom), stored_data(top), minimum_fractional_cell_height,
                                          stored_data(fractional_bottom_index), stored_data(fractional_top_index),
-                                         stored_data(Δr⁻¹ᶜᶜᶜᵇ), stored_data(Δr⁻¹ᶜᶜᶠᵇ), stored_data(Δr⁻¹ᶜᶜᶜᵗ), stored_data(Δr⁻¹ᶜᶜᶠᵗ))
+                                         stored_data(Δr⁻¹ᶜᶜᶜᵇ), stored_data(Δr⁻¹ᶜᶜᶠᵇ), stored_data(Δr⁻¹ᶜᶜᶜᵗ), stored_data(Δr⁻¹ᶜᶜᶠᵗ),
+                                         top_load)
 end
 
 reciprocal_spacing_field(grid, height) = Field{Center, Center, Nothing}(grid)
@@ -267,7 +286,8 @@ Adapt.adapt_structure(to, ib::PartialCellVerticalBoundaries) =
                                   adapt(to, ib.Δr⁻¹ᶜᶜᶜᵇ),
                                   adapt(to, ib.Δr⁻¹ᶜᶜᶠᵇ),
                                   adapt(to, ib.Δr⁻¹ᶜᶜᶜᵗ),
-                                  adapt(to, ib.Δr⁻¹ᶜᶜᶠᵗ))
+                                  adapt(to, ib.Δr⁻¹ᶜᶜᶠᵗ),
+                                  adapt(to, ib.top_load))
 
 Architectures.on_architecture(to, ib::PartialCellVerticalBoundaries) =
     PartialCellVerticalBoundaries(on_architecture(to, ib.bottom_height),
@@ -278,7 +298,8 @@ Architectures.on_architecture(to, ib::PartialCellVerticalBoundaries) =
                                   on_architecture(to, ib.Δr⁻¹ᶜᶜᶜᵇ),
                                   on_architecture(to, ib.Δr⁻¹ᶜᶜᶠᵇ),
                                   on_architecture(to, ib.Δr⁻¹ᶜᶜᶜᵗ),
-                                  on_architecture(to, ib.Δr⁻¹ᶜᶜᶠᵗ))
+                                  on_architecture(to, ib.Δr⁻¹ᶜᶜᶠᵗ),
+                                  on_architecture(to, ib.top_load))
 
 # kᵇ = ⌊sᵇ⌋: `unsafe_trunc` is a single conversion, while mixed `Int`-`Float` comparisons of `sᵇ` are exact but several times longer
 @inline bottom_cell(i, j, grid, ib::PartialCellVerticalBoundaries) = @inbounds unsafe_trunc(Int, ib.fractional_bottom_index[i, j, 1])
@@ -297,8 +318,6 @@ end
     kᵗ = unsafe_trunc(Int, sᵗ)
     return rnode(i, j, kᵗ+1, ibg.underlying_grid, c, c, f) - (sᵗ - kᵗ) * Δrᶜᶜᶜ(i, j, kᵗ, ibg.underlying_grid)
 end
-
-@inline face_column_depth(i, j, i⁻, j⁻, ibg, ::PartialCellBottom) = min(static_column_depthᶜᶜᵃ(i⁻, j⁻, ibg), static_column_depthᶜᶜᵃ(i, j, ibg))
 
 @inline _immersed_cell(i, j, k, underlying_grid, ib::PartialCellWithTop) = (k < bottom_cell(i, j, underlying_grid, ib)) | (k > top_cell(i, j, underlying_grid, ib))
 
@@ -349,8 +368,35 @@ end
     return bottom_Δr - top_deficit
 end
 
-@inline Operators.Δrᶠᶜᶜ(i, j, k, ibg::PCBIBG) = min(Δrᶜᶜᶜ(i-1, j, k, ibg), Δrᶜᶜᶜ(i, j, k, ibg))
-@inline Operators.Δrᶜᶠᶜ(i, j, k, ibg::PCBIBG) = min(Δrᶜᶜᶜ(i, j-1, k, ibg), Δrᶜᶜᶜ(i, j, k, ibg))
+# The wet interval of cell k, in units of its spacing and measured from the face below it
+@inline function wet_interval(i, j, k, ib)
+    φᵇ, φᵗ, at_the_bottom, at_the_top = partial_fractions(i, j, k, ib)
+    return ifelse(at_the_bottom, 1 - φᵇ, zero(φᵇ)), ifelse(at_the_top, φᵗ, one(φᵗ))
+end
+
+# Where a top cell faces a bottom cell their wet intervals are staggered, and the face is only as deep as their overlap
+@inline function staggered_overlap(i⁻, j⁻, i, j, k, ib)
+    l⁻, u⁻ = wet_interval(i⁻, j⁻, k, ib)
+    l,  u  = wet_interval(i,  j,  k, ib)
+    staggered = ((l⁻ < l) & (u⁻ < u)) | ((l < l⁻) & (u < u⁻))
+    overlap = min(u⁻, u) - max(l⁻, l)
+    return staggered & (overlap > 0) & (overlap ≥ ib.minimum_fractional_cell_height), overlap
+end
+
+# Otherwise a face is a cell with the higher bottom and the lower top of its two columns
+@inline function face_spacing(i⁻, j⁻, i, j, k, ibg)
+    open, overlap = staggered_overlap(i⁻, j⁻, i, j, k, ibg.immersed_boundary)
+    return ifelse(open, overlap * Δrᶜᶜᶜ(i, j, k, ibg.underlying_grid), min(Δrᶜᶜᶜ(i⁻, j⁻, k, ibg), Δrᶜᶜᶜ(i, j, k, ibg)))
+end
+
+@inline function face_reciprocal_spacing(i⁻, j⁻, i, j, k, ibg)
+    open, overlap = staggered_overlap(i⁻, j⁻, i, j, k, ibg.immersed_boundary)
+    return ifelse(open, Δr⁻¹ᶜᶜᶜ(i, j, k, ibg.underlying_grid) / overlap, max(Δr⁻¹ᶜᶜᶜ(i⁻, j⁻, k, ibg), Δr⁻¹ᶜᶜᶜ(i, j, k, ibg)))
+end
+
+@inline Operators.Δrᶠᶜᶜ(i, j, k, ibg::PCBIBG) = face_spacing(i-1, j, i, j, k, ibg)
+@inline Operators.Δrᶜᶠᶜ(i, j, k, ibg::PCBIBG) = face_spacing(i, j-1, i, j, k, ibg)
+
 @inline Operators.Δrᶠᶠᶜ(i, j, k, ibg::PCBIBG) = min(Δrᶠᶜᶜ(i, j-1, k, ibg), Δrᶠᶜᶜ(i, j, k, ibg))
 
 @inline Operators.Δrᶠᶜᶠ(i, j, k, ibg::PCBIBG) = min(Δrᶜᶜᶠ(i-1, j, k, ibg), Δrᶜᶜᶠ(i, j, k, ibg))
@@ -371,6 +417,13 @@ const XYFlatPCBIBG = ImmersedBoundaryGrid{<:Any, <:Flat, <:Flat, <:Any, <:Any, <
 @inline Operators.Δrᶠᶠᶜ(i, j, k, ibg::XFlatPCBIBG) = Δrᶜᶠᶜ(i, j, k, ibg)
 @inline Operators.Δrᶠᶠᶜ(i, j, k, ibg::YFlatPCBIBG) = Δrᶠᶜᶜ(i, j, k, ibg)
 @inline Operators.Δrᶠᶠᶜ(i, j, k, ibg::XYFlatPCBIBG) = Δrᶜᶜᶜ(i, j, k, ibg)
+
+# A face with no depth is a wall
+@inline Grids.peripheral_node(i, j, k, ibg::PCBTIBG, ::Face, ::Center, ::Center) =
+    inactive_cell(i, j, k, ibg) | inactive_cell(i-1, j, k, ibg) | (static_column_depthᶠᶜᵃ(i, j, ibg) == 0)
+
+@inline Grids.peripheral_node(i, j, k, ibg::PCBTIBG, ::Center, ::Face, ::Center) =
+    inactive_cell(i, j, k, ibg) | inactive_cell(i, j-1, k, ibg) | (static_column_depthᶜᶠᵃ(i, j, ibg) == 0)
 
 # Vertically-static, partial cell bottom, immersed boundary grid
 VSPCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:AbstractStaticGrid, <:PartialCellVerticalBoundaries}
@@ -408,8 +461,8 @@ end
 end
 
 # The reciprocal of the smallest spacing is the largest reciprocal
-@inline Operators.Δr⁻¹ᶠᶜᶜ(i, j, k, ibg::PCBIBG) = max(Δr⁻¹ᶜᶜᶜ(i-1, j, k, ibg), Δr⁻¹ᶜᶜᶜ(i, j, k, ibg))
-@inline Operators.Δr⁻¹ᶜᶠᶜ(i, j, k, ibg::PCBIBG) = max(Δr⁻¹ᶜᶜᶜ(i, j-1, k, ibg), Δr⁻¹ᶜᶜᶜ(i, j, k, ibg))
+@inline Operators.Δr⁻¹ᶠᶜᶜ(i, j, k, ibg::PCBIBG) = face_reciprocal_spacing(i-1, j, i, j, k, ibg)
+@inline Operators.Δr⁻¹ᶜᶠᶜ(i, j, k, ibg::PCBIBG) = face_reciprocal_spacing(i, j-1, i, j, k, ibg)
 @inline Operators.Δr⁻¹ᶠᶠᶜ(i, j, k, ibg::PCBIBG) = max(Δr⁻¹ᶠᶜᶜ(i, j-1, k, ibg), Δr⁻¹ᶠᶜᶜ(i, j, k, ibg))
 
 @inline Operators.Δr⁻¹ᶠᶜᶠ(i, j, k, ibg::PCBIBG) = max(Δr⁻¹ᶜᶜᶠ(i-1, j, k, ibg), Δr⁻¹ᶜᶜᶠ(i, j, k, ibg))
@@ -444,5 +497,6 @@ end
 function Base.:(==)(pcb1::PartialCellVerticalBoundaries, pcb2::PartialCellVerticalBoundaries)
     return bottom_heights_equal(pcb1.bottom_height, pcb2.bottom_height) &&
            bottom_heights_equal(pcb1.top_height, pcb2.top_height) &&
+           bottom_heights_equal(pcb1.top_load, pcb2.top_load) &&
            pcb1.minimum_fractional_cell_height == pcb2.minimum_fractional_cell_height
 end
