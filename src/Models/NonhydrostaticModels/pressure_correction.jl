@@ -44,8 +44,9 @@ end
 @kernel function _set_top_pressure_boundary_condition!(bc_rhs, grid, w̃, Δt, η, g, p_Δt)
     i, j = @index(Global, NTuple)
     Nz = grid.Nz
+    active = !inactive_cell(i, j, Nz, grid)
 
-    @inbounds bc_rhs[i, j, 1] = η[i, j, Nz+1] / Δt + w̃[i, j, Nz+1]
+    @inbounds bc_rhs[i, j, 1] = ifelse(active, η[i, j, Nz+1] / Δt + w̃[i, j, Nz+1], zero(Δt))
 
     # Compute ηⁿ⁺¹
     Δz⁻¹ᶠ = Δz⁻¹ᵃᵃᶠ(i, j, Nz+1, grid)
@@ -53,7 +54,8 @@ end
     b = Δz⁻¹ᶠ + 1 / (2g * Δt^2)
     @inbounds begin
         η★ = η[i, j, Nz+1] + Δt * w̃[i, j, Nz+1]
-        η[i, j, Nz+1] = (p_Δt[i, j, Nz] / Δt + (p_Δt[i, j, Nz] * a / (b * Δt) + η★ / (b * Δt^2))) / 2g
+        η_new = (p_Δt[i, j, Nz] / Δt + (p_Δt[i, j, Nz] * a / (b * Δt) + η★ / (b * Δt^2))) / 2g
+        η[i, j, Nz+1] = ifelse(active, η_new, η[i, j, Nz+1])
     end
 end
 
@@ -104,7 +106,7 @@ function make_pressure_correction!(model::NonhydrostaticModel, Δt)
     Δt⁺ = max(ϵ, Δt)
     pNHS = model.pressures.pNHS
     launch!(arch, grid, KernelParameters(size(pNHS), (0, 0, 0)), _divide_by!, pNHS, Δt⁺)
-
+    
     return nothing
 end
 

@@ -1,11 +1,12 @@
 using Oceananigans.Operators: Vᶜᶜᶜ, V⁻¹ᶜᶜᶜ, Ax_∂xᶠᶜᶜ, Axᶠᶜᶜ, Ay_∂yᶜᶠᶜ, Ayᶜᶠᶜ, Az_∂zᶜᶜᶠ,
-    Azᶜᶜᶠ, Δx⁻¹ᶠᶜᶜ, Δy⁻¹ᶜᶠᶜ, Δz⁻¹ᶜᶜᶠ, δxᶜᶜᶜ, δyᶜᶜᶜ, δzᶜᶜᶜ
-using Oceananigans.Fields: Field, condition_operand, conditional_length
+    Azᶜᶜᶠ, Δx⁻¹ᶠᶜᶜ, Δy⁻¹ᶜᶠᶜ, Δz⁻¹ᶜᶜᶠ, δxᶜᶜᶜ, δyᶜᶜᶜ, δzᶜᶜᶜ, Δzᵃᵃᶠ
+using Oceananigans.Fields: Field, condition_operand, conditional_length, CenterField
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Oceananigans.Grids: Center
 using Oceananigans.Architectures: device
 using KernelAbstractions: @localmem, @synchronize, StaticSize
+using Oceananigans.BoundaryConditions: FieldBoundaryConditions
 
 #####
 ##### Volume-inverse-weighted residual norm
@@ -67,6 +68,33 @@ function compute_symmetric_laplacian!(∇²ϕ, ϕ)
     arch = architecture(grid)
     fill_halo_regions!(ϕ)
     launch!(arch, grid, :xyz, _symmetric_laplacian_operator!, ∇²ϕ, grid, ϕ)
+    return nothing
+end
+
+# accept and ignore free_surface/Δt so both linear_operation! choices share a call signature
+compute_symmetric_laplacian!(∇²ϕ, ϕ, free_surface, Δt) = compute_symmetric_laplacian!(∇²ϕ, ϕ)
+
+@kernel function _apply_mixed_top_bc!(∇²ϕ, grid, ϕ, Δt, g)
+    i, j = @index(Global, NTuple)
+    Nz = grid.Nz
+    active = !inactive_cell(i, j, Nz, grid)
+    Δzᶠ = Δzᵃᵃᶠ(i, j, Nz+1, grid)
+    Az = Azᶜᶜᶠ(i, j, Nz+1, grid)
+    den = g * Δt^2 + Δzᶠ / 2
+    @inbounds begin
+        top_flux_current = Az * (ϕ[i, j, Nz+1] - ϕ[i, j, Nz]) / Δzᶠ
+        top_flux_correct = -Az * ϕ[i, j, Nz] / den
+        @inbounds ∇²ϕ[i, j, Nz] += active * (top_flux_correct - top_flux_current)
+    end
+end
+
+function compute_symmetric_laplacian_with_free_surface!(∇²ϕ, ϕ, free_surface, Δt)
+    grid = ϕ.grid
+    arch = architecture(grid)
+    fill_halo_regions!(ϕ)
+    launch!(arch, grid, :xyz, _symmetric_laplacian_operator!, ∇²ϕ, grid, ϕ)
+    g = free_surface.gravitational_acceleration
+    launch!(arch, grid, :xy, _apply_mixed_top_bc!, ∇²ϕ, grid, ϕ, Δt, g)
     return nothing
 end
 
@@ -436,8 +464,16 @@ function ConjugateGradientPoissonSolver(grid;
                                         preconditioner = DefaultPreconditioner(),
                                         reltol = sqrt(eps(grid)),
                                         abstol = sqrt(eps(grid)),
-                                        enforce_gauge_condition! = ZeroMeanGaugeCondition(grid),
+                                        enforce_gauge_condition! = nothing,   # CHANGE
+                                        top_bc = nothing,                     # ADD
                                         kw...)
+    if isnothing(enforce_gauge_condition!)
+        if isnothing(top_bc)
+            enforce_gauge_condition! = ZeroMeanGaugeCondition(grid)
+        else
+            enforce_gauge_condition! = no_gauge_enforcement!
+        end
+    end
 
     if preconditioner isa DefaultPreconditioner # try to make a useful default
         if grid isa ImmersedBoundaryGrid && grid.underlying_grid isa GridWithFFTSolver
@@ -447,11 +483,19 @@ function ConjugateGradientPoissonSolver(grid;
         end
     end
 
-    rhs = CenterField(grid)
+    if isnothing(top_bc)
+        rhs = CenterField(grid)
+        linear_operation! = compute_symmetric_laplacian!
+    else
+        pressure_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()), top=top_bc)
+        rhs = CenterField(grid; boundary_conditions=pressure_bcs)
+        linear_operation! = compute_symmetric_laplacian_with_free_surface!
+    end
+    # rhs = CenterField(grid)
 
     volume_inverse_norm = VolumeInverseNorm(grid)
 
-    conjugate_gradient_solver = ConjugateGradientSolver(compute_symmetric_laplacian!;
+    conjugate_gradient_solver = ConjugateGradientSolver(linear_operation!;
                                                         reltol,
                                                         abstol,
                                                         preconditioner,
