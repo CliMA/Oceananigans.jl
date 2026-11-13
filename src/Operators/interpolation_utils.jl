@@ -27,23 +27,10 @@ for ξ in ("x", "y", "z")
     end
 end
 
-# It's not Oceananigans for nothing
-# (So that AbstractOperations are more likely to compile)
-const number_of_identities = 6 # hopefully enough for Oceananigans (most need just one)
-
-for i = 1:number_of_identities
-    identity = Symbol(:identity, i)
-
-    @eval begin
-        @inline $identity(i, j, k, grid, c) = @inbounds c[i, j, k]
-        @inline $identity(i, j, k, grid, a::Number) = a
-        @inline $identity(i, j, k, grid, F::TF, args...) where TF<:Function = F(i, j, k, grid, args...)
-    end
-end
-
-torus(x, lower, upper) = lower + rem(x - lower, upper - lower, RoundDown)
-identify_an_identity(number) = Symbol(:identity, torus(number, 1, number_of_identities))
-identity_counter = 0
+# The interpolation operator between identical locations
+@inline ℑᵃᵃᵃ(i, j, k, grid, c) = @inbounds c[i, j, k]
+@inline ℑᵃᵃᵃ(i, j, k, grid, a::Number) = a
+@inline ℑᵃᵃᵃ(i, j, k, grid, F::TF, args...) where TF<:Function = F(i, j, k, grid, args...)
 
 """
 $(TYPEDSIGNATURES)
@@ -54,30 +41,16 @@ where the `XA`s and `XB`s are `Face()` or `Center()` instances.
 function interpolation_operator(from, to)
     from, to = instantiate.(from), instantiate.(to)
     x, y, z = (interpolation_code(X, Y) for (X, Y) in zip(from, to))
-
-    if all(ξ === :ᵃ for ξ in (x, y, z))
-
-        # This is crazy, but here's my number...
-        global identity_counter += 1
-        identity = identify_an_identity(identity_counter)
-
-        return getglobal(@__MODULE__, identity)
-    else
-        return getglobal(@__MODULE__, Symbol(:ℑ, ℑxsym(x), ℑysym(y), ℑzsym(z), x, y, z))
-    end
+    return getglobal(@__MODULE__, Symbol(:ℑ, ℑxsym(x), ℑysym(y), ℑzsym(z), x, y, z))
 end
 
 """
 $(TYPEDSIGNATURES)
 
-Return the `identity` interpolator function. This is needed to obtain the interpolation
-operator for fields that have no intrinsic location, like numbers or functions.
+Return the interpolator that does not interpolate, `ℑᵃᵃᵃ`. This is needed to obtain the
+interpolation operator for fields that have no intrinsic location, like numbers or functions.
 """
-function interpolation_operator(::Nothing, to)
-    global identity_counter += 1
-    identity = identify_an_identity(identity_counter)
-    return getglobal(@__MODULE__, identity)
-end
+interpolation_operator(::Nothing, to) = ℑᵃᵃᵃ
 
 function assumed_field_location(name)
     name === :u  && return (Face(), Center(), Center())
