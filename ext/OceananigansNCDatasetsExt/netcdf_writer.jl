@@ -18,14 +18,14 @@ CommonDataModel.defVar(ds::AbstractDataset, name, op::AbstractOperation; kwargs.
 CommonDataModel.defVar(ds::AbstractDataset, name, op::Reduction; kwargs...) = defVar(ds, name, Field(op); kwargs...)
 
 Base.@nospecializeinfer function CommonDataModel.defVar(ds::AbstractDataset, field_name, @nospecialize(fd::AbstractField);
-                array_type=Array{eltype(fd)},
-                time_dependent=false,
-                with_halos=false,
-                dimension_name_generator = trilocation_dim_name,
-                dimension_type=Float64,
-                grid_index=nothing,
-                write_data=true,
-                kwargs...)
+                                                        array_type=Array{eltype(fd)},
+                                                        time_dependent=false,
+                                                        with_halos=false,
+                                                        dimension_name_generator = trilocation_dim_name,
+                                                        dimension_type=Float64,
+                                                        grid_index=nothing,
+                                                        write_data=true,
+                                                        kwargs...)
 
     # effective_dim_names are the dimensions that will be used to write the field data (excludes reduced and dimensions where location is Nothing)
     effective_dim_names = create_field_dimensions!(ds, fd, dimension_name_generator; time_dependent, with_halos, array_type, dimension_type, grid_index)
@@ -60,9 +60,9 @@ end
 
 # Constant fields are written as scalars, with their type stored as an attribute
 function CommonDataModel.defVar(ds::AbstractDataset, field_name, fd::ConstantFields;
-                array_type = Array{eltype(fd)},
-                attrib = Dict(),
-                kwargs...)
+                                array_type = Array{eltype(fd)},
+                                attrib = Dict(),
+                                kwargs...)
 
     attrib = merge(attrib, Dict("type" => string(nameof(typeof(fd))),
                                 "location" => "(Nothing, Nothing, Nothing)"))
@@ -89,24 +89,24 @@ end
 #####
 
 function OutputWriters.NetCDFWriter(model::AbstractModel, outputs;
-                      filename,
-                      schedule,
-                      dir = ".",
-                      array_type = Array{Float32},
-                      indices = (:, :, :),
-                      global_attributes = Dict(),
-                      output_attributes = Dict(),
-                      dimensions = Dict(),
-                      with_halos = false,
-                      include_grid_metrics = true,
-                      overwrite_files = nothing,
-                      overwrite_snapshots = true,
-                      verbose = false,
-                      deflatelevel = 0,
-                      part = 1,
-                      file_splitting = NoFileSplitting(),
-                      dimension_name_generator = trilocation_dim_name,
-                      dimension_type = Float64)
+                                    filename,
+                                    schedule,
+                                    dir = ".",
+                                    array_type = Array{Float32},
+                                    indices = (:, :, :),
+                                    global_attributes = Dict(),
+                                    output_attributes = Dict(),
+                                    dimensions = Dict(),
+                                    with_halos = false,
+                                    include_grid_metrics = true,
+                                    overwrite_files = nothing,
+                                    overwrite_snapshots = true,
+                                    verbose = false,
+                                    deflatelevel = 0,
+                                    part = 1,
+                                    file_splitting = NoFileSplitting(),
+                                    dimension_name_generator = trilocation_dim_name,
+                                    dimension_type = Float64)
 
     if with_halos && indices != (:, :, :)
         throw(ArgumentError("If with_halos=true then you cannot pass indices: $indices"))
@@ -384,9 +384,9 @@ end
 
 """ Defines empty field variable. """
 Base.@nospecializeinfer function define_output_variable!(@nospecialize(model), dataset, @nospecialize(output::AbstractField), output_name; array_type,
-                                 deflatelevel, attrib, dimension_name_generator,
-                                 time_dependent, with_halos, grid_index=nothing,
-                                 dimensions, filepath, dimension_type=Float64)
+                                                         deflatelevel, attrib, dimension_name_generator,
+                                                         time_dependent, with_halos, grid_index=nothing,
+                                                         dimensions, filepath, dimension_type=Float64)
 
     # Windowed fields (e.g. the free-surface displacement) are handled generically: their
     # windowed axes get a distinct dimension in `create_field_dimensions!` (see

@@ -292,7 +292,7 @@ function TurbulenceClosures.compute_closure_fields!(closure_fields, closure::Fla
 end
 
 @kernel function compute_TKEDissipation_closure_fields!(closure_fields, grid, closure::FlavorOfTD,
-                                                       velocities, tracers, buoyancy)
+                                                        velocities, tracers, buoyancy)
     i, j, k = @index(Global, NTuple)
 
     # Ensure this works with "ensembles" of closures, in addition to ordinary single closures

@@ -12,15 +12,15 @@ using Oceananigans.Utils: @apply_regionally
 #####
 
 function OutputReaders.FieldTimeSeries(typed_path::NetCDFPath, name::String;
-                         backend = InMemory(),
-                         architecture = CPU(),
-                         grid = nothing,
-                         location = nothing,
-                         boundary_conditions = UnspecifiedBoundaryConditions(),
-                         time_indexing = Linear(),
-                         iterations = nothing,
-                         times = nothing,
-                         reader_kw = NamedTuple())
+                                       backend = InMemory(),
+                                       architecture = CPU(),
+                                       grid = nothing,
+                                       location = nothing,
+                                       boundary_conditions = UnspecifiedBoundaryConditions(),
+                                       time_indexing = Linear(),
+                                       iterations = nothing,
+                                       times = nothing,
+                                       reader_kw = NamedTuple())
 
     path = typed_path.path
     file = NCDataset(path; reader_kw...)
@@ -126,11 +126,11 @@ Load a field called `name` saved in a NetCDF file at `path` at `iter`ation.
 Unless specified, the `grid` is loaded from `path`.
 """
 function Fields.Field(location, file::NCDataset, name::String, iter;
-               grid = nothing,
-               architecture = nothing,
-               indices = (:, :, :),
-               boundary_conditions = nothing,
-               reader_kw = NamedTuple())
+                      grid = nothing,
+                      architecture = nothing,
+                      indices = (:, :, :),
+                      boundary_conditions = nothing,
+                      reader_kw = NamedTuple())
 
     # Default to CPU if neither architecture nor grid is specified
     if isnothing(architecture)

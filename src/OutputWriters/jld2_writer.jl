@@ -219,7 +219,7 @@ end
 # can be large immutable structs (for example, fields of a `KernelFunctionOperation` whose
 # kernel function holds many fields).
 Base.@nospecializeinfer function initialize_jld2_file!(filepath, init, jld2_kw, including,
-                                                      @nospecialize(outputs), @nospecialize(model))
+                                                       @nospecialize(outputs), @nospecialize(model))
     # Output is appended to an existing file, which already holds the metadata
     isfile(filepath) && return nothing
 

@@ -265,7 +265,7 @@ end
 end
 
 @kernel function compute_ri_based_diffusivities!(closure_fields, grid, closure::FlavorOfRBVD,
-                                                velocities, tracers, buoyancy, tracer_bcs, clock)
+                                                 velocities, tracers, buoyancy, tracer_bcs, clock)
     i, j, k = @index(Global, NTuple)
     _compute_ri_based_diffusivities!(i, j, k, closure_fields, grid, closure,
                                      velocities, tracers, buoyancy, tracer_bcs, clock)

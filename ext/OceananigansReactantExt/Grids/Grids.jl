@@ -95,7 +95,7 @@ reactant_offset_indices(ℓ,         topo, N, H, r::AbstractUnitRange) = r
 reactant_offset_indices(::Nothing, topo, N, H, ::AbstractUnitRange) = 1:1
 
 function Oceananigans.Grids.new_data(FT::DataType, arch::ShardedDistributed,
-        loc, topo, sz, halo_sz, indices=default_indices(length(loc)))
+                                     loc, topo, sz, halo_sz, indices=default_indices(length(loc)))
 
     Tsz = reactant_total_size(loc, topo, sz, halo_sz, indices)
     underlying_data = zeros(arch, FT, Tsz...)
