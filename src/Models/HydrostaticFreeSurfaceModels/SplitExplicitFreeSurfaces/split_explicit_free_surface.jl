@@ -422,12 +422,12 @@ function maybe_extend_halos(TX, TY, grid, substepping::FixedSubstepNumber)
     old_halos = halo_size(grid)
     Nsubsteps = length(substepping.averaging_weights)
 
-    # Every rank shares the same halo, so it is capped at the smallest local size
+    # Every rank shares the same halo, so it is capped at the smallest local size, in y below it for a rank holding a fold
     Nx = all_reduce(min, size(grid, 1), architecture(grid))
     Ny = all_reduce(min, size(grid, 2), architecture(grid))
 
     Hx = TX() isa ConnectedTopology ? min(max(Nsubsteps+2, old_halos[1]), Nx) : old_halos[1]
-    Hy = TY() isa ConnectedTopology ? min(max(Nsubsteps+2, old_halos[2]), Ny) : old_halos[2]
+    Hy = TY() isa ConnectedTopology ? max(old_halos[2], min(Nsubsteps+2, Ny - 1)) : old_halos[2]
 
     new_halos = (Hx, Hy, old_halos[3])
 

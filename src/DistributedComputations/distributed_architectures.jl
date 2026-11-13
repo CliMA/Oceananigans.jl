@@ -1,6 +1,6 @@
 using Oceananigans.Architectures: Architectures, array_type, child_architecture, convert_to_device,
                                   device, device!, on_architecture
-using Oceananigans.Grids: Grids, topology, zeros
+using Oceananigans.Grids: Grids, RightCenterFolded, topology, zeros
 using Oceananigans.Utils: Utils, sync_device!
 
 #####
@@ -393,7 +393,8 @@ end
     RankConnectivity(partition, global_size, topology, halo)
 
 Global index ranges of every rank (in rank order) on a grid of `global_size` and `topology` divided by `partition`.
-In the directions that are partitioned, every rank must be at least as large as the `halo`.
+In the directions that are partitioned, every rank must be at least as large as the `halo`, and a rank that holds a
+whole Center fold line must be taller than the `halo`.
 """
 struct RankConnectivity{T}
     ranges :: Vector{NTuple{3, UnitRange{Int}}}
@@ -426,6 +427,12 @@ function RankConnectivity(partition, global_size, topology, halo)
         if n < global_size[d] && n < halo[d]
             throw(ArgumentError("halo=$(halo[d]) must be ≤ the size of every rank, found a rank of size $n in dimension $d"))
         end
+    end
+
+    # The zipper copies rows Ny to Ny - Hy across a Center fold line
+    fold_rank_size = length(last(ranges)[2])
+    if topology[2] === RightCenterFolded && Rx == 1 && fold_rank_size ≤ halo[2]
+        throw(ArgumentError("halo=$(halo[2]) must be < the size of the rank that holds the whole fold, found a rank of size $fold_rank_size"))
     end
 
     return RankConnectivity(ranges, (Nx, Ny, Nz), topology)
