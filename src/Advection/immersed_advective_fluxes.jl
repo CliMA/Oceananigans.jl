@@ -1,4 +1,5 @@
-using Oceananigans.ImmersedBoundaries: immersed_peripheral_node, inactive_node
+using Oceananigans.ImmersedBoundaries: immersed_peripheral_node
+using Oceananigans.Grids: peripheral_node
 using Oceananigans.Fields: ZeroField
 using Oceananigans.Grids: Open
 
@@ -60,7 +61,8 @@ end
 """
 $(MethodSignatures(; defaults = true))
 
-Check if the stencil required for reconstruction contains immersed nodes
+Check if the stencil required for reconstruction contains immersed nodes: its first cell is inactive, or one of the faces
+crossed walking along it is peripheral.
 
 Example
 =======
@@ -68,17 +70,17 @@ Example
 ```
 julia> inside_immersed_boundary(2, :none, :z, :ᶜ)
 3-element Vector{Any}:
- :(inactive_node(i, j, k + -1, ibg, c, c, c))
- :(inactive_node(i, j, k + 0,  ibg, c, c, c))
- :(inactive_node(i, j, k + 1,  ibg, c, c, c))
+ :(peripheral_node(i, j, k + -1, ibg, c, c, c))
+ :(peripheral_node(i, j, k + 0,  ibg, c, c, f))
+ :(peripheral_node(i, j, k + 1,  ibg, c, c, f))
 
 julia> inside_immersed_boundary(3, :left, :x, :ᶠ)
 5-element Vector{Any}:
- :(inactive_node(i + -3, j, k, ibg, c, c, c))
- :(inactive_node(i + -2, j, k, ibg, c, c, c))
- :(inactive_node(i + -1, j, k, ibg, c, c, c))
- :(inactive_node(i + 0,  j, k, ibg, c, c, c))
- :(inactive_node(i + 1,  j, k, ibg, c, c, c))
+ :(peripheral_node(i + -3, j, k, ibg, c, c, c))
+ :(peripheral_node(i + -2, j, k, ibg, f, c, c))
+ :(peripheral_node(i + -1, j, k, ibg, f, c, c))
+ :(peripheral_node(i + 0,  j, k, ibg, f, c, c))
+ :(peripheral_node(i + 1,  j, k, ibg, f, c, c))
 ```
 """
 @inline function inside_immersed_boundary(buffer, shift, dir, side)
@@ -102,11 +104,12 @@ julia> inside_immersed_boundary(3, :left, :x, :ᶠ)
 
     for (idx, n) in enumerate(cells)
         offset = side == :ᶠ ? n - buffer - 1 : n - buffer
+        ℓ = idx == 1 ? :c : :f # the first cell, then the face between each cell and the one before it
         inactive_cells[idx] =  dir == :x ?
-                               :(inactive_node(i + $offset, j, k, ibg, c, c, c)) :
+                               :(peripheral_node(i + $offset, j, k, ibg, $ℓ, c, c)) :
                                dir == :y ?
-                               :(inactive_node(i, j + $offset, k, ibg, c, c, c)) :
-                               :(inactive_node(i, j, k + $offset, ibg, c, c, c))
+                               :(peripheral_node(i, j + $offset, k, ibg, c, $ℓ, c)) :
+                               :(peripheral_node(i, j, k + $offset, ibg, c, c, $ℓ))
     end
 
     return inactive_cells

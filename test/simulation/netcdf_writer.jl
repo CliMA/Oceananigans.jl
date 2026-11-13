@@ -3475,6 +3475,30 @@ using Oceananigans.OutputWriters: reconstruct_grid, materialize_from_netcdf
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, bottom_height_interior,
                                        CenterImmersedCondition, InterfaceImmersedCondition
 
+function test_netcdf_cut_cell_bottom_reconstruction(arch)
+    Nx, Ny, Nz = 6, 6, 8
+    underlying_grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(1, 1, 1))
+    island = on_architecture(arch, [2 ≤ i ≤ 4 && 3 ≤ j ≤ 4 ? 100.0 : -0.5 + i / 80 for i in 1:Nx, j in 1:Ny])
+    grid = ImmersedBoundaryGrid(underlying_grid, CutCellBottom(island, minimum_fractional_cell_height=0.4))
+
+    model = HydrostaticFreeSurfaceModel(grid; tracers=:T, free_surface=ExplicitFreeSurface())
+    simulation = Simulation(model; Δt=1e-6, stop_iteration=1, verbose=false)
+
+    dir = mktempdir()
+    filename = "cut_cell_bottom_reconstruction.nc"
+    simulation.output_writers[:nc] = NetCDFWriter(model, (; T=model.tracers.T);
+                                                  filename,
+                                                  dir,
+                                                  schedule=IterationInterval(1),
+                                                  overwrite_files=true)
+    run!(simulation)
+
+    @test reconstruct_grid(joinpath(dir, filename); architecture=arch).immersed_boundary == grid.immersed_boundary
+
+    rm(dir; recursive=true)
+    return nothing
+end
+
 function test_netcdf_tripolar_grid_output(arch)
     grid = TripolarGrid(arch, size=(20, 16, 4), z=(-100, 0))
     fs = SplitExplicitFreeSurface(grid; substeps=10)
@@ -4022,6 +4046,7 @@ end
             @testset "Rectilinear grid fitted bottom [$A]" begin
                 test_netcdf_rectilinear_grid_fitted_bottom(arch, GridFittedBottom)
                 test_netcdf_rectilinear_grid_fitted_bottom(arch, PartialCellBottom)
+                test_netcdf_cut_cell_bottom_reconstruction(arch)
             end
 
             @testset "LatitudeLongitude grid fitted bottom [$A]" begin

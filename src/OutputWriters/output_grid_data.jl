@@ -265,6 +265,15 @@ function gather_immersed_boundary(grid::PCBorGFBIBG, indices, dim_name_generator
     return suffix_grid_keys(ib_vars, grid_index)
 end
 
+function gather_immersed_boundary(grid::CCBIBG, indices, dim_name_generator; grid_index=nothing)
+    corner_field = Field{Face, Face, Nothing}(grid.underlying_grid; data=grid.immersed_boundary.corner_bottom_height)
+    ib_vars = merge(Dict("bottom_height" => Field(bottom_height_field(grid); indices),
+                         "corner_bottom_height" => Field(corner_field; indices)),
+                    immersed_node_fields(grid, indices))
+
+    return suffix_grid_keys(ib_vars, grid_index)
+end
+
 const GFBoundaryIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:GridFittedBoundary}
 
 function gather_immersed_boundary(grid::GFBoundaryIBG, indices, dim_name_generator; grid_index=nothing)

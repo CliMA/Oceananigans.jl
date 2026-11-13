@@ -1,6 +1,6 @@
 using Oceananigans.BuoyancyFormulations: z_dot_g_bᶜᶜᶜ, z_dot_g_bᶜᶜᶠ
 using Oceananigans.Grids: topology
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, PartialCellVerticalBoundaries
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, PartialCellVerticalBoundaries, CutCellBottom
 using Oceananigans.Operators: Δzᶜᶜᶜ, Δzᶜᶜᶠ
 
 """
@@ -32,7 +32,7 @@ update_hydrostatic_pressure!(grid, model; kwargs...) =
     update_hydrostatic_pressure!(model.pressures.pHY′, model.architecture, model.grid, model.buoyancy, model.tracers; kwargs...)
 
 # Partial cell "algorithm"
-const PCB = PartialCellVerticalBoundaries
+const PCB = Union{PartialCellVerticalBoundaries, CutCellBottom}
 const PCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:PCB}
 
 update_hydrostatic_pressure!(pHY′, arch, ibg::PCBIBG, buoyancy, tracers; parameters = surface_kernel_parameters(ibg.underlying_grid)) =

@@ -3,7 +3,7 @@ using Oceananigans.DistributedComputations: reconstruct_global_grid
 using Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid, metrics_precomputed,
                           pop_flat_elements, grid_name, new_data, halo_size, with_halo,
                           minimum_xspacing, minimum_yspacing, minimum_zspacing
-using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary,
+using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, CutCellBottom, GridFittedBoundary,
                                        height_field, set_bottom_height!
 using Oceananigans.Models: PrescribedVelocityFields
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModels
@@ -187,6 +187,12 @@ function reconstruct_global_immersed_boundary(ib::PartialCellBottom, mrg::MultiR
     bottom_field  = height_field(ib.bottom_height, mrg)
     global_bottom = reconstruct_global_field(bottom_field)
     return PartialCellBottom(interior(global_bottom), ib.minimum_fractional_cell_height)
+end
+
+function reconstruct_global_immersed_boundary(ib::CutCellBottom, mrg::MultiRegionGrids)
+    global_bottom = reconstruct_global_field(height_field(ib.bottom_height, mrg))
+    global_corners = reconstruct_global_field(Field{Face, Face, Nothing}(mrg; data=ib.corner_bottom_height))
+    return CutCellBottom(interior(global_bottom), nothing, nothing, interior(global_corners), ib.minimum_fractional_cell_height, nothing)
 end
 
 reconstruct_global_immersed_boundary(g::GridFittedBoundary{<:Field}, ::MultiRegionGrids) = GridFittedBoundary(reconstruct_global_field(g.mask))

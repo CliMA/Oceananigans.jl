@@ -3,6 +3,7 @@ using Oceananigans.ImmersedBoundaries:
     GridFittedBoundary,
     GridFittedVerticalBoundaries,
     PartialCellVerticalBoundaries,
+    CutCellBottom,
     active_cells_maps,
     bottom_height_interior,
     compute_mask,
@@ -40,6 +41,14 @@ end
 
 global_height_array(::Nothing, arch, global_size) = nothing
 global_height_array(height, arch, global_size) = construct_global_array(bottom_height_interior(height), arch, global_size)
+
+function reconstruct_global_immersed_boundary(ib::CutCellBottom, arch, grid)
+    Nx, Ny, _ = size(grid)
+    corner_field = Field{Face, Face, Nothing}(grid.underlying_grid; data=ib.corner_bottom_height)
+    global_bottom_height = global_height_array(ib.bottom_height, arch, (Nx, Ny, 1))
+    global_corner_bottom_height = construct_global_array(interior(corner_field), arch, size(corner_field))
+    return CutCellBottom(global_bottom_height, nothing, nothing, global_corner_bottom_height, ib.minimum_fractional_cell_height, nothing)
+end
 
 function reconstruct_global_immersed_boundary(ib::GridFittedBoundary, arch, grid)
     global_mask = construct_global_array(ib.mask, arch, size(grid))
@@ -114,6 +123,8 @@ function resize_immersed_boundary(ib::AbstractGridFittedBottom, grid)
 
     return ib
 end
+
+resize_immersed_boundary(ib::CutCellBottom, grid) = ib
 
 wrong_height_size(::Nothing, height_size) = false
 wrong_height_size(height, height_size) = any(size(height) .!= height_size)

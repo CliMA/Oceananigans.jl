@@ -305,6 +305,10 @@ function test_immersed_grid_reconstruction(original_grid)
         @test :minimum_fractional_cell_height in keys(immersed_boundary_args)
         reconstructed_ib = PartialCellBottom(immersed_boundary_args[:bottom_height], immersed_boundary_args[:minimum_fractional_cell_height])
 
+    elseif original_ib isa CutCellBottom
+        reconstructed_ib = CutCellBottom(immersed_boundary_args[:bottom_height], nothing, nothing, immersed_boundary_args[:corner_bottom_height],
+                                            immersed_boundary_args[:minimum_fractional_cell_height], nothing)
+
     elseif original_ib isa GridFittedBoundary
         @test :mask in keys(immersed_boundary_args)
         reconstructed_ib = GridFittedBoundary(immersed_boundary_args[:mask])
@@ -406,6 +410,7 @@ N = 6
             test_immersed_grid_reconstruction(gfboundary_rectilinear_grid)
             test_immersed_grid_reconstruction(gfbottom_rectilinear_grid)
             test_immersed_grid_reconstruction(pcbottom_rectilinear_grid)
+            test_immersed_grid_reconstruction(ImmersedBoundaryGrid(regular_rectilinear_grid, CutCellBottom((x, y) -> -1/2 + x / 10)))
         end
 
         @testset "LatitudeLongitudeGrid reconstruction tests [$FT, $(typeof(arch))]" begin

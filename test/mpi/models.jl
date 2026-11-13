@@ -656,6 +656,12 @@ end
         @test size(bottom_height_interior(pcb.immersed_boundary.bottom_height)) == (Nx, Ny, 1)
         @test pcb.immersed_boundary.minimum_fractional_cell_height == 0.3
 
+        # CutCellBottom: the gathered boundary is the one a serial grid builds from the global heights.
+        global_bh = on_architecture(child_arch, [0.1 + 0.25 * ((j - 1) ÷ local_Ny) for i in 1:Nx, j in 1:Ny])
+        ibg_scb = ImmersedBoundaryGrid(ug, CutCellBottom(local_bh; minimum_fractional_cell_height=0.3))
+        serial_scb = ImmersedBoundaryGrid(reconstruct_global_grid(ug), CutCellBottom(global_bh; minimum_fractional_cell_height=0.3))
+        @test reconstruct_global_grid(ibg_scb).immersed_boundary == serial_scb.immersed_boundary
+
         # GridFittedBoundary: 3-D mask path
         gfm = reconstruct_global_grid(ibg_gfm)
         @test gfm.immersed_boundary isa GridFittedBoundary

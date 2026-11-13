@@ -72,6 +72,7 @@ end
         grids = [lat_lon_grid, rectilinear_grid]
 
         immersed_boundaries = [GridFittedBottom((x, y) -> 0.5),
+                               CutCellBottom((x, y) -> 0.5),
                                GridFittedBoundary((x, y, z) -> z>0.5)]
 
         field_types = [CenterField, XFaceField, YFaceField]
@@ -112,6 +113,17 @@ end
                 end
             end
         end
+    end
+end
+
+@testset "Reconstructing a field keeps the last face of a Bounded direction" begin
+    for arch in archs, Partition in (XPartition, YPartition)
+        grid = RectilinearGrid(arch, size=(8, 6, 1), x=(0, 1), y=(0, 1), z=(0, 1), topology=(Bounded, Bounded, Bounded))
+        single_region_field = Field{Face, Face, Center}(grid)
+        multi_region_field = Field{Face, Face, Center}(MultiRegionGrid(grid, partition=Partition(2)))
+        set!(single_region_field, (x, y, z) -> 1 + x + 10y)
+        set!(multi_region_field, (x, y, z) -> 1 + x + 10y)
+        @test interior(reconstruct_global_field(multi_region_field)) ≈ Array(interior(single_region_field))
     end
 end
 
