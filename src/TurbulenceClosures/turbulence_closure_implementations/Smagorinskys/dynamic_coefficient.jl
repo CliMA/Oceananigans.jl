@@ -329,9 +329,8 @@ function compute_coefficient_fields!(closure_fields, closure::DirectionallyAvera
         launch!(arch, grid, :xyz, _compute_Σ!, Σ, grid, velocities...)
         launch!(arch, grid, :xyz, _compute_Σ̄!, Σ̄, grid, velocities...)
 
-        # Fill Σ, Σ̄ halos because the M tensor computation uses the test filter,
-        # which reads from neighboring cells (including halo cells).
-        fill_halo_regions!(Σ; only_local_halos=true)
+        # The test filter reads Σ in neighboring cells, including across rank boundaries.
+        fill_halo_regions!(Σ)
         fill_halo_regions!(Σ̄; only_local_halos=true)
 
         LM = closure_fields.LM
@@ -426,14 +425,16 @@ function TurbulenceClosures.initialize_closure_fields!(closure_fields, closure::
     cˢ = closure.coefficient
     u, v, w = model.velocities
 
+    # `set!` calls this after the pressure correction, before `update_state!` refills the velocity halos.
+    fill_halo_regions!(model.velocities, clock, Oceananigans.fields(model))
+
     Σ = closure_fields.Σ
     Σ̄ = closure_fields.Σ̄
     launch!(arch, grid, :xyz, _compute_Σ!, Σ, grid, u, v, w)
     launch!(arch, grid, :xyz, _compute_Σ̄!, Σ̄, grid, u, v, w)
 
-    # Fill Σ, Σ̄ halos because the M tensor computation uses the test filter,
-    # which reads from neighboring cells (including halo cells).
-    fill_halo_regions!(Σ; only_local_halos=true)
+    # The test filter reads Σ in neighboring cells, including across rank boundaries.
+    fill_halo_regions!(Σ)
     fill_halo_regions!(Σ̄; only_local_halos=true)
 
     𝒥ᴸᴹ  = closure_fields.𝒥ᴸᴹ
@@ -470,9 +471,8 @@ function TurbulenceClosures.step_closure_prognostics!(closure_fields, closure::L
         launch!(arch, grid, :xyz, _compute_Σ!, Σ, grid, u, v, w)
         launch!(arch, grid, :xyz, _compute_Σ̄!, Σ̄, grid, u, v, w)
 
-        # Fill Σ, Σ̄ halos because the M tensor computation uses the test filter,
-        # which reads from neighboring cells (including halo cells).
-        fill_halo_regions!(Σ; only_local_halos=true)
+        # The test filter reads Σ in neighboring cells, including across rank boundaries.
+        fill_halo_regions!(Σ)
         fill_halo_regions!(Σ̄; only_local_halos=true)
 
         parent(closure_fields.𝒥ᴸᴹ⁻) .= parent(closure_fields.𝒥ᴸᴹ)
