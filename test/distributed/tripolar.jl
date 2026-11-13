@@ -111,7 +111,7 @@ tripolar_reconstructed_field_script(fold_topology, pivot) = """
     end
 """
 
-tripolar_metric_halo_script(fold_topology, pivot, Rx) = """
+tripolar_metric_halo_script(fold_topology, pivot, partition) = """
     using MPI
     MPI.Init()
     using Test
@@ -120,18 +120,18 @@ tripolar_metric_halo_script(fold_topology, pivot, Rx) = """
 
     using Oceananigans.Grids: halo_size, topology, with_halo
     using Oceananigans.BoundaryConditions: fill_halo_regions!, NoFluxBoundaryCondition, PeriodicBoundaryCondition
+    using Oceananigans.DistributedComputations: Sizes, local_ranges
     using Oceananigans.OrthogonalSphericalShellGrids: north_fold_boundary_condition
 
-    arch = Distributed(CPU(), partition = Partition($Rx, 2))
+    arch = Distributed(CPU(), partition = $partition)
 
     global_grid = TripolarGrid(size = (20, 20, 2), z = (-1000, 0), halo = (4, 4, 4), fold_topology = $fold_topology, pivot = $pivot)
     local_grid  = TripolarGrid(arch; size = (20, 20, 2), z = (-1000, 0), halo = (4, 4, 4), fold_topology = $fold_topology, pivot = $pivot)
 
     nx, ny, _ = size(local_grid)
-    rx, ry, _ = arch.local_index
-    i₀, j₀ = (rx - 1) * nx, (ry - 1) * ny
+    i, j, _ = local_ranges(local_grid.architecture)
+    i₀, j₀ = first(i) - 1, first(j) - 1
 
-    Hx, Hy, _ = halo_size(local_grid)
     TX, TY, _ = topology(local_grid)
 
     fold_bcs(sign) = FieldBoundaryConditions(north  = north_fold_boundary_condition(global_grid, sign),
@@ -141,24 +141,31 @@ tripolar_metric_halo_script(fold_topology, pivot, Rx) = """
                                              top = nothing, bottom = nothing)
 
     # Raw data is folded once on both grids: the fold is not idempotent where it flips the sign of a fixed point
-    for (LX, LY) in ((Center, Center), (Face, Center), (Center, Face), (Face, Face)), sign in (1, -1)
-        Njg = Base.length(LY(), topology(global_grid, 2)(), size(global_grid, 2))
-        Njl = Base.length(LY(), TY(), ny)
+    function test_fold_halos(local_grid, global_grid)
+        Hx, Hy, _ = halo_size(local_grid)
+        TY = topology(local_grid, 2)
 
-        reference = Field{LX, LY, Nothing}(global_grid; boundary_conditions = fold_bcs(sign))
-        for j in 1:Njg, i in 1:size(global_grid, 1)
-            reference[i, j] = i + 100j
+        for (LX, LY) in ((Center, Center), (Face, Center), (Center, Face), (Face, Face)), sign in (1, -1)
+            Njg = Base.length(LY(), topology(global_grid, 2)(), size(global_grid, 2))
+            Njl = Base.length(LY(), TY(), ny)
+
+            reference = Field{LX, LY, Nothing}(global_grid; boundary_conditions = fold_bcs(sign))
+            for j in 1:Njg, i in 1:size(global_grid, 1)
+                reference[i, j, 1] = i + 100j
+            end
+            fill_halo_regions!(reference)
+
+            local_field = Field{LX, LY, Nothing}(local_grid; boundary_conditions = fold_bcs(sign))
+            for j in 1:Njl, i in 1:nx
+                local_field[i, j, 1] = i₀ + i + 100 * (j₀ + j)
+            end
+            fill_halo_regions!(local_field)
+
+            @test all(local_field[i, j, 1] == reference[i₀ + i, j₀ + j, 1] for j in 1-Hy:Njl+Hy, i in 1-Hx:nx+Hx)
         end
-        fill_halo_regions!(reference)
-
-        local_field = Field{LX, LY, Nothing}(local_grid; boundary_conditions = fold_bcs(sign))
-        for j in 1:Njl, i in 1:nx
-            local_field[i, j] = i₀ + i + 100 * (j₀ + j)
-        end
-        fill_halo_regions!(local_field)
-
-        @test all(local_field[i, j] == reference[i₀ + i, j₀ + j] for j in 1-Hy:Njl+Hy, i in 1-Hx:nx+Hx)
     end
+
+    test_fold_halos(local_grid, global_grid)
 
     # Scaled metrics are not the analytic ones, so they tell a `with_halo` that transfers them from one that regenerates them
     for name in (:φᶜᶜᵃ, :φᶠᶜᵃ, :φᶜᶠᵃ, :φᶠᶠᵃ,
@@ -168,6 +175,7 @@ tripolar_metric_halo_script(fold_topology, pivot, Rx) = """
     end
 
     rehaloed = with_halo((4, 6, 4), local_grid)
+    test_fold_halos(rehaloed, with_halo((4, 6, 4), global_grid))
 
     for (name, ℓx, ℓy) in ((:φᶜᶜᵃ, Center(), Center()), (:Δyᶠᶜᵃ, Face(), Center()),
                            (:Δxᶜᶠᵃ, Center(), Face()),  (:Azᶠᶠᵃ, Face(), Face()))
@@ -181,8 +189,10 @@ tripolar_metric_halo_script(fold_topology, pivot, Rx) = """
     run_mpi_script(tripolar_reconstructed_grid_script(fold_topology, pivot), 4)
 
     run_mpi_script(tripolar_reconstructed_field_script(fold_topology, pivot), 4)
-    run_mpi_script(tripolar_metric_halo_script(fold_topology, pivot, 2), 4)
-    run_mpi_script(tripolar_metric_halo_script(fold_topology, pivot, 4), 8)
+    run_mpi_script(tripolar_metric_halo_script(fold_topology, pivot, "Partition(2, 2)"), 4)
+    run_mpi_script(tripolar_metric_halo_script(fold_topology, pivot, "Partition(4, 2)"), 8)
+    run_mpi_script(tripolar_metric_halo_script(fold_topology, pivot, "Partition(x = 2, y = (Sizes(6, 14), Sizes(13, 7)))"), 4)
+    run_mpi_script(tripolar_metric_halo_script(fold_topology, pivot, "Partition(1, Sizes(7, 6, 7))"), 3)
 end
 
 # Every rank must rebuild the immersed boundary when moving the grid to the CPU (as `set!(field, func)` does
@@ -322,7 +332,7 @@ run_large_pencil_distributed_grid(fold_topology, pivot) = """
 
 @testset "Test distributed TripolarGrid simulations $fold_topology..." for (fold_topology, pivot) in fold_topologies
     # Run the serial computation
-    grid  = TripolarGrid(size = (40, 40, 1), z = (-1000, 0), halo = (5, 5, 5); fold_topology, pivot)
+    grid  = TripolarGrid(size = (88, 88, 1), z = (-1000, 0), halo = (5, 5, 5); fold_topology, pivot)
     grid  = analytical_immersed_tripolar_grid(grid)
     model = run_distributed_simulation(grid)
 
