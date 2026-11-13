@@ -6,7 +6,7 @@ using Reactant: AnyConcreteRArray
 
 using Oceananigans
 using Oceananigans.Architectures: ReactantState, ReshapedHostArray, child_architecture, on_architecture
-using Oceananigans.DistributedComputations: DistributedComputations, Distributed
+using Oceananigans.DistributedComputations: DistributedComputations, Distributed, OneDBuffer, TwoDBuffer, CornerBuffer, MPI
 using Oceananigans.Utils: Utils
 using Oceananigans.Grids: LatitudeLongitudeGrid, topology
 
@@ -55,6 +55,30 @@ Oceananigans.Architectures.on_architecture(arch::ReactantState, a::ReshapedHostA
 Oceananigans.Architectures.cpu_architecture(arch::ShardedDistributed) = CPU()
 
 Utils.sync_device!(::ReactantState) = nothing
+
+#####
+##### MPI halo requests, which only exist while tracing
+#####
+
+const ConcreteReactantBuffer = Union{OneDBuffer{<:AnyConcreteReactantArray},
+                                     TwoDBuffer{<:AnyConcreteReactantArray},
+                                     CornerBuffer{<:AnyConcreteReactantArray}}
+
+struct TracedRequests
+    requests :: Vector{Any}
+end
+
+DistributedComputations.side_requests(::ConcreteReactantBuffer) = TracedRequests([])
+
+DistributedComputations.isend!(state, array, rank, tag, communicator, side::TracedRequests) = push!(side.requests, MPI.Isend(array, rank, tag, communicator))
+DistributedComputations.irecv!(state, array, rank, tag, communicator, side::TracedRequests) = push!(side.requests, MPI.Irecv!(array, rank, tag, communicator))
+
+# Emptied so that no request outlives the trace that created it
+function DistributedComputations.waitall_requests!(side::TracedRequests)
+    foreach(MPI.Wait, side.requests)
+    empty!(side.requests)
+    return nothing
+end
 
 Oceananigans.Architectures.unified_array(::ReactantState, a) = a
 
