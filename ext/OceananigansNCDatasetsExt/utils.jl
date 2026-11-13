@@ -18,21 +18,21 @@ end
 #####
 
 # Using OrderedDict to preserve order of keys (important when saving positional arguments), and string(key) because that's what NetCDF supports as global_attributes.
-convert_for_netcdf(dict::AbstractDict) = OrderedDict(string(key) => convert_for_netcdf(value) for (key, value) in dict)
-convert_for_netcdf(x::Number) = x
-convert_for_netcdf(x::Bool) = string(x)
-convert_for_netcdf(x::NTuple{N, Number}) where N = collect(x)
-convert_for_netcdf(z::AbstractVerticalCoordinate) = serialize_vertical_coordinate(z)
-convert_for_netcdf(x) = string(x)
-convert_for_netcdf(::GPU) = "GPU()"
-convert_for_netcdf(::CenterImmersedCondition) = "CenterImmersedCondition()"
-convert_for_netcdf(::InterfaceImmersedCondition) = "InterfaceImmersedCondition()"
+OutputWriters.convert_for_netcdf(dict::AbstractDict) = OrderedDict(string(key) => convert_for_netcdf(value) for (key, value) in dict)
+OutputWriters.convert_for_netcdf(x::Number) = x
+OutputWriters.convert_for_netcdf(x::Bool) = string(x)
+OutputWriters.convert_for_netcdf(x::NTuple{N, Number}) where N = collect(x)
+OutputWriters.convert_for_netcdf(z::AbstractVerticalCoordinate) = serialize_vertical_coordinate(z)
+OutputWriters.convert_for_netcdf(x) = string(x)
+OutputWriters.convert_for_netcdf(::GPU) = "GPU()"
+OutputWriters.convert_for_netcdf(::CenterImmersedCondition) = "CenterImmersedCondition()"
+OutputWriters.convert_for_netcdf(::InterfaceImmersedCondition) = "InterfaceImmersedCondition()"
 
-materialize_from_netcdf(dict::AbstractDict) = OrderedDict(Symbol(key) => materialize_from_netcdf(value) for (key, value) in dict)
-materialize_from_netcdf(x::Number) = x
-materialize_from_netcdf(x::Array) = Tuple(x)
-materialize_from_netcdf(x::String) = materialize_serialized_output(x)
-materialize_from_netcdf(x) = x
+OutputWriters.materialize_from_netcdf(dict::AbstractDict) = OrderedDict(Symbol(key) => materialize_from_netcdf(value) for (key, value) in dict)
+OutputWriters.materialize_from_netcdf(x::Number) = x
+OutputWriters.materialize_from_netcdf(x::Array) = Tuple(x)
+OutputWriters.materialize_from_netcdf(x::String) = materialize_serialized_output(x)
+OutputWriters.materialize_from_netcdf(x) = x
 
 #####
 ##### Extension utilities

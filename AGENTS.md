@@ -35,6 +35,12 @@ on RectilinearGrid, LatitudeLongitudeGrid, ConformalCubedSphereGrid, TripolarGri
 ### Imports
 
 - Source code: explicit imports (checked by tests)
+- **Never write `import` in `src/` or `ext/`** — not to extend functions (`import Oceananigans.Fields: set!`),
+  not to bring in a module (`import Dates`), not to alias one (`import Oceananigans.Utils as UT`).
+  Bring names in with `using Module: Module, name` (or `using Module: Module as M`), and extend with the
+  qualified name: `Module.function_name(...) = ...` or `function Module.function_name() ... end`
+  (e.g. `Fields.set!(f::MyField, a) = ...`, `Base.:+(a::ZeroField, b::AbstractField) = b`,
+  `@binary Base.:*`, `CUDA.@device_override @inline function KernelAbstractions.__validindex(...)`)
 - Examples/docs: rely on `using Oceananigans`; never explicitly import exported names
 
 ### Docstrings

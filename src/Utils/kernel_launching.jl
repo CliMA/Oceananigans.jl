@@ -12,12 +12,10 @@ using KernelAbstractions: Kernel,
                           KernelAbstractions as KA,
                           ndrange, workgroupsize,
                           __iterspace, __groupindex, __dynamic_checkbounds,
-                          CompilerMetadata
+                          CompilerMetadata, StaticSize, get, __ndrange
 using KernelAbstractions.NDIteration: NDIteration, NDRange, blocks, workitems, _Size
+using Oceananigans: Oceananigans
 using Oceananigans.Architectures: Architectures
-
-import Oceananigans
-import KernelAbstractions: get, expand, StaticSize
 
 struct KernelParameters{S, O} end
 
@@ -387,10 +385,6 @@ end
 #####
 
 # TODO: when offsets are implemented in KA so that we can call `kernel(dev, group, size, offsets)`, remove all of this
-import KernelAbstractions: partition
-import KernelAbstractions: __ndrange, __groupsize
-import KernelAbstractions: __validindex
-
 struct OffsetStaticSize{S} <: _Size
     function OffsetStaticSize{S}() where S
         new{S::Tuple{Vararg}}()
@@ -404,8 +398,8 @@ end
 @pure OffsetStaticSize(s::Tuple{Vararg{UnitRange{Int}}}) = OffsetStaticSize{s}()
 
 # Some @pure convenience functions for `OffsetStaticSize` (following `StaticSize` in KA)
-@pure get(::Type{OffsetStaticSize{S}}) where {S} = S
-@pure get(::OffsetStaticSize{S}) where {S} = S
+@pure NDIteration.get(::Type{OffsetStaticSize{S}}) where {S} = S
+@pure NDIteration.get(::OffsetStaticSize{S}) where {S} = S
 @pure Base.getindex(::OffsetStaticSize{S}, i::Int) where {S} = i <= length(S) ? S[i] : 1
 @pure Base.ndims(::OffsetStaticSize{S}) where {S}  = length(S)
 @pure Base.length(::OffsetStaticSize{S}) where {S} = prod(map(worksize, S))
@@ -430,7 +424,7 @@ const OffsetNDRange{N, S} = NDRange{N, <:StaticSize, <:StaticSize, <:Any, <:Offs
 
 # NDRange has been modified to have offsets in place of workitems: Remember, dynamic offset kernels are not possible with this extension!!
 # TODO: maybe don't do this
-@inline function expand(ndrange::OffsetNDRange{N, S}, groupidx::CartesianIndex{N}, idx::CartesianIndex{N}) where {N, S}
+@inline function NDIteration.expand(ndrange::OffsetNDRange{N, S}, groupidx::CartesianIndex{N}, idx::CartesianIndex{N}) where {N, S}
     nI = ntuple(Val(N)) do I
         Base.@_inline_meta
         offsets = workitems(ndrange)
@@ -441,15 +435,15 @@ const OffsetNDRange{N, S} = NDRange{N, <:StaticSize, <:StaticSize, <:Any, <:Offs
     return CartesianIndex(nI)
 end
 
-@inline __ndrange(::CompilerMetadata{NDRange}) where {NDRange<:OffsetStaticSize}  = CartesianIndices(get(NDRange))
-@inline __groupsize(cm::CompilerMetadata{NDRange}) where {NDRange<:OffsetStaticSize} = size(__ndrange(cm))
+@inline KA.__ndrange(::CompilerMetadata{NDRange}) where {NDRange<:OffsetStaticSize}  = CartesianIndices(get(NDRange))
+@inline KA.__groupsize(cm::CompilerMetadata{NDRange}) where {NDRange<:OffsetStaticSize} = size(__ndrange(cm))
 
 # Kernel{<:Any, <:StaticSize, <:StaticSize} and Kernel{<:Any, <:StaticSize, <:OffsetStaticSize} are the only kernels used by Oceananigans
 const OffsetKernel = Kernel{<:Any, <:StaticSize, <:OffsetStaticSize}
 
 # Extending the partition function to include offsets in NDRange: note that in this case the
 # offsets take the place of the DynamicWorkitems which we assume is not needed in static kernels
-function partition(kernel::OffsetKernel, inrange, ingroupsize)
+function KA.partition(kernel::OffsetKernel, inrange, ingroupsize)
     static_ndrange = ndrange(kernel)
     static_workgroupsize = workgroupsize(kernel)
 
@@ -498,7 +492,7 @@ const MappedNDRange{N, B, W} = NDRange{N, B, W, <:Any, <:IndexMap} where {N, B, 
 # NDRange has been modified to include an index_map in place of workitems.
 # Remember, dynamic kernels are not possible in combination with this extension!!
 # Also, mapped kernels work only with a 1D kernel and a 1D map, it is not possible to launch a ND kernel.
-@inline function expand(ndrange::MappedNDRange, groupidx::CartesianIndex{N}, idx::CartesianIndex{N}) where N
+@inline function NDIteration.expand(ndrange::MappedNDRange, groupidx::CartesianIndex{N}, idx::CartesianIndex{N}) where N
     nI = ntuple(Val(N)) do I
         Base.@_inline_meta
         offsets = workitems(ndrange)
@@ -523,7 +517,7 @@ Adapt.adapt_structure(to, ndrange::MappedNDRange{N, B, W}) where {N, B, W} =
 
 # Extending the partition function to include the index_map in NDRange: note that in this case the
 # index_map takes the place of the DynamicWorkitems which we assume is not needed in static kernels
-function partition(kernel::MappedKernel, inrange, ingroupsize)
+function KA.partition(kernel::MappedKernel, inrange, ingroupsize)
     static_workgroupsize = workgroupsize(kernel)
 
     # Calculate the static NDRange and WorkgroupSize
@@ -570,7 +564,7 @@ end
 # check whether the linear index is smaller than the size of the index map
 
 # CPU version, the index is passed explicitly
-@inline function __validindex(ctx::MappedCompilerMetadata, idx::CartesianIndex)
+@inline function KA.__validindex(ctx::MappedCompilerMetadata, idx::CartesianIndex)
     # Turns this into a noop for code where we can turn of checkbounds of
     if __dynamic_checkbounds(ctx)
         index = @inbounds linear_expand(__iterspace(ctx), __groupindex(ctx), idx)

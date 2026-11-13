@@ -108,18 +108,9 @@ end
 Base.:^(a::Irrational{:ℯ}, b::AbstractField) = ^(instantiated_location(b), a, b)
 Base.:^(a::Irrational{:ℯ}, b::ConstantField) = ConstantField(a ^ b.constant)
 
-@multiary +
+@multiary Base.:+
 
-# For unknown reasons, the operator definition macros @binary and @multiary fail to work
-# properly for :*. We thus manually define :* for fields.
-import Base: *
-
-eval(define_binary_operator(:*))
-push!(operators, :*)
-push!(binary_operators, :*)
-
-eval(define_multiary_operator(:*))
-push!(operators, :*)
-push!(multiary_operators, :*)
+@binary Base.:*
+@multiary Base.:*
 
 end # module

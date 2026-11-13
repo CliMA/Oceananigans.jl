@@ -7,13 +7,11 @@ using Oceananigans: instantiated_location
 using Oceananigans.Grids: offset_data
 using Oceananigans.Utils: @apply_regionally
 
-import Oceananigans.Fields: Field
-
 #####
 ##### FieldTimeSeries from NetCDF
 #####
 
-function FieldTimeSeries(typed_path::NetCDFPath, name::String;
+function OutputReaders.FieldTimeSeries(typed_path::NetCDFPath, name::String;
                          backend = InMemory(),
                          architecture = CPU(),
                          grid = nothing,
@@ -70,7 +68,7 @@ function find_time_index(t, file_times, Δt)
     return nothing
 end
 
-function set_from_netcdf!(fts::InMemoryFTS, path::String, name; warn_missing_data=true)
+function OutputReaders.set_from_netcdf!(fts::InMemoryFTS, path::String, name; warn_missing_data=true)
     file = NCDataset(path)
     file_iterations = iterations_from_file(file)
     file_times = collect(file["time"])
@@ -127,7 +125,7 @@ end
 Load a field called `name` saved in a NetCDF file at `path` at `iter`ation.
 Unless specified, the `grid` is loaded from `path`.
 """
-function Field(location, file::NCDataset, name::String, iter;
+function Fields.Field(location, file::NCDataset, name::String, iter;
                grid = nothing,
                architecture = nothing,
                indices = (:, :, :),

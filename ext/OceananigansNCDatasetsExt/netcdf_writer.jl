@@ -14,10 +14,10 @@ using Oceananigans.OutputWriters: add_schedule_metadata!, default_output_attribu
 ##### Extend defVar to be able to write fields to NetCDF directly
 #####
 
-defVar(ds::AbstractDataset, name, op::AbstractOperation; kwargs...) = defVar(ds, name, Field(op); kwargs...)
-defVar(ds::AbstractDataset, name, op::Reduction; kwargs...) = defVar(ds, name, Field(op); kwargs...)
+CommonDataModel.defVar(ds::AbstractDataset, name, op::AbstractOperation; kwargs...) = defVar(ds, name, Field(op); kwargs...)
+CommonDataModel.defVar(ds::AbstractDataset, name, op::Reduction; kwargs...) = defVar(ds, name, Field(op); kwargs...)
 
-Base.@nospecializeinfer function defVar(ds::AbstractDataset, field_name, @nospecialize(fd::AbstractField);
+Base.@nospecializeinfer function CommonDataModel.defVar(ds::AbstractDataset, field_name, @nospecialize(fd::AbstractField);
                 array_type=Array{eltype(fd)},
                 time_dependent=false,
                 with_halos=false,
@@ -59,7 +59,7 @@ Base.@nospecializeinfer function defVar(ds::AbstractDataset, field_name, @nospec
 end
 
 # Constant fields are written as scalars, with their type stored as an attribute
-function defVar(ds::AbstractDataset, field_name, fd::ConstantFields;
+function CommonDataModel.defVar(ds::AbstractDataset, field_name, fd::ConstantFields;
                 array_type = Array{eltype(fd)},
                 attrib = Dict(),
                 kwargs...)
@@ -70,7 +70,7 @@ function defVar(ds::AbstractDataset, field_name, fd::ConstantFields;
     return defVar(ds, field_name, eltype(array_type)(fd[1, 1, 1]), (); attrib)
 end
 
-defVar(ds::AbstractDataset, field_name::Union{AbstractString, Symbol}, data::Array{Bool}, dim_names; kwargs...) = defVar(ds, field_name, Int8.(data), dim_names; kwargs...)
+CommonDataModel.defVar(ds::AbstractDataset, field_name::Union{AbstractString, Symbol}, data::Array{Bool}, dim_names; kwargs...) = defVar(ds, field_name, Int8.(data), dim_names; kwargs...)
 
 Base.@nospecializeinfer function add_location_attribute!(attrib, @nospecialize(fd::AbstractField))
     loc = location(fd) |> convert_for_netcdf
@@ -88,7 +88,7 @@ end
 ##### NetCDFWriter constructor
 #####
 
-function NetCDFWriter(model::AbstractModel, outputs;
+function OutputWriters.NetCDFWriter(model::AbstractModel, outputs;
                       filename,
                       schedule,
                       dir = ".",
@@ -170,7 +170,7 @@ end
 Initialize a `NetCDFWriter` by creating its file and writing the dimensions, grid
 reconstruction data, and variable definitions to it.
 """
-function initialize!(writer::NetCDFWriter, model)
+function Oceananigans.initialize!(writer::NetCDFWriter, model)
     writer.initialized && return nothing
 
     filepath = writer.filepath
@@ -494,7 +494,7 @@ end
 Write output to netcdf file `output_writer.filepath` at specified intervals. Increments the `time` dimension
 every time an output is written to the file.
 """
-function write_output!(ow::NetCDFWriter, model::AbstractModel)
+function Oceananigans.write_output!(ow::NetCDFWriter, model::AbstractModel)
     model.clock.iteration == 0 && !has_initial_output(ow.schedule) && return nothing
 
     # Ensure the writer is initialized before writing

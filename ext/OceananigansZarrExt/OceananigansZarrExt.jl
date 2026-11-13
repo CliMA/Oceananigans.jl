@@ -9,7 +9,7 @@ Extension that adds Zarr read/write support to Oceananigans.jl via [Zarr.jl](htt
 """
 module OceananigansZarrExt
 
-import Zarr
+using Zarr: Zarr
 using DocStringExtensions: MethodSignatures
 using OrderedCollections: OrderedDict
 

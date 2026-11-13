@@ -1,7 +1,6 @@
 using Adapt
 using DocStringExtensions: TYPEDFIELDS, TYPEDSIGNATURES
-import KernelAbstractions
-using KernelAbstractions: @index, @kernel
+using KernelAbstractions: KernelAbstractions, @index, @kernel
 
 using Oceananigans.Architectures: CPU, device, on_architecture
 

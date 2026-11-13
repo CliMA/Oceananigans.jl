@@ -48,7 +48,7 @@ into a unary operator on `Oceananigans.Fields` for use in `AbstractOperations`.
 
 Note: a unary function is a function with one argument: for example, `sin(x)` is a unary function.
 
-Also note: a unary function in `Base` must be imported to be extended: use `import Base: op; @unary op`.
+Also note: a unary function in `Base` must be qualified to be extended: use `@unary Base.op` (or `@unary Base.:op` for operators).
 
 Example
 =======

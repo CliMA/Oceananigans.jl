@@ -4,25 +4,19 @@ using Oceananigans
 using AMDGPU, AMDGPU.rocSPARSE
 using AbstractFFTs: plan_fft!, plan_ifft!
 
-using Oceananigans.Utils: linear_expand, __linear_ndrange, MappedCompilerMetadata
 using InteractiveUtils
 using KernelAbstractions: __dynamic_checkbounds, __iterspace
 using KernelAbstractions
 using SparseArrays
 
-import Oceananigans.Architectures as AC
-import Oceananigans.BoundaryConditions as BC
-import Oceananigans.DistributedComputations as DC
-import Oceananigans.Fields as FD
-import Oceananigans.MultiRegion as MR
-import Oceananigans.Utils: apply_regionally!
-import Oceananigans.Grids as GD
-import Oceananigans.Solvers as SO
-import Oceananigans.Utils as UT
-import Oceananigans.DistributedComputations: Distributed
-import KernelAbstractions: __iterspace, __groupindex, __dynamic_checkbounds,
-                           __validindex, CompilerMetadata
-import SparseArrays: SparseMatrixCSC
+using Oceananigans.Architectures: Architectures as AC
+using Oceananigans.BoundaryConditions: BoundaryConditions as BC
+using Oceananigans.DistributedComputations: DistributedComputations as DC, Distributed
+using Oceananigans.Fields: Fields as FD
+using Oceananigans.Grids: Grids as GD
+using Oceananigans.MultiRegion: MultiRegion as MR
+using Oceananigans.Solvers: Solvers as SO
+using Oceananigans.Utils: Utils as UT, apply_regionally!, linear_expand, __linear_ndrange, MappedCompilerMetadata
 
 const GPUVar = Union{ROCArray, Ptr}
 
@@ -99,7 +93,7 @@ function SO.plan_backward_transform(A::ROCArray, ::Union{GD.BoundaryTopology, GD
     return plan_ifft!(A, dims)
 end
 
-AMDGPU.Device.@device_override @inline function __validindex(ctx::MappedCompilerMetadata)
+AMDGPU.Device.@device_override @inline function KernelAbstractions.__validindex(ctx::MappedCompilerMetadata)
     if __dynamic_checkbounds(ctx)
         index = @inbounds linear_expand(__iterspace(ctx), AMDGPU.Device.blockIdx().x, AMDGPU.Device.threadIdx().x)
         return index ≤ __linear_ndrange(ctx)

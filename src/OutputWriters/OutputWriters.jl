@@ -25,7 +25,7 @@ using Oceananigans.Grids: Grids, AbstractGrid, Center, Face, Flat, LatitudeLongi
                           λspacings, φspacings, λnodes, φnodes, ξnodes, ηnodes,
                           ξname, ηname, validate_index, peripheral_node, inactive_node,
                           interior_indices
-import Oceananigans.Grids: new_data as allocate_grid_data
+using Oceananigans.Grids: new_data as allocate_grid_data
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary,
                                         GridFittedBottom, PartialCellBottom,
                                         GridFittedVerticalBoundaries, PartialCellVerticalBoundaries,
