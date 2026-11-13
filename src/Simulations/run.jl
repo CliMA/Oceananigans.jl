@@ -171,6 +171,8 @@ function run!(sim; pickup=false, checkpoint_at_end=false)
         time_step!(sim)
     end
 
+    foreach(wait, values(sim.output_writers))
+
     if checkpoint_at_end
         if nan_checker_detected_nan(sim)
             @info "NaNs were detected during this run. Skipping end-of-run checkpoint despite checkpoint_at_end=true."

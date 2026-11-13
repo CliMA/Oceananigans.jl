@@ -106,7 +106,8 @@ function NetCDFWriter(model::AbstractModel, outputs;
                       part = 1,
                       file_splitting = NoFileSplitting(),
                       dimension_name_generator = trilocation_dim_name,
-                      dimension_type = Float64)
+                      dimension_type = Float64,
+                      asynchronous = false)
 
     if with_halos && indices != (:, :, :)
         throw(ArgumentError("If with_halos=true then you cannot pass indices: $indices"))
@@ -161,7 +162,9 @@ function NetCDFWriter(model::AbstractModel, outputs;
                         file_splitting,
                         dimension_name_generator,
                         dimension_type,
-                        false)
+                        false,
+                        asynchronous,
+                        nothing)
 end
 
 """
@@ -495,6 +498,7 @@ Write output to netcdf file `output_writer.filepath` at specified intervals. Inc
 every time an output is written to the file.
 """
 function write_output!(ow::NetCDFWriter, model::AbstractModel)
+    wait(ow)
     model.clock.iteration == 0 && !has_initial_output(ow.schedule) && return nothing
 
     # Ensure the writer is initialized before writing
@@ -504,7 +508,6 @@ function write_output!(ow::NetCDFWriter, model::AbstractModel)
     ow.file_splitting(model) && start_next_file(model, ow)
     update_file_splitting_schedule!(ow.file_splitting, ow.filepath)
 
-    ds = open(ow)
     verbose, filepath = ow.verbose, ow.filepath
 
     if verbose
@@ -519,30 +522,31 @@ function write_output!(ow::NetCDFWriter, model::AbstractModel)
     fetched = OrderedDict(output_name => fetch_and_convert_output(output, model, ow) for (output_name, output) in ow.outputs)
 
     t = float_or_date_time(output_time(model.clock, ow.schedule))
-    time_index = time_index_for_writing(ds, t, ow, filepath)
 
-    if isnothing(time_index)
+    write_to_disk!(ow) do
+        ds = open(ow)
+        time_index = time_index_for_writing(ds, t, ow, filepath)
+
+        if isnothing(time_index)
+            close(ds)
+            return nothing
+        end
+
+        ds["time"][time_index] = t
+
+        verbose && @info "Writing NetCDF outputs at time index $(time_index): $(keys(ow.outputs))..."
+
+        for (output_name, output) in ow.outputs
+            write_time_dependent_output!(ds, output, fetched[output_name], time_index, output_name)
+        end
+
+        sync(ds)
         close(ds)
-        return nothing
-    end
 
-    ds["time"][time_index] = t
-
-    verbose && @info "Writing NetCDF outputs at time index $(time_index): $(keys(ow.outputs))..."
-
-    for (output_name, output) in ow.outputs
-        write_time_dependent_output!(ds, output, fetched[output_name], time_index, output_name)
-    end
-
-    sync(ds)
-    close(ds)
-
-    if verbose
-        # Time and file size after computing and writing all outputs to disk.
-        t1, sz1 = time_ns(), filesize(filepath)
-        verbose && @info begin
-            @sprintf("Writing done: time=%s, size=%s, Δsize=%s",
-                    prettytime((t1-t0)/1e9), pretty_filesize(sz1), pretty_filesize(sz1-sz0))
+        if verbose
+            t1, sz1 = time_ns(), filesize(filepath)
+            @info @sprintf("Writing done: time=%s, size=%s, Δsize=%s",
+                           prettytime((t1-t0)/1e9), pretty_filesize(sz1), pretty_filesize(sz1-sz0))
         end
     end
 

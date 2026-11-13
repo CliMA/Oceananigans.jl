@@ -933,3 +933,9 @@ guarding_scalar_indexing(f, arch) = f()
         end
     end
 end
+
+@testset "ZarrWriter [asynchronous output]" begin
+    for arch in archs
+        test_asynchronous_output(ZarrWriter, arch)
+    end
+end

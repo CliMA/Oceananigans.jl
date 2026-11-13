@@ -65,6 +65,7 @@ using Oceananigans.OutputWriters:
     time_average_outputs,
     has_initial_output,
     output_time,
+    write_to_disk!,
     fetch_output,
     convert_output,
     fetch_and_convert_output,

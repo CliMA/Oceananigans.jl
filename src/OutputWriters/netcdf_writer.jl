@@ -24,6 +24,8 @@ mutable struct NetCDFWriter{G, GM, O, T, A, FS, DN, DT} <: AbstractOutputWriter
     dimension_name_generator :: DN
     dimension_type :: DT
     initialized :: Bool
+    asynchronous :: Bool
+    task :: Union{Nothing, Task}
 end
 
 # method in OceananigansNCDatasetsExt
@@ -46,7 +48,8 @@ end
                  part = 1,
                  file_splitting = NoFileSplitting(),
                  dimension_name_generator = trilocation_dim_name,
-                 dimension_type = Float64)
+                 dimension_type = Float64,
+                 asynchronous = false)
 
 Construct a `NetCDFWriter` that writes `(label, output)` pairs in `outputs` to a NetCDF file.
 
@@ -159,6 +162,8 @@ Optional keyword arguments
 
 - `dimension_type`: Floating point type for dimension coordinate arrays. Default: `Float64`.
                     Use `Float32` to reduce file size if needed.
+
+- `asynchronous`: Write to disk on a background task while the simulation continues. Default: `false`.
 
 Examples
 ========

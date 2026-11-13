@@ -31,6 +31,32 @@ output); a schedule whose output only exists once it has accumulated some data, 
 """
 has_initial_output(schedule) = true
 
+"""
+    write_to_disk!(write_data, writer)
+
+Call `write_data()`, on a background task if `writer.asynchronous`.
+"""
+function write_to_disk!(write_data, writer)
+    if writer.asynchronous
+        writer.task = Threads.@spawn write_data()
+    else
+        write_data()
+    end
+    return nothing
+end
+
+"""
+    wait(writer::AbstractOutputWriter)
+
+Wait for the last write of `writer` to finish, rethrowing its error if it failed.
+"""
+function Base.wait(writer::AbstractOutputWriter)
+    task = writer.task
+    writer.task = nothing
+    isnothing(task) || wait(task)
+    return nothing
+end
+
 # Names of the requested outputs; unordered dictionaries have no fixed iteration order, so their keys are sorted
 output_names(outputs) = keys(outputs)
 output_names(outputs::AbstractDict) = sort!(collect(keys(outputs)); by = string)

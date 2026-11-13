@@ -44,6 +44,7 @@ using Oceananigans.OutputWriters:
     time_average_outputs,
     has_initial_output,
     output_time,
+    write_to_disk!,
     output_averaging_schedule,
     show_averaging_schedule,
     show_array_type,
