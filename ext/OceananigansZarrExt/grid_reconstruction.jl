@@ -176,12 +176,12 @@ function reconstruct_immersed_boundary(grid_group, ::Union{Val{:PartialCellBotto
     return PartialCellBottom(bottom_height, minimum_fractional_cell_height)
 end
 
-function reconstruct_immersed_boundary(grid_group, ::Val{:ShavedCellBottom})
+function reconstruct_immersed_boundary(grid_group, ::Val{:CutCellBottom})
     ibg_group = grid_group["immersed_boundary"]
     bottom_height = Array(ibg_group["bottom_height"])
     corner_bottom_height = Array(ibg_group["corner_bottom_height"])
     minimum_fractional_cell_height = ibg_group.attrs["minimum_fractional_cell_height"] |> materialize_from_zarr
-    return ShavedCellBottom(bottom_height, nothing, nothing, corner_bottom_height, minimum_fractional_cell_height)
+    return CutCellBottom(bottom_height, nothing, nothing, corner_bottom_height, minimum_fractional_cell_height)
 end
 
 reconstruct_immersed_boundary(grid_group, immersed_boundary_type, prefix) = error("Unsupported immersed boundary type: $immersed_boundary_type")

@@ -770,13 +770,13 @@ end
                                  topology = (Periodic, Periodic, Bounded)),
                  GridFittedBottom(on_architecture(arch, fill(-0.5, 4, 4))))),
 
-            ("immersed_boundary_shaved_rectilinear",
+            ("immersed_boundary_cut_rectilinear",
              arch -> ImmersedBoundaryGrid(
                  RectilinearGrid(arch;
                                  size = (4, 4, 4),
                                  extent = (1, 1, 1),
                                  topology = (Periodic, Periodic, Bounded)),
-                 ShavedCellBottom(on_architecture(arch, fill(-0.5, 4, 4))))),
+                 CutCellBottom(on_architecture(arch, fill(-0.5, 4, 4))))),
 
             ("immersed_boundary_latitude_longitude",
              arch -> ImmersedBoundaryGrid(

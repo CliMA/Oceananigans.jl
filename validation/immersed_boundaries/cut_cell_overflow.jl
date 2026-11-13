@@ -1,5 +1,5 @@
 # Dense water overflow down a continental slope (Haidvogel and Beckmann, 1999; Ilicak et al., 2012) at a
-# resolution typical of a coarse ocean model, comparing GridFittedBottom, PartialCellBottom and ShavedCellBottom
+# resolution typical of a coarse ocean model, comparing GridFittedBottom, PartialCellBottom and CutCellBottom
 # on a z-star vertical coordinate.
 
 using Oceananigans
@@ -31,7 +31,7 @@ underlying_grid = RectilinearGrid(size = (Nx, Nz), halo = (4, 4),
 
 bottoms = (full = GridFittedBottom(bathymetry),
            partial = PartialCellBottom(bathymetry),
-           shaved = ShavedCellBottom(bathymetry; minimum_fractional_cell_height=0.001))
+           cut = CutCellBottom(bathymetry; minimum_fractional_cell_height=0.001))
 
 thermal_expansion = 2e-4
 reference_density = 1027
@@ -71,7 +71,7 @@ function run_overflow(name, bottom)
     ω = ∂z(u) - ∂x(w)
 
     simulation.output_writers[:fields] = JLD2Writer(model, (; ρ, ω, w);
-                                                    filename = "shaved_cell_overflow_$name.jld2",
+                                                    filename = "cut_cell_overflow_$name.jld2",
                                                     schedule = TimeInterval(save_interval),
                                                     overwrite_files = true)
 
@@ -100,8 +100,8 @@ function bottom_outline(grid)
     return x, z
 end
 
-# Shaved cells follow the piecewise-linear surface through their faces.
-bottom_outline(grid::ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:ShavedCellBottom}) = xᶠ, [top - static_column_depthᶠᶜᵃ(i, 1, grid) for i in 1:Nx+1]
+# Cut cells follow the piecewise-linear surface through their faces.
+bottom_outline(grid::ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:CutCellBottom}) = xᶠ, [top - static_column_depthᶠᶜᵃ(i, 1, grid) for i in 1:Nx+1]
 
 function solid_polygon(grid)
     x, z = bottom_outline(grid)
@@ -112,9 +112,9 @@ end
 ##### Animation
 #####
 
-titles = (full = "full cells", partial = "partial cells", shaved = "shaved cells")
+titles = (full = "full cells", partial = "partial cells", cut = "cut cells")
 
-timeseries = NamedTuple(name => NamedTuple(variable => FieldTimeSeries("shaved_cell_overflow_$name.jld2", string(variable))
+timeseries = NamedTuple(name => NamedTuple(variable => FieldTimeSeries("cut_cell_overflow_$name.jld2", string(variable))
                                            for variable in (:ρ, :ω, :w))
                         for name in keys(bottoms))
 times = timeseries.full.ρ.times
@@ -172,8 +172,8 @@ for (row, variable) in enumerate(keys(variables))
     Colorbar(fig[row, 4], heatmap_plot, label=attributes.label)
 end
 
-record(fig, "shaved_cell_overflow.mp4", 1:length(times), framerate=12) do nn
+record(fig, "cut_cell_overflow.mp4", 1:length(times), framerate=12) do nn
     n[] = nn
 end
 
-save("shaved_cell_overflow.png", fig)
+save("cut_cell_overflow.png", fig)

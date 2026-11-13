@@ -26,7 +26,7 @@ MPI.Initialized() || MPI.Init(threadlevel=:multiple)
 using Oceananigans.Architectures: cpu_architecture
 using Oceananigans.DistributedComputations: ranks, partition, all_reduce, reconstruct_global_grid, synchronized, synchronize_communication!
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: CATKEVerticalDiffusivity
-using Oceananigans.ImmersedBoundaries: InterfaceImmersedCondition, ShavedCellBottom
+using Oceananigans.ImmersedBoundaries: InterfaceImmersedCondition, CutCellBottom
 
 function Δ_min(grid)
     Δx_min = minimum_xspacing(grid, Center(), Center(), Center())
@@ -148,7 +148,7 @@ for arch in archs
 
                 for immersed_boundary in (GridFittedBottom(sloping_bottom, InterfaceImmersedCondition()),
                                           PartialCellBottom(sloping_bottom, minimum_fractional_cell_height=0.5),
-                                          ShavedCellBottom(sloping_bottom, minimum_fractional_cell_height=0.5))
+                                          CutCellBottom(sloping_bottom, minimum_fractional_cell_height=0.5))
 
                     extended_grid = with_halo(new_halo, ImmersedBoundaryGrid(underlying_grid, immersed_boundary))
                     rebuilt_grid = ImmersedBoundaryGrid(with_halo(new_halo, underlying_grid), immersed_boundary)

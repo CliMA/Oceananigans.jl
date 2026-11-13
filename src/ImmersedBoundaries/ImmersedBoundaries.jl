@@ -1,6 +1,6 @@
 module ImmersedBoundaries
 
-export ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom, PartialCellBottom, ShavedCellBottom,
+export ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom, PartialCellBottom, CutCellBottom,
        GridFittedVerticalBoundaries, PartialCellVerticalBoundaries, ImmersedBoundaryCondition,
        bottom_height_field, materialize_immersed_boundary
 
@@ -34,7 +34,7 @@ include("abstract_grid_fitted_boundary.jl")
 include("grid_fitted_boundary.jl")
 include("grid_fitted_bottom.jl")
 include("partial_cell_bottom.jl")
-include("shaved_cell_bottom.jl")
+include("cut_cell_bottom.jl")
 include("fourth_order_stencils.jl")
 include("immersed_boundary_condition.jl")
 include("conditional_differences.jl")

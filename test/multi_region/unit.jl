@@ -72,7 +72,7 @@ end
         grids = [lat_lon_grid, rectilinear_grid]
 
         immersed_boundaries = [GridFittedBottom((x, y) -> 0.5),
-                               ShavedCellBottom((x, y) -> 0.5),
+                               CutCellBottom((x, y) -> 0.5),
                                GridFittedBoundary((x, y, z) -> z>0.5)]
 
         field_types = [CenterField, XFaceField, YFaceField]

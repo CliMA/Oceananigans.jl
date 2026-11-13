@@ -43,7 +43,7 @@ function write_immersed_boundary_data!(ds, grid::ImmersedBoundaryGrid, immersed_
         ibg_group = defGroup(ds, group_name; attrib=convert_for_netcdf(immersed_grid_args))
         defVar(ibg_group, "bottom_height", bottom_height_field(grid))
 
-    elseif grid.immersed_boundary isa ShavedCellBottom
+    elseif grid.immersed_boundary isa CutCellBottom
         pop!(immersed_grid_args, :bottom_height)
         corner_bottom_height = pop!(immersed_grid_args, :corner_bottom_height)
         ibg_group = defGroup(ds, group_name; attrib=convert_for_netcdf(immersed_grid_args))
@@ -122,12 +122,12 @@ function reconstruct_immersed_boundary(ds, ::Union{Val{:PartialCellBottom}, Val{
     return PartialCellBottom(bottom_height, minimum_fractional_cell_height)
 end
 
-function reconstruct_immersed_boundary(ds, ::Val{:ShavedCellBottom}, prefix)
+function reconstruct_immersed_boundary(ds, ::Val{:CutCellBottom}, prefix)
     ibg_group = ds.group["$(prefix)immersed_grid_reconstruction_args"]
     bottom_height = Array(ibg_group["bottom_height"])
     corner_bottom_height = Array(ibg_group["corner_bottom_height"])
     minimum_fractional_cell_height = ibg_group.attrib["minimum_fractional_cell_height"] |> materialize_from_netcdf
-    return ShavedCellBottom(bottom_height, nothing, nothing, corner_bottom_height, minimum_fractional_cell_height)
+    return CutCellBottom(bottom_height, nothing, nothing, corner_bottom_height, minimum_fractional_cell_height)
 end
 
 reconstruct_immersed_boundary(ds, immersed_boundary_type, prefix) = error("Unsupported immersed boundary type: $immersed_boundary_type")

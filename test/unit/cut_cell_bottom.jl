@@ -23,26 +23,26 @@ slice_grid(FT, arch; Nx=16, Nz=8) = RectilinearGrid(arch, FT, topology=(Bounded,
 
 cpu_values(LX, LY, LZ, func, grid, args...) = Array(interior(Field(KernelFunctionOperation{LX, LY, LZ}(func, grid, args...))))
 
-function test_shaved_cell_reduces_to_partial_cells(FT, arch)
+function test_cut_cell_reduces_to_partial_cells(FT, arch)
     underlying_grid = RectilinearGrid(arch, FT, size=(4, 4, 8), extent=(1, 1, 1))
     Nx, Ny, Nz = size(underlying_grid)
 
-    # A flat bottom leaves nothing to shave, whether or not it falls on an interface.
+    # A flat bottom leaves nothing to cut, whether or not it falls on an interface.
     for bottom_height in (-1/2, -1/2 - 1/2Nz)
         partial = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(bottom_height))
-        shaved = ImmersedBoundaryGrid(underlying_grid, ShavedCellBottom(bottom_height))
+        cut = ImmersedBoundaryGrid(underlying_grid, CutCellBottom(bottom_height))
 
         @allowscalar for i in 1:Nx, j in 1:Ny, k in 1:Nz
-            @test Δrᶜᶜᶜ(i, j, k, shaved) ≈ Δrᶜᶜᶜ(i, j, k, partial)
-            @test Δrᶠᶜᶜ(i, j, k, shaved) ≈ Δrᶠᶜᶜ(i, j, k, partial)
-            @test Δrᶜᶠᶜ(i, j, k, shaved) ≈ Δrᶜᶠᶜ(i, j, k, partial)
+            @test Δrᶜᶜᶜ(i, j, k, cut) ≈ Δrᶜᶜᶜ(i, j, k, partial)
+            @test Δrᶠᶜᶜ(i, j, k, cut) ≈ Δrᶠᶜᶜ(i, j, k, partial)
+            @test Δrᶜᶠᶜ(i, j, k, cut) ≈ Δrᶜᶠᶜ(i, j, k, partial)
         end
     end
 
     return nothing
 end
 
-function test_shaved_cell_land_stays_out_of_the_sea(FT, arch)
+function test_cut_cell_land_stays_out_of_the_sea(FT, arch)
     underlying_grid = RectilinearGrid(arch, FT, size=(6, 6, 8), extent=(1, 1, 1))
     Nx, Ny, Nz = size(underlying_grid)
 
@@ -51,26 +51,26 @@ function test_shaved_cell_land_stays_out_of_the_sea(FT, arch)
     # An island on a flat sea floor stays dry, and the height given to the land does not reach the sea.
     for sea_height in (-1/2, -1/2 - 1/2Nz)
         partial = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(island_bottom_height(100, sea_height)))
-        shaved = ImmersedBoundaryGrid(underlying_grid, ShavedCellBottom(island_bottom_height(100, sea_height)))
-        flush_shaved = ImmersedBoundaryGrid(underlying_grid, ShavedCellBottom(island_bottom_height(0, sea_height)))
+        cut = ImmersedBoundaryGrid(underlying_grid, CutCellBottom(island_bottom_height(100, sea_height)))
+        flush_cut = ImmersedBoundaryGrid(underlying_grid, CutCellBottom(island_bottom_height(0, sea_height)))
 
-        @test shaved.immersed_boundary == flush_shaved.immersed_boundary
+        @test cut.immersed_boundary == flush_cut.immersed_boundary
 
         @allowscalar for i in 1:Nx, j in 1:Ny, k in 1:Nz
-            @test immersed_cell(i, j, k, shaved) == immersed_cell(i, j, k, partial)
+            @test immersed_cell(i, j, k, cut) == immersed_cell(i, j, k, partial)
         end
     end
 
     return nothing
 end
 
-function test_shaved_cell_geometry(FT, arch)
+function test_cut_cell_geometry(FT, arch)
     Nx, Nz, Lz = 16, 8, 1
     underlying_grid = slice_grid(FT, arch; Nx, Nz)
     Δz = Lz / Nz
 
     slope(x) = -Lz + Lz/2 * x + Lz/8
-    ibg = ImmersedBoundaryGrid(underlying_grid, ShavedCellBottom(slope, minimum_fractional_cell_height=0))
+    ibg = ImmersedBoundaryGrid(underlying_grid, CutCellBottom(slope, minimum_fractional_cell_height=0))
 
     xᶠ = xnodes(underlying_grid, f)
     zᶠ = znodes(underlying_grid, f)
@@ -91,11 +91,11 @@ function test_shaved_cell_geometry(FT, arch)
     return nothing
 end
 
-function test_shaved_cells_are_bounded_by_their_faces(FT, arch)
+function test_cut_cells_are_bounded_by_their_faces(FT, arch)
     Nx, Nz, Lz = 16, 8, 1
     Δz = Lz / Nz
     ϵ = 0.2
-    ibg = ImmersedBoundaryGrid(slice_grid(FT, arch; Nx, Nz), ShavedCellBottom(bumpy, minimum_fractional_cell_height=ϵ))
+    ibg = ImmersedBoundaryGrid(slice_grid(FT, arch; Nx, Nz), CutCellBottom(bumpy, minimum_fractional_cell_height=ϵ))
 
     opening(i, k) = peripheral_node(i, 1, k, ibg, f, c, c) ? zero(FT) : Δrᶠᶜᶜ(i, 1, k, ibg)
 
@@ -109,13 +109,13 @@ function test_shaved_cells_are_bounded_by_their_faces(FT, arch)
     return nothing
 end
 
-function test_shaved_cell_column_depth_consistency(FT, arch)
+function test_cut_cell_column_depth_consistency(FT, arch)
     Nx, Nz, Lz = 16, 8, 1
     Δz = Lz / Nz
     ϵ = 0.2
-    ibg = ImmersedBoundaryGrid(slice_grid(FT, arch; Nx, Nz), ShavedCellBottom(bumpy, minimum_fractional_cell_height=ϵ))
+    ibg = ImmersedBoundaryGrid(slice_grid(FT, arch; Nx, Nz), CutCellBottom(bumpy, minimum_fractional_cell_height=ϵ))
 
-    # The barotropic mode integrates the water column that the shaved face heights describe.
+    # The barotropic mode integrates the water column that the cut face heights describe.
     @allowscalar for i in 2:Nx-1
         Σᶜ = sum(Δrᶜᶜᶜ(i, 1, k, ibg) for k in 1:Nz if !peripheral_node(i, 1, k, ibg, c, c, c); init=zero(FT))
         @test Σᶜ ≈ static_column_depthᶜᶜᵃ(i, 1, ibg)
@@ -132,11 +132,11 @@ function test_shaved_cell_column_depth_consistency(FT, arch)
     return nothing
 end
 
-function test_shaved_cell_flat_topologies(FT, arch)
-    yflat = ImmersedBoundaryGrid(slice_grid(FT, arch), ShavedCellBottom(bumpy))
+function test_cut_cell_flat_topologies(FT, arch)
+    yflat = ImmersedBoundaryGrid(slice_grid(FT, arch), CutCellBottom(bumpy))
 
     xflat_grid = RectilinearGrid(arch, FT, topology=(Flat, Bounded, Bounded), size=(16, 8), halo=(4, 4), y=(0, 1), z=(-1, 0))
-    xflat = ImmersedBoundaryGrid(xflat_grid, ShavedCellBottom(bumpy))
+    xflat = ImmersedBoundaryGrid(xflat_grid, CutCellBottom(bumpy))
     N, _, Nz = size(xflat_grid)
 
     # In a Flat direction the staggered metrics collapse onto the centered ones.
@@ -155,16 +155,16 @@ function test_shaved_cell_flat_topologies(FT, arch)
     return nothing
 end
 
-function test_shaved_cell_with_halo(FT, arch)
+function test_cut_cell_with_halo(FT, arch)
     underlying_grid = LatitudeLongitudeGrid(arch, FT, size=(32, 24, 6), halo=(3, 3, 3), longitude=(0, 360), latitude=(-60, 60), z=(-1000, 0))
     bottom(λ, φ) = -600 - 300 * sin(2π * λ / 360) * cos(2π * φ / 120)
-    shaved_cell_bottom = ShavedCellBottom(bottom, minimum_fractional_cell_height=0.5)
+    cut_cell_bottom = CutCellBottom(bottom, minimum_fractional_cell_height=0.5)
 
-    grid = ImmersedBoundaryGrid(underlying_grid, shaved_cell_bottom)
+    grid = ImmersedBoundaryGrid(underlying_grid, cut_cell_bottom)
 
     for new_halo in ((3, 18, 3), (5, 5, 3))
         extended_grid = with_halo(new_halo, grid)
-        rebuilt_grid = ImmersedBoundaryGrid(with_halo(new_halo, underlying_grid), shaved_cell_bottom)
+        rebuilt_grid = ImmersedBoundaryGrid(with_halo(new_halo, underlying_grid), cut_cell_bottom)
         @test extended_grid.immersed_boundary == rebuilt_grid.immersed_boundary
         @test extended_grid.immersed_boundary == grid.immersed_boundary
         @test with_halo((3, 3, 3), extended_grid).immersed_boundary == grid.immersed_boundary
@@ -173,27 +173,27 @@ function test_shaved_cell_with_halo(FT, arch)
     return nothing
 end
 
-function test_shaved_cell_openings_are_rounded(FT, arch)
+function test_cut_cell_openings_are_rounded(FT, arch)
     underlying_grid = RectilinearGrid(arch, FT, size=(4, 4, 8), extent=(1, 1, 1))
     Δz = 1 / size(underlying_grid, 3)
     ϵ = 1/5
 
     # An opening thinner than ϵ Δz / 2 closes, and a thicker one is at least ϵ Δz tall.
     for (sliver, opening) in ((Δz / 100, 0), (3Δz / 20, ϵ * Δz), (3Δz / 10, 3Δz / 10))
-        ibg = ImmersedBoundaryGrid(underlying_grid, ShavedCellBottom(-1/2 - sliver, minimum_fractional_cell_height=ϵ))
+        ibg = ImmersedBoundaryGrid(underlying_grid, CutCellBottom(-1/2 - sliver, minimum_fractional_cell_height=ϵ))
         @test all(cpu_values(Center, Center, Center, column_depthᶜᶜᶜ, ibg) .≈ 1/2 + opening)
     end
 
     return nothing
 end
 
-function test_shaved_cell_slices_have_two_faces(FT, arch)
+function test_cut_cell_slices_have_two_faces(FT, arch)
     ϵ = 1/5
     ramp(ξ) = -29/10 + 2ξ/5
     yflat = ImmersedBoundaryGrid(RectilinearGrid(arch, FT, topology=(Bounded, Flat, Bounded), size=(7, 4), halo=(4, 4), x=(0, 7), z=(-4, 0)),
-                                 ShavedCellBottom(ramp, minimum_fractional_cell_height=ϵ))
+                                 CutCellBottom(ramp, minimum_fractional_cell_height=ϵ))
     xflat = ImmersedBoundaryGrid(RectilinearGrid(arch, FT, topology=(Flat, Bounded, Bounded), size=(7, 4), halo=(4, 4), y=(0, 7), z=(-4, 0)),
-                                 ShavedCellBottom(ramp, minimum_fractional_cell_height=ϵ))
+                                 CutCellBottom(ramp, minimum_fractional_cell_height=ϵ))
     Δz = 1
 
     # The phantom face of the Flat direction is not a face of the cell: the lowest cell of each column is at least
@@ -213,23 +213,23 @@ function test_shaved_cell_slices_have_two_faces(FT, arch)
     return nothing
 end
 
-function test_shaved_cell_coast(FT, arch)
+function test_cut_cell_coast(FT, arch)
     grid = RectilinearGrid(arch, FT, topology=(Bounded, Flat, Bounded), size=(6, 4), halo=(4, 4), x=(0, 6), z=(-4, 0))
     coast(x) = x ≤ 2 ? 1/2 : -5/2
-    shaved = ImmersedBoundaryGrid(grid, ShavedCellBottom(coast))
+    cut = ImmersedBoundaryGrid(grid, CutCellBottom(coast))
     partial = ImmersedBoundaryGrid(grid, PartialCellBottom(coast))
 
     # A face on land stays closed: the sea reaches no deeper than its floor, and the faces of the land are dry.
-    @test all(cpu_values(Center, Center, Center, immersed_cell, shaved)[:, :, 1] .== 1)
-    @test cpu_values(Face, Center, Center, column_depthᶠᶜᶜ, shaved) ≈ cpu_values(Face, Center, Center, column_depthᶠᶜᶜ, partial)
+    @test all(cpu_values(Center, Center, Center, immersed_cell, cut)[:, :, 1] .== 1)
+    @test cpu_values(Face, Center, Center, column_depthᶠᶜᶜ, cut) ≈ cpu_values(Face, Center, Center, column_depthᶠᶜᶜ, partial)
 
     return nothing
 end
 
-function test_shaved_cell_closed_faces_carry_no_viscous_stress(FT, arch)
+function test_cut_cell_closed_faces_carry_no_viscous_stress(FT, arch)
     underlying_grid = RectilinearGrid(arch, FT, size=(24, 24, 10), x=(0, 1), y=(0, 1), z=(-1, 0), topology=(Periodic, Periodic, Bounded))
     seamount(x, y) = -9/10 + 7/10 * exp(-25 * ((x - 1/2)^2 + (y - 1/2)^2))
-    ibg = ImmersedBoundaryGrid(underlying_grid, ShavedCellBottom(seamount))
+    ibg = ImmersedBoundaryGrid(underlying_grid, CutCellBottom(seamount))
     @test any(cpu_values(Face, Center, Center, closed_between_active_cells, ibg) .== 1)
 
     model = HydrostaticFreeSurfaceModel(ibg; closure=VerticalScalarDiffusivity(ν=1), momentum_advection=nothing,
@@ -238,7 +238,7 @@ function test_shaved_cell_closed_faces_carry_no_viscous_stress(FT, arch)
     update_state!(model)
     compute_momentum_tendencies!(model, [])
 
-    # A uniform flow over free-slip boundaries feels no viscous stress, also above faces cut away by the shaved bottom.
+    # A uniform flow over free-slip boundaries feels no viscous stress, also above faces cut away by the bottom.
     open_u = cpu_values(Face, Center, Center, u_peripheral, ibg) .== 0
     Gu = Array(interior(model.timestepper.Gⁿ.u))
     @test maximum(abs, Gu[open_u]) < 100eps(FT)
@@ -246,10 +246,10 @@ function test_shaved_cell_closed_faces_carry_no_viscous_stress(FT, arch)
     return nothing
 end
 
-function test_shaved_cell_closed_faces_absorb_no_momentum(FT, arch)
+function test_cut_cell_closed_faces_absorb_no_momentum(FT, arch)
     underlying_grid = RectilinearGrid(arch, FT, size=(32, 32, 12), x=(0, 32e3), y=(0, 32e3), z=(-1200, 0), halo=(7, 7, 5), topology=(Periodic, Periodic, Bounded))
     seamount(x, y) = -1100 + 800 * exp(-((x - 16e3)^2 + (y - 16e3)^2) / 6e3^2)
-    ibg = ImmersedBoundaryGrid(underlying_grid, ShavedCellBottom(seamount))
+    ibg = ImmersedBoundaryGrid(underlying_grid, CutCellBottom(seamount))
     @test any(cpu_values(Face, Center, Center, closed_between_active_cells, ibg) .== 1)
 
     model = HydrostaticFreeSurfaceModel(ibg; momentum_advection=WENO(order=5), tracer_advection=nothing, buoyancy=nothing,
@@ -266,14 +266,14 @@ function test_shaved_cell_closed_faces_absorb_no_momentum(FT, arch)
     return nothing
 end
 
-function test_shaved_cell_minimum_height_above_the_lowest_cell(FT, arch)
+function test_cut_cell_minimum_height_above_the_lowest_cell(FT, arch)
     underlying_grid = RectilinearGrid(arch, FT, size=(24, 24, 10), x=(0, 1), y=(0, 1), z=(-1, 0), topology=(Periodic, Periodic, Bounded))
     Δz = 1 / size(underlying_grid, 3)
     bottom = -9/10 .+ 8/10 * rand(Xoshiro(1234), FT, 24, 24)
 
     # A cell keeps its share of ϵ Δz wherever the faces of its column are cut, also above the lowest cell.
     for ϵ in (17//50, 2//5, 1//2)
-        ibg = ImmersedBoundaryGrid(underlying_grid, ShavedCellBottom(bottom, minimum_fractional_cell_height=FT(ϵ)))
+        ibg = ImmersedBoundaryGrid(underlying_grid, CutCellBottom(bottom, minimum_fractional_cell_height=FT(ϵ)))
         u_open = cpu_values(Face, Center, Center, u_peripheral, ibg) .== 0
         v_open = cpu_values(Center, Face, Center, v_peripheral, ibg) .== 0
         n = u_open .+ circshift(u_open, (-1, 0, 0)) .+ v_open .+ circshift(v_open, (0, -1, 0))
@@ -285,25 +285,25 @@ function test_shaved_cell_minimum_height_above_the_lowest_cell(FT, arch)
     return nothing
 end
 
-function test_shaved_cell_rebuilt_from_its_constructor_arguments(FT, arch)
+function test_cut_cell_rebuilt_from_its_constructor_arguments(FT, arch)
     underlying_grid = RectilinearGrid(arch, FT, size=(6, 6, 8), extent=(1, 1, 1))
     Nx, Ny, _ = size(underlying_grid)
     island = [2 ≤ i ≤ 4 && 3 ≤ j ≤ 4 ? FT(100) : FT(-1/2) for i in 1:Nx, j in 1:Ny]
-    grid = ImmersedBoundaryGrid(underlying_grid, ShavedCellBottom(island))
+    grid = ImmersedBoundaryGrid(underlying_grid, CutCellBottom(island))
 
     _, _, args = constructor_arguments(grid)
-    rebuilt_bottom = ShavedCellBottom(args[:bottom_height], nothing, nothing, args[:corner_bottom_height], args[:minimum_fractional_cell_height])
+    rebuilt_bottom = CutCellBottom(args[:bottom_height], nothing, nothing, args[:corner_bottom_height], args[:minimum_fractional_cell_height], nothing)
     @test ImmersedBoundaryGrid(underlying_grid, rebuilt_bottom).immersed_boundary == grid.immersed_boundary
 
     return nothing
 end
 
-function test_shaved_cell_time_stepping(FT, arch)
+function test_cut_cell_time_stepping(FT, arch)
     underlying_grid = RectilinearGrid(arch, FT, topology=(Bounded, Flat, Bounded),
                                       size=(32, 16), halo=(5, 5), x=(0, 1000), z=(-100, 0))
 
     slope(x) = -100 + 80 * clamp((x - 200) / 400, 0, 1)
-    ibg = ImmersedBoundaryGrid(underlying_grid, ShavedCellBottom(slope))
+    ibg = ImmersedBoundaryGrid(underlying_grid, CutCellBottom(slope))
 
     model = HydrostaticFreeSurfaceModel(ibg; tracers=(:b, :q), buoyancy=BuoyancyTracer(),
                                         momentum_advection=WENO(), tracer_advection=WENO())
@@ -326,25 +326,25 @@ function test_shaved_cell_time_stepping(FT, arch)
     return nothing
 end
 
-@testset "ShavedCellBottom" begin
-    @info "Testing ShavedCellBottom..."
+@testset "CutCellBottom" begin
+    @info "Testing CutCellBottom..."
 
     for arch in archs, FT in float_types
-        @info "  Testing ShavedCellBottom [$FT, $(typeof(arch))]..."
-        test_shaved_cell_reduces_to_partial_cells(FT, arch)
-        test_shaved_cell_land_stays_out_of_the_sea(FT, arch)
-        test_shaved_cell_geometry(FT, arch)
-        test_shaved_cells_are_bounded_by_their_faces(FT, arch)
-        test_shaved_cell_column_depth_consistency(FT, arch)
-        test_shaved_cell_flat_topologies(FT, arch)
-        test_shaved_cell_with_halo(FT, arch)
-        test_shaved_cell_openings_are_rounded(FT, arch)
-        test_shaved_cell_slices_have_two_faces(FT, arch)
-        test_shaved_cell_coast(FT, arch)
-        test_shaved_cell_closed_faces_carry_no_viscous_stress(FT, arch)
-        test_shaved_cell_closed_faces_absorb_no_momentum(FT, arch)
-        test_shaved_cell_minimum_height_above_the_lowest_cell(FT, arch)
-        test_shaved_cell_rebuilt_from_its_constructor_arguments(FT, arch)
-        test_shaved_cell_time_stepping(FT, arch)
+        @info "  Testing CutCellBottom [$FT, $(typeof(arch))]..."
+        test_cut_cell_reduces_to_partial_cells(FT, arch)
+        test_cut_cell_land_stays_out_of_the_sea(FT, arch)
+        test_cut_cell_geometry(FT, arch)
+        test_cut_cells_are_bounded_by_their_faces(FT, arch)
+        test_cut_cell_column_depth_consistency(FT, arch)
+        test_cut_cell_flat_topologies(FT, arch)
+        test_cut_cell_with_halo(FT, arch)
+        test_cut_cell_openings_are_rounded(FT, arch)
+        test_cut_cell_slices_have_two_faces(FT, arch)
+        test_cut_cell_coast(FT, arch)
+        test_cut_cell_closed_faces_carry_no_viscous_stress(FT, arch)
+        test_cut_cell_closed_faces_absorb_no_momentum(FT, arch)
+        test_cut_cell_minimum_height_above_the_lowest_cell(FT, arch)
+        test_cut_cell_rebuilt_from_its_constructor_arguments(FT, arch)
+        test_cut_cell_time_stepping(FT, arch)
     end
 end

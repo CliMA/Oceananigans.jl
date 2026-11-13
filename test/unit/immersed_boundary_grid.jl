@@ -1,7 +1,7 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Oceananigans.Grids: total_extent, xspacings, yspacings, zspacings, rspacings, xnode, ynode, znode
-using Oceananigans.ImmersedBoundaries: GridFittedBottom, GridFittedVerticalBoundaries, PartialCellBottom, PartialCellVerticalBoundaries, ShavedCellBottom, GridFittedBoundary, immersed_cell, _immersed_cell, CenterImmersedCondition, InterfaceImmersedCondition, bottom_height_interior
+using Oceananigans.ImmersedBoundaries: GridFittedBottom, GridFittedVerticalBoundaries, PartialCellBottom, PartialCellVerticalBoundaries, CutCellBottom, GridFittedBoundary, immersed_cell, _immersed_cell, CenterImmersedCondition, InterfaceImmersedCondition, bottom_height_interior
 
 #####
 ##### Basic immersed boundary grid construction tests
@@ -358,7 +358,7 @@ function test_immersed_boundary_grid_show(FT, arch, boundary_type)
         bottom_height_prefix = "└── bottom_height: "
         ib_suffix = "\n"
     else
-        name = boundary_type === ShavedCellBottom ? "ShavedCellBottom" : "PartialCellBottom"
+        name = boundary_type === CutCellBottom ? "CutCellBottom" : "PartialCellBottom"
         ib_summary = "$name(mean(zb)=-0.5, min(zb)=-0.5, max(zb)=-0.5, ϵ=0.2)"
         bottom_height_prefix = "├── bottom_height: "
         ib_suffix = "\n└── minimum_fractional_cell_height: 0.2"
@@ -538,7 +538,7 @@ end
 @testset "Immersed Boundary Grids" begin
     @testset "Basic construction" begin
         for arch in archs, FT in float_types
-            for boundary_type in (GridFittedBottom, PartialCellBottom, ShavedCellBottom)
+            for boundary_type in (GridFittedBottom, PartialCellBottom, CutCellBottom)
                 @testset "Construction [$FT, $(typeof(arch)), $boundary_type]" begin
                     test_immersed_boundary_grid_construction(FT, arch, boundary_type)
                     test_immersed_boundary_grid_with_array_bottom(FT, arch, boundary_type)
@@ -589,7 +589,7 @@ end
 
     @testset "Show functions" begin
         for arch in archs, FT in float_types
-            for boundary_type in (GridFittedBottom, PartialCellBottom, ShavedCellBottom)
+            for boundary_type in (GridFittedBottom, PartialCellBottom, CutCellBottom)
                 @testset "Show [$FT, $(typeof(arch)), $boundary_type]" begin
                     test_immersed_boundary_grid_show(FT, arch, boundary_type)
                 end
@@ -622,7 +622,7 @@ end
 
     @testset "Flat topologies" begin
         for arch in archs, FT in float_types
-            for boundary_type in (GridFittedBottom, PartialCellBottom, ShavedCellBottom)
+            for boundary_type in (GridFittedBottom, PartialCellBottom, CutCellBottom)
                 @testset "Flat [$FT, $(typeof(arch)), $boundary_type]" begin
                     test_immersed_boundary_grid_flat_topologies(FT, arch, boundary_type)
                 end

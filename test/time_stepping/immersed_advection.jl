@@ -285,7 +285,7 @@ for arch in archs
     end
 
     @testset "Immersed momentum advection conserves kinetic energy" begin
-        @testset "$Bottom [$(summary(arch))]" for Bottom in (GridFittedBottom, PartialCellBottom, ShavedCellBottom)
+        @testset "$Bottom [$(summary(arch))]" for Bottom in (GridFittedBottom, PartialCellBottom, CutCellBottom)
             run_kinetic_energy_conservation_test(arch, Bottom)
         end
     end
