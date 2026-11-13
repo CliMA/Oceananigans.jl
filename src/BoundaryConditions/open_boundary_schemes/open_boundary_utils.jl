@@ -133,30 +133,37 @@ end
 end
 
 """
-    NetInflow(transport)
+    NetInflow(transport; depth_exponent = 0)
 
-A `target_transport` shared by every open side that carries it: a single uniform shift, common to those sides and
+A `target_transport` shared by every open side that carries it: a single shift, common to those sides and
 applied after the Flather fill of every barotropic substep, pins their net inflow, the sum of `∮U·n̂ dl` [m³ s⁻¹] counted
 positive into the domain, to `transport`, as the volume constraints of NEMO and ROMS do. Each side keeps the shape of
 its own Flather profile, and the split of the inflow between the sides is left to the Flather condition. Every side
 carrying a `NetInflow` must carry the same one. `transport` is a number, or a `Ref` to one that may change during a
 run (from a callback, say): the pin reads it at the start of every barotropic step.
 
+The shift of each column's transport is proportional to `H^depth_exponent`, with `H` the column depth: `0` shifts the
+transport uniformly per unit length, `1` shifts the velocity uniformly (as NEMO and ROMS do), and `1/2` shifts the
+exterior free surface of the Flather condition uniformly.
+
 ```jldoctest
 using Oceananigans
 
-NetInflow(0.0)
+NetInflow(0.0; depth_exponent = 1/2)
 
 # output
-NetInflow{Float64}(0.0)
+NetInflow{Float64, Float64}(0.0, 0.5)
 ```
 """
-struct NetInflow{T}
+struct NetInflow{T, P}
     transport :: T
+    depth_exponent :: P
 end
 
+NetInflow(transport; depth_exponent = 0) = NetInflow(transport, depth_exponent)
+
 # Kernels never read the target, and a `Ref` cannot enter them
-Adapt.adapt_structure(to, target::NetInflow{<:Base.RefValue}) = NetInflow(target.transport[])
+Adapt.adapt_structure(to, target::NetInflow{<:Base.RefValue}) = NetInflow(target.transport[], target.depth_exponent)
 
 net_inflow_value(transport::Number) = transport
 net_inflow_value(transport::Base.RefValue) = transport[]
@@ -164,6 +171,6 @@ net_inflow_value(transport::Base.RefValue) = transport[]
 # A `target_transport` is `nothing`, a fixed transport, a `NetInflow`, or a callable of the grid (kept as is).
 convert_target_transport(FT, ::Nothing) = nothing
 convert_target_transport(FT, target_transport::Number) = convert(FT, target_transport)
-convert_target_transport(FT, target_transport::NetInflow{<:Number}) = NetInflow(convert(FT, target_transport.transport))
+convert_target_transport(FT, target_transport::NetInflow{<:Number}) = NetInflow(convert(FT, target_transport.transport), target_transport.depth_exponent)
 convert_target_transport(FT, target_transport::NetInflow) = target_transport
 convert_target_transport(FT, target_transport) = target_transport
