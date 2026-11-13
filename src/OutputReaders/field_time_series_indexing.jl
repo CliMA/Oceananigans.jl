@@ -508,10 +508,20 @@ function Base.getindex(fts::InMemoryFTS, n::Int)
     update_field_time_series!(fts, n)
 
     m = memory_index(fts, n)
-    @apply_regionally underlying_data = view(parent(fts), :, :, :, m)
-    @apply_regionally data = offset_data(underlying_data, fts.grid, instantiated_location(fts), fts.indices)
-
     status = @allowscalar FixedTime(fts.times[n])
 
+    return memory_slot_field(fts.memory_fields, fts, m, status)
+end
+
+function memory_slot_field(fields, fts, m, status)
+    field = fields[m]
+    LX, LY, LZ = location(fts)
+    return Field{LX, LY, LZ}(field.grid, field.data, field.boundary_conditions, field.indices,
+                             nothing, status, field.communication_buffers)
+end
+
+function memory_slot_field(::Nothing, fts, m, status)
+    @apply_regionally underlying_data = view(parent(fts), :, :, :, m)
+    @apply_regionally data = offset_data(underlying_data, fts.grid, instantiated_location(fts), fts.indices)
     return Field(instantiated_location(fts), fts.grid; data, fts.boundary_conditions, fts.indices, status)
 end
