@@ -97,6 +97,8 @@ function TimeSteppers.reset!(closure_fields_tuple, closure_tuple::Tuple)
     return nothing
 end
 
+materialize_buoyancy_gradients(closure_tuple::Tuple) = any(materialize_buoyancy_gradients, closure_tuple)
+
 function add_closure_specific_boundary_conditions(closure_tuple::Tuple, bcs, args...)
     # So the last closure in the tuple has the say...
     for closure in closure_tuple

@@ -2,7 +2,6 @@ using Oceananigans.Architectures: architecture
 using Oceananigans.Utils: launch!
 using Oceananigans.Fields: XFaceField, YFaceField, ZFaceField
 using Oceananigans.Grids: NegativeZDirection, validate_unit_vector
-using Oceananigans.BoundaryConditions: fill_halo_regions!
 
 using KernelAbstractions: @kernel, @index
 using Adapt: Adapt
@@ -136,7 +135,6 @@ function compute_buoyancy_gradients!(buoyancy, grid, tracers; parameters=:xyz)
     gradients = buoyancy.gradients
     formulation = buoyancy.formulation
     launch!(architecture(grid), grid, parameters, _compute_buoyancy_gradients!, gradients, grid, formulation, tracers)
-    fill_halo_regions!(gradients, only_local_halos=true)
 
     return nothing
 end

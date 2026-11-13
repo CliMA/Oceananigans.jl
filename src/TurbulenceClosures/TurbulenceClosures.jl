@@ -140,6 +140,10 @@ end
 const ClosureKinda = Union{Nothing, AbstractTurbulenceClosure, AbstractArray{<:AbstractTurbulenceClosure}}
 add_closure_specific_boundary_conditions(closure::ClosureKinda, bcs, args...) = bcs
 
+# Closures that evaluate buoyancy gradients many times per grid point (for example, to compute isopycnal slopes)
+# run faster when the gradients are precomputed and stored in fields once per time step.
+materialize_buoyancy_gradients(closure::ClosureKinda) = false
+
 # Interface for KE-based closures
 function shear_production end
 function buoyancy_flux end

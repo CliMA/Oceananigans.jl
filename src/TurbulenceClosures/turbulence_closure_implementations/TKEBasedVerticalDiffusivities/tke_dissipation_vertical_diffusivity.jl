@@ -46,6 +46,9 @@ const TDVD{TD} = TKEDissipationVerticalDiffusivity{TD} where TD
 const TDVDArray{TD} = AbstractArray{<:TDVD{TD}} where TD
 const FlavorOfTD{TD} = Union{TDVD{TD}, TDVDArray{TD}} where TD
 
+# The stability functions evaluate N² at several neighboring points
+TurbulenceClosures.materialize_buoyancy_gradients(::FlavorOfTD) = true
+
 @inline Base.eltype(::TKEDissipationVerticalDiffusivity{<:Any, <:Any, <:Any, <:Any, FT}) where FT = FT
 
 # Adapting the parameters lets them be device (or traced) numbers, eg for differentiating with respect to them
