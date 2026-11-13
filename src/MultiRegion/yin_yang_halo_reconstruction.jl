@@ -43,12 +43,16 @@ function BoundaryConditions.fill_halo_regions!(field::YinYangField, args::Vararg
 
     grid = field.grid
     loc = instantiated_location(field)
-    table = interpolation_table(yin_yang_interpolation(grid), loc[1], loc[2])
-    for r in 1:2
-        donor = 3 - r
+    # Copies first: the interpolation stencils may read the copied halos of their donor subregion
+    for r in regions(grid)
+        copy_subregion_halos!(field, r, region_halo(getregion(yin_yang_region_halos(grid), r), loc[1], loc[2]).copies)
+    end
+    for r in regions(grid)
         data = getregion(field.data, r)
-        launch_yin_yang_interpolation!(getregion(grid, r), axes(data, 3), table, _interpolate_yin_yang_scalar!,
-                                       data, getregion(field.data, donor), getregion(grid, donor), loc, table)
+        for (donor, (table,)) in region_halo(getregion(yin_yang_region_halos(grid), r), loc[1], loc[2]).interpolations
+            launch_yin_yang_interpolation!(getregion(grid, donor), axes(data, 3), table, _interpolate_yin_yang_scalar!,
+                                           data, getregion(field.data, donor), getregion(grid, donor), loc, table)
+        end
     end
     return nothing
 end
@@ -151,20 +155,27 @@ function BoundaryConditions.fill_halo_regions!((u, v)::Tuple{YinYangXComponent, 
     fill_yin_yang_vertical_halos!(v, args...)
     seam_halos(u) || return nothing
 
-    # Each component is interpolated from both donor components, at its own location and at the other's
     grid = u.grid
-    ℓu, ℓv = horizontal_location(u), horizontal_location(v)
-    table(ℓ, ℓ′) = interpolation_table(yin_yang_interpolation(grid), ℓ..., ℓ′...)
-    uu, uv, vu, vv = table(ℓu, ℓu), table(ℓu, ℓv), table(ℓv, ℓu), table(ℓv, ℓv)
-
-    for r in 1:2
+    ℓu, ℓv = instantiated_location(u), instantiated_location(v)
+    # Copies first (see the scalar method)
+    for r in regions(grid)
+        halo = getregion(yin_yang_region_halos(grid), r).vector
+        copy_subregion_halos!(u, r, halo.u_copies)
+        copy_subregion_halos!(v, r, halo.v_copies)
+    end
+    # Each component is interpolated from both donor components, at its own location and at the other's
+    for r in regions(grid)
+        halo = getregion(yin_yang_region_halos(grid), r).vector
         uʳ, vʳ = getregion(u.data, r), getregion(v.data, r)
-        uᵈ, vᵈ = getregion(u.data, 3 - r), getregion(v.data, 3 - r)
         panel = getregion(grid, r)
-        launch_yin_yang_interpolation!(panel, axes(uʳ, 3), uu, _interpolate_yin_yang_vector_component!,
-                                       uʳ, uᵈ, vᵈ, panel, instantiated_location(u), (uu, uv), Val(1))
-        launch_yin_yang_interpolation!(panel, axes(vʳ, 3), vv, _interpolate_yin_yang_vector_component!,
-                                       vʳ, uᵈ, vᵈ, panel, instantiated_location(v), (vu, vv), Val(2))
+        for (donor, (uu, uv)) in halo.u
+            launch_yin_yang_interpolation!(getregion(grid, donor), axes(uʳ, 3), uu, _interpolate_yin_yang_vector_component!,
+                                           uʳ, getregion(u.data, donor), getregion(v.data, donor), panel, ℓu, (uu, uv), Val(1))
+        end
+        for (donor, (vu, vv)) in halo.v
+            launch_yin_yang_interpolation!(getregion(grid, donor), axes(vʳ, 3), vv, _interpolate_yin_yang_vector_component!,
+                                           vʳ, getregion(u.data, donor), getregion(v.data, donor), panel, ℓv, (vu, vv), Val(2))
+        end
     end
     return nothing
 end

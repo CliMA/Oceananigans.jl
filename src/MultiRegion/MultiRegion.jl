@@ -3,6 +3,7 @@ module MultiRegion
 export MultiRegionGrid, MultiRegionField
 export XPartition, YPartition, Connectivity
 export CubedSpherePartition, ConformalCubedSphereGrid, CubedSphereField
+export MultiRegionPartition
 export YinYangGrid, YinYangConservationFixer, owned_weights
 
 using Adapt: Adapt, adapt
@@ -15,7 +16,7 @@ using Oceananigans: Oceananigans
 using Oceananigans.Architectures: AbstractArchitecture, AbstractSerialArchitecture, CPU, GPU, architecture
 using Oceananigans.BoundaryConditions: BoundaryConditions, East, North, South, SouthAndNorth, West, WestAndEast,
     fill_halo_regions!
-using Oceananigans.DistributedComputations: DistributedComputations, insert_connected_topology
+using Oceananigans.DistributedComputations: DistributedComputations, Partition, insert_connected_topology, ranks
 using Oceananigans.Fields: Field, location
 using Oceananigans.Grids: Grids, AbstractGrid, AbstractUnderlyingGrid, BoundarySide, Bounded, Center, Connected, Face,
     Flat, OrthogonalSphericalShellGrid, Periodic, TwoSided, on_architecture
@@ -57,6 +58,8 @@ include("cubed_sphere_partitions.jl")
 include("cubed_sphere_connectivity.jl")
 include("yin_yang_masks.jl")
 include("yin_yang_interpolation.jl")
+include("subregion_partitions.jl")
+include("yin_yang_partitions.jl")
 include("multi_region_grid.jl")
 include("cubed_sphere_grid.jl")
 include("cubed_sphere_field.jl")

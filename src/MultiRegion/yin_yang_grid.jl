@@ -2,23 +2,20 @@ using Oceananigans.Grids: cpu_face_constructor_z, dimension_summary, domain, siz
 using Oceananigans.OrthogonalSphericalShellGrids: RotatedLatitudeLongitudeGrid, rotated_basis_angle
 using Oceananigans.Utils: prettysummary
 
-# Region 1 is the Yin panel and region 2 is the Yang panel
-struct YinYangPartition <: AbstractPartition end
-
-Base.length(::YinYangPartition) = 2
-Base.summary(::YinYangPartition) = "YinYangPartition with (1: Yin, 2: Yang)"
-
-struct YinYangConnectivity{M, I} <: AbstractConnectivity
+struct YinYangConnectivity{M, I, RM, RH} <: AbstractConnectivity
     overlap :: Int               # cells by which each panel extends beyond its 270° × 90° core on every side
     core_size :: Tuple{Int, Int} # (Nλ, Nφ): cells in the core of each panel
     stencil_width :: Int         # width s of the s × s interpolation stencils
     masks :: M                   # `YinYangMasks` shared by both panels
     interpolation :: I           # `YinYangInterpolation` shared by both panels
+    region_masks :: RM           # the `YinYangMasks` of every region, cut from those of its panel
+    region_halos :: RH           # the `YinYangRegionHalos` of every region
 end
 
 Grids.on_architecture(arch, c::YinYangConnectivity) =
     YinYangConnectivity(c.overlap, c.core_size, c.stencil_width,
-                        on_architecture(arch, c.masks), on_architecture(arch, c.interpolation))
+                        on_architecture(arch, c.masks), on_architecture(arch, c.interpolation),
+                        on_architecture(arch, c.region_masks), on_architecture(arch, c.region_halos))
 
 Base.summary(c::YinYangConnectivity) =
     string("YinYangConnectivity with ", c.core_size[1], "×", c.core_size[2], " core, ", c.overlap, "-cell overlap and ",
@@ -35,7 +32,7 @@ const yin_yang_regional_connectivity = (; west = YinYangRegionalConnectivity(), 
 @inline Utils.getregion(::YinYangConnectivity, r)  = yin_yang_regional_connectivity
 @inline Utils._getregion(::YinYangConnectivity, r) = yin_yang_regional_connectivity
 
-const YinYangGrid{FT, TX, TY, TZ, CZ} = MultiRegionGrid{FT, TX, TY, TZ, CZ, <:YinYangPartition}
+const YinYangGrid{FT, TX, TY, TZ, CZ} = MultiRegionGrid{FT, TX, TY, TZ, CZ, <:SubregionPartition{<:YinYangPartition}}
 
 const ImmersedYinYangGrid{FT, TX, TY, TZ, CZ} =
     ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:YinYangGrid{FT, TX, TY, TZ, CZ}, <:Any, <:Any, <:Any, <:AbstractSerialArchitecture}
@@ -49,7 +46,7 @@ const YinYangField{LX, LY, LZ} = Field{LX, LY, LZ, <:Any, <:YinYangGridOfSomeKin
     YinYangGrid(arch = CPU(), FT = Oceananigans.defaults.FloatType;
                 size, z, halo = (3, 3, 3), stencil_width = 4,
                 overlap = cld(2 * max(halo[1], halo[2]) + stencil_width, 4),
-                radius = Oceananigans.defaults.planet_radius)
+                radius = Oceananigans.defaults.planet_radius, partition = Partition(1))
 
 Return the Yin-Yang grid of [Kageyama and Sato (2004)](@cite KageyamaSato2004): a two-region `MultiRegionGrid`
 of two identical `RotatedLatitudeLongitudeGrid` panels, Yin (region 1) and Yang (region 2), whose frames are
@@ -67,6 +64,8 @@ Keyword arguments
 - `overlap`: the cells by which each panel extends beyond its core on every side. The default keeps the
              donor nodes an advection stencil away from their panel's halo.
 - `radius`: the radius of the sphere.
+- `partition`: `Partition(px, py)` splits each panel into `px × py` regions, for `2 px py` regions in all;
+               `MultiRegionPartition(yin, yang)` splits each panel by its own `Partition`.
 
 Horizontal velocities are stored in each panel's basis: `set!(model; u, v)` takes geographic components
 unless `intrinsic_velocities = true`, and `PrescribedVelocityFields` takes panel components. Reductions over both horizontal dimensions count every point of the
@@ -103,7 +102,8 @@ function YinYangGrid(arch::AbstractArchitecture = CPU(),
                      halo = (3, 3, 3),
                      stencil_width = 4,
                      overlap = cld(2 * max(halo[1], halo[2]) + stencil_width, 4),
-                     radius = Oceananigans.defaults.planet_radius)
+                     radius = Oceananigans.defaults.planet_radius,
+                     partition = Partition(1))
 
     Nλ, Nφ, Nz = size
     Nλ == 3Nφ || throw(ArgumentError("YinYangGrid requires size = (3Nφ, Nφ, Nz); got size = $size."))
@@ -114,22 +114,45 @@ function YinYangGrid(arch::AbstractArchitecture = CPU(),
 
     # The tables are computed once on the CPU in Float64, from the panel coordinates shared by both panels
     panel_faces = yin_yang_panel_face_coordinates((Nλ, Nφ), overlap)
-    masks = YinYangMasks(arch, FT, panel_faces, halo[1:2])
-    interpolation = YinYangInterpolation(arch, FT, panel_faces, halo[1:2], stencil_width)
-    connectivity = YinYangConnectivity(overlap, (Nλ, Nφ), stencil_width, masks, interpolation)
+    panel_size = (Nλ + 2overlap, Nφ + 2overlap)
+    partition = yin_yang_partition(partition, panel_size)
+    layout = partition.layout
+    R = length(layout)
+
+    masks = YinYangMasks(CPU(), FT, panel_faces, halo[1:2])
+    interpolation = YinYangInterpolation(CPU(), FT, panel_faces, halo[1:2], stencil_width)
+    region_masks = MultiRegionObject(Tuple(YinYangMasks(region_cell_weights(layout, r, masks.cell_weights, halo[1:2])) for r in 1:R))
+    region_halos = MultiRegionObject(Tuple(YinYangRegionHalos(layout, r, interpolation, panel_size, halo[1:2]) for r in 1:R))
+    connectivity = YinYangConnectivity(overlap, (Nλ, Nφ), stencil_width, on_architecture(arch, masks),
+                                       on_architecture(arch, interpolation),
+                                       on_architecture(arch, region_masks), on_architecture(arch, region_halos))
 
     λᶠ, φᶠ = panel_faces
     topology = (TwoSided{Connected, Connected}, TwoSided{Connected, Connected}, Bounded)
-    panel_size = (Nλ + 2overlap, Nφ + 2overlap, Nz)
-    panel(longitude, north_pole) = RotatedLatitudeLongitudeGrid(arch, FT; size = panel_size, z, halo, radius, topology,
-                                                                latitude = (φᶠ[1], φᶠ[end]), longitude, north_pole)
 
     # Yang's unrotated longitude is its panel longitude plus 90°
-    yin = panel((λᶠ[1], λᶠ[end]), (0, 90))
-    yang = panel((90 + λᶠ[1], 90 + λᶠ[end]), (90, 0))
-    region_grids = MultiRegionObject((yin, yang))
+    function region_grid(r)
+        (ox, oy), (nx, ny) = layout[r].offsets, layout[r].size
+        λ₀ = layout[r].region == 1 ? 0 : 90
+        north_pole = layout[r].region == 1 ? (0, 90) : (90, 0)
+        longitude = (λ₀ + λᶠ[ox + 1], λ₀ + λᶠ[ox + nx + 1])
+        latitude = (φᶠ[oy + 1], φᶠ[oy + ny + 1])
+        return RotatedLatitudeLongitudeGrid(arch, FT; size = (nx, ny, Nz), z, halo, radius, topology,
+                                            latitude, longitude, north_pole)
+    end
 
-    return MultiRegionGrid{FT, topology..., typeof(yin.z)}(arch, YinYangPartition(), connectivity, region_grids)
+    region_grids = MultiRegionObject(Tuple(region_grid(r) for r in 1:R))
+    yin = first(region_grids.regional_objects)
+
+    return MultiRegionGrid{FT, topology..., typeof(yin.z)}(arch, partition, connectivity, region_grids)
+end
+
+yin_yang_partition(p::Partition, panel_size) = yin_yang_partition(MultiRegionPartition(p, p), panel_size)
+yin_yang_partition(p::SubregionPartition, panel_size) = p
+
+function yin_yang_partition(p::MultiRegionPartition, panel_size)
+    length(p.partitions) == 2 || throw(ArgumentError("A YinYangGrid has 2 regions; got $(length(p.partitions)) partitions."))
+    return SubregionPartition(YinYangPartition(), region_splits(p), panel_size)
 end
 
 # The uniformly spaced panel coordinates `(λᶠ, φᶠ)` (degrees) of the cell faces of a Yin-Yang panel with
@@ -143,7 +166,8 @@ function Grids.with_halo(new_halo, grid::YinYangGrid)
     c = grid.connectivity
     yin = first(grid)
     return YinYangGrid(architecture(grid), eltype(grid); size = (c.core_size..., size(grid, 3)), halo = new_halo,
-                       z = cpu_face_constructor_z(yin), stencil_width = c.stencil_width, overlap = c.overlap, radius = yin.radius)
+                       z = cpu_face_constructor_z(yin), stencil_width = c.stencil_width, overlap = c.overlap, radius = yin.radius,
+                       partition = grid.partition)
 end
 
 yin_yang_connectivity(grid::YinYangGrid) = grid.connectivity
@@ -151,12 +175,17 @@ yin_yang_connectivity(grid::ImmersedYinYangGrid) = grid.underlying_grid.connecti
 
 yin_yang_masks(grid::YinYangGridOfSomeKind) = yin_yang_connectivity(grid).masks
 yin_yang_interpolation(grid::YinYangGridOfSomeKind) = yin_yang_connectivity(grid).interpolation
+yin_yang_region_halos(grid::YinYangGridOfSomeKind) = yin_yang_connectivity(grid).region_halos
 
-# The fractions `w ∈ [0, 1]` of the area of each cell that its panel owns, with `w = 0` in the halos.
+# The fractions `w ∈ [0, 1]` of the area of each cell that its panel owns, with `w = 0` in the panel halos. Halos at
+# a split edge hold the sibling's values, which Face weights interpolate across; reductions cover interiors only.
 # The owned cells of the two panels tile the sphere: `Σ w Az` over both panels is `4πR²`.
+yin_yang_cell_weights(grid::YinYangGridOfSomeKind) =
+    MultiRegionObject(map(masks -> masks.cell_weights, yin_yang_connectivity(grid).region_masks.regional_objects))
+
 function owned_weights(grid::YinYangGridOfSomeKind)
-    w = yin_yang_masks(grid).cell_weights
-    return Field((Center(), Center(), nothing), grid, MultiRegionObject((w, w)), nothing, (:, :, :))
+    w = yin_yang_cell_weights(grid)
+    return Field((Center(), Center(), nothing), grid, w, nothing, (:, :, :))
 end
 
 # The angle (radians) from the basis of the panel in whose frame `(λ, φ)` (degrees) are given to the basis of

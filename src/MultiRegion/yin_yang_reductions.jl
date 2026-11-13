@@ -9,7 +9,7 @@ const YinYangOperand = AbstractField{<:Any, <:Any, <:Any, <:YinYangGridOfSomeKin
 
 function spanning_operand(reduction!, operand::YinYangOperand)
     ℓx, ℓy, _ = instantiated_location(operand)
-    return owned_operand(reduction!, operand, yin_yang_masks(operand.grid).cell_weights, ℓx, ℓy)
+    return owned_operand(reduction!, operand, yin_yang_cell_weights(operand.grid), ℓx, ℓy)
 end
 
 function owned_operand(::SumReduction, operand, weights, ℓx, ℓy)

@@ -73,19 +73,49 @@ yin_yang_remapping(destination::AbstractField, source) =
     yin_yang_remapping(destination.grid, horizontal_location(destination), source)
 
 yin_yang_remapping(destination_grid, destination_location, components::Tuple) =
-    map(component -> yin_yang_remapping(destination_grid, destination_location, component), components)
+    region_remapping(components[1].grid, map(c -> panel_remapping(destination_grid, destination_location, c), components))
 
-function yin_yang_remapping(destination_grid, destination_location, source::YinYangField)
+yin_yang_remapping(destination_grid, destination_location, source::YinYangField) =
+    only(region_remapping(source.grid, (panel_remapping(destination_grid, destination_location, source),)))
+
+# The CPU tables, one per panel, that interpolate `source` from the interior of its panels
+function panel_remapping(destination_grid, destination_location, source::YinYangField)
     nodes, owners = owning_panels(source.grid, destination_grid, destination_location, horizontal_location(source))
-    s = yin_yang_connectivity(source.grid).stencil_width
-    interior_size = size(getregion(source.grid, 1))[1:2]
+    connectivity = yin_yang_connectivity(source.grid)
+    s = connectivity.stencil_width
+    interior_size = connectivity.core_size .+ 2connectivity.overlap
 
-    return ntuple(2) do r
-        owned = findall(owner -> owner.panel == r, owners)
+    return ntuple(2) do p
+        owned = findall(owner -> owner.panel == p, owners)
         fractional_indices = [owner.fractional_indices for owner in owners[owned]]
         ψ = [owner.ψ for owner in owners[owned]]
-        YinYangInterpolationTable(architecture(destination_grid), eltype(source.grid), s,
-                                  nodes[owned], fractional_indices, ψ, interior_size)
+        YinYangInterpolationTable(CPU(), eltype(source.grid), s, nodes[owned], fractional_indices, ψ, interior_size)
+    end
+end
+
+# The panel tables of every component, split by the subregion that holds the stencils of all components of a node:
+# a tuple, per component, of the tuples of `(donor, table)`
+function region_remapping(grid, component_tables)
+    connectivity = yin_yang_connectivity(grid)
+    layout = grid.partition.layout
+    halo = halo_size(grid)[1:2]
+    arch = architecture(grid)
+    pieces = [Tuple{Int, Vector{Int}}[] for _ in component_tables]
+
+    for p in 1:2
+        tables = map(t -> t[p], component_tables)
+        rows = Dict{Int, Vector{Int}}()
+        for n in 1:length(first(tables))
+            push!(get!(rows, donor_subregion(layout, p, tables, n, halo), Int[]), n)
+        end
+        for (d, n) in sort(collect(rows)), c in eachindex(tables)
+            push!(pieces[c], (d, n))
+        end
+    end
+
+    return ntuple(length(component_tables)) do c
+        Tuple((d, on_architecture(arch, table_rows(component_tables[c][layout[d].region], n, (0, 0), layout[d].offsets)))
+              for (d, n) in pieces[c])
     end
 end
 
@@ -117,18 +147,18 @@ end
 
 # Remap a scalar, or the eastward (1) or northward (2) `component` of a vector
 function remap!(destination, source::YinYangField, remapping, ::Nothing)
-    for r in 1:2
-        launch_remapping!(destination, source, remapping[r], _interpolate_yin_yang_scalar!, destination.data,
-                          getregion(source.data, r), getregion(source.grid, r), instantiated_location(source), remapping[r])
+    for (r, table) in remapping
+        launch_remapping!(destination, source, table, _interpolate_yin_yang_scalar!, destination.data,
+                          getregion(source.data, r), getregion(source.grid, r), instantiated_location(source), table)
     end
     return nothing
 end
 
 function remap!(destination, (u, v)::Tuple, (u_remapping, v_remapping), component)
-    for r in 1:2
-        launch_remapping!(destination, u, u_remapping[r], _interpolate_yin_yang_vector_component!, destination.data,
+    for ((r, u_table), (_, v_table)) in zip(u_remapping, v_remapping)
+        launch_remapping!(destination, u, u_table, _interpolate_yin_yang_vector_component!, destination.data,
                           getregion(u.data, r), getregion(v.data, r), nothing, nothing,
-                          (u_remapping[r], v_remapping[r]), component)
+                          (u_table, v_table), component)
     end
     return nothing
 end
