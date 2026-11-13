@@ -2,10 +2,9 @@ using Oceananigans.BoundaryConditions: DistributedCommunication, pivot_shift
 using Oceananigans.DistributedComputations: CommunicationBuffers, Distributed, communication_state, copy_from_buffer!,
                                             corner_communication_buffer, halo_tag_slots, on_architecture, ranks,
                                             side_id, x_communication_buffer, y_communication_buffer
+using Oceananigans.Fields: communication_buffers
 using Oceananigans.Grids: AbstractGrid, CenterFoldConnected, CenterFolded, FaceFoldConnected, FaceFolded,
                           PencilFoldedTopology, TwoSided, topology
-
-using Oceananigans.Fields: communication_buffers
 
 const DistributedZipper = BoundaryCondition{<:DistributedCommunication, <:ZipperHaloCommunicationRanks}
 

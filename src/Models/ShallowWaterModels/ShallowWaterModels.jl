@@ -4,7 +4,6 @@ export ShallowWaterModel, ShallowWaterScalarDiffusivity,
        ConservativeFormulation, VectorInvariantFormulation
 
 using Adapt: Adapt
-using DocStringExtensions: MethodSignatures, TYPEDSIGNATURES
 using KernelAbstractions: @index, @kernel
 
 using Oceananigans: Oceananigans, fields, prognostic_fields
@@ -14,7 +13,7 @@ using Oceananigans.Fields: Fields
 using Oceananigans.Simulations: Simulations
 using Oceananigans.TimeSteppers: TimeSteppers
 using Oceananigans.TurbulenceClosures: TurbulenceClosures
-using Oceananigans.Utils: launch!
+using Oceananigans.Utils: launch!, SIGNATURES, TYPEDSIGNATURES
 
 #####
 ##### ShallowWaterModel definition
