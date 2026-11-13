@@ -464,4 +464,147 @@ function EnzymeCore.EnzymeRules.reverse(config,
     return (nothing, nothing)
 end
 
+#####
+##### Implicit free surface: the PCG solve
+#####
+
+# Rules on `solve!(η, ::PCGImplicitFreeSurfaceSolver, rhs, g, Δt)`, i.e. η = A⁻¹ rhs with
+#
+#     A η = δx(∫ᶻAx ∂x η) + δy(∫ᶻAy ∂y η) - Az η / (g Δt²)
+#
+# (`implicit_free_surface_linear_operation!`). As in MITgcm's CG2D rule (TAF's `CG2D_MAD`),
+# the derivative is one more solve with the same matrix instead of the derivative of the CG
+# iterations:
+#
+# * reverse: rhs̄ += A⁻ᵀ η̄ and η̄ = 0. The operator is the area-weighted form, so A is
+#   symmetric in the Euclidean inner product and the adjoint solve reuses the primal solver.
+# * forward: η̇ = A⁻¹ rhṡ.
+#
+# The incoming η is only the initial guess, so it gets no derivative. A depends on the
+# (static) column depths, g and Δt only; it is treated as constant, and g and Δt get a zero
+# derivative. A grid whose column depth changes with η (z-star) would also need the
+# derivative with respect to the matrix; that is not implemented.
+#
+# Only interior points carry derivatives: η's halos are refilled after the solve and the
+# halos of rhs do not change the interior solution.
+
+using Oceananigans.Fields: interior
+using Oceananigans.Solvers: Solvers
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: PCGImplicitFreeSurfaceSolver
+
+const PCGSolve = EnzymeCore.Const{typeof(Solvers.solve!)}
+const PCGFreeSurfaceSolver = EnzymeCore.Annotation{<:PCGImplicitFreeSurfaceSolver}
+
+# Relative tolerance of the adjoint and tangent solves
+derivative_reltol(::Type{FT}) where FT = max(FT(1e-12), 100 * eps(FT))
+
+# View of the interior points of a shadow that has the layout of `primal`
+shadow_interior(shadow, primal) = view(parent(shadow), parentindices(interior(primal))...)
+
+free_surface_shadows(x::EnzymeCore.Duplicated) = (x.dval,)
+free_surface_shadows(x::EnzymeCore.BatchDuplicated) = x.dval
+free_surface_shadows(x::EnzymeCore.MixedDuplicated) = (x.dval[],)
+free_surface_shadows(x::EnzymeCore.BatchMixedDuplicated) = map(getindex, x.dval)
+free_surface_shadows(x) = nothing
+
+"""
+    derivative_solve!(x, solver, b, g, Δt)
+
+Solve `A x = b` from `x = 0` with the conjugate-gradient solver of the implicit free-surface
+`solver`, to `derivative_reltol`. `b` holds the right-hand side in its interior, with zero halos.
+The solver's settings and counters are restored afterwards.
+"""
+function derivative_solve!(x, solver::PCGImplicitFreeSurfaceSolver, b, g, Δt)
+    cg = solver.preconditioned_conjugate_gradient_solver
+    ∫ᶻA = solver.vertically_integrated_lateral_areas
+    reltol, iteration = cg.reltol, cg.iteration
+    try
+        cg.reltol = derivative_reltol(typeof(reltol))
+        fill!(parent(x), 0)
+        Solvers.solve!(x, cg, b, ∫ᶻA.xᶠᶜᶜ, ∫ᶻA.yᶜᶠᶜ, g, Δt)
+    finally
+        cg.reltol, cg.iteration = reltol, iteration
+    end
+    return x
+end
+
+# A field like `primal`, with zero halos, holding the interior of `shadow`
+function interior_copy(primal, shadow)
+    b = similar(primal)
+    fill!(parent(b), 0)
+    interior(b) .= shadow_interior(shadow, primal)
+    return b
+end
+
+zero_derivative(config, x::EnzymeCore.Active) =
+    EnzymeCore.EnzymeRules.width(config) == 1 ? zero(x.val) :
+        ntuple(_ -> zero(x.val), Val(EnzymeCore.EnzymeRules.width(config)))
+zero_derivative(config, x) = nothing
+
+function EnzymeCore.EnzymeRules.augmented_primal(config::EnzymeCore.EnzymeRules.RevConfig, func::PCGSolve,
+                                                 ::Type{RT}, η::EnzymeCore.Annotation, solver::PCGFreeSurfaceSolver,
+                                                 rhs::EnzymeCore.Annotation, g::EnzymeCore.Annotation,
+                                                 Δt::EnzymeCore.Annotation) where RT
+    func.val(η.val, solver.val, rhs.val, g.val, Δt.val)
+    # The matrix depends on the grid, g and Δt, all available in the reverse pass: no tape
+    return EnzymeCore.EnzymeRules.AugmentedReturn(nothing, nothing, nothing)
+end
+
+function EnzymeCore.EnzymeRules.reverse(config::EnzymeCore.EnzymeRules.RevConfig, func::PCGSolve,
+                                        ::Type{RT}, tape, η::EnzymeCore.Annotation, solver::PCGFreeSurfaceSolver,
+                                        rhs::EnzymeCore.Annotation, g::EnzymeCore.Annotation,
+                                        Δt::EnzymeCore.Annotation) where RT
+    dηs = free_surface_shadows(η)
+    drhss = free_surface_shadows(rhs)
+    if !isnothing(dηs)
+        for w in eachindex(dηs)
+            dη = dηs[w]
+            dη === η.val && continue # runtime activity: η is constant
+            drhs = isnothing(drhss) ? nothing : drhss[w]
+            if !isnothing(drhs) && drhs !== rhs.val
+                # rhs̄ += A⁻ᵀ η̄ = A⁻¹ η̄
+                λ = derivative_solve!(similar(η.val), solver.val, interior_copy(η.val, dη), g.val, Δt.val)
+                shadow_interior(drhs, rhs.val) .+= interior(λ)
+            end
+            # η is overwritten by the solve
+            fill!(parent(dη), 0)
+        end
+    end
+    return (nothing, nothing, nothing, zero_derivative(config, g), zero_derivative(config, Δt))
+end
+
+function EnzymeCore.EnzymeRules.forward(config::EnzymeCore.EnzymeRules.FwdConfig, func::PCGSolve,
+                                        ::Type{RT}, η::EnzymeCore.Annotation, solver::PCGFreeSurfaceSolver,
+                                        rhs::EnzymeCore.Annotation, g::EnzymeCore.Annotation,
+                                        Δt::EnzymeCore.Annotation) where RT
+    func.val(η.val, solver.val, rhs.val, g.val, Δt.val)
+    dηs = free_surface_shadows(η)
+    drhss = free_surface_shadows(rhs)
+    if !isnothing(dηs)
+        for w in eachindex(dηs)
+            dη = dηs[w]
+            dη === η.val && continue
+            drhs = isnothing(drhss) ? nothing : drhss[w]
+            if isnothing(drhs) || drhs === rhs.val
+                fill!(parent(dη), 0)
+            else
+                # η̇ = A⁻¹ rhṡ
+                ẋ = derivative_solve!(similar(η.val), solver.val, interior_copy(rhs.val, drhs), g.val, Δt.val)
+                fill!(parent(dη), 0)
+                shadow_interior(dη, η.val) .= interior(ẋ)
+            end
+        end
+    end
+    # solve! returns nothing
+    width = EnzymeCore.EnzymeRules.width(config)
+    if EnzymeCore.EnzymeRules.needs_primal(config) && EnzymeCore.EnzymeRules.needs_shadow(config)
+        return width == 1 ? EnzymeCore.Duplicated(nothing, nothing) :
+                            EnzymeCore.BatchDuplicated(nothing, ntuple(_ -> nothing, Val(width)))
+    elseif EnzymeCore.EnzymeRules.needs_shadow(config)
+        return width == 1 ? nothing : ntuple(_ -> nothing, Val(width))
+    else
+        return nothing
+    end
+end
+
 end
