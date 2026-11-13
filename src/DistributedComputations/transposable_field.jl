@@ -152,6 +152,7 @@ function twin_grid(grid::DistributedGrid; local_direction = :y)
         ranks = R[1], 1, R[2]
 
         nnx, nny, nnz = nx, Ny, nz ÷ ranks[3]
+        halo = min.(halo_size(grid), (nnx, nny, nnz))
 
         if (nnz * ranks[3] < Nz) && (rj == ranks[3])
             nnz = Nz - nnz * (ranks[3] - 1)
@@ -160,6 +161,7 @@ function twin_grid(grid::DistributedGrid; local_direction = :y)
         ranks = 1, R[1], R[2]
 
         nnx, nny, nnz = Nx, Ny ÷ ranks[2], nz ÷ ranks[3]
+        halo = min.(halo_size(grid), (nnx, nny, nnz))
 
         if (nny * ranks[2] < Ny) && (ri == ranks[2])
             nny = Ny - nny * (ranks[2] - 1)
@@ -173,8 +175,7 @@ function twin_grid(grid::DistributedGrid; local_direction = :y)
                                          communicator = mpi_communicator(arch.communicator), devices = arch.devices)
     global_sz = global_size(new_arch, (nnx, nny, nnz))
     global_sz = deflate_tuple(TX, TY, TZ, global_sz)
-    global_hl = halo_size(grid)
-    global_hl = deflate_tuple(TX, TY, TZ, global_hl)
+    global_hl = deflate_tuple(TX, TY, TZ, halo) # a stretched coordinate's halo cannot exceed a rank's cells
 
     return construct_grid(grid, new_arch, FT;
                           size = global_sz,
