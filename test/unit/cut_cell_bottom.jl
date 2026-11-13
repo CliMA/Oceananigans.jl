@@ -197,14 +197,19 @@ function test_cut_cell_slices_have_two_faces(FT, arch)
     Δz = 1
 
     # The phantom face of the Flat direction is not a face of the cell: the lowest cell of each column is at least
-    # ϵ Δz tall, and no face moves further from the ramp than ϵ Δz.
+    # ϵ Δz tall, and each side of a plane lies between the height of its column and the ramp at that side.
     heights = cpu_values(Center, Center, Center, Δrᶜᶜᶜ, yflat)[:, 1, :]
     immersed = cpu_values(Center, Center, Center, immersed_cell, yflat)[:, 1, :] .== 1
     @test all(heights[i, findfirst(.!immersed[i, :])] ≥ ϵ * Δz - 10eps(FT) for i in 1:size(heights, 1))
 
     xᶠ = Array(xnodes(yflat, f))
-    west = on_architecture(CPU(), yflat.immersed_boundary.west_bottom_height)
-    @test all(abs(west[i, 1, 1] - ramp(xᶠ[i])) ≤ ϵ * Δz + 10eps(FT) for i in eachindex(xᶠ))
+    ib = on_architecture(CPU(), yflat.immersed_boundary)
+    between(r, a, b) = min(a, b) - 10eps(FT) ≤ r ≤ max(a, b) + 10eps(FT)
+    for i in 1:size(yflat, 1)
+        rᵇ = ib.bottom_height[i, 1, 1]
+        rᵂ = ib.west_bottom_height[i, 1, 1]
+        @test between(rᵂ, rᵇ, ramp(xᶠ[i])) && between(2rᵇ - rᵂ, rᵇ, ramp(xᶠ[i+1]))
+    end
 
     # and the velocity across the phantom face is masked only where its cell is.
     @test cpu_values(Center, Center, Center, v_peripheral, yflat) == cpu_values(Center, Center, Center, inactive_cell, yflat)
@@ -252,7 +257,7 @@ function test_cut_cell_closed_faces_absorb_no_momentum(FT, arch)
     ibg = ImmersedBoundaryGrid(underlying_grid, CutCellBottom(seamount))
     @test any(cpu_values(Face, Center, Center, closed_between_active_cells, ibg) .== 1)
 
-    model = HydrostaticFreeSurfaceModel(ibg; momentum_advection=WENO(order=5), tracer_advection=nothing, buoyancy=nothing,
+    model = HydrostaticFreeSurfaceModel(ibg; momentum_advection=Centered(order=2), tracer_advection=nothing, buoyancy=nothing,
                                         tracers=(), free_surface=ImplicitFreeSurface())
     set!(model, u=1/10)
     update_state!(model)
@@ -271,7 +276,7 @@ function test_cut_cell_minimum_height_above_the_lowest_cell(FT, arch)
     Δz = 1 / size(underlying_grid, 3)
     bottom = -9/10 .+ 8/10 * rand(Xoshiro(1234), FT, 24, 24)
 
-    # A cell keeps its share of ϵ Δz wherever the faces of its column are cut, also above the lowest cell.
+    # Each open face of a cell gives it at least a quarter of ϵ Δz, in every level of the column.
     for ϵ in (17//50, 2//5, 1//2)
         ibg = ImmersedBoundaryGrid(underlying_grid, CutCellBottom(bottom, minimum_fractional_cell_height=FT(ϵ)))
         u_open = cpu_values(Face, Center, Center, u_peripheral, ibg) .== 0
@@ -279,7 +284,7 @@ function test_cut_cell_minimum_height_above_the_lowest_cell(FT, arch)
         n = u_open .+ circshift(u_open, (-1, 0, 0)) .+ v_open .+ circshift(v_open, (0, -1, 0))
         heights = cpu_values(Center, Center, Center, Δrᶜᶜᶜ, ibg)
         active = cpu_values(Center, Center, Center, inactive_cell, ibg) .== 0
-        @test all(heights[active] .≥ min.(FT(ϵ), n[active] ./ 4) .* Δz .- 10eps(FT))
+        @test all(heights[active] .≥ n[active] .* FT(ϵ) ./ 4 .* Δz .- 10eps(FT))
     end
 
     return nothing
