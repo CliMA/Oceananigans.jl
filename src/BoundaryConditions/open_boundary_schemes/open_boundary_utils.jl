@@ -132,7 +132,30 @@ end
     return nothing
 end
 
-# A `target_transport` is `nothing`, a fixed transport, or a callable of the grid (kept as is).
+"""
+    NetInflow(transport)
+
+A `target_transport` shared by every open side that carries it: a single uniform shift, common to those sides and
+applied after the Flather fill of every barotropic substep, pins their net inflow, the sum of `∮U·n̂ dl` [m³ s⁻¹] counted
+positive into the domain, to `transport`, as the volume constraints of NEMO and ROMS do. Each side keeps the shape of
+its own Flather profile, and the split of the inflow between the sides is left to the Flather condition. Every side
+carrying a `NetInflow` must carry the same one.
+
+```jldoctest
+using Oceananigans
+
+NetInflow(0.0)
+
+# output
+NetInflow{Float64}(0.0)
+```
+"""
+struct NetInflow{T}
+    transport :: T
+end
+
+# A `target_transport` is `nothing`, a fixed transport, a `NetInflow`, or a callable of the grid (kept as is).
 convert_target_transport(FT, ::Nothing) = nothing
 convert_target_transport(FT, target_transport::Number) = convert(FT, target_transport)
+convert_target_transport(FT, target_transport::NetInflow) = NetInflow(convert(FT, target_transport.transport))
 convert_target_transport(FT, target_transport) = target_transport

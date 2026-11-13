@@ -8,7 +8,7 @@ export
     IMEXFluxTimeDiscretization, IMEXFluxBoundaryCondition,
     implicit_flux_coefficient, explicit_flux,
     needs_implicit_solver, validate_implicit_explicit_flux_locations, total_boundary_flux,
-    PerturbationAdvection, has_target_transport, get_target_transport,
+    PerturbationAdvection, has_target_transport, get_target_transport, NetInflow,
     GravityWaveRadiation, NormalRadiation, ObliqueRadiation, TracerReservoir, SurfaceWaveRadiation, GravityWaveRadiationBoundaryCondition, SurfaceWaveRadiationBoundaryCondition,
     TidalHarmonics, tidal_boundary_conditions, tidal_atlas_constants,
     validate_boundary_condition_topology, validate_boundary_condition_architecture,
