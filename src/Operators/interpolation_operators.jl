@@ -118,28 +118,41 @@ using Oceananigans.Grids: XFlatGrid, YFlatGrid, ZFlatGrid
 
 @inline not_peripheral_node(args...) = !peripheral_node(args...)
 
+# mirrors the raw-field-vs-function dispatch that `ℑxᶜᵃᵃ`/`ℑyᵃᶜᵃ` already use above
+@inline interpolation_operand(i, j, k, grid, q, args...) = @inbounds q[i, j, k]
+@inline interpolation_operand(i, j, k, grid, q::F, args...) where {F<:Function} = q(i, j, k, grid, args...)
+
+# zero at peripheral nodes so the numerator can't disagree with `active_nodes` on which count
+@inline function active_masked_operand(i, j, k, grid, loc, q, args...)
+    return ifelse(peripheral_node(i, j, k, grid, loc...), zero(grid), interpolation_operand(i, j, k, grid, q, args...))
+end
+
 @inline function active_weighted_ℑxyᶜᶠᶜ(i, j, k, grid, q, args...)
-    active_nodes = ℑxyᶜᶠᵃ(i, j, k, grid, not_peripheral_node, f, c, c)
+    loc = (f, c, c)
+    active_nodes = ℑxyᶜᶠᵃ(i, j, k, grid, not_peripheral_node, loc...)
     mask = active_nodes == 0
-    return ifelse(mask, zero(grid), ℑxyᶜᶠᵃ(i, j, k, grid, q, args...) / active_nodes)
+    return ifelse(mask, zero(grid), ℑxyᶜᶠᵃ(i, j, k, grid, active_masked_operand, loc, q, args...) / active_nodes)
 end
 
 @inline function active_weighted_ℑxyᶠᶜᶜ(i, j, k, grid, q, args...)
-    active_nodes = ℑxyᶠᶜᵃ(i, j, k, grid, not_peripheral_node, c, f, c)
+    loc = (c, f, c)
+    active_nodes = ℑxyᶠᶜᵃ(i, j, k, grid, not_peripheral_node, loc...)
     mask = active_nodes == 0
-    return ifelse(mask, zero(grid), ℑxyᶠᶜᵃ(i, j, k, grid, q, args...) / active_nodes)
+    return ifelse(mask, zero(grid), ℑxyᶠᶜᵃ(i, j, k, grid, active_masked_operand, loc, q, args...) / active_nodes)
 end
 
 @inline function active_weighted_ℑxyᶠᶠᶜ(i, j, k, grid, q, args...)
-    active_nodes = ℑxyᶠᶠᵃ(i, j, k, grid, not_peripheral_node, c, c, c)
+    loc = (c, c, c)
+    active_nodes = ℑxyᶠᶠᵃ(i, j, k, grid, not_peripheral_node, loc...)
     mask = active_nodes == 0
-    return ifelse(mask, zero(grid), ℑxyᶠᶠᵃ(i, j, k, grid, q, args...) / active_nodes)
+    return ifelse(mask, zero(grid), ℑxyᶠᶠᵃ(i, j, k, grid, active_masked_operand, loc, q, args...) / active_nodes)
 end
 
 @inline function active_weighted_ℑxyᶜᶜᶜ(i, j, k, grid, q, args...)
-    active_nodes = ℑxyᶜᶜᵃ(i, j, k, grid, not_peripheral_node, f, f, c)
+    loc = (f, f, c)
+    active_nodes = ℑxyᶜᶜᵃ(i, j, k, grid, not_peripheral_node, loc...)
     mask = active_nodes == 0
-    return ifelse(mask, zero(grid), ℑxyᶜᶜᵃ(i, j, k, grid, q, args...) / active_nodes)
+    return ifelse(mask, zero(grid), ℑxyᶜᶜᵃ(i, j, k, grid, active_masked_operand, loc, q, args...) / active_nodes)
 end
 
 @inline function active_weighted_ℑxzᶜᶜᶜ(i, j, k, grid, q, args...)

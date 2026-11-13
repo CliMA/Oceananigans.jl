@@ -2,6 +2,7 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Oceananigans.Operators: Δxᶠᵃᵃ, Δxᶜᵃᵃ, Δxᶠᶠᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶜᶜᵃ
 using Oceananigans.Operators: Δyᵃᶠᵃ, Δyᵃᶜᵃ, Δyᶠᶠᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶜᶜᵃ
+using Oceananigans.Operators: active_weighted_ℑxyᶜᶜᶜ, active_weighted_ℑxyᶠᶠᶜ
 using Oceananigans.BoundaryConditions: UPivot, TPivot, FPivot, regularize_field_boundary_conditions
 
 
@@ -156,6 +157,27 @@ function test_function_interpolation(T=Float64)
     return nothing
 end
 
+function test_active_weighted_interpolation_masks_peripheral_nodes(T=Float64)
+    Ny = 4
+    grid = RectilinearGrid(CPU(), T; size=(1, Ny), extent=(1, Ny), topology=(Periodic, Bounded, Flat))
+
+    # garbage value at the peripheral wall face j = Ny + 1; every other node is 1
+    q(i, j, k, grid) = ifelse(j == Ny + 1, T(999), T(1))
+
+    # the northernmost active cell has one peripheral y-face neighbor (j = Ny + 1);
+    # a buggy numerator that doesn't mask it would return 1000, not 1
+    @test active_weighted_ℑxyᶜᶜᶜ(1, Ny, 1, grid, q) == T(1)
+
+    # an interior cell has no peripheral neighbors, so masking is a no-op
+    @test active_weighted_ℑxyᶜᶜᶜ(1, 2, 1, grid, q) == T(1)
+
+    # the peripheral wall face itself: its two active cell neighbors (j = Ny) must not
+    # be diluted by the two inactive ones (j = Ny + 1, outside the active cell range)
+    @test active_weighted_ℑxyᶠᶠᶜ(1, Ny + 1, 1, grid, q) == T(1)
+
+    return nothing
+end
+
 @testset "Operators" begin
     @info "Testing operators..."
 
@@ -240,6 +262,11 @@ end
     @testset "Function interpolation" begin
         @info "  Testing function interpolation..."
         test_function_interpolation()
+    end
+
+    @testset "Active-weighted interpolation" begin
+        @info "  Testing active-weighted interpolation..."
+        test_active_weighted_interpolation_masks_peripheral_nodes()
     end
 
     @testset "2D operators" begin
