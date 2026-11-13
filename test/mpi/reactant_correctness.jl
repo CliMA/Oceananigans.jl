@@ -26,7 +26,10 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
             set!(reactant_field, data)
 
             fill_halo_regions!(vanilla_field)
+            # fails for some cases
             rfill! = @compile raise=true raise_first=true fill_halo_regions!(reactant_field)
+            # # succeeds in all cases without raise=true
+            # rfill! = @compile fill_halo_regions!(reactant_field)
             rfill!(reactant_field)
             @test compare_parent("loc=$((LX, LY, LZ))", vanilla_field, reactant_field)
         end
