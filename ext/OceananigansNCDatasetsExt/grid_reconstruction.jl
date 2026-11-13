@@ -127,7 +127,7 @@ function reconstruct_immersed_boundary(ds, ::Val{:CutCellBottom}, prefix)
     bottom_height = Array(ibg_group["bottom_height"])
     corner_bottom_height = Array(ibg_group["corner_bottom_height"])
     minimum_fractional_cell_height = ibg_group.attrib["minimum_fractional_cell_height"] |> materialize_from_netcdf
-    return CutCellBottom(bottom_height, nothing, nothing, corner_bottom_height, minimum_fractional_cell_height)
+    return CutCellBottom(bottom_height, nothing, nothing, corner_bottom_height, minimum_fractional_cell_height, nothing)
 end
 
 reconstruct_immersed_boundary(ds, immersed_boundary_type, prefix) = error("Unsupported immersed boundary type: $immersed_boundary_type")

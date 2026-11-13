@@ -1,5 +1,5 @@
 using Oceananigans.Fields: Field, fill_halo_regions!, set!
-using Oceananigans.Grids: Grids, AbstractStaticGrid, constructor_arguments, XFlatGrid, YFlatGrid, XYFlatGrid
+using Oceananigans.Grids: Grids, AbstractStaticGrid, constructor_arguments, XFlatGrid, YFlatGrid
 using Oceananigans.Utils: prettysummary, KernelParameters
 
 import Oceananigans.Grids: peripheral_node
@@ -208,7 +208,7 @@ end
 
 @kernel function _compute_bottom_cell_index!(bottom_cell_index, grid, ib)
     i, j = @index(Global, NTuple)
-    @inbounds bottom_cell_index[i, j, 1] = bottom_active_index(i, j, grid, ib)
+    @inbounds bottom_cell_index[i, j, 1] = bottom_cell(i, j, grid, ib)
 end
 
 @kernel function _clamp_bottom_height_to_domain!(bottom_field, grid)
@@ -229,53 +229,21 @@ end
     rᴺ = @inbounds (corner_field[i, jᴺ, 1] + corner_field[iᴱ, jᴺ, 1]) / 2
     rᵇ = (rˢ + rᴺ) / 2
 
+    rᵗ = rnode(i, j, grid.Nz+1, grid, c, c, f)
+    @inbounds bottom_field[i, j, 1] = ifelse(dry_column(i, j, grid, center_field), rᵗ, rounded_bottom_height(i, j, grid, rᵇ, ϵ))
+end
+
+# The opening a height leaves in the level it falls in is rounded to the nearest of zero and [ϵ Δr, Δr]
+@inline function rounded_bottom_height(i, j, grid, rᵇ, ϵ)
     for k in 1:grid.Nz
         r⁻ = rnode(i, j, k,   grid, c, c, f)
         r⁺ = rnode(i, j, k+1, grid, c, c, f)
         Δr = Δrᶜᶜᶜ(i, j, k, grid)
-        bottom_cell = r⁻ ≤ rᵇ < r⁺
-        rᵇ = ifelse(bottom_cell, rounded_bottom_height(rᵇ, r⁻, r⁺, Δr, ϵ), rᵇ)
+        sliver = r⁺ - rᵇ < ϵ * Δr / 2
+        rᵇ = ifelse(r⁻ ≤ rᵇ < r⁺, ifelse(sliver, r⁺, clamp(rᵇ, r⁻, r⁺ - ϵ * Δr)), rᵇ)
     end
-
-    rᵗ = rnode(i, j, grid.Nz+1, grid, c, c, f)
-    @inbounds bottom_field[i, j, 1] = ifelse(dry_column(i, j, grid, center_field), rᵗ, rᵇ)
+    return rᵇ
 end
-
-# Index of the bottom-most cell of column (i, j) that is not immersed, or Nz + 1 for a dry column.
-@inline function bottom_active_index(i, j, grid, ib)
-    kᵇ = grid.Nz + 1
-    for k in grid.Nz:-1:1
-        kᵇ = ifelse(_immersed_cell(i, j, k, grid, ib), kᵇ, k)
-    end
-    return kᵇ
-end
-
-# The opening left in a level is rounded to the nearest of zero and [ϵ Δr, Δr]
-@inline function rounded_bottom_height(rᵇ, r⁻, r⁺, Δr, ϵ)
-    sliver = r⁺ - rᵇ < ϵ * Δr / 2
-    return ifelse(sliver, r⁺, clamp(rᵇ, r⁻, r⁺ - ϵ * Δr))
-end
-
-# Round a face bottom height in the lowest level the face reaches; a face at or above the top of the grid stays closed
-@inline function cut_face_bottom_height(i, j, kᵇ, grid, rᵇ, ϵ)
-    k  = min(kᵇ, grid.Nz)
-    r⁻ = rnode(i, j, k,   grid, c, c, f)
-    r⁺ = rnode(i, j, k+1, grid, c, c, f)
-    Δr = Δrᶜᶜᶜ(i, j, k, grid)
-    return ifelse(kᵇ > grid.Nz, r⁺, rounded_bottom_height(rᵇ, r⁻, r⁺, Δr, ϵ))
-end
-
-# The level a height falls in, or Nz + 1 when it lies at or above the top of the grid
-@inline function bottom_level(i, j, grid, rᵇ)
-    k = ifelse(rᵇ < rnode(i, j, grid.Nz+1, grid, c, c, f), 1, grid.Nz + 1)
-    for kk in 1:grid.Nz
-        k = ifelse(cut_level(i, j, kk, grid, rᵇ), kk, k)
-    end
-    return k
-end
-
-# True when the bottom surface at height rᵇ cuts through level k.
-@inline cut_level(i, j, k, grid, rᵇ) = rnode(i, j, k, grid, c, c, f) ≤ rᵇ < rnode(i, j, k+1, grid, c, c, f)
 
 @kernel function _compute_cut_face_bottom_heights!(west_field, south_field, corner_field, grid, ib)
     i, j = @index(Global, NTuple)
@@ -289,8 +257,8 @@ end
     rᶜᶠ = @inbounds (corner_field[i, j, 1] + corner_field[iᴱ, j, 1]) / 2
 
     # No face leaves an opening thinner than ϵ Δr, which would wreck the conditioning of the free-surface solve
-    @inbounds west_field[i, j, 1]  = cut_face_bottom_height(i, j, bottom_level(i, j, grid, rᶠᶜ), grid, rᶠᶜ, ϵ)
-    @inbounds south_field[i, j, 1] = cut_face_bottom_height(i, j, bottom_level(i, j, grid, rᶜᶠ), grid, rᶜᶠ, ϵ)
+    @inbounds west_field[i, j, 1]  = rounded_bottom_height(i, j, grid, rᶠᶜ, ϵ)
+    @inbounds south_field[i, j, 1] = rounded_bottom_height(i, j, grid, rᶜᶠ, ϵ)
 end
 
 # A cell is ϵ Δr tall when each face cut in its level leaves (faces ϵ - full_faces) Δr / (open_faces - full_faces)
@@ -324,11 +292,13 @@ end
 
 # A face is deepened only in the level it is cut in, as far as the cell on either side of it requires.
 @inline function deepened_face_height(i, j, rᵇ, i⁻, j⁻, grid, required_opening)
-    k = min(bottom_level(i, j, grid, rᵇ), grid.Nz)
-    r⁻ = rnode(i, j, k,   grid, c, c, f)
-    r⁺ = rnode(i, j, k+1, grid, c, c, f)
-    opening = @inbounds max(required_opening[i⁻, j⁻, k], required_opening[i, j, k])
-    return ifelse(rᵇ < r⁺, min(rᵇ, max(r⁻, r⁺ - opening)), rᵇ)
+    for k in 1:grid.Nz
+        r⁻ = rnode(i, j, k,   grid, c, c, f)
+        r⁺ = rnode(i, j, k+1, grid, c, c, f)
+        opening = @inbounds max(required_opening[i⁻, j⁻, k], required_opening[i, j, k])
+        rᵇ = ifelse(r⁻ ≤ rᵇ < r⁺, min(rᵇ, max(r⁻, r⁺ - opening)), rᵇ)
+    end
+    return rᵇ
 end
 
 @kernel function _deepen_open_faces!(west_field, south_field, required_opening, grid)
@@ -348,7 +318,7 @@ end
     iᴱ = x_index(i, grid, +1)
     jᴺ = y_index(j, grid, +1)
 
-    kᶜ = bottom_active_index(i, j, grid, ib)
+    kᶜ = bottom_cell(i, j, grid, ib)
 
     rˣ = @inbounds ( west_field[i, j, 1] +  west_field[iᴱ, j, 1]) / 2
     rʸ = @inbounds (south_field[i, j, 1] + south_field[i, jᴺ, 1]) / 2
@@ -378,47 +348,47 @@ Architectures.on_architecture(to, ib::CutCellBottom) = CutCellBottom(on_architec
 # Open height of a face in level k, from the bottom height sampled at that face
 @inline face_open_height(rᵇ, r⁺, Δr) = clamp(r⁺ - rᵇ, zero(Δr), Δr)
 
-# A cell is immersed when neither its center nor any of its faces leaves an opening in this level; land stays dry
-@inline function cut_cell_metrics(i, j, k, grid, ib)
-    r⁺ = rnode(i, j, k + 1, grid, c, c, f)
-    rᵗ = rnode(i, j, grid.Nz + 1, grid, c, c, f)
-    Δr = Δrᶜᶜᶜ(i, j, k, grid)
-    ϵ = ib.minimum_fractional_cell_height
-    rᵇ = @inbounds ib.bottom_height[i, j, 1]
-
-    opening = mean_face_opening(i, j, k, grid, ib, r⁺, Δr)
-    dry = rᵇ ≥ rᵗ
-    immersed = ((r⁺ - Δr * ϵ) < rᵇ) & ((opening == 0) | dry)
-
-    return immersed, opening
+# The mean opening the lateral faces of a cell leave in level k; in a Flat direction its two faces are one phantom face
+@inline function mean_face_opening(i, j, k, grid, ib, r⁺, Δr)
+    TX, TY, _ = topology(grid)
+    wˣ = ifelse((TX === Flat) & (TY !== Flat), 0, 1)
+    wʸ = ifelse((TY === Flat) & (TX !== Flat), 0, 1)
+    oˣ = @inbounds face_open_height(ib.west_bottom_height[i, j, 1], r⁺, Δr) + face_open_height(ib.west_bottom_height[x_index(i, grid, +1), j, 1], r⁺, Δr)
+    oʸ = @inbounds face_open_height(ib.south_bottom_height[i, j, 1], r⁺, Δr) + face_open_height(ib.south_bottom_height[i, y_index(j, grid, +1), 1], r⁺, Δr)
+    return (wˣ * oˣ + wʸ * oʸ) / (2 * (wˣ + wʸ))
 end
 
-@inline opening_x(i, j, k, grid, ib, r⁺, Δr) = @inbounds (face_open_height(ib.west_bottom_height[i, j, 1], r⁺, Δr) +
-                                                          face_open_height(ib.west_bottom_height[x_index(i, grid, +1), j, 1], r⁺, Δr)) / 2
+@inline mean_face_opening(i, j, k, grid, ::CutCellBottom{<:Any, Nothing}, r⁺, Δr) = zero(grid)
 
-@inline opening_y(i, j, k, grid, ib, r⁺, Δr) = @inbounds (face_open_height(ib.south_bottom_height[i, j, 1], r⁺, Δr) +
-                                                          face_open_height(ib.south_bottom_height[i, y_index(j, grid, +1), 1], r⁺, Δr)) / 2
+# Before the bottom index is stored, a cell is immersed when neither its center nor any of its faces leaves an opening in its level;
+# land stays dry
+@inline function _immersed_cell(i, j, k, grid, ib::CutCellBottom{<:Any, <:Any, <:Any, <:Any, <:Any, Nothing})
+    r⁺ = rnode(i, j, k + 1, grid, c, c, f)
+    Δr = Δrᶜᶜᶜ(i, j, k, grid)
+    rᵇ = @inbounds ib.bottom_height[i, j, 1]
+    dry = rᵇ ≥ rnode(i, j, grid.Nz + 1, grid, c, c, f)
+    return ((r⁺ - Δr * ib.minimum_fractional_cell_height) < rᵇ) & ((mean_face_opening(i, j, k, grid, ib, r⁺, Δr) == 0) | dry)
+end
 
-@inline mean_face_opening(i, j, k, grid, ib, r⁺, Δr) = (opening_x(i, j, k, grid, ib, r⁺, Δr) + opening_y(i, j, k, grid, ib, r⁺, Δr)) / 2
-@inline mean_face_opening(i, j, k, grid::XFlatGrid, ib, r⁺, Δr) = opening_y(i, j, k, grid, ib, r⁺, Δr)
-@inline mean_face_opening(i, j, k, grid::YFlatGrid, ib, r⁺, Δr) = opening_x(i, j, k, grid, ib, r⁺, Δr)
-@inline mean_face_opening(i, j, k, grid::XYFlatGrid, ib, r⁺, Δr) = opening_x(i, j, k, grid, ib, r⁺, Δr)
-
-@inline mean_face_opening(i, j, k, grid, ib::CutCellBottom{<:Any, Nothing}, r⁺, Δr) = zero(grid)
-@inline mean_face_opening(i, j, k, grid::XFlatGrid, ib::CutCellBottom{<:Any, Nothing}, r⁺, Δr) = zero(grid)
-@inline mean_face_opening(i, j, k, grid::YFlatGrid, ib::CutCellBottom{<:Any, Nothing}, r⁺, Δr) = zero(grid)
-@inline mean_face_opening(i, j, k, grid::XYFlatGrid, ib::CutCellBottom{<:Any, Nothing}, r⁺, Δr) = zero(grid)
-
-@inline _immersed_cell(i, j, k, underlying_grid, ib::CutCellBottom{<:Any, <:Any, <:Any, <:Any, <:Any, Nothing}) = first(cut_cell_metrics(i, j, k, underlying_grid, ib))
 @inline _immersed_cell(i, j, k, underlying_grid, ib::CutCellBottom) = k < bottom_cell(i, j, underlying_grid, ib)
+
+# The first active level of a column, or Nz + 1 for a dry column: searched before the index is stored, read from it after
+@inline function bottom_cell(i, j, grid, ib::CutCellBottom{<:Any, <:Any, <:Any, <:Any, <:Any, Nothing})
+    kᵇ = grid.Nz + 1
+    for k in grid.Nz:-1:1
+        kᵇ = ifelse(_immersed_cell(i, j, k, grid, ib), kᵇ, k)
+    end
+    return kᵇ
+end
 
 @inline bottom_cell(i, j, grid, ib::CutCellBottom) = @inbounds ib.bottom_cell_index[i, j, 1]
 
 # An active cell is as tall as the mean opening of its faces; immersed cells keep the full level height
 @inline function Δrᶜᶜᶜ(i, j, k, ibg::CCBIBG)
     grid = ibg.underlying_grid
-    _, opening = cut_cell_metrics(i, j, k, grid, ibg.immersed_boundary)
-    return ifelse(_immersed_cell(i, j, k, grid, ibg.immersed_boundary), Δrᶜᶜᶜ(i, j, k, grid), opening)
+    Δr = Δrᶜᶜᶜ(i, j, k, grid)
+    opening = mean_face_opening(i, j, k, grid, ibg.immersed_boundary, rnode(i, j, k + 1, grid, c, c, f), Δr)
+    return ifelse(_immersed_cell(i, j, k, grid, ibg.immersed_boundary), Δr, opening)
 end
 
 @inline function Δrᶠᶜᶜ(i, j, k, ibg::CCBIBG)
@@ -445,7 +415,7 @@ end
 @inline function cut_center_spacing(i, j, k, underlying_grid, rᵇ, full_Δr)
     rᶜ = rnode(i, j, k, underlying_grid, c, c, c)
     rᶠ = rnode(i, j, k, underlying_grid, c, c, f)
-    above_bottom = cut_level(i, j, k-1, underlying_grid, rᵇ)
+    above_bottom = rnode(i, j, k-1, underlying_grid, c, c, f) ≤ rᵇ < rᶠ
     return ifelse(above_bottom, rᶜ - rᶠ + (rᶠ - rᵇ) / 2, full_Δr)
 end
 
@@ -549,31 +519,18 @@ end
 
 
 #####
-##### Faces cut away by the bottom surface: the flux area vanishes even when both neighboring cells stay active, so the
-##### face is peripheral and carries no velocity.
+##### A face the bottom closes is peripheral even between two active cells, as on a crest, and carries no velocity
 #####
 
-@inline function closed_face_x(i, j, k, ibg::CCBIBG)
-    grid = ibg.underlying_grid
-    rᵇ = @inbounds ibg.immersed_boundary.west_bottom_height[i, j, 1]
-    return rnode(i, j, k+1, grid, c, c, f) ≤ rᵇ
-end
-
-@inline function closed_face_y(i, j, k, ibg::CCBIBG)
-    grid = ibg.underlying_grid
-    rᵇ = @inbounds ibg.immersed_boundary.south_bottom_height[i, j, 1]
-    return rnode(i, j, k+1, grid, c, c, f) ≤ rᵇ
-end
-
 @inline peripheral_node(i, j, k, ibg::CCBIBG, ::Face, ::Center, ::Center) = inactive_cell(i, j, k, ibg) | inactive_cell(i-1, j, k, ibg) |
-                                                                           closed_face_x(i, j, k, ibg)
+                                                                           (rnode(i, j, k+1, ibg.underlying_grid, c, c, f) ≤ @inbounds ibg.immersed_boundary.west_bottom_height[i, j, 1])
 
 @inline peripheral_node(i, j, k, ibg::CCBIBG, ::Center, ::Face, ::Center) = inactive_cell(i, j, k, ibg) | inactive_cell(i, j-1, k, ibg) |
-                                                                           closed_face_y(i, j, k, ibg)
+                                                                           (rnode(i, j, k+1, ibg.underlying_grid, c, c, f) ≤ @inbounds ibg.immersed_boundary.south_bottom_height[i, j, 1])
 
 # A Flat direction has a single phantom face, which never closes
-@inline closed_face_x(i, j, k, ibg::XFlatCCBIBG) = false
-@inline closed_face_y(i, j, k, ibg::YFlatCCBIBG) = false
+@inline peripheral_node(i, j, k, ibg::XFlatCCBIBG, ::Face, ::Center, ::Center) = inactive_cell(i, j, k, ibg) | inactive_cell(i-1, j, k, ibg)
+@inline peripheral_node(i, j, k, ibg::YFlatCCBIBG, ::Center, ::Face, ::Center) = inactive_cell(i, j, k, ibg) | inactive_cell(i, j-1, k, ibg)
 
 # Nodes on the edges of a closed face are peripheral, as they are on the edges of a face next to an immersed cell
 @inline peripheral_node(i, j, k, ibg::CCBIBG, ::Face, ::Center, ::Face) = peripheral_node(i, j, k, ibg, f, c, c) | peripheral_node(i, j, k-1, ibg, f, c, c)
