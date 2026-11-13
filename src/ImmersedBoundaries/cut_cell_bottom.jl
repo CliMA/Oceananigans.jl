@@ -21,18 +21,30 @@ end
 
 const CCBIBG{FT, TX, TY, TZ} = ImmersedBoundaryGrid{FT, TX, TY, TZ, <:Any, <:CutCellBottom} where {FT, TX, TY, TZ}
 
+XFlatCCBIBG = ImmersedBoundaryGrid{<:Any, <:Flat, <:Any, <:Any, <:Any, <:CutCellBottom}
+YFlatCCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Flat, <:Any, <:Any, <:CutCellBottom}
+XYFlatCCBIBG = ImmersedBoundaryGrid{<:Any, <:Flat, <:Flat, <:Any, <:Any, <:CutCellBottom}
+
+# Vertically-static, cut cell bottom, immersed boundary grid
+VSCCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:AbstractStaticGrid, <:CutCellBottom}
+
 """
     CutCellBottom(bottom_height; minimum_fractional_cell_height=0.2)
 
 Return a `CutCellBottom` representing an immersed boundary with cut bottom cells, inspired by
 the shaved cells of [Adcroft et al. (1997)](@cite AdcroftHillMarshall1997).
 
-The bottom is a piecewise-bilinear surface reconstructed from `bottom_height`, which may be a
-`Field`, `Array`, or function of `(x, y)`. Every lateral face of a bottom cell is cut by that
-surface at the horizontal position of the face itself, so the faces of one cell carry different
-heights and the bottom slopes through the cell. The height of the cell is the mean of the heights of
-its lateral faces, so that the faces bound the cell volume. When `bottom_height` is sampled at cell
-centers, a column at or above the top of the grid stays dry and does not enter the surface of its neighbors.
+The bottom is a piecewise-bilinear surface through heights at the cell corners. A function of `(x, y)` is evaluated
+at the corners, and a `Field{Face, Face, Nothing}` gives them directly. A `Field` or `Array` sampled at cell centers
+gives each corner the mean of the wet centers around it, and a column at or above the top of the grid stays dry and
+does not enter the surface of its neighbors. Every lateral face of a bottom cell is cut by that surface at the
+horizontal position of the face itself, so the faces of one cell carry different heights and the bottom slopes through
+the cell.
+
+In each level a cell is as tall as the mean opening its lateral faces leave there, so that the faces bound the cell
+volume and a column is as deep as the mean of its faces. A column sampled at its center keeps that depth: its faces are
+raised until their mean is not deeper than the column, and its cells sit on the bed the faces see, lowered to the height of
+the column.
 
 Each lateral face is cut in the lowest level it reaches, and the opening it leaves there is rounded to the nearest of
 zero and
@@ -78,7 +90,35 @@ function Base.show(io::IO, ib::CutCellBottom)
     print(io, "└── minimum_fractional_cell_height: ", prettysummary(ib.minimum_fractional_cell_height))
 end
 
-const maximum_cutting_iterations = 20
+Adapt.adapt_structure(to, ib::CutCellBottom) = CutCellBottom(adapt(to, ib.bottom_height),
+                                                                  adapt(to, ib.west_bottom_height),
+                                                                  adapt(to, ib.south_bottom_height),
+                                                                  adapt(to, ib.corner_bottom_height),
+                                                                  ib.minimum_fractional_cell_height,
+                                                                  adapt(to, ib.bottom_cell_index))
+
+Architectures.on_architecture(to, ib::CutCellBottom) = CutCellBottom(on_architecture(to, ib.bottom_height),
+                                                                          on_architecture(to, ib.west_bottom_height),
+                                                                          on_architecture(to, ib.south_bottom_height),
+                                                                          on_architecture(to, ib.corner_bottom_height),
+                                                                          on_architecture(to, ib.minimum_fractional_cell_height),
+                                                                          on_architecture(to, ib.bottom_cell_index))
+
+function Grids.constructor_arguments(grid::CCBIBG)
+    underlying_grid_args, underlying_grid_kwargs = constructor_arguments(grid.underlying_grid)
+    cut_cell_bottom_args = Dict(:bottom_height => grid.immersed_boundary.bottom_height,
+                                   :corner_bottom_height => grid.immersed_boundary.corner_bottom_height,
+                                   :minimum_fractional_cell_height => grid.immersed_boundary.minimum_fractional_cell_height)
+    return underlying_grid_args, underlying_grid_kwargs, cut_cell_bottom_args
+end
+
+function Base.:(==)(scb1::CutCellBottom, scb2::CutCellBottom)
+    return bottom_heights_equal(scb1.bottom_height, scb2.bottom_height) &&
+           bottom_heights_equal(scb1.west_bottom_height, scb2.west_bottom_height) &&
+           bottom_heights_equal(scb1.south_bottom_height, scb2.south_bottom_height) &&
+           bottom_heights_equal(scb1.corner_bottom_height, scb2.corner_bottom_height) &&
+           scb1.minimum_fractional_cell_height == scb2.minimum_fractional_cell_height
+end
 
 @inline x_index(i, grid, offset) = i + offset
 @inline x_index(i, grid::XFlatGrid, offset) = i
@@ -86,8 +126,10 @@ const maximum_cutting_iterations = 20
 @inline y_index(j, grid::YFlatGrid, offset) = j
 
 #####
-##### Materialization
+##### Immersed bottom construction (called at setup)
 #####
+
+const maximum_cutting_iterations = 20
 
 # Staggered fields carry a boundary point beyond the last cell in Bounded directions.
 function staggered_bottom_parameters(grid)
@@ -160,8 +202,16 @@ function materialize_immersed_boundary(grid, ib::CutCellBottom)
     south_field = Field{Center, Face, Nothing}(grid)
     previous_bottom_field = Field{Center, Center, Nothing}(grid)
     required_opening = Field{Center, Center, Center}(grid)
+    column_raise = Field{Center, Center, Nothing}(grid)
 
     compute_ib = CutCellBottom(bottom_field, nothing, nothing, nothing, ϵ, nothing)
+
+    # a column sampled at its center raises its faces until their mean is not deeper than the column
+    @apply_regionally launch!(arch, grid, parameters, _compute_cut_face_bottom_heights!, west_field, south_field, corner_field, column_raise, grid, compute_ib)
+    fill_halo_regions!(west_field)
+    fill_halo_regions!(south_field)
+    @apply_regionally set_column_raise!(column_raise, west_field, south_field, center_field, grid)
+    fill_halo_regions!(column_raise)
 
     TX, TY, _ = topology(grid)
     wˣ = TX === Flat && TY !== Flat ? 0 : 1
@@ -175,7 +225,7 @@ function materialize_immersed_boundary(grid, ib::CutCellBottom)
         iteration += 1
         set!(previous_bottom_field, bottom_field)
 
-        @apply_regionally launch!(arch, grid, parameters, _compute_cut_face_bottom_heights!, west_field, south_field, corner_field, grid, compute_ib)
+        @apply_regionally launch!(arch, grid, parameters, _compute_cut_face_bottom_heights!, west_field, south_field, corner_field, column_raise, grid, compute_ib)
 
         fill_halo_regions!(west_field)
         fill_halo_regions!(south_field)
@@ -192,11 +242,14 @@ function materialize_immersed_boundary(grid, ib::CutCellBottom)
         fill_halo_regions!(west_field)
         fill_halo_regions!(south_field)
 
-        @apply_regionally launch!(arch, grid, :xy, _average_faces_to_centers!, bottom_field, west_field, south_field, grid, compute_ib, wˣ, wʸ)
+        @apply_regionally launch!(arch, grid, :xy, _average_faces_to_centers!, bottom_field, west_field, south_field, grid, compute_ib)
 
         fill_halo_regions!(bottom_field)
         converged = maximum(abs, bottom_field - previous_bottom_field) == 0
     end
+
+    @apply_regionally set_column_bottom_height!(bottom_field, grid, center_field)
+    fill_halo_regions!(bottom_field)
 
     ib = CutCellBottom(bottom_field.data, west_field.data, south_field.data, corner_field.data, ϵ, nothing)
     bottom_cell_index = Field{Center, Center, Nothing}(grid, index_type(grid))
@@ -204,6 +257,28 @@ function materialize_immersed_boundary(grid, ib::CutCellBottom)
     fill_halo_regions!(bottom_cell_index)
 
     return CutCellBottom(bottom_field.data, west_field.data, south_field.data, corner_field.data, ϵ, bottom_cell_index.data)
+end
+
+set_column_raise!(column_raise, west_field, south_field, ::Nothing, grid) = nothing
+set_column_raise!(column_raise, west_field, south_field, center_field, grid) = launch!(architecture(grid), grid, :xy, _compute_column_raise!, column_raise, west_field, south_field, center_field, grid)
+
+@kernel function _compute_column_raise!(column_raise, west_field, south_field, center_field, grid)
+    i, j = @index(Global, NTuple)
+    rᵈ = rnode(i, j, 1, grid, c, c, f)
+    rᵗ = rnode(i, j, grid.Nz+1, grid, c, c, f)
+    Δh = @inbounds clamp(center_field[i, j, 1], rᵈ, rᵗ) - mean_face_height(i, j, grid, west_field, south_field)
+    @inbounds column_raise[i, j, 1] = ifelse(dry_column(i, j, grid, center_field), zero(rᵗ), max(zero(rᵗ), Δh))
+end
+
+# A column sampled at its center keeps that height, within the domain; one given by its corners keeps the mean of its faces.
+set_column_bottom_height!(bottom_field, grid, ::Nothing) = nothing
+set_column_bottom_height!(bottom_field, grid, center_field) = launch!(architecture(grid), grid, :xy, _set_column_bottom_heights!, bottom_field, center_field, grid)
+
+@kernel function _set_column_bottom_heights!(bottom_field, center_field, grid)
+    i, j = @index(Global, NTuple)
+    rᵈ = rnode(i, j, 1, grid, c, c, f)
+    rᵗ = rnode(i, j, grid.Nz+1, grid, c, c, f)
+    @inbounds bottom_field[i, j, 1] = ifelse(dry_column(i, j, grid, center_field), bottom_field[i, j, 1], clamp(center_field[i, j, 1], rᵈ, rᵗ))
 end
 
 @kernel function _compute_bottom_cell_index!(bottom_cell_index, grid, ib)
@@ -245,16 +320,20 @@ end
     return rᵇ
 end
 
-@kernel function _compute_cut_face_bottom_heights!(west_field, south_field, corner_field, grid, ib)
+@kernel function _compute_cut_face_bottom_heights!(west_field, south_field, corner_field, column_raise, grid, ib)
     i, j = @index(Global, NTuple)
 
+    iᵂ = x_index(i, grid, -1)
+    jˢ = y_index(j, grid, -1)
     iᴱ = x_index(i, grid, +1)
     jᴺ = y_index(j, grid, +1)
 
     ϵ = ib.minimum_fractional_cell_height
+    rᵗ = rnode(i, j, grid.Nz+1, grid, c, c, f)
 
-    rᶠᶜ = @inbounds (corner_field[i, j, 1] + corner_field[i, jᴺ, 1]) / 2
-    rᶜᶠ = @inbounds (corner_field[i, j, 1] + corner_field[iᴱ, j, 1]) / 2
+    # a face rises as far as the column on either side of it requires
+    rᶠᶜ = @inbounds min(rᵗ, (corner_field[i, j, 1] + corner_field[i, jᴺ, 1]) / 2 + max(column_raise[iᵂ, j, 1], column_raise[i, j, 1]))
+    rᶜᶠ = @inbounds min(rᵗ, (corner_field[i, j, 1] + corner_field[iᴱ, j, 1]) / 2 + max(column_raise[i, jˢ, 1], column_raise[i, j, 1]))
 
     # No face leaves an opening thinner than ϵ Δr, which would wreck the conditioning of the free-surface solve
     @inbounds west_field[i, j, 1]  = rounded_bottom_height(i, j, grid, rᶠᶜ, ϵ)
@@ -312,41 +391,48 @@ end
 end
 
 # A face cut in a higher level is closed in this one, so clipping the faces into the level of the cell makes them bound its volume.
-@kernel function _average_faces_to_centers!(bottom_field, west_field, south_field, grid, ib, wˣ, wʸ)
+@kernel function _average_faces_to_centers!(bottom_field, west_field, south_field, grid, ib)
     i, j = @index(Global, NTuple)
-
-    iᴱ = x_index(i, grid, +1)
-    jᴺ = y_index(j, grid, +1)
-
     kᶜ = bottom_cell(i, j, grid, ib)
-
-    rˣ = @inbounds ( west_field[i, j, 1] +  west_field[iᴱ, j, 1]) / 2
-    rʸ = @inbounds (south_field[i, j, 1] + south_field[i, jᴺ, 1]) / 2
-    rᵇ = (wˣ * rˣ + wʸ * rʸ) / (wˣ + wʸ)
-
+    rᵇ = mean_face_height(i, j, grid, west_field, south_field)
     @inbounds bottom_field[i, j, 1] = ifelse(kᶜ > grid.Nz, bottom_field[i, j, 1], rᵇ)
 end
 
-Adapt.adapt_structure(to, ib::CutCellBottom) = CutCellBottom(adapt(to, ib.bottom_height),
-                                                                  adapt(to, ib.west_bottom_height),
-                                                                  adapt(to, ib.south_bottom_height),
-                                                                  adapt(to, ib.corner_bottom_height),
-                                                                  ib.minimum_fractional_cell_height,
-                                                                  adapt(to, ib.bottom_cell_index))
+# Before the bottom index is stored, a cell is immersed when neither its center nor any of its faces leaves an opening in its level;
+# land stays dry
+@inline function _immersed_cell(i, j, k, grid, ib::CutCellBottom{<:Any, <:Any, <:Any, <:Any, <:Any, Nothing})
+    r⁺ = rnode(i, j, k + 1, grid, c, c, f)
+    Δr = Δrᶜᶜᶜ(i, j, k, grid)
+    rᵇ = @inbounds ib.bottom_height[i, j, 1]
+    dry = rᵇ ≥ rnode(i, j, grid.Nz + 1, grid, c, c, f)
+    return ((r⁺ - Δr * ib.minimum_fractional_cell_height) < rᵇ) & ((mean_face_opening(i, j, k, grid, ib, r⁺, Δr) == 0) | dry)
+end
 
-Architectures.on_architecture(to, ib::CutCellBottom) = CutCellBottom(on_architecture(to, ib.bottom_height),
-                                                                          on_architecture(to, ib.west_bottom_height),
-                                                                          on_architecture(to, ib.south_bottom_height),
-                                                                          on_architecture(to, ib.corner_bottom_height),
-                                                                          on_architecture(to, ib.minimum_fractional_cell_height),
-                                                                          on_architecture(to, ib.bottom_cell_index))
+# The first active level of a column, or Nz + 1 for a dry column, searched before the index is stored
+@inline function bottom_cell(i, j, grid, ib::CutCellBottom{<:Any, <:Any, <:Any, <:Any, <:Any, Nothing})
+    kᵇ = grid.Nz + 1
+    for k in grid.Nz:-1:1
+        kᵇ = ifelse(_immersed_cell(i, j, k, grid, ib), kᵇ, k)
+    end
+    return kᵇ
+end
 
 #####
-##### Immersed cells and grid spacings
+##### Cut-cell methods (called during stepping)
 #####
 
 # Open height of a face in level k, from the bottom height sampled at that face
 @inline face_open_height(rᵇ, r⁺, Δr) = clamp(r⁺ - rᵇ, zero(Δr), Δr)
+
+# The mean height of the lateral faces of a cell; in a Flat direction its two faces are one phantom face
+@inline function mean_face_height(i, j, grid, west, south)
+    TX, TY, _ = topology(grid)
+    wˣ = ifelse((TX === Flat) & (TY !== Flat), 0, 1)
+    wʸ = ifelse((TY === Flat) & (TX !== Flat), 0, 1)
+    rˣ = @inbounds ( west[i, j, 1] + west[x_index(i, grid, +1), j, 1])  / 2
+    rʸ = @inbounds (south[i, j, 1] + south[i, y_index(j, grid, +1), 1]) / 2
+    return (wˣ * rˣ + wʸ * rʸ) / (wˣ + wʸ)
+end
 
 # The mean opening the lateral faces of a cell leave in level k; in a Flat direction its two faces are one phantom face
 @inline function mean_face_opening(i, j, k, grid, ib, r⁺, Δr)
@@ -360,35 +446,18 @@ end
 
 @inline mean_face_opening(i, j, k, grid, ::CutCellBottom{<:Any, Nothing}, r⁺, Δr) = zero(grid)
 
-# Before the bottom index is stored, a cell is immersed when neither its center nor any of its faces leaves an opening in its level;
-# land stays dry
-@inline function _immersed_cell(i, j, k, grid, ib::CutCellBottom{<:Any, <:Any, <:Any, <:Any, <:Any, Nothing})
-    r⁺ = rnode(i, j, k + 1, grid, c, c, f)
-    Δr = Δrᶜᶜᶜ(i, j, k, grid)
-    rᵇ = @inbounds ib.bottom_height[i, j, 1]
-    dry = rᵇ ≥ rnode(i, j, grid.Nz + 1, grid, c, c, f)
-    return ((r⁺ - Δr * ib.minimum_fractional_cell_height) < rᵇ) & ((mean_face_opening(i, j, k, grid, ib, r⁺, Δr) == 0) | dry)
-end
-
 @inline _immersed_cell(i, j, k, underlying_grid, ib::CutCellBottom) = k < bottom_cell(i, j, underlying_grid, ib)
-
-# The first active level of a column, or Nz + 1 for a dry column: searched before the index is stored, read from it after
-@inline function bottom_cell(i, j, grid, ib::CutCellBottom{<:Any, <:Any, <:Any, <:Any, <:Any, Nothing})
-    kᵇ = grid.Nz + 1
-    for k in grid.Nz:-1:1
-        kᵇ = ifelse(_immersed_cell(i, j, k, grid, ib), kᵇ, k)
-    end
-    return kᵇ
-end
-
 @inline bottom_cell(i, j, grid, ib::CutCellBottom) = @inbounds ib.bottom_cell_index[i, j, 1]
 
-# An active cell is as tall as the mean opening of its faces; immersed cells keep the full level height
+# An active cell is as tall as the mean opening of its faces, on their bed lowered to the height of its column; immersed cells
+# keep the full level height. Lowering the bed by L opens a face under r⁺ as much as the bed itself opens under r⁺ + L.
 @inline function Δrᶜᶜᶜ(i, j, k, ibg::CCBIBG)
     grid = ibg.underlying_grid
+    ib = ibg.immersed_boundary
     Δr = Δrᶜᶜᶜ(i, j, k, grid)
-    opening = mean_face_opening(i, j, k, grid, ibg.immersed_boundary, rnode(i, j, k + 1, grid, c, c, f), Δr)
-    return ifelse(_immersed_cell(i, j, k, grid, ibg.immersed_boundary), Δr, opening)
+    L = @inbounds max(zero(Δr), mean_face_height(i, j, grid, ib.west_bottom_height, ib.south_bottom_height) - ib.bottom_height[i, j, 1])
+    opening = mean_face_opening(i, j, k, grid, ib, rnode(i, j, k + 1, grid, c, c, f) + L, Δr)
+    return ifelse(_immersed_cell(i, j, k, grid, ib), Δr, opening)
 end
 
 @inline function Δrᶠᶜᶜ(i, j, k, ibg::CCBIBG)
@@ -436,9 +505,6 @@ end
 @inline Δrᶠᶠᶠ(i, j, k, ibg::CCBIBG) = min(Δrᶠᶜᶠ(i, j-1, k, ibg), Δrᶠᶜᶠ(i, j, k, ibg))
 
 # Flat topologies collapse the staggered metrics onto the centered ones.
-XFlatCCBIBG = ImmersedBoundaryGrid{<:Any, <:Flat, <:Any, <:Any, <:Any, <:CutCellBottom}
-YFlatCCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Flat, <:Any, <:Any, <:CutCellBottom}
-
 @inline Δrᶠᶜᶜ(i, j, k, ibg::XFlatCCBIBG) = Δrᶜᶜᶜ(i, j, k, ibg)
 @inline Δrᶠᶜᶠ(i, j, k, ibg::XFlatCCBIBG) = Δrᶜᶜᶠ(i, j, k, ibg)
 @inline Δrᶜᶠᶜ(i, j, k, ibg::YFlatCCBIBG) = Δrᶜᶜᶜ(i, j, k, ibg)
@@ -448,13 +514,9 @@ YFlatCCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Flat, <:Any, <:Any, <:CutCell
 @inline Δrᶠᶠᶠ(i, j, k, ibg::XFlatCCBIBG) = Δrᶜᶠᶠ(i, j, k, ibg)
 @inline Δrᶠᶠᶠ(i, j, k, ibg::YFlatCCBIBG) = Δrᶠᶜᶠ(i, j, k, ibg)
 
-XYFlatCCBIBG = ImmersedBoundaryGrid{<:Any, <:Flat, <:Flat, <:Any, <:Any, <:CutCellBottom}
-
 @inline Δrᶠᶠᶜ(i, j, k, ibg::XYFlatCCBIBG) = Δrᶜᶜᶜ(i, j, k, ibg)
 @inline Δrᶠᶠᶠ(i, j, k, ibg::XYFlatCCBIBG) = Δrᶜᶜᶠ(i, j, k, ibg)
 
-# Vertically-static, cut cell bottom, immersed boundary grid
-VSCCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:AbstractStaticGrid, <:CutCellBottom}
 @inline Δzᶜᶜᶜ(i, j, k, ibg::VSCCBIBG) = Δrᶜᶜᶜ(i, j, k, ibg)
 @inline Δzᶠᶜᶜ(i, j, k, ibg::VSCCBIBG) = Δrᶠᶜᶜ(i, j, k, ibg)
 @inline Δzᶜᶠᶜ(i, j, k, ibg::VSCCBIBG) = Δrᶜᶠᶜ(i, j, k, ibg)
@@ -463,10 +525,6 @@ VSCCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:AbstractStaticGrid
 @inline Δzᶜᶠᶠ(i, j, k, ibg::VSCCBIBG) = Δrᶜᶠᶠ(i, j, k, ibg)
 @inline Δzᶠᶜᶠ(i, j, k, ibg::VSCCBIBG) = Δrᶠᶜᶠ(i, j, k, ibg)
 @inline Δzᶠᶠᶠ(i, j, k, ibg::VSCCBIBG) = Δrᶠᶠᶠ(i, j, k, ibg)
-
-#####
-##### Column depths and reciprocal spacings
-#####
 
 @inline top_cell(i, j, grid, ::CutCellBottom) = size(grid, 3)
 @inline bottom_height(i, j, ibg::CCBIBG) = @inbounds ibg.immersed_boundary.bottom_height[i, j, 1]
@@ -497,31 +555,7 @@ end
 @inline Operators.Δz⁻¹ᶜᶠᶠ(i, j, k, ibg::VSCCBIBG) = Δr⁻¹ᶜᶠᶠ(i, j, k, ibg)
 @inline Operators.Δz⁻¹ᶠᶠᶠ(i, j, k, ibg::VSCCBIBG) = Δr⁻¹ᶠᶠᶠ(i, j, k, ibg)
 
-#####
-##### Reconstruction and comparison
-#####
-
-function Grids.constructor_arguments(grid::CCBIBG)
-    underlying_grid_args, underlying_grid_kwargs = constructor_arguments(grid.underlying_grid)
-    cut_cell_bottom_args = Dict(:bottom_height => grid.immersed_boundary.bottom_height,
-                                   :corner_bottom_height => grid.immersed_boundary.corner_bottom_height,
-                                   :minimum_fractional_cell_height => grid.immersed_boundary.minimum_fractional_cell_height)
-    return underlying_grid_args, underlying_grid_kwargs, cut_cell_bottom_args
-end
-
-function Base.:(==)(scb1::CutCellBottom, scb2::CutCellBottom)
-    return bottom_heights_equal(scb1.bottom_height, scb2.bottom_height) &&
-           bottom_heights_equal(scb1.west_bottom_height, scb2.west_bottom_height) &&
-           bottom_heights_equal(scb1.south_bottom_height, scb2.south_bottom_height) &&
-           bottom_heights_equal(scb1.corner_bottom_height, scb2.corner_bottom_height) &&
-           scb1.minimum_fractional_cell_height == scb2.minimum_fractional_cell_height
-end
-
-
-#####
-##### A face the bottom closes is peripheral even between two active cells, as on a crest, and carries no velocity
-#####
-
+# A face the bottom closes is peripheral even between two active cells, as on a crest, and carries no velocity
 @inline peripheral_node(i, j, k, ibg::CCBIBG, ::Face, ::Center, ::Center) = inactive_cell(i, j, k, ibg) | inactive_cell(i-1, j, k, ibg) |
                                                                            (rnode(i, j, k+1, ibg.underlying_grid, c, c, f) ≤ @inbounds ibg.immersed_boundary.west_bottom_height[i, j, 1])
 
