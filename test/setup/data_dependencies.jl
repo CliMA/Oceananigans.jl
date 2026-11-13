@@ -14,11 +14,11 @@ datadep"cubed_sphere_32_grid"
 
 # Downloading the regression fields
 path = "https://github.com/simone-silvestri/OceananigansArtifacts.jl/raw/refs/heads/ss/new-data-for-regression-2/data_for_regression_tests/"
-dynamic_smagorinsky_path = "https://github.com/SpaceOceanCorp/OceananigansArtifacts.jl/raw/refs/heads/dynamic-smagorinsky-6425-regression-data/data_for_regression_tests/"
+dynamic_smagorinsky_path = "https://github.com/tomchor/OceananigansArtifacts.jl/raw/refs/heads/dynamic-smagorinsky-6501-regression-data/data_for_regression_tests/"
 
 # DataDeps caches by name and never re-downloads while the cache directory exists. CI agents keep a
 # persistent depot, so the version suffix must be bumped whenever the reference data is regenerated.
-dh = DataDep("regression_truth_data_v4",
+dh = DataDep("regression_truth_data_v5",
     "Data for Regression tests",
     [path * "hydrostatic_free_turbulence_regression_Periodic_ImplicitFreeSurface.jld2",
      path * "hydrostatic_free_turbulence_regression_Periodic_ExplicitFreeSurface.jld2",
@@ -51,11 +51,11 @@ DataDeps.register(dh)
 
 # A download that fails partway leaves the cache poisoned
 reference_filenames = basename.(dh.remotepath)
-datadep_path = DataDeps.try_determine_load_path("regression_truth_data_v4", pwd())
+datadep_path = DataDeps.try_determine_load_path("regression_truth_data_v5", pwd())
 
 if datadep_path !== nothing && !(isdir(datadep_path) && all(f -> isfile(joinpath(datadep_path, f)), reference_filenames))
     @info "Discarding incomplete regression truth data at $datadep_path"
     rm(datadep_path; force=true, recursive=true)
 end
 
-datadep"regression_truth_data_v4"
+datadep"regression_truth_data_v5"
