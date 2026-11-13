@@ -10,6 +10,7 @@ using Oceananigans.TurbulenceClosures.Smagorinskys: Smagorinsky,
 using Oceananigans.Models.ShallowWaterModels: ShallowWaterScalarDiffusivity
 using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: ForwardBackwardScheme
 using Oceananigans.Grids: MutableVerticalDiscretization
+using Oceananigans.BoundaryConditions: NormalRadiation, ObliqueRadiation, GravityWaveRadiationBoundaryCondition
 
 import Oceananigans.Biogeochemistry: update_biogeochemical_state!
 
@@ -456,6 +457,62 @@ function test_checkpointing_split_explicit_free_surface(arch, timestepper, free_
     @test_nowarn run!(new_simulation)
 
     # Compare final states at iteration 10
+    test_model_equality(new_model, ref_model)
+
+    rm.(glob("$(prefix)_iteration*.jld2"), force=true)
+
+    return nothing
+end
+
+function test_checkpointing_radiating_open_boundaries(arch, timestepper)
+    Nx, Ny, Nz = 16, 4, 4
+    Lx, Ly, H = 1000, 250, 100
+    Δt = 0.5
+
+    ηᵢ(x, y, z) = 0.01 * exp(-(x - Lx/2)^2 / (2 * (Lx/10)^2))
+    Tᵢ(x, y, z) = 1 + exp(-(x - Lx/2)^2 / (2 * (Lx/10)^2))
+
+    function make_model()
+        grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), x=(0, Lx), y=(0, Ly), z=(-H, 0),
+                               topology = (Open, Periodic, Bounded))
+
+        u_bcs = FieldBoundaryConditions(west = NormalFlowBoundaryCondition(0; scheme = ObliqueRadiation(outflow_timescale = 100)),
+                                        east = NormalFlowBoundaryCondition(0; scheme = NormalRadiation(outflow_timescale = 100)))
+
+        U_bcs = FieldBoundaryConditions(grid, (Face(), Center(), nothing);
+                                        west = GravityWaveRadiationBoundaryCondition((0, 0)),
+                                        east = GravityWaveRadiationBoundaryCondition((0, 0)))
+
+        T_bcs = FieldBoundaryConditions(west = ValueBoundaryCondition(1; scheme = NormalRadiation(outflow_timescale = 100)),
+                                        east = ValueBoundaryCondition(1; scheme = ObliqueRadiation(outflow_timescale = 100)))
+
+        model = HydrostaticFreeSurfaceModel(grid; timestepper,
+                                            free_surface = SplitExplicitFreeSurface(grid; substeps = 10),
+                                            boundary_conditions = (u = u_bcs, U = U_bcs, T = T_bcs),
+                                            buoyancy = nothing,
+                                            tracers = :T)
+
+        set!(model, η = ηᵢ, T = Tᵢ)
+
+        return model
+    end
+
+    ref_model = make_model()
+    ref_simulation = Simulation(ref_model; Δt, stop_iteration=10, verbose=false)
+    run!(ref_simulation)
+
+    model = make_model()
+    simulation = Simulation(model; Δt, stop_iteration=5, verbose=false)
+    prefix = "radiating_open_boundaries_checkpointing_$(typeof(arch))_$(timestepper)"
+    simulation.output_writers[:checkpointer] = Checkpointer(model; schedule = IterationInterval(5), prefix)
+    run!(simulation)
+
+    new_model = make_model()
+    new_simulation = Simulation(new_model; Δt, stop_iteration=10, verbose=false)
+    new_simulation.output_writers[:checkpointer] = Checkpointer(new_model; schedule = IterationInterval(5), prefix)
+    @test_logs pickup_log set!(new_simulation; checkpoint=:latest)
+    run!(new_simulation)
+
     test_model_equality(new_model, ref_model)
 
     rm.(glob("$(prefix)_iteration*.jld2"), force=true)
@@ -2393,6 +2450,12 @@ for arch in archs
         fs_ts_name = nameof(typeof(free_surface_timestepper))
         @testset "SplitExplicitFreeSurface checkpointing [$(typeof(arch)), $timestepper, $fs_ts_name]" begin
             test_checkpointing_split_explicit_free_surface(arch, timestepper, free_surface_timestepper)
+        end
+    end
+
+    for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
+        @testset "Radiating open boundaries checkpointing [$(typeof(arch)), $timestepper]" begin
+            test_checkpointing_radiating_open_boundaries(arch, timestepper)
         end
     end
 
