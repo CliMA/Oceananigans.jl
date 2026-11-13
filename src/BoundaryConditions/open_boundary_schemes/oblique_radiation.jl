@@ -53,8 +53,9 @@ struct ObliqueRadiation{FT, S, TF} <: AbstractRadiationScheme{FT}
     outflow_timescale :: FT
     inflow_timescale  :: FT
     use_boundary_velocity :: Bool
-    φ⁻ :: S
-    φ₁ :: S
+    φ⁻  :: S
+    φ₁  :: S
+    φ₁ˡ :: S
     target_transport :: TF # prescribed net transport through the boundary, or nothing
 end
 
@@ -67,7 +68,7 @@ function ObliqueRadiation(FT = defaults.FloatType;
     outflow_timescale = convert(FT, outflow_timescale)
     inflow_timescale = convert(FT, inflow_timescale)
     target_transport = convert_target_transport(FT, target_transport)
-    return ObliqueRadiation(outflow_timescale, inflow_timescale, use_boundary_velocity, nothing, nothing, target_transport)
+    return ObliqueRadiation(outflow_timescale, inflow_timescale, use_boundary_velocity, nothing, nothing, nothing, target_transport)
 end
 
 Adapt.adapt_structure(to, r::ObliqueRadiation) =
@@ -76,6 +77,7 @@ Adapt.adapt_structure(to, r::ObliqueRadiation) =
                      r.use_boundary_velocity,
                      adapt(to, r.φ⁻),
                      adapt(to, r.φ₁),
+                     adapt(to, r.φ₁ˡ),
                      adapt(to, r.target_transport))
 
 has_target_transport(::ObliqueRadiation{<:Any, <:Any, <:Nothing}) = false
@@ -83,7 +85,7 @@ has_target_transport(::ObliqueRadiation) = true
 
 radiation_storage(radiation::ObliqueRadiation, buffer) =
     ObliqueRadiation(radiation.outflow_timescale, radiation.inflow_timescale, radiation.use_boundary_velocity,
-                     buffer(), buffer(), radiation.target_transport)
+                     buffer(), buffer(), unset_buffer(buffer), radiation.target_transport)
 
 # Backward and forward differences along the boundary face, zero beyond its ends.
 @inline function tangential_differences(φ, i, j)

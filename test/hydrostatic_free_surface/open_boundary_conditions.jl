@@ -4,6 +4,7 @@ using Oceananigans
 using Oceananigans.BoundaryConditions: GravityWaveRadiation, NormalRadiation, GravityWaveRadiationBoundaryCondition, SurfaceWaveRadiationBoundaryCondition, fill_halo_regions!
 using Oceananigans.BoundaryConditions: ObliqueRadiation, oblique_radiation_update, normal_radiation_update
 using Oceananigans.BoundaryConditions: TracerReservoir, reservoir_update
+using Oceananigans.BoundaryConditions: cache_boundary_conditions!
 using Oceananigans.Units
 using Oceananigans.MultiRegion: MultiRegionGrid, XPartition
 using Statistics: mean
@@ -772,6 +773,76 @@ function test_gravity_wave_target_transport()
     return pinned && flat && drift && inert && wet_only && rejected
 end
 
+#####
+##### Radiation reference value excludes the barotropic correction
+#####
+
+# The boundary update of a normal velocity sees the predictor, before `correct_barotropic_mode!`.
+# The reference interior value cached for the next step must be that same predictor, so the
+# corrected velocity differs from it by the depth-uniform split-explicit correction (U - Σ Δz u★) / H.
+function test_radiation_reference_excludes_barotropic_correction()
+    Nx, Ny, Nz = 16, 1, 4
+    Lx, Ly, H = 1000.0, 100.0, 100.0
+
+    grid = RectilinearGrid(size = (Nx, Ny, Nz), x = (0, Lx), y = (0, Ly), z = (-H, 0),
+                           topology = (Open, Periodic, Bounded))
+
+    u_bcs = FieldBoundaryConditions(east = NormalFlowBoundaryCondition(0; scheme = NormalRadiation(outflow_timescale = 100.0)),
+                                    west = NormalFlowBoundaryCondition(0; scheme = NormalRadiation(outflow_timescale = 100.0)))
+
+    U_bcs = FieldBoundaryConditions(grid, (Face(), Center(), nothing);
+                                    east = GravityWaveRadiationBoundaryCondition((0.0, 0.0)),
+                                    west = GravityWaveRadiationBoundaryCondition((0.0, 0.0)))
+
+    model = HydrostaticFreeSurfaceModel(grid; timestepper = :SplitRungeKutta3,
+                                        free_surface = SplitExplicitFreeSurface(grid; substeps = 10),
+                                        boundary_conditions = (u = u_bcs, U = U_bcs),
+                                        buoyancy = nothing,
+                                        tracers = ())
+
+    set!(model, u = (x, y, z) -> 0.1 * (1 + z / H), η = (x, y, z) -> 0.01 * exp(-(x - 3Lx/4)^2 / (2 * (Lx/10)^2)))
+
+    time_step!(model, 0.5)
+    cache_boundary_conditions!(model)
+
+    u = model.velocities.u
+    U = model.free_surface.barotropic_velocities.U
+    u★ = model.velocities.u.boundary_conditions.east.classification.scheme.φ₁
+
+    Δz = H / Nz
+    uᴺ = Array(interior(u, Nx, 1, :))
+    u★ᴺ = Array(u★[1, 1:Nz])
+    Uᴺ = Array(interior(U, Nx, 1, 1))[1]
+
+    correction = (Uᴺ - Δz * sum(u★ᴺ)) / H
+
+    return uᴺ .- u★ᴺ, correction
+end
+
+# A reference interior value that was never set (as after restoring a checkpoint that does not contain it)
+# falls back to the current interior value.
+function test_unset_radiation_reference_falls_back_to_interior()
+    grid = RectilinearGrid(size = (8, 1, 2), x = (0, 1000), y = (0, 100), z = (-100, 0),
+                           topology = (Open, Periodic, Bounded))
+
+    u_bcs = FieldBoundaryConditions(east = NormalFlowBoundaryCondition(0; scheme = ObliqueRadiation(outflow_timescale = 100.0)),
+                                    west = NormalFlowBoundaryCondition(0; scheme = NormalRadiation(outflow_timescale = 100.0)))
+
+    model = HydrostaticFreeSurfaceModel(grid; boundary_conditions = (; u = u_bcs), buoyancy = nothing, tracers = ())
+    set!(model, u = (x, y, z) -> 0.1 * (1 + z / 100))
+    cache_boundary_conditions!(model)
+
+    u = model.velocities.u
+    east = u.boundary_conditions.east.classification.scheme
+    west = u.boundary_conditions.west.classification.scheme
+
+    unset = all(isnan, Array(east.φ₁ˡ[1, 1:2])) && all(isnan, Array(west.φ₁ˡ[1, 1:2]))
+    east_reference = Array(east.φ₁[1, 1:2]) == Array(interior(u, 8, 1, :))
+    west_reference = Array(west.φ₁[1, 1:2]) == Array(interior(u, 2, 1, :))
+
+    return unset && east_reference && west_reference
+end
+
 @testset "Open Boundary Conditions for HydrostaticFreeSurfaceModel" begin
     @testset "GravityWaveRadiation with target_transport" begin
         @test test_gravity_wave_target_transport()
@@ -831,5 +902,15 @@ end
 
     @testset "TracerReservoir recovers exported water" begin
         @test test_tracer_reservoir_recovers_exported_water()
+    end
+
+    @testset "Unset radiation reference falls back to the interior value" begin
+        @test test_unset_radiation_reference_falls_back_to_interior()
+    end
+
+    @testset "Radiation reference value excludes the barotropic correction" begin
+        difference, correction = test_radiation_reference_excludes_barotropic_correction()
+        @test abs(correction) > 0
+        @test all(difference .≈ correction)
     end
 end

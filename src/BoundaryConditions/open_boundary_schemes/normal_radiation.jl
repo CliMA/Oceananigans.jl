@@ -38,6 +38,9 @@ boundary face value. Interior cells are never written.
 
 The interior value at the base of the stage, needed by the Orlanski phase-speed diagnosis, is
 stored in an array (`φ₁`) allocated automatically during boundary condition regularization.
+It is the interior value seen by the latest boundary update (`φ₁ˡ`), so the phase speed compares
+values taken at the same point of the stage, before any later correction of the interior such as
+the barotropic correction of the velocities.
 
 References
 ==========
@@ -66,6 +69,7 @@ struct NormalRadiation{FT, S, TF} <: AbstractRadiationScheme{FT}
     use_boundary_velocity :: Bool # advect Value fields with the boundary-face velocity instead of one cell in
     φ⁻  :: S  # boundary value at the base of the stage (2D array or nothing)
     φ₁  :: S  # interior value at the base of the stage (2D array or nothing)
+    φ₁ˡ :: S  # interior value seen by the latest boundary update (2D array or nothing)
     target_transport :: TF # prescribed net transport through the boundary, or nothing
 end
 
@@ -78,7 +82,7 @@ function NormalRadiation(FT = defaults.FloatType;
     outflow_timescale = convert(FT, outflow_timescale)
     inflow_timescale = convert(FT, inflow_timescale)
     target_transport = convert_target_transport(FT, target_transport)
-    return NormalRadiation(outflow_timescale, inflow_timescale, use_boundary_velocity, nothing, nothing, target_transport)
+    return NormalRadiation(outflow_timescale, inflow_timescale, use_boundary_velocity, nothing, nothing, nothing, target_transport)
 end
 
 Adapt.adapt_structure(to, r::NormalRadiation) =
@@ -87,6 +91,7 @@ Adapt.adapt_structure(to, r::NormalRadiation) =
               r.use_boundary_velocity,
               adapt(to, r.φ⁻),
               adapt(to, r.φ₁),
+              adapt(to, r.φ₁ˡ),
               adapt(to, r.target_transport))
 
 Base.summary(r::AbstractRadiationScheme{FT}) where FT = string(nameof(typeof(r)), "{$FT}")
@@ -105,9 +110,16 @@ has_target_transport(::NormalRadiation) = true
 get_target_transport(scheme::AbstractRadiationScheme, grid) = _eval_tt(scheme.target_transport, grid)
 get_target_transport(scheme::AbstractRadiationScheme) = scheme.target_transport
 
+# `NaN` marks a reference that was never set, such as after restoring a checkpoint that does not contain it
+function unset_buffer(buffer)
+    φ = buffer()
+    fill!(parent(φ), NaN)
+    return φ
+end
+
 radiation_storage(radiation::NormalRadiation, buffer) =
     NormalRadiation(radiation.outflow_timescale, radiation.inflow_timescale, radiation.use_boundary_velocity,
-                    buffer(), buffer(), radiation.target_transport)
+                    buffer(), buffer(), unset_buffer(buffer), radiation.target_transport)
 
 #####
 ##### NormalRadiation — Orlanski (1976) with Marchesiello et al. (2001) nudging
@@ -136,16 +148,41 @@ end
 @inline radiation_update(radiation, side, i, j, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, outflow, Cᵃ) =
     normal_radiation_update(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
 
-const ORBC = Union{BoundaryCondition{<:Value{<:Union{NormalRadiation, ObliqueRadiation}}},
-                   BoundaryCondition{<:NormalFlow{<:Union{NormalRadiation, ObliqueRadiation}}}}
+const VORBC  = BoundaryCondition{<:Value{<:Union{NormalRadiation, ObliqueRadiation}}}
+const NFORBC = BoundaryCondition{<:NormalFlow{<:Union{NormalRadiation, ObliqueRadiation}}}
+const ORBC   = Union{VORBC, NFORBC}
 
-# The Orlanski phase speed is diagnosed from the change of the first interior value over the stage
+Oceananigans.prognostic_state(bc::ORBC) = on_architecture(CPU(), bc.classification.scheme.φ₁ˡ)
+
+function Oceananigans.restore_prognostic_state!(bc::ORBC, from)
+    copyto!(bc.classification.scheme.φ₁ˡ, from)
+    return bc
+end
+
+Oceananigans.restore_prognostic_state!(::ORBC, ::Nothing) = nothing
+
+@inline function initialize_exterior_state!(side, i, j, grid, c, bc::VORBC, loc, clock, model_fields)
+    iᵇ, jᵇ, kᵇ = boundary_point(side, loc, grid, 0, i, j)
+    i₁, j₁, k₁ = boundary_point(side, loc, grid, 1, i, j)
+    @inbounds c[iᵇ, jᵇ, kᵇ] = c[i₁, j₁, k₁]
+    @inbounds bc.classification.scheme.φ₁ˡ[i, j] = c[i₁, j₁, k₁]
+    return nothing
+end
+
+@inline function initialize_exterior_state!(side, i, j, grid, c, bc::NFORBC, loc, clock, model_fields)
+    i₁, j₁, k₁ = boundary_point(side, loc, grid, 1, i, j)
+    @inbounds bc.classification.scheme.φ₁ˡ[i, j] = c[i₁, j₁, k₁]
+    return nothing
+end
+
+# The Orlanski phase speed is diagnosed from the change of the first interior value between two boundary updates
 @inline function cache_exterior_state!(side, i, j, grid, c, bc::ORBC, loc)
     iᵇ, jᵇ, kᵇ = boundary_point(side, loc, grid, 0, i, j)
     i₁, j₁, k₁ = boundary_point(side, loc, grid, 1, i, j)
     radiation = bc.classification.scheme
+    @inbounds φ₁ˡ = radiation.φ₁ˡ[i, j]
     @inbounds radiation.φ⁻[i, j] = c[iᵇ, jᵇ, kᵇ]
-    @inbounds radiation.φ₁[i, j] = c[i₁, j₁, k₁]
+    @inbounds radiation.φ₁[i, j] = ifelse(isnan(φ₁ˡ), c[i₁, j₁, k₁], φ₁ˡ)
     return nothing
 end
 
@@ -168,6 +205,7 @@ end
 
         φᵇⁿ⁺¹ = radiation_update(radiation, side, i, j, radiation.φ⁻[i, j], φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, radiation.φ₁[i, j], φᵉˣᵗ, Δt, outflow, Cᵃ)
         c[iᵇ, jᵇ, kᵇ] = ifelse(immersed_boundary_point(side, loc, grid, i, j), zero(grid), φᵇⁿ⁺¹)
+        radiation.φ₁ˡ[i, j] = φ₁ⁿ⁺¹
     end
 
     return nothing
