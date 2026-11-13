@@ -645,6 +645,32 @@ function store_adaptive_Δt!(c, td, Δt)
     return nothing
 end
 
+@kernel function _add_constant_fields!(c, zero_field, one_field)
+    i, j, k = @index(Global, NTuple)
+    @inbounds c[i, j, k] = c[i, j, k] + zero_field[i, j, k] + one_field[i, j, k]
+end
+
+# `eltype(grid)` is traced inside a compiled function: the ZeroField and OneField built from it hold the plain type
+function add_constant_fields!(c)
+    grid = c.grid
+    FT = eltype(grid)
+    launch!(architecture(grid), grid, :xyz, _add_constant_fields!, c, ZeroField(FT), Oceananigans.Fields.OneField(FT))
+    return nothing
+end
+
+@testset "ZeroField and OneField of a traced element type in a kernel" begin
+    @test ZeroField(Reactant.TracedRNumber{Float64}) isa ZeroField{Float64, 3}
+    @test Oceananigans.Fields.OneField(Reactant.TracedRNumber{Float32}) isa Oceananigans.Fields.OneField{Float32, 3}
+    @test ZeroField(Float64) isa ZeroField{Float64, 3}
+
+    grid = LatitudeLongitudeGrid(ReactantState(); size = (4, 4, 2), longitude = (0, 40), latitude = (20, 50), z = (0, 1000))
+    c = CenterField(grid)
+    set!(c, 2)
+    compiled_add! = @compile raise_first=true raise=true add_constant_fields!(c)
+    compiled_add!(c)
+    @test all(Array(interior(c)) .== 3)
+end
+
 # A traced Δt held by AdaptiveVerticallyImplicitDiscretization must be adapted when it is passed to a kernel
 @testset "AdaptiveVerticallyImplicitDiscretization with a traced Δt in a kernel" begin
     grid = RectilinearGrid(ReactantState(); size = (2, 2, 2), extent = (1, 1, 1))
