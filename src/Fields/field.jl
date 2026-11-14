@@ -1072,3 +1072,8 @@ function Oceananigans.restore_prognostic_state!(restored::Field, from)
 end
 
 Oceananigans.restore_prognostic_state!(::Field, ::Nothing) = nothing
+
+function BoundaryConditions.boundary_state_field(grid, loc, dim)
+    LX, LY, LZ = ntuple(d -> d == dim ? Nothing : typeof(loc[d]), 3)
+    return Field{LX, LY, LZ}(grid)
+end

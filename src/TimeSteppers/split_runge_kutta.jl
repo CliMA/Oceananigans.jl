@@ -175,6 +175,9 @@ function time_step!(model::AbstractModel{<:SplitRungeKuttaTimeStepper}, Δt; cal
     maybe_prepare_first_time_step!(model, Δt, callbacks)
 
     cache_current_fields!(model)
+
+    # The clock is left at the last stage by the previous step; boundary conditions cache at the first
+    model.clock.stage = 1
     cache_boundary_conditions!(model)
     grid = model.grid
 
