@@ -1,4 +1,4 @@
-using Oceananigans.Grids: Flat, XFlatGrid, YFlatGrid, ZFlatGrid, peripheral_node
+using Oceananigans.Grids: Flat, XFlatGrid, YFlatGrid, ZFlatGrid, peripheral_node, immersed_peripheral_node
 
 #####
 ##### Base interpolation operators
