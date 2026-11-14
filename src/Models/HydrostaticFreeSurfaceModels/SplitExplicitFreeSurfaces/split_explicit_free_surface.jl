@@ -3,8 +3,8 @@ using Adapt: Adapt
 using Oceananigans: Oceananigans, prognostic_state, restore_prognostic_state!
 using Oceananigans.BoundaryConditions: BoundaryCondition, NormalFlow
 using Oceananigans.Fields: TracerFields, XFaceField, YFaceField
-using Oceananigans.Grids: Grids, Flat, connected_range, halo_size, minimum_xspacing, minimum_yspacing, on_architecture,
-                          with_halo
+using Oceananigans.Grids: Grids, Flat, connected_range, halo_size, on_architecture,
+                          with_halo, minimum_xspacing, minimum_yspacing
 using Oceananigans.Utils: KernelParameters, prettytime
 
 #####
@@ -55,14 +55,7 @@ struct SplitExplicitFreeSurface{E, H, U, M, FT, K, S, T, B} <: AbstractFreeSurfa
 end
 
 """
-    SplitExplicitFreeSurface(grid = nothing;
-                             gravitational_acceleration = Oceananigans.defaults.gravitational_acceleration,
-                             substeps = nothing,
-                             cfl = nothing,
-                             fixed_Δt = nothing,
-                             extend_halos = true,
-                             averaging_kernel = averaging_shape_function,
-                             timestepper = ForwardBackwardScheme())
+$(SIGNATURES)
 
 Return a `SplitExplicitFreeSurface` representing an explicit time discretization of
 a free surface dynamics with `gravitational_acceleration`. The free surface dynamics are solved by discretizing:

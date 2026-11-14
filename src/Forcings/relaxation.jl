@@ -1,11 +1,11 @@
 using Oceananigans: instantiated_location
-using Oceananigans.Grids: _node, node, xnodes, ynodes, Face, Center
-using Oceananigans.Fields: AbstractField, Field, FunctionField, compute!, show_location
 using Oceananigans.AbstractOperations: Average
-using Oceananigans.OutputReaders: interpolate
+using Oceananigans.Fields: AbstractField, Field, FunctionField, compute!, show_location
+using Oceananigans.Grids: _node, node, xnodes, ynodes, Face, Center
 using Oceananigans.Operators: ℑxᶜᵃᵃ, ℑyᵃᶜᵃ, active_weighted_ℑxyᶠᶜᶜ, active_weighted_ℑxyᶜᶠᶜ
-using Oceananigans.Utils: prettysummary
-using DocStringExtensions: TYPEDEF, TYPEDFIELDS, TYPEDSIGNATURES
+using Oceananigans.OutputReaders: interpolate
+using Oceananigans.Utils: prettysummary, TYPEDSIGNATURES
+using DocStringExtensions: TYPEDEF, TYPEDFIELDS
 
 @inline zerofunction(args...) = 0
 @inline onefunction(args...) = 1
@@ -38,7 +38,7 @@ struct Relaxation{R, F, M, T, L, Tr}
 end
 
 """
-    Relaxation(; rate, mask=onefunction, target=zerofunction, transform=nothing)
+$(SIGNATURES)
 
 Returns a `Forcing` that restores a field to `target(X..., t)`
 at the specified `rate`, in the region `mask(X...)`.

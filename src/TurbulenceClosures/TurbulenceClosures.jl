@@ -42,7 +42,6 @@ export
     closure_required_tracers
 
 using Adapt: Adapt, adapt
-using DocStringExtensions: TYPEDSIGNATURES
 using KernelAbstractions: @index, @kernel
 
 using Oceananigans: Oceananigans, fields
@@ -68,7 +67,7 @@ using Oceananigans.TimeSteppers: TimeSteppers,
                                  VerticallyImplicitTimeDiscretization,
                                  reset!,
                                  step_closure_prognostics!
-using Oceananigans.Utils: Utils, launch!, named_tuple, prettysummary, with_tracers
+using Oceananigans.Utils: Utils, launch!, named_tuple, prettysummary, with_tracers, SIGNATURES, TYPEDSIGNATURES
 
 const VerticallyBoundedGrid{FT} = AbstractGrid{FT, <:Any, <:Any, <:BoundaryTopology}
 

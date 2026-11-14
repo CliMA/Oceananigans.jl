@@ -1,6 +1,6 @@
 using Oceananigans.Grids: topology, Flat, StaticVerticalDiscretization, MutableVerticalDiscretization, AbstractVerticalCoordinate
-using Oceananigans.OrthogonalSphericalShellGrids: OrthogonalSphericalShellGrid
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+using Oceananigans.OrthogonalSphericalShellGrids: OrthogonalSphericalShellGrid
 
 # Short aliases for compact dispatch in name-generator method tables.
 const OSSG = OrthogonalSphericalShellGrid

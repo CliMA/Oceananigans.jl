@@ -468,7 +468,7 @@ end
 end
 
 """
-    load_weno_stencil(buffer, dir, func::Bool = false)
+$(SIGNATURES)
 
 Stencils for WENO reconstruction calculations
 

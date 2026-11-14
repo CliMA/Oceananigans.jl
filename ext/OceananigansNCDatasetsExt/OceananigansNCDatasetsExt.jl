@@ -36,7 +36,6 @@ using Oceananigans.OrthogonalSphericalShellGrids:
     Tripolar, LatitudeLongitudeRotation,
     conformal_mapping_info
 using Oceananigans.Grids: OrthogonalSphericalShellGrid
-
 using Oceananigans.ImmersedBoundaries:
     ImmersedBoundaryGrid, GridFittedBottom, GridFittedBoundary, PartialCellBottom,
     GridFittedVerticalBoundaries, PartialCellVerticalBoundaries,
@@ -82,7 +81,8 @@ using Oceananigans.OutputWriters:
     construct_ossg_halo_padded_array,
     halo_fill_2d_metric
 using Oceananigans.Utils:
-    materialize_schedule, versioninfo_with_gpu, oceananigans_versioninfo, prettykeys
+    materialize_schedule, versioninfo_with_gpu, oceananigans_versioninfo, prettykeys,
+    time_difference_in_seconds
 
 import NCDatasets: defVar
 import Oceananigans: initialize!, write_output!

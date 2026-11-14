@@ -1,6 +1,6 @@
 using Oceananigans.Architectures: array_type
-using Oceananigans.Solvers: plan_forward_transform, plan_backward_transform, DiscreteTransform
-using Oceananigans.Solvers: Forward, Backward
+using Oceananigans.Solvers: plan_forward_transform, plan_backward_transform, DiscreteTransform,
+                            Forward, Backward
 
 @inline reshaped_size(grid) = size(grid, 2), size(grid, 1), size(grid, 3)
 

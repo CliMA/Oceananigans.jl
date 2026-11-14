@@ -11,7 +11,7 @@ using Oceananigans.Fields: Fields, interpolate, interpolator, _interpolate, Fixe
 using Oceananigans.Grids: _node
 using Oceananigans.TimeSteppers: Clock
 using Oceananigans.Units: Time
-using Oceananigans.Utils: period_to_seconds, seconds_to_nanosecond, time_difference_seconds
+using Oceananigans.Utils: period_to_seconds, seconds_to_nanosecond, time_difference_in_seconds
 
 @inline interp_time(t₁, t₂, θ) = t₂ * θ + t₁ * (1 - θ)
 
@@ -101,7 +101,7 @@ end
     ñ, n₁, n₂ = find_time_index(times, folded_t)
 
     cycling = folded_t > tᴺ # we are _between_ tᴺ and t¹ + T
-    θ = time_difference_seconds(folded_t, tᴺ) / time_difference_seconds(add_years(t¹, P), tᴺ)
+    θ = time_difference_in_seconds(folded_t, tᴺ) / time_difference_in_seconds(add_years(t¹, P), tᴺ)
     cycled_indices   = (θ, Nt, 1)
     uncycled_indices = (ñ, n₁, n₂)
 
@@ -142,8 +142,8 @@ end
         t₂ = times[n₂]
     end
 
-    δt_t1 = time_difference_seconds(t, t₁)
-    δt_12 = time_difference_seconds(t₂, t₁)
+    δt_t1 = time_difference_in_seconds(t, t₁)
+    δt_12 = time_difference_in_seconds(t₂, t₁)
     ñ = δt_t1 / δt_12
     ñ = ifelse(n₂ == n₁, zero(ñ), ñ)
 
@@ -161,8 +161,8 @@ end
         t₂ = times[n₂]
     end
 
-    δt_t1 = time_difference_seconds(t, t₁)
-    δt_12 = time_difference_seconds(t₂, t₁)
+    δt_t1 = time_difference_in_seconds(t, t₁)
+    δt_12 = time_difference_in_seconds(t₂, t₁)
     ñ = δt_t1 / δt_12
     ñ = ifelse(n₂ == n₁, zero(ñ), ñ)
 

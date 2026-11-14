@@ -6,6 +6,8 @@ using Dates: Dates
 using Logging: Logging
 using Crayons: Crayons, Crayon
 
+using Oceananigans.Utils: SIGNATURES
+
 const RED    = Crayon(foreground=:red)
 const YELLOW = Crayon(foreground=:light_yellow)
 const CYAN   = Crayon(foreground=:cyan)
@@ -22,7 +24,7 @@ struct OceananigansLogger <: Logging.AbstractLogger
 end
 
 """
-    OceananigansLogger(stream::IO=stdout, level=Logging.Info; show_info_source=false)
+$(SIGNATURES)
 
 Based on Logging.SimpleLogger, it tries to log all messages in the following format:
 

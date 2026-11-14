@@ -1,6 +1,6 @@
-using Oceananigans.Grids: AbstractGrid
-using Oceananigans.Fields: CenterField
 using Oceananigans.BoundaryConditions: fill_bottom_and_top_halo!
+using Oceananigans.Fields: CenterField
+using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Utils: launch!
 using KernelAbstractions: @index, @kernel
 
@@ -214,8 +214,9 @@ end
     c₋ᴸ = rescaled_reconstruction(c₋ᴸ, i, j, k-1, grid, θ, c)
     c₋ᴿ = rescaled_reconstruction(c₋ᴿ, i, j, k,   grid, θ, c)
 
-    w⁺ = @inbounds w[i, j, k+1]
-    w⁻ = @inbounds w[i, j, k]
+    td = advection.time_discretization
+    w⁺ = @inbounds explicit_velocity_scaleᶜᶜᶠ(i, j, k+1, grid, advection, td, w) * w[i, j, k+1]
+    w⁻ = @inbounds explicit_velocity_scaleᶜᶜᶠ(i, j, k,   grid, advection, td, w) * w[i, j, k]
     Az_ρwc⁺ = ℑzᵃᵃᶠ(i, j, k+1, grid, ρ) * Azᶜᶜᶠ(i, j, k+1, grid) * upwind_biased_product(w⁺, c₊ᴸ, c₊ᴿ)
     Az_ρwc⁻ = ℑzᵃᵃᶠ(i, j, k,   grid, ρ) * Azᶜᶜᶠ(i, j, k,   grid) * upwind_biased_product(w⁻, c₋ᴸ, c₋ᴿ)
 

@@ -1,13 +1,13 @@
 module Solvers
 
 export
-    BatchedTridiagonalSolver, solve!,
+    BatchedTridiagonalSolver, solve!, compute_factorization!,
     FFTBasedPoissonSolver,
     FourierTridiagonalPoissonSolver,
     ConjugateGradientSolver,
     KrylovSolver
 
-using DocStringExtensions: TYPEDSIGNATURES
+using Adapt: Adapt, adapt
 using FFTW: FFTW
 using KernelAbstractions: @kernel, @index
 
@@ -17,7 +17,7 @@ using Oceananigans.Fields: AbstractField, CenterField, field, topology
 using Oceananigans.Grids: AbstractGrid, BoundaryTopology, Bounded, Flat, Periodic,
                           XYRegularRG, XZRegularRG, YZRegularRG, XYZRegularRG,
                           RectilinearGrid, RegularVerticalCoordinate, inactive_cell
-using Oceananigans.Utils: launch!, worksize
+using Oceananigans.Utils: launch!, worksize, SIGNATURES, TYPEDSIGNATURES
 
 """
 $(TYPEDSIGNATURES)

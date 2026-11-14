@@ -1,5 +1,5 @@
-using Oceananigans.Grids: grid_name, size_summary
 using Oceananigans.BoundaryConditions: bc_str
+using Oceananigans.Grids: grid_name, size_summary
 using Statistics: mean
 
 location_str(::Type{Face})    = "Face"

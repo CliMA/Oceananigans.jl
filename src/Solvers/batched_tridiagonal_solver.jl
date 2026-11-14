@@ -2,11 +2,11 @@ using Oceananigans.Architectures: on_architecture
 using Oceananigans.Grids: XDirection, YDirection, ZDirection
 
 """
-    struct BatchedTridiagonalSolver{A, B, C, T, G, P}
+    struct BatchedTridiagonalSolver{A, B, C, T, G, P, D, F}
 
 A batched solver for large numbers of triadiagonal systems.
 """
-struct BatchedTridiagonalSolver{A, B, C, T, G, P, D}
+struct BatchedTridiagonalSolver{A, B, C, T, G, P, D, F}
     a :: A
     b :: B
     c :: C
@@ -14,7 +14,25 @@ struct BatchedTridiagonalSolver{A, B, C, T, G, P, D}
     grid :: G
     parameters :: P
     tridiagonal_direction :: D
+    factors :: F
 end
+
+"""
+    TridiagonalFactors
+
+The stored factorization of the systems of a factorized [`BatchedTridiagonalSolver`](@ref):
+the pivots `β` and the lower diagonal `a`, evaluated once by [`compute_factorization!`](@ref).
+The elimination ratios `t` are kept in the solver's scratch array. Together these are the
+factors `A = L U` of each system, where `L` has diagonal `β` and sub-diagonal `a`, and `U` is unit
+upper triangular with super-diagonal `t`.
+"""
+struct TridiagonalFactors{B, A}
+    β :: B
+    a :: A
+end
+
+Adapt.adapt_structure(to, factors::TridiagonalFactors) =
+    TridiagonalFactors(adapt(to, factors.β), adapt(to, factors.a))
 
 function Base.summary(solver::BatchedTridiagonalSolver)
     dirstr = prettysummary(solver.tridiagonal_direction)
@@ -23,7 +41,8 @@ end
 
 function Base.show(io::IO, solver::BatchedTridiagonalSolver)
     print(io, summary(solver), '\n')
-    print(io, "└── grid: ", prettysummary(solver.grid))
+    print(io, "├── grid: ", prettysummary(solver.grid), '\n')
+    print(io, "└── factorized: ", !isnothing(solver.factors))
 end
 
 # Some aliases...
@@ -34,13 +53,7 @@ const ZTridiagonalSolver = BatchedTridiagonalSolver{A, B, C, T, G, P, <:ZDirecti
 Architectures.architecture(solver::BatchedTridiagonalSolver) = architecture(solver.grid)
 
 """
-    BatchedTridiagonalSolver(grid;
-                             lower_diagonal,
-                             diagonal,
-                             upper_diagonal,
-                             scratch = zeros(architecture(grid), eltype(grid), grid.Nx, grid.Ny, grid.Nz),
-                             tridiagonal_direction = ZDirection()
-                             parameters = nothing)
+$(SIGNATURES)
 
 Construct a solver for batched tridiagonal systems on `grid` of the form
 
@@ -73,6 +86,29 @@ other implementations where, e.g., `aⁱʲ²` may appear at the second row, inst
 2. A 3D array means, e.g., that `aⁱʲᵏ = a[i, j, k]`.
 
 Other coefficient types can be implemented by extending `get_coefficient`.
+
+Stored factorization
+====================
+
+With `factorized = true`, the solver stores the factorization of its systems, which depends only
+on the coefficients `a`, `b`, and `c` and not on the right-hand side. [`compute_factorization!`](@ref)
+evaluates the coefficients and computes the pivots
+
+```
+    βⁱʲ¹ = bⁱʲ¹,
+    βⁱʲᵏ = bⁱʲᵏ - aⁱʲᵏ⁻¹ tⁱʲᵏ,   tⁱʲᵏ = cⁱʲᵏ⁻¹ / βⁱʲᵏ⁻¹,   k = 2, ..., N,
+```
+
+and stores `β`, `t`, and `a`. `solve!` then only substitutes: it reads the stored factors, evaluates
+neither the coefficients nor the recurrence, and reads only the right-hand side per level. This is
+for systems solved many times with unchanged coefficients and different right-hand sides.
+
+The caller calls `compute_factorization!` before the first `solve!` and again whenever the
+coefficients change, including through `args`. A factorized `solve!` does not detect changed
+coefficients and solves the system that was last factored. The factorization uses the same
+floating-point operations as the unfactored sweep, so the solution is bitwise identical to that of
+the default, `factorized = false`.
+
 """
 function BatchedTridiagonalSolver(grid;
                                   lower_diagonal,
@@ -80,10 +116,13 @@ function BatchedTridiagonalSolver(grid;
                                   upper_diagonal,
                                   scratch = zeros(architecture(grid), eltype(grid), worksize(grid)...),
                                   parameters = nothing,
-                                  tridiagonal_direction = ZDirection())
+                                  tridiagonal_direction = ZDirection(),
+                                  factorized = false)
+
+    factors = factorized ? TridiagonalFactors(similar(scratch), similar(scratch)) : nothing
 
     return BatchedTridiagonalSolver(lower_diagonal, diagonal, upper_diagonal,
-                                    scratch, grid, parameters, tridiagonal_direction)
+                                    scratch, grid, parameters, tridiagonal_direction, factors)
 end
 
 """
@@ -112,13 +151,7 @@ Press William, H., Teukolsky Saul, A., Vetterling William, T., & Flannery Brian,
 """
 function solve!(ϕ, solver::BatchedTridiagonalSolver, rhs, args...)
 
-    launch_config = if solver.tridiagonal_direction isa XDirection
-                        :yz
-                    elseif solver.tridiagonal_direction isa YDirection
-                        :xz
-                    elseif solver.tridiagonal_direction isa ZDirection
-                        :xy
-                    end
+    launch_config = main_diagonal_launch_configuration(solver.tridiagonal_direction)
 
     launch!(architecture(solver), solver.grid, launch_config,
             solve_batched_tridiagonal_system_kernel!, ϕ,
@@ -126,6 +159,35 @@ function solve!(ϕ, solver::BatchedTridiagonalSolver, rhs, args...)
             solver.b,
             solver.c,
             rhs,
+            solver.t,
+            solver.grid,
+            solver.parameters,
+            Tuple(args),
+            solver.tridiagonal_direction,
+            solver.factors)
+
+    return nothing
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Compute and store the factorization of the systems of the factorized `solver` (see
+[`BatchedTridiagonalSolver`](@ref)) from the current coefficients, evaluated with `args...`.
+Call it before the first [`solve!`](@ref) and whenever the coefficients change.
+"""
+function compute_factorization!(solver::BatchedTridiagonalSolver, args...)
+    isnothing(solver.factors) &&
+        throw(ArgumentError("The solver was built with `factorized = false` and stores no factorization."))
+
+    launch_config = main_diagonal_launch_configuration(solver.tridiagonal_direction)
+
+    launch!(architecture(solver), solver.grid, launch_config,
+            compute_batched_tridiagonal_factorization_kernel!,
+            solver.factors,
+            solver.a,
+            solver.b,
+            solver.c,
             solver.t,
             solver.grid,
             solver.parameters,
@@ -146,106 +208,112 @@ end
 @inline float_eltype(ϕ::AbstractArray{T}) where T <: AbstractFloat = T
 @inline float_eltype(ϕ::AbstractArray{<:Complex{T}}) where T <: AbstractFloat = T
 
-@kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction::XDirection)
-    Nx = size(grid, 1)
-    j, k = @index(Global, NTuple)
-    solve_batched_tridiagonal_system_x!(j, k, Nx, ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction)
+# The `ZDirection` sweep masks products with a zero off-diagonal (see `solve!`)
+@inline off_diagonal_multiply(::ZDirection, x, y) = masked_multiply(x, y)
+@inline off_diagonal_multiply(tridiagonal_direction, x, y) = x * y
+
+# Index `(i, j, k)` of level `n` of the system in column `(m₁, m₂)`
+@inline column_index(n, m₁, m₂, ::XDirection) = (n, m₁, m₂)
+@inline column_index(n, m₁, m₂, ::YDirection) = (m₁, n, m₂)
+@inline column_index(n, m₁, m₂, ::ZDirection) = (m₁, m₂, n)
+
+# The quantities of the elimination: computed from the coefficients (`factors = nothing`), or read
+# from a stored factorization. Only the unfactored ratio is written to the scratch `t`.
+@inline lower_diagonal(i, j, k, grid, ::Nothing, a, p, tridiagonal_direction, args) =
+    get_coefficient(i, j, k, grid, a, p, tridiagonal_direction, args...)
+
+@inline lower_diagonal(i, j, k, grid, factors::TridiagonalFactors, args...) = @inbounds factors.a[i, j, k]
+
+@inline function elimination_ratio!(t, i, j, k, ::Nothing, i⁻, j⁻, k⁻, grid, c, p, tridiagonal_direction, args, β)
+    cᵏ⁻¹ = get_coefficient(i⁻, j⁻, k⁻, grid, c, p, tridiagonal_direction, args...)
+    tᵏ = convert(eltype(t), cᵏ⁻¹ / β)
+    @inbounds t[i, j, k] = tᵏ
+    return tᵏ
 end
 
-@inline function solve_batched_tridiagonal_system_x!(j, k, Nx, ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction)
+@inline elimination_ratio!(t, i, j, k, ::TridiagonalFactors, args...) = @inbounds t[i, j, k]
+
+# Pivot `βᵏ = bᵏ - aᵏ⁻¹ tᵏ`
+@inline pivot(i, j, k, grid, ::Nothing, b, p, tridiagonal_direction, args, aᵏ⁻¹, tᵏ) =
+    get_coefficient(i, j, k, grid, b, p, tridiagonal_direction, args...) -
+    off_diagonal_multiply(tridiagonal_direction, aᵏ⁻¹, tᵏ)
+
+@inline pivot(i, j, k, grid, factors::TridiagonalFactors, args...) = @inbounds factors.β[i, j, k]
+
+@kernel function compute_batched_tridiagonal_factorization_kernel!(factors, a, b, c, t, grid, p, args, tridiagonal_direction)
+    m₁, m₂ = @index(Global, NTuple)
+    N = size(grid, dimension(tridiagonal_direction))
+    compute_batched_tridiagonal_factorization!(m₁, m₂, N, factors, a, b, c, t, grid, p, args, tridiagonal_direction)
+end
+
+# The forward recurrence of the sweep, without a right-hand side: stores `β`, `t`, and `a`
+@inline function compute_batched_tridiagonal_factorization!(m₁, m₂, N, factors, a, b, c, t, grid, p, args,
+                                                            tridiagonal_direction)
+    Τ = eltype(t)
+
     @inbounds begin
-        β  = get_coefficient(1, j, k, grid, b, p, tridiagonal_direction, args...)
-        f₁ = get_coefficient(1, j, k, grid, f, p, tridiagonal_direction, args...)
-        ϕ[1, j, k] = f₁ / β
+        i, j, k = column_index(1, m₁, m₂, tridiagonal_direction)
+        β = pivot(i, j, k, grid, nothing, b, p, tridiagonal_direction, args, zero(Τ), zero(Τ))
+        factors.β[i, j, k] = β
 
-        for i = 2:Nx
-            cᵏ⁻¹ = get_coefficient(i-1, j, k, grid, c, p, tridiagonal_direction, args...)
-            bᵏ   = get_coefficient(i,   j, k, grid, b, p, tridiagonal_direction, args...)
-            aᵏ⁻¹ = get_coefficient(i-1, j, k, grid, a, p, tridiagonal_direction, args...)
+        for n = 2:N
+            i⁻, j⁻, k⁻ = column_index(n-1, m₁, m₂, tridiagonal_direction)
+            i,  j,  k  = column_index(n,   m₁, m₂, tridiagonal_direction)
 
-            t[i, j, k] = cᵏ⁻¹ / β
-            β = bᵏ - aᵏ⁻¹ * t[i, j, k]
+            aᵏ⁻¹ = lower_diagonal(i⁻, j⁻, k⁻, grid, nothing, a, p, tridiagonal_direction, args)
+            tᵏ = elimination_ratio!(t, i, j, k, nothing, i⁻, j⁻, k⁻, grid, c, p, tridiagonal_direction, args, β)
+            β = pivot(i, j, k, grid, nothing, b, p, tridiagonal_direction, args, aᵏ⁻¹, tᵏ)
 
-            fᵏ = get_coefficient(i, j, k, grid, f, p, tridiagonal_direction, args...)
-
-            # If the problem is not diagonally-dominant such that `β ≈ 0`,
-            # the algorithm is unstable and we store the right-hand side instead.
-            definitely_diagonally_dominant = abs(β) > 10 * eps(float_eltype(ϕ))
-            ϕ★ = (fᵏ - aᵏ⁻¹ * ϕ[i-1, j, k]) / β
-            ϕ[i, j, k] = ifelse(definitely_diagonally_dominant, ϕ★, fᵏ)
-        end
-
-        for i = Nx-1:-1:1
-            ϕ[i, j, k] -= t[i+1, j, k] * ϕ[i+1, j, k]
+            factors.a[i⁻, j⁻, k⁻] = aᵏ⁻¹
+            factors.β[i, j, k] = β
         end
     end
 end
 
-@kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction::YDirection)
-    Ny = size(grid, 2)
-    i, k = @index(Global, NTuple)
-    solve_batched_tridiagonal_system_y!(i, k, Ny, ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction)
+@kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction, factors)
+    m₁, m₂ = @index(Global, NTuple)
+    N = size(grid, dimension(tridiagonal_direction))
+    solve_batched_tridiagonal_system!(m₁, m₂, N, ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction, factors)
 end
 
-@inline function solve_batched_tridiagonal_system_y!(i, k, Ny, ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction)
+# Thomas sweep along column `(m₁, m₂)`. β, tᵏ and the last solved level are carried in local
+# variables rather than re-read from `t` and `ϕ`, which the compiler cannot prove are unaliased.
+@inline function solve_batched_tridiagonal_system!(m₁, m₂, N, ϕ, a, b, c, f, t, grid, p, args,
+                                                   tridiagonal_direction, factors)
+    Φ = eltype(ϕ)
+    Τ = eltype(t)
+
     @inbounds begin
-        β  = get_coefficient(i, 1, k, grid, b, p, tridiagonal_direction, args...)
-        f₁ = get_coefficient(i, 1, k, grid, f, p, tridiagonal_direction, args...)
-        ϕ[i, 1, k] = f₁ / β
+        i, j, k = column_index(1, m₁, m₂, tridiagonal_direction)
+        β  = pivot(i, j, k, grid, factors, b, p, tridiagonal_direction, args, zero(Τ), zero(Τ))
+        f₁ = get_coefficient(i, j, k, grid, f, p, tridiagonal_direction, args...)
+        ϕ⁻ = convert(Φ, f₁ / β)
+        ϕ[i, j, k] = ϕ⁻
 
-        for j = 2:Ny
-            cᵏ⁻¹ = get_coefficient(i, j-1, k, grid, c, p, tridiagonal_direction, args...)
-            bᵏ   = get_coefficient(i, j,   k, grid, b, p, tridiagonal_direction, args...)
-            aᵏ⁻¹ = get_coefficient(i, j-1, k, grid, a, p, tridiagonal_direction, args...)
+        for n = 2:N
+            i⁻, j⁻, k⁻ = column_index(n-1, m₁, m₂, tridiagonal_direction)
+            i,  j,  k  = column_index(n,   m₁, m₂, tridiagonal_direction)
 
-            t[i, j, k] = cᵏ⁻¹ / β
-            β = bᵏ - aᵏ⁻¹ * t[i, j, k]
+            aᵏ⁻¹ = lower_diagonal(i⁻, j⁻, k⁻, grid, factors, a, p, tridiagonal_direction, args)
+            tᵏ = elimination_ratio!(t, i, j, k, factors, i⁻, j⁻, k⁻, grid, c, p, tridiagonal_direction, args, β)
+            β = pivot(i, j, k, grid, factors, b, p, tridiagonal_direction, args, aᵏ⁻¹, tᵏ)
 
             fᵏ = get_coefficient(i, j, k, grid, f, p, tridiagonal_direction, args...)
 
             # If the problem is not diagonally-dominant such that `β ≈ 0`,
             # the algorithm is unstable and we store the right-hand side instead.
             definitely_diagonally_dominant = abs(β) > 10 * eps(float_eltype(ϕ))
-            ϕ★ = (fᵏ - aᵏ⁻¹ * ϕ[i, j-1, k]) / β
-            ϕ[i, j, k] = ifelse(definitely_diagonally_dominant, ϕ★, fᵏ)
+            ϕ★ = (fᵏ - off_diagonal_multiply(tridiagonal_direction, aᵏ⁻¹, ϕ⁻)) / β
+            ϕ⁻ = convert(Φ, ifelse(definitely_diagonally_dominant, ϕ★, fᵏ))
+            ϕ[i, j, k] = ϕ⁻
         end
 
-        for j = Ny-1:-1:1
-            ϕ[i, j, k] -= t[i, j+1, k] * ϕ[i, j+1, k]
-        end
-    end
-end
-
-@kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction::ZDirection)
-    Nz = size(grid, 3)
-    i, j = @index(Global, NTuple)
-    solve_batched_tridiagonal_system_z!(i, j, Nz, ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction)
-end
-
-@inline function solve_batched_tridiagonal_system_z!(i, j, Nz, ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction)
-    @inbounds begin
-        β  = get_coefficient(i, j, 1, grid, b, p, tridiagonal_direction, args...)
-        f₁ = get_coefficient(i, j, 1, grid, f, p, tridiagonal_direction, args...)
-        ϕ[i, j, 1] = f₁ / β
-
-        for k = 2:Nz
-            cᵏ⁻¹ = get_coefficient(i, j, k-1, grid, c, p, tridiagonal_direction, args...)
-            bᵏ   = get_coefficient(i, j, k,   grid, b, p, tridiagonal_direction, args...)
-            aᵏ⁻¹ = get_coefficient(i, j, k-1, grid, a, p, tridiagonal_direction, args...)
-
-            t[i, j, k] = cᵏ⁻¹ / β
-            β = bᵏ - masked_multiply(aᵏ⁻¹, t[i, j, k])
-            fᵏ = get_coefficient(i, j, k, grid, f, p, tridiagonal_direction, args...)
-
-            # If the problem is not diagonally-dominant such that `β ≈ 0`,
-            # the algorithm is unstable and we store the right-hand side instead.
-            definitely_diagonally_dominant = abs(β) > 10 * eps(float_eltype(ϕ))
-            ϕ★ = (fᵏ - masked_multiply(aᵏ⁻¹, ϕ[i, j, k-1])) / β
-            ϕ[i, j, k] = ifelse(definitely_diagonally_dominant, ϕ★, fᵏ)
-        end
-
-        for k = Nz-1:-1:1
-            ϕ[i, j, k] -= masked_multiply(t[i, j, k+1], ϕ[i, j, k+1])
+        ϕ⁺ = ϕ⁻
+        for n = N-1:-1:1
+            i,  j,  k  = column_index(n,   m₁, m₂, tridiagonal_direction)
+            i⁺, j⁺, k⁺ = column_index(n+1, m₁, m₂, tridiagonal_direction)
+            ϕ⁺ = convert(Φ, ϕ[i, j, k] - off_diagonal_multiply(tridiagonal_direction, t[i⁺, j⁺, k⁺], ϕ⁺))
+            ϕ[i, j, k] = ϕ⁺
         end
     end
 end

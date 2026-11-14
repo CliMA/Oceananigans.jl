@@ -27,7 +27,7 @@ export offset_data, new_data
 export on_architecture
 
 using Adapt: Adapt
-using DocStringExtensions: FIELDS, TYPEDSIGNATURES
+using DocStringExtensions: FIELDS
 using GPUArraysCore: @allowscalar
 using OffsetArrays: OffsetArrays
 using Printf: @sprintf
@@ -36,7 +36,8 @@ using BFloat16s: BFloat16
 using Oceananigans: Oceananigans
 using Oceananigans.Architectures: Architectures, AbstractSerialArchitecture, CPU,
                                   architecture, on_architecture
-using Oceananigans.Utils: Utils, KernelParameters, StaticStridesOffsetArray, worksize, unparameterized_type
+using Oceananigans.Utils: Utils, KernelParameters, StaticStridesOffsetArray, worksize,
+                          unparameterized_type, SIGNATURES, TYPEDSIGNATURES
 
 #####
 ##### Abstract types

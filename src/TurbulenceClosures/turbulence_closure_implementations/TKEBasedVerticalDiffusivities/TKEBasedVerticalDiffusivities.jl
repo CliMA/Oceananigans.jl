@@ -4,7 +4,6 @@ export CATKEVerticalDiffusivity,
        TKEDissipationVerticalDiffusivity
 
 using Adapt: Adapt, adapt
-using DocStringExtensions: TYPEDSIGNATURES
 using GPUArraysCore: @allowscalar
 using KernelAbstractions: @index, @kernel
 
@@ -24,7 +23,7 @@ using Oceananigans.TimeSteppers: TimeSteppers, time_discretization
 using Oceananigans.TurbulenceClosures: TurbulenceClosures, AbstractScalarDiffusivity, VerticalFormulation,
                                        VerticallyImplicitTimeDiscretization, buoyancy_force, buoyancy_tracers,
                                        dissipation, getclosure, shear_production, with_penetrative_radiation
-using Oceananigans.Utils: Utils, f32_safe_cbrt, launch!, named_tuple, prettysummary
+using Oceananigans.Utils: Utils, f32_safe_cbrt, launch!, named_tuple, prettysummary, SIGNATURES, TYPEDSIGNATURES
 
 const c = Center()
 const f = Face()

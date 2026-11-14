@@ -1,5 +1,5 @@
-using Oceananigans.Utils: instantiate
 using Oceananigans.Grids: Face, Center
+using Oceananigans.Utils: instantiate
 
 # Utilities for inferring the interpolation function needed to
 # interpolate a field from one location to the next.
