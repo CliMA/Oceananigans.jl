@@ -1,6 +1,6 @@
 using Oceananigans.Advection: EnergyConserving, EnstrophyConserving
 using Oceananigans.Grids: peripheral_node
-using Oceananigans.ImmersedBoundaries: immersed_peripheral_node, IBG
+using Oceananigans.ImmersedBoundaries: immersed_peripheral_node, IBG, PCBIBG
 
 # Typically zero!
 @inline z_f_cross_U(i, j, k, grid, ::AbstractRotation, U) = zero(grid)
@@ -91,8 +91,18 @@ const ENC = AbstractRotation{<:EnergyConserving}
 @inline f_ℑx_Ay_vᶠᶠᶜ(i, j, k, grid, coriolis::AbstractRotation, v) = fᶠᶠᵃ(i, j, k, grid, coriolis) * ℑxᶠᵃᵃ(i, j, k, grid, masked_Ay_qᶜᶠᶜ, v)
 @inline f_ℑy_Ax_uᶠᶠᶜ(i, j, k, grid, coriolis::AbstractRotation, u) = fᶠᶠᵃ(i, j, k, grid, coriolis) * ℑyᵃᶠᵃ(i, j, k, grid, masked_Ax_qᶠᶜᶜ, u)
 
-@inline x_f_cross_U(i, j, k, grid, coriolis::ENC, U) = @inbounds - ℑyᵃᶜᵃ(i, j, k, grid, f_ℑx_Ay_vᶠᶠᶜ, coriolis, U[2]) * Ay⁻¹ᶠᶜᶜ(i, j, k, grid)
-@inline y_f_cross_U(i, j, k, grid, coriolis::ENC, U) = @inbounds + ℑxᶜᵃᵃ(i, j, k, grid, f_ℑy_Ax_uᶠᶠᶜ, coriolis, U[1]) * Ax⁻¹ᶜᶠᶜ(i, j, k, grid)
+@inline x_f_cross_U(i, j, k, grid, coriolis::ENC, U) = @inbounds - energy_conserving_f_flux_xᶠᶜᶜ(i, j, k, grid, coriolis, U[2])
+@inline y_f_cross_U(i, j, k, grid, coriolis::ENC, U) = @inbounds + energy_conserving_f_flux_yᶜᶠᶜ(i, j, k, grid, coriolis, U[1])
+
+@inline energy_conserving_f_flux_xᶠᶜᶜ(i, j, k, grid, coriolis, v) = ℑyᵃᶜᵃ(i, j, k, grid, f_ℑx_Ay_vᶠᶠᶜ, coriolis, v) * Ay⁻¹ᶠᶜᶜ(i, j, k, grid)
+@inline energy_conserving_f_flux_yᶜᶠᶜ(i, j, k, grid, coriolis, u) = ℑxᶜᵃᵃ(i, j, k, grid, f_ℑy_Ax_uᶠᶠᶜ, coriolis, u) * Ax⁻¹ᶜᶠᶜ(i, j, k, grid)
+
+# With partial cells Δz varies horizontally, and dividing by the thickness-weighted face area makes the
+# Coriolis term do net work. Instead, use the energy-conserving flux of the transports with q = f / h, as the
+# VectorInvariant vorticity term does with q = ζ / h. With uniform Δz the two forms are identical.
+# We dispatch on the grid here, and not in x_f_cross_U, to avoid ambiguities with the NonhydrostaticSphericalCoriolis methods.
+@inline energy_conserving_f_flux_xᶠᶜᶜ(i, j, k, grid::PCBIBG, coriolis, v) = vorticity_flux_xᶠᶜᶜ(i, j, k, grid, v, fᶠᶠᵃ, coriolis)
+@inline energy_conserving_f_flux_yᶜᶠᶜ(i, j, k, grid::PCBIBG, coriolis, u) = vorticity_flux_yᶜᶠᶜ(i, j, k, grid, u, fᶠᶠᵃ, coriolis)
 
 #####
 ##### Active-weighted schemes (Jamart & Ozer, 1986)

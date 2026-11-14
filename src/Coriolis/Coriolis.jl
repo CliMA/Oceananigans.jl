@@ -16,7 +16,8 @@ using Oceananigans.Operators: ℑxᶜᵃᵃ, ℑxᶠᵃᵃ,
                               ℑzᵃᵃᶜ, ℑzᵃᵃᶠ,
                               ℑxyᶜᶠᵃ, ℑxyᶠᶜᵃ, ℑxzᶜᵃᶠ,
                               Ay⁻¹ᶠᶜᶜ, Ax⁻¹ᶜᶠᶜ,
-                              Ax_qᶠᶜᶜ, Ay_qᶜᶠᶜ
+                              Ax_qᶠᶜᶜ, Ay_qᶜᶠᶜ,
+                              vorticity_flux_xᶠᶜᶜ, vorticity_flux_yᶜᶠᶜ
 using Oceananigans.Utils: SIGNATURES
 
 """
