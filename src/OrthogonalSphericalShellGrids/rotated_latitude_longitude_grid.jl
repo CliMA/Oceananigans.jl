@@ -139,7 +139,7 @@ function rotate_coordinates(λ′, φ′, λ₀, φ₀)
     FT = typeof(float(λ′))
     λ′, φ′, λ₀, φ₀ = map(x -> convert(FT, x), (λ′, φ′, λ₀, φ₀))
     dλ = deg2rad(λ₀)
-    dφ = convert(FT, π) / 2 - deg2rad(φ₀)
+    dφ = deg2rad(90 - φ₀)
     X′ = SVector(lat_lon_to_cartesian(φ′, λ′; check_latitude_bounds = false)...)
     X = z_rotation_matrix(dλ) * y_rotation_matrix(dφ) * X′
     φ, λ = cartesian_to_lat_lon(X)
