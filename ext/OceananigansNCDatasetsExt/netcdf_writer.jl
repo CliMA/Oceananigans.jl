@@ -70,7 +70,9 @@ function CommonDataModel.defVar(ds::AbstractDataset, field_name, fd::ConstantFie
     return defVar(ds, field_name, eltype(array_type)(fd[1, 1, 1]), (); attrib)
 end
 
-CommonDataModel.defVar(ds::AbstractDataset, field_name::Union{AbstractString, Symbol}, data::Array{Bool}, dim_names; kwargs...) = defVar(ds, field_name, Int8.(data), dim_names; kwargs...)
+CommonDataModel.defVar(ds::AbstractDataset, field_name::Union{AbstractString, Symbol},
+                       data::Array{Bool}, dim_names; kwargs...) =
+    defVar(ds, field_name, Int8.(data), dim_names; kwargs...)
 
 Base.@nospecializeinfer function add_location_attribute!(attrib, @nospecialize(fd::AbstractField))
     loc = location(fd) |> convert_for_netcdf
