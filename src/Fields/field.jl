@@ -2,8 +2,8 @@ using Oceananigans: prognostic_state, restore_prognostic_state!
 using Oceananigans.Architectures: CPU, convert_to_device, on_architecture
 using Oceananigans.BoundaryConditions: AbstractBoundaryConditionClassification, BoundaryCondition, LeftBoundary, MCBC,
                                        NFBC, RightBoundary, Zipper, construct_boundary_conditions_kernels,
-                                       halo_fill_args, validate_boundary_condition_architecture,
-                                       validate_boundary_condition_topology
+                                       halo_fill_args, update_boundary_time_series!,
+                                       validate_boundary_condition_architecture, validate_boundary_condition_topology
 using Oceananigans.Grids: default_indices, halo_size, index_range_contains, interior_parent_indices, offset_data,
                           parent_index_range, validate_indices
 using Oceananigans.Utils: @apply_regionally, getregion
@@ -1022,6 +1022,8 @@ Statistics.mean!(r::ReducedAbstractField, a::AbstractArray; kwargs...) = Statist
 #####
 
 function BoundaryConditions.fill_halo_regions!(field::Field, positional_args...; kwargs...)
+
+    update_boundary_time_series!(field.boundary_conditions, positional_args...)
 
     arch = architecture(field.grid)
     args = (field.data,
