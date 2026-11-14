@@ -3,6 +3,23 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 using Oceananigans.Operators: Δxᶠᵃᵃ, Δxᶜᵃᵃ, Δxᶠᶠᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶜᶜᵃ
 using Oceananigans.Operators: Δyᵃᶠᵃ, Δyᵃᶜᵃ, Δyᶠᶠᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶜᶜᵃ
 using Oceananigans.BoundaryConditions: UPivot, TPivot, FPivot, regularize_field_boundary_conditions
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
+using Oceananigans.Operators: ℑxTᶠᵃᵃ, ℑxTᶜᵃᵃ, ℑyTᵃᶠᵃ, ℑyTᵃᶜᵃ
+
+# Fill a field's interior with random data and its halos with `NaN`, so that any operator
+# reading a halo (rather than wrapping or clamping its index) fails an `≈` comparison.
+function randomize_interior_and_poison_halos!(field)
+    set!(field, rand(size(field)...))
+    data = Array(interior(field))
+    parent(field) .= NaN
+    interior(field) .= data
+    return field
+end
+
+# A function argument that distinguishes the grid it is evaluated on: topology-aware
+# operators on an `ImmersedBoundaryGrid` must pass the immersed grid itself to `f`.
+grid_marked_value(i, j, k, grid::ImmersedBoundaryGrid, c) = @inbounds 10 * c[i, j, k]
+grid_marked_value(i, j, k, grid, c) = @inbounds c[i, j, k]
 
 
 function test_three_dimensional_differences(T=Float64)
@@ -329,6 +346,98 @@ end
             @test all(δxTᶠᵃᵃ(i, j, 1, grid, c) ≈ δxᶠᵃᵃ(i, j, 1, grid, c) for i in 1:Nx, j in 1:Ny)
             @test all(δyTᵃᶜᵃ(i, j, 1, grid, V) ≈ δyᵃᶜᵃ(i, j, 1, grid, V) for i in 1:Nx, j in 1:northernmost_row)
             @test all(δyTᵃᶠᵃ(i, j, 1, grid, c) ≈ δyᵃᶠᵃ(i, j, 1, grid, c) for i in 1:Nx, j in 1:northernmost_row)
+
+            @test all(ℑxTᶜᵃᵃ(i, j, 1, grid, U) ≈ ℑxᶜᵃᵃ(i, j, 1, grid, U) for i in 1:Nx, j in 1:Ny)
+            @test all(ℑxTᶠᵃᵃ(i, j, 1, grid, c) ≈ ℑxᶠᵃᵃ(i, j, 1, grid, c) for i in 1:Nx, j in 1:Ny)
+            @test all(ℑyTᵃᶜᵃ(i, j, 1, grid, V) ≈ ℑyᵃᶜᵃ(i, j, 1, grid, V) for i in 1:Nx, j in 1:northernmost_row)
+            @test all(ℑyTᵃᶠᵃ(i, j, 1, grid, c) ≈ ℑyᵃᶠᵃ(i, j, 1, grid, c) for i in 1:Nx, j in 1:northernmost_row)
+        end
+    end
+
+    @testset "Topology-aware operators on immersed boundary grids" begin
+        underlying = RectilinearGrid(CPU(), size=(8, 6, 4), x=(0, 1), y=(0, 1), z=(-1, 0),
+                                     topology=(Periodic, Periodic, Bounded))
+        grid = ImmersedBoundaryGrid(underlying, GridFittedBottom((x, y) -> -0.5 - 0.3 * sinpi(2x) * cospi(2y)))
+        Nx, Ny, Nz = size(grid)
+
+        c = randomize_interior_and_poison_halos!(CenterField(grid))
+        U = randomize_interior_and_poison_halos!(XFaceField(grid))
+        V = randomize_interior_and_poison_halos!(YFaceField(grid))
+
+        interior_indices = Iterators.product(1:Nx, 1:Ny, 1:Nz)
+
+        # The immersed grid dispatches to the periodic methods, which wrap around at the edges
+        # rather than reading the (poisoned) halos, and agree with the underlying grid.
+        @test all(δxTᶠᵃᵃ(i, j, k, grid, c) ≈ c[i, j, k] - c[mod1(i - 1, Nx), j, k] for (i, j, k) in interior_indices)
+        @test all(δyTᵃᶠᵃ(i, j, k, grid, c) ≈ c[i, j, k] - c[i, mod1(j - 1, Ny), k] for (i, j, k) in interior_indices)
+        @test all(δxTᶜᵃᵃ(i, j, k, grid, U) ≈ U[mod1(i + 1, Nx), j, k] - U[i, j, k] for (i, j, k) in interior_indices)
+        @test all(δyTᵃᶜᵃ(i, j, k, grid, V) ≈ V[i, mod1(j + 1, Ny), k] - V[i, j, k] for (i, j, k) in interior_indices)
+
+        @test all(δxTᶠᵃᵃ(i, j, k, grid, c) == δxTᶠᵃᵃ(i, j, k, underlying, c) for (i, j, k) in interior_indices)
+        @test all(δyTᵃᶠᵃ(i, j, k, grid, c) == δyTᵃᶠᵃ(i, j, k, underlying, c) for (i, j, k) in interior_indices)
+        @test all(δxTᶜᵃᵃ(i, j, k, grid, U) == δxTᶜᵃᵃ(i, j, k, underlying, U) for (i, j, k) in interior_indices)
+        @test all(δyTᵃᶜᵃ(i, j, k, grid, V) == δyTᵃᶜᵃ(i, j, k, underlying, V) for (i, j, k) in interior_indices)
+
+        @test all(ℑxTᶠᵃᵃ(i, j, k, grid, c) ≈ (c[i, j, k] + c[mod1(i - 1, Nx), j, k]) / 2 for (i, j, k) in interior_indices)
+        @test all(ℑyTᵃᶠᵃ(i, j, k, grid, c) ≈ (c[i, j, k] + c[i, mod1(j - 1, Ny), k]) / 2 for (i, j, k) in interior_indices)
+        @test all(ℑxTᶜᵃᵃ(i, j, k, grid, U) ≈ (U[mod1(i + 1, Nx), j, k] + U[i, j, k]) / 2 for (i, j, k) in interior_indices)
+        @test all(ℑyTᵃᶜᵃ(i, j, k, grid, V) ≈ (V[i, mod1(j + 1, Ny), k] + V[i, j, k]) / 2 for (i, j, k) in interior_indices)
+
+        # A function argument is evaluated on the immersed grid itself, not on its underlying grid
+        for (i, j, k) in ((1, 1, 1), (Nx, Ny, Nz), (3, 4, 2))
+            @test δxTᶠᵃᵃ(i, j, k, grid, grid_marked_value, c) ≈ 10 * δxTᶠᵃᵃ(i, j, k, grid, c)
+            @test δyTᵃᶠᵃ(i, j, k, grid, grid_marked_value, c) ≈ 10 * δyTᵃᶠᵃ(i, j, k, grid, c)
+            @test δxTᶜᵃᵃ(i, j, k, grid, grid_marked_value, U) ≈ 10 * δxTᶜᵃᵃ(i, j, k, grid, U)
+            @test δyTᵃᶜᵃ(i, j, k, grid, grid_marked_value, V) ≈ 10 * δyTᵃᶜᵃ(i, j, k, grid, V)
+            @test ℑxTᶠᵃᵃ(i, j, k, grid, grid_marked_value, c) ≈ 10 * ℑxTᶠᵃᵃ(i, j, k, grid, c)
+            @test ℑyTᵃᶠᵃ(i, j, k, grid, grid_marked_value, c) ≈ 10 * ℑyTᵃᶠᵃ(i, j, k, grid, c)
+            @test ℑxTᶜᵃᵃ(i, j, k, grid, grid_marked_value, U) ≈ 10 * ℑxTᶜᵃᵃ(i, j, k, grid, U)
+            @test ℑyTᵃᶜᵃ(i, j, k, grid, grid_marked_value, V) ≈ 10 * ℑyTᵃᶜᵃ(i, j, k, grid, V)
+            @test ∂xTᶠᶜᶠ(i, j, k, grid, grid_marked_value, c) ≈ 10 * ∂xTᶠᶜᶠ(i, j, k, grid, c)
+            @test ∂yTᶜᶠᶠ(i, j, k, grid, grid_marked_value, c) ≈ 10 * ∂yTᶜᶠᶠ(i, j, k, grid, c)
+            @test δxTᶠᵃᵃ(i, j, k, underlying, grid_marked_value, c) ≈ δxTᶠᵃᵃ(i, j, k, underlying, c)
+        end
+    end
+
+    @testset "Topology-aware interpolations" begin
+        for topology in ((Periodic, Periodic, Bounded), (Bounded, Bounded, Bounded))
+            grid = RectilinearGrid(CPU(), size=(8, 6, 2), x=(0, 1), y=(0, 1), z=(-1, 0); topology)
+            Nx, Ny, Nz = size(grid)
+            TX, TY, _ = topology
+
+            c = randomize_interior_and_poison_halos!(CenterField(grid))
+            U = randomize_interior_and_poison_halos!(XFaceField(grid))
+            V = randomize_interior_and_poison_halos!(YFaceField(grid))
+
+            # In the interior, the topology-aware interpolations equal the plain ones
+            @test all(ℑxTᶠᵃᵃ(i, j, k, grid, c) ≈ ℑxᶠᵃᵃ(i, j, k, grid, c) for i in 2:Nx, j in 1:Ny, k in 1:Nz)
+            @test all(ℑyTᵃᶠᵃ(i, j, k, grid, c) ≈ ℑyᵃᶠᵃ(i, j, k, grid, c) for i in 1:Nx, j in 2:Ny, k in 1:Nz)
+            @test all(ℑxTᶜᵃᵃ(i, j, k, grid, U) ≈ ℑxᶜᵃᵃ(i, j, k, grid, U) for i in 1:Nx-1, j in 1:Ny, k in 1:Nz)
+            @test all(ℑyTᵃᶜᵃ(i, j, k, grid, V) ≈ ℑyᵃᶜᵃ(i, j, k, grid, V) for i in 1:Nx, j in 1:Ny-1, k in 1:Nz)
+
+            if TX === Periodic
+                # Wrap around at both ends without reading the poisoned halos
+                @test all(ℑxTᶠᵃᵃ(1, j, k, grid, c) ≈ (c[1, j, k] + c[Nx, j, k]) / 2 for j in 1:Ny, k in 1:Nz)
+                @test all(ℑxTᶜᵃᵃ(Nx, j, k, grid, U) ≈ (U[Nx, j, k] + U[1, j, k]) / 2 for j in 1:Ny, k in 1:Nz)
+                @test all(ℑyTᵃᶠᵃ(i, 1, k, grid, c) ≈ (c[i, 1, k] + c[i, Ny, k]) / 2 for i in 1:Nx, k in 1:Nz)
+                @test all(ℑyTᵃᶜᵃ(i, Ny, k, grid, V) ≈ (V[i, Ny, k] + V[i, 1, k]) / 2 for i in 1:Nx, k in 1:Nz)
+            else
+                # Zero-gradient at the closed left wall, consistent with `δxTᶠᵃᵃ` vanishing there
+                @test all(ℑxTᶠᵃᵃ(1, j, k, grid, c) == c[1, j, k] for j in 1:Ny, k in 1:Nz)
+                @test all(ℑyTᵃᶠᵃ(i, 1, k, grid, c) == c[i, 1, k] for i in 1:Nx, k in 1:Nz)
+                @test all(δxTᶠᵃᵃ(1, j, k, grid, c) == 0 for j in 1:Ny, k in 1:Nz)
+                @test all(δyTᵃᶠᵃ(i, 1, k, grid, c) == 0 for i in 1:Nx, k in 1:Nz)
+
+                # The right-wall face is interior data, so the center interpolation reads it as usual
+                @test all(ℑxTᶜᵃᵃ(Nx, j, k, grid, U) ≈ (U[Nx, j, k] + U[Nx+1, j, k]) / 2 for j in 1:Ny, k in 1:Nz)
+                @test all(ℑyTᵃᶜᵃ(i, Ny, k, grid, V) ≈ (V[i, Ny, k] + V[i, Ny+1, k]) / 2 for i in 1:Nx, k in 1:Nz)
+            end
+
+            # Function arguments follow the same rules as arrays
+            @test all(ℑxTᶠᵃᵃ(i, j, k, grid, grid_marked_value, c) ≈ ℑxTᶠᵃᵃ(i, j, k, grid, c) for i in 1:Nx, j in 1:Ny, k in 1:Nz)
+            @test all(ℑyTᵃᶠᵃ(i, j, k, grid, grid_marked_value, c) ≈ ℑyTᵃᶠᵃ(i, j, k, grid, c) for i in 1:Nx, j in 1:Ny, k in 1:Nz)
+            @test all(ℑxTᶜᵃᵃ(i, j, k, grid, grid_marked_value, U) ≈ ℑxTᶜᵃᵃ(i, j, k, grid, U) for i in 1:Nx, j in 1:Ny, k in 1:Nz)
+            @test all(ℑyTᵃᶜᵃ(i, j, k, grid, grid_marked_value, V) ≈ ℑyTᵃᶜᵃ(i, j, k, grid, V) for i in 1:Nx, j in 1:Ny, k in 1:Nz)
         end
     end
 end
