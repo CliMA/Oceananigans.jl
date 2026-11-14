@@ -1,3 +1,4 @@
+using Oceananigans.Advection: update_bounds_preserving_limiters!
 using Oceananigans.ImmersedBoundaries: MutableGridOfSomeKind, peripheral_node
 using Oceananigans.TimeSteppers: cache_current_fields!, implicit_step!, rk_substep!
 
@@ -9,8 +10,14 @@ Perform a single split Runge-Kutta substep for `HydrostaticFreeSurfaceModel`.
 Dispatches to the appropriate method based on the free surface type (explicit or implicit).
 The substep advances the state from the cached initial fields `Ψ⁻` using: `U = Ψ⁻ + Δτ * Gⁿ`.
 """
-TimeSteppers.rk_substep!(model::HydrostaticFreeSurfaceModel, Δτ, callbacks) =
-    rk_substep!(model, model.free_surface, model.grid, Δτ, callbacks)
+function TimeSteppers.rk_substep!(model::HydrostaticFreeSurfaceModel, Δτ, callbacks)
+    @apply_regionally begin
+        compute_momentum_tendencies!(model, callbacks)
+        update_bounds_preserving_limiters!(model.advection, model)
+    end
+
+    return rk_substep!(model, model.free_surface, model.grid, Δτ, callbacks)
+end
 
 """
 $(TYPEDSIGNATURES)
