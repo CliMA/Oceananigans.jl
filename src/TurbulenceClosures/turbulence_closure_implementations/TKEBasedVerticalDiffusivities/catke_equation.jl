@@ -19,31 +19,16 @@ end
 ##### Terms in the turbulent kinetic energy equation, all at cell centers
 #####
 
-#=
-@inline buoyancy_flux(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy, diffusivities) =
-    explicit_buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities)
-
-@inline function buoyancy_flux(i, j, k, grid, closure::FlavorOfCATKE{<:VITD}, velocities, tracers, buoyancy, diffusivities)
-    wb = explicit_buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities)
-
-    # "Patankar trick" for buoyancy production (cf Patankar 1980 or Burchard et al. 2003)
-    # If buoyancy flux is a _sink_ of TKE, we treat it implicitly, and return zero here for
-    # the explicit buoyancy flux.
-    return max(zero(grid), wb)
-end
-=#
-
-@inline dissipation(i, j, k, grid, closure::FlavorOfCATKE{<:VITD}, args...) = zero(grid)
+@inline TurbulenceClosures.dissipation(i, j, k, grid, closure::FlavorOfCATKE{<:VITD}, args...) = zero(grid)
 
 @inline function dissipation_length_scaleᶜᶜᶜ(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers,
-                                             buoyancy, surface_buoyancy_flux)
+                                             buoyancy, closure_fields)
 
     # Convective dissipation length
     Cᶜ = closure.turbulent_kinetic_energy_equation.CᶜD
     Cᵉ = closure.turbulent_kinetic_energy_equation.CᵉD
     Cˢᵖ = closure.mixing_length.Cˢᵖ
-    Jᵇ = surface_buoyancy_flux
-    ℓʰ = convective_length_scaleᶜᶜᶜ(i, j, k, grid, closure, Cᶜ, Cᵉ, Cˢᵖ, velocities, tracers, buoyancy, Jᵇ)
+    ℓʰ = convective_length_scaleᶜᶜᶜ(i, j, k, grid, closure, Cᶜ, Cᵉ, Cˢᵖ, velocities, tracers, buoyancy, closure_fields)
 
     # "Stable" dissipation length
     Cˡᵒ = closure.turbulent_kinetic_energy_equation.CˡᵒD
@@ -63,9 +48,9 @@ end
 end
 
 @inline function dissipation_rate(i, j, k, grid, closure::FlavorOfCATKE,
-                                  velocities, tracers, buoyancy, diffusivities)
+                                  velocities, tracers, buoyancy, closure_fields)
 
-    ℓᴰ = dissipation_length_scaleᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities.Jᵇ)
+    ℓᴰ = dissipation_length_scaleᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, closure_fields)
     e = tracers.e
     FT = eltype(grid)
     eᵢ = @inbounds e[i, j, k]
@@ -85,7 +70,7 @@ end
 end
 
 # Fallbacks for explicit time discretization
-@inline function dissipation(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, args...)
+@inline function TurbulenceClosures.dissipation(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, args...)
     eᵢ = @inbounds tracers.e[i, j, k]
     ω = dissipation_rate(i, j, k, grid, closure, velocities, tracers, args...)
     return ω * eᵢ
@@ -110,7 +95,7 @@ end
                                tke::CATKEEquation, closure::CATKEVD,
                                buoyancy, top_tracer_bcs, top_velocity_bcs)
 
-    wΔ³ = top_convective_turbulent_velocity_cubed(i, j, grid, clock, fields, buoyancy, top_tracer_bcs)
+    wΔ³ = top_convective_turbulent_velocity_cubed(i, j, grid, clock, fields, buoyancy, top_tracer_bcs, closure.penetrative_radiation)
     u★ = friction_velocity(i, j, grid, clock, fields, top_velocity_bcs)
 
     Cᵂu★ = tke.Cᵂu★
@@ -124,11 +109,11 @@ end
 #####
 
 """ Add TKE boundary conditions specific to `CATKEVerticalDiffusivity`. """
-function add_closure_specific_boundary_conditions(closure::FlavorOfCATKE,
-                                                  user_bcs,
-                                                  grid,
-                                                  tracer_names,
-                                                  buoyancy)
+function TurbulenceClosures.add_closure_specific_boundary_conditions(closure::FlavorOfCATKE,
+                                                                     user_bcs,
+                                                                     grid,
+                                                                     tracer_names,
+                                                                     buoyancy)
 
     top_tracer_bcs = top_tracer_boundary_conditions(grid, tracer_names, user_bcs)
     top_velocity_bcs = top_velocity_boundary_conditions(grid, user_bcs)

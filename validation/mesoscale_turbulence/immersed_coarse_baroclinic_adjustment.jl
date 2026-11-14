@@ -92,7 +92,7 @@ function run_simulation(closure, grid)
     simulation.output_writers[:fields] = JLD2Writer(model, merge(model.velocities, model.tracers),
                                                     schedule = TimeInterval(save_fields_interval),
                                                     filename = filename * "_fields_" * suffix,
-                                                    overwrite_existing = true)
+                                                    overwrite_files = true)
 
     @info "Running the simulation..."
 

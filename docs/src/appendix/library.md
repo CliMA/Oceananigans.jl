@@ -16,7 +16,7 @@ Modules = [Oceananigans.AbstractOperations]
 Private = false
 ```
 
-## Advection
+## [Advection](@id lib_advection)
 
 ```@autodocs
 Modules = [Oceananigans.Advection]
@@ -70,10 +70,6 @@ Private = false
 ```@autodocs
 Modules = [Oceananigans.Fields]
 Private = false
-```
-```@docs
-XESMF.Regridder
-OceananigansXESMFExt.regrid!
 ```
 
 ## Forcings
@@ -202,6 +198,13 @@ Private = false
 
 ```@autodocs
 Modules = [OceananigansNCDatasetsExt.OceananigansNCDatasetsExt]
+Private = false
+```
+
+### OceananigansMakieExt
+
+```@autodocs
+Modules = [OceananigansMakieExt.OceananigansMakieExt]
 Private = false
 ```
 

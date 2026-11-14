@@ -101,7 +101,7 @@ function run_simulation(ts, timestepper; χ=nothing, velocities=velocities)
     sim.output_writers[:solution] = JLD2Writer(model, outputs;
                                                filename="one_d_simulation_$(ts).jld2",
                                                schedule=IterationInterval(iteration_interval),
-                                               overwrite_existing=true)
+                                               overwrite_files=true)
 
     run!(sim)
 

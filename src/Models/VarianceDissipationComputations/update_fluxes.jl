@@ -1,17 +1,18 @@
 using Oceananigans: fields
-using Oceananigans.Grids: topology, Flat
+using Oceananigans.Grids: Flat, topology
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel
 
 # Store advective and diffusive fluxes for dissipation computation
 function cache_fluxes!(dissipation, model, tracer_name)
     grid = model.grid
     sz   = size(model.tracers[1].data)
-    of   = model.tracers[1].data.offsets
+    of   = OffsetArrays.offsets(model.tracers[1].data)
 
     params = KernelParameters(sz, of)
 
     Uⁿ   = dissipation.previous_state.Uⁿ
     Uⁿ⁻¹ = dissipation.previous_state.Uⁿ⁻¹
-    U    = model.velocities
+    U    = model isa HydrostaticFreeSurfaceModel ? model.transport_velocities : model.velocities
     timestepper = model.timestepper
     stage = model.clock.stage
 

@@ -1,6 +1,6 @@
 using Oceananigans.Architectures: architecture
+using Oceananigans.DistributedComputations: all_reduce
 using Oceananigans.Utils: prettysummary
-import Oceananigans
 
 mutable struct TimeStepWizard{FT, C, D}
                          cfl :: FT
@@ -15,21 +15,15 @@ end
 
 infinite_diffusion_timescale(args...) = Inf # its not very limiting
 
+Oceananigans.prognostic_state(::TimeStepWizard) = nothing
+
 Base.summary(wizard::TimeStepWizard) = string("TimeStepWizard(",
                                                 "cfl=",           prettysummary(wizard.cfl),
                                               ", max_Δt=",        prettysummary(wizard.max_Δt),
                                               ", min_Δt=",        prettysummary(wizard.min_Δt), ")")
 
 """
-    TimeStepWizard([FT=Float64;]
-                   cfl = 0.2,
-                   diffusive_cfl = Inf,
-                   max_change = 1.1,
-                   min_change = 0.5,
-                   max_Δt = Inf,
-                   min_Δt = 0.0,
-                   cell_advection_timescale = cell_advection_timescale,
-                   cell_diffusion_timescale = infinite_diffusion_timescale)
+$(SIGNATURES)
 
 Callback function that adjusts the simulation time step to meet specified target values
 for advective and diffusive Courant-Friedrichs-Lewy (CFL) numbers (`cfl` and `diffusive_cfl`),
@@ -88,12 +82,10 @@ function TimeStepWizard(FT=Oceananigans.defaults.FloatType;
                                     cell_advection_timescale, cell_diffusion_timescale)
 end
 
-using Oceananigans.DistributedComputations: all_reduce
-
 """
-     new_time_step(old_Δt, wizard, model)
+$(TYPEDSIGNATURES)
 
-Return a new time_step given `model.velocities` and model diffusivites,
+Return a new time step given `model.velocities` and model diffusivities,
 and the parameters of the `TimeStepWizard` `wizard`.
 """
 function new_time_step(old_Δt, wizard, model)
@@ -116,10 +108,10 @@ end
     simulation.Δt = new_time_step(simulation.Δt, wizard, simulation.model)
 
 """
-    conjure_time_step_wizard!(simulation, schedule=IterationInterval(5), wizard_kw...)
+$(SIGNATURES)
 
 Add a `TimeStepWizard` built with `wizard_kw` as a `Callback` to `simulation`,
-called on `schedule` which is `IterationInterval(5)` by default.
+called on `schedule` which is `IterationInterval(10)` by default.
 """
 function conjure_time_step_wizard!(simulation, schedule=IterationInterval(10); wizard_kw...)
     wizard = TimeStepWizard(; wizard_kw...)

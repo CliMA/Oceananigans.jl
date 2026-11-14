@@ -132,7 +132,7 @@ output_file = "seasonal_baroclinic_channel.jld2"
 simulation.output_writers[:fields] = JLD2Writer(model, merge(model.velocities, model.tracers);
                                                 schedule = TimeInterval(1day),
                                                 filename = output_file,
-                                                overwrite_existing = true)
+                                                overwrite_files = true)
 
 run!(simulation)
 

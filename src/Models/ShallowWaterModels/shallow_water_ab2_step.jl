@@ -1,10 +1,10 @@
+using Oceananigans: Oceananigans
 using Oceananigans.Architectures: architecture
+using Oceananigans.BoundaryConditions: step_boundary_conditions!
 using Oceananigans.TimeSteppers: _ab2_step_field!
 
-import Oceananigans.TimeSteppers: ab2_step!
-
 """
-    ab2_step!(model::ShallowWaterModel, Δt, callbacks)
+$(TYPEDSIGNATURES)
 
 Perform a single AB2 step for `ShallowWaterModel`.
 
@@ -13,7 +13,7 @@ Advances the solution fields (`uh`, `vh`, `h`) and any tracers using the AB2 sch
 
 where `Gⁿ` and `G⁻` are the current and previous tendencies.
 """
-function ab2_step!(model::ShallowWaterModel, Δt, callbacks)
+function TimeSteppers.ab2_step!(model::ShallowWaterModel, Δt, callbacks)
 
     compute_tendencies!(model, callbacks)
     grid = model.grid
@@ -28,6 +28,8 @@ function ab2_step!(model::ShallowWaterModel, Δt, callbacks)
                 model.timestepper.Gⁿ[key],
                 model.timestepper.G⁻[key])
     end
+
+    step_boundary_conditions!(fields, model.clock, Oceananigans.fields(model), Δt)
 
     return nothing
 end

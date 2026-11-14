@@ -6,7 +6,7 @@ using Oceananigans.Units: day, hour, minute
 maybe_int(t) = isinteger(t) ? Int(t) : t
 
 """
-    prettytime(t, longform=true)
+$(SIGNATURES)
 
 Convert a floating point value `t` representing an amount of time in
 SI units of seconds to a human-friendly string with three decimal places.
@@ -64,4 +64,5 @@ function prettytimeunits(t, longform=true)
 end
 
 prettytime(dt::AbstractTime) = "$dt"
+prettytime(t::Array) = map(prettytime, t)
 prettytime(dt::AbstractTime, ::Bool) = prettytime(dt)

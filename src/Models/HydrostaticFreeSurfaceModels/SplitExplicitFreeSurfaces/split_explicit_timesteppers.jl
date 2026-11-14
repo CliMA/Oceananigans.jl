@@ -1,6 +1,6 @@
 using Adapt: Adapt
 
-import Oceananigans: prognostic_state, restore_prognostic_state!
+using Oceananigans: prognostic_state, restore_prognostic_state!
 
 """
     struct ForwardBackwardScheme
@@ -11,8 +11,8 @@ The equations are evolved as follows:
 ```math
 \\begin{gather}
 U^{m+1} = U^m - Δτ (∂_x η^m - G^U), \\\\
-V^{m+1} = V^m - Δτ (∂_y η^m - G^V).
-η^{m+1} = η^m - Δτ (∂_x U^{m+1} + ∂_y V^{m+1}), \\\\
+V^{m+1} = V^m - Δτ (∂_y η^m - G^V), \\\\
+η^{m+1} = η^m - Δτ (∂_x U^{m+1} + ∂_y V^{m+1}).
 \\end{gather}
 ```
 """
@@ -43,5 +43,5 @@ initialize_free_surface_timestepper!(::ForwardBackwardScheme, args...) = nothing
 ##### Checkpointing
 #####
 
-prognostic_state(::ForwardBackwardScheme) = nothing
-restore_prognostic_state!(restored::ForwardBackwardScheme, ::Nothing) = restored
+Oceananigans.prognostic_state(::ForwardBackwardScheme) = nothing
+Oceananigans.restore_prognostic_state!(restored::ForwardBackwardScheme, ::Nothing) = restored

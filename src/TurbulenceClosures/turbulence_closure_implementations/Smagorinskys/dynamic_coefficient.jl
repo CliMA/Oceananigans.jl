@@ -1,10 +1,8 @@
+using Oceananigans: prognostic_state, restore_prognostic_state!
 using Oceananigans.Architectures: architecture
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields: CenterField, Field, compute!, interpolate, xnode, ynode, znode
-using Oceananigans.Utils: time_difference_seconds
 using Statistics: mean
-
-import Oceananigans: prognostic_state, restore_prognostic_state!
 
 mutable struct DynamicCoefficient{A, FT, S}
     averaging :: A
@@ -22,11 +20,7 @@ const DynamicSmagorinsky = Union{
 }
 
 """
-    DynamicSmagorinsky([time_discretization=ExplicitTimeDiscretization(), FT=Float64;]
-                       averaging = LagrangianAveraging(),
-                       Pr = 1,
-                       schedule = IterationInterval(1),
-                       minimum_numerator = 1e-32)
+$(SIGNATURES)
 
 Returns a `Smagorinsky`-type closure with dynamic computation of the Smagorinsky coefficient
 according to the scale invariant procedure described by [Bou-Zeid et al. (2005)](@cite BouZeid05).
@@ -134,7 +128,7 @@ tupleit(a::Number) = tuple(a)
 tupleit(a::Tuple) = a
 
 """
-    DynamicCoefficient([FT=Float64;] averaging, schedule=IterationInterval(1), minimum_numerator=1e-32)
+$(SIGNATURES)
 
 When used with `Smagorinsky`, it calculates the Smagorinsky coefficient dynamically from the flow
 according to the scale invariant procedure described by [Bou-Zeid et al. (2005)](@cite BouZeid05).
@@ -204,6 +198,9 @@ See also [`DynamicSmagorinsky`](@ref).
 References
 ==========
 
+Bou-Zeid, Elie, Meneveau, Charles, and Parlange, Marc. (2005) A scale-dependent Lagrangian dynamic model for
+large eddy simulation of complex turbulent flows, Physics of Fluids, **17**, 025105.
+
 Chen, Bicheng, Yang, Di, Meneveau, Charles and Chamecki, Marcelo. (2016) Effects of swell on
 transport and dispersion of oil plumes within the ocean mixed layer, Journal of Geophysical
 Research: Oceans, 121(5), pp.3564-3578.
@@ -258,12 +255,13 @@ end
     return 𝒥ᴸᴹ_ijk / 𝒥ᴹᴹ_ijk * (𝒥ᴹᴹ_ijk > 0)
 end
 
+# Here Σ is the strain-rate magnitude √(2ΣᵢⱼΣᵢⱼ), and Σ̄ is its test-filtered counterpart
 @kernel function _compute_Σ!(Σ, grid, u, v, w)
     i, j, k = @index(Global, NTuple)
 
     @inbounds begin
         Σsq = ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w)
-        Σ[i, j, k] = sqrt(Σsq)
+        Σ[i, j, k] = sqrt(2Σsq)
     end
 end
 
@@ -272,7 +270,7 @@ end
 
     @inbounds begin
         Σ̄sq = Σ̄ᵢⱼΣ̄ᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w)
-        Σ̄[i, j, k] = sqrt(Σ̄sq)
+        Σ̄[i, j, k] = sqrt(2Σ̄sq)
     end
 end
 
@@ -315,10 +313,6 @@ function compute_coefficient_fields!(closure_fields, closure::DirectionallyAvera
     arch = architecture(grid)
     velocities = model.velocities
     cˢ = closure.coefficient
-    clock = model.clock
-
-    # For RK3 only compute coefficients at the final stage.
-    clock.stage == 1 || return nothing
 
     if cˢ.schedule(model)
         Σ = closure_fields.Σ
@@ -378,8 +372,7 @@ const c = Center()
         # Compute time scale
         𝒥ᴸᴹ𝒥ᴹᴹ = 𝒥ᴸᴹ⁻ᵢⱼₖ * 𝒥ᴹᴹ⁻ᵢⱼₖ
 
-        T⁻ = convert(FT, 1.5) * Δᶠ(i, j, k, grid) / ∜(∜(𝒥ᴸᴹ𝒥ᴹᴹ))
-        τ = Δt / T⁻
+        τ = Δt * √(∜(𝒥ᴸᴹ𝒥ᴹᴹ)) * Δᶠ⁻¹(i, j, k, grid) / convert(FT, 1.5)
         ϵ = τ / (1 + τ)
 
         # Compute interpolation
@@ -417,25 +410,52 @@ const c = Center()
     end
 end
 
-function compute_coefficient_fields!(closure_fields, closure::LagrangianAveragedDynamicSmagorinsky, model; parameters)
+function TurbulenceClosures.initialize_closure_fields!(closure_fields, closure::LagrangianAveragedDynamicSmagorinsky, model)
     grid = model.grid
     arch = architecture(grid)
     clock = model.clock
     cˢ = closure.coefficient
-    previous_compute_time = closure_fields.previous_compute_time
     u, v, w = model.velocities
 
-    # For RK3 only compute coefficients at the final stage.
-    clock.stage == 1 || return nothing
+    Σ = closure_fields.Σ
+    Σ̄ = closure_fields.Σ̄
+    launch!(arch, grid, :xyz, _compute_Σ!, Σ, grid, u, v, w)
+    launch!(arch, grid, :xyz, _compute_Σ̄!, Σ̄, grid, u, v, w)
 
-    Δt = time_difference_seconds(clock.time, previous_compute_time[])
+    # Fill Σ, Σ̄ halos because the M tensor computation uses `filter`
+    # which reads from neighboring cells (including halo cells).
+    fill_halo_regions!(Σ; only_local_halos=true)
+    fill_halo_regions!(Σ̄; only_local_halos=true)
 
-    # After restoring from a checkpoint, previous_compute_time matches clock.time
-    # (since both QAB2 and RK3 call update_state! after tick!), so Δt == 0.
-    # Skip the computation in that case — the restored fields are already correct.
-    Δt == 0 && return nothing
+    𝒥ᴸᴹ  = closure_fields.𝒥ᴸᴹ
+    𝒥ᴹᴹ  = closure_fields.𝒥ᴹᴹ
+    𝒥ᴸᴹ_min = cˢ.minimum_numerator
 
-    if cˢ.schedule(model)
+    # Compute instantaneous LM, MM and spatially average for initialization
+    launch!(arch, grid, :xyz, _compute_LM_MM!, 𝒥ᴸᴹ, 𝒥ᴹᴹ, Σ, Σ̄, grid, u, v, w)
+    parent(𝒥ᴸᴹ) .= max(mean(𝒥ᴸᴹ), 𝒥ᴸᴹ_min)
+    parent(𝒥ᴹᴹ) .= mean(𝒥ᴹᴹ)
+
+    # Initialize previous_compute_time to current time
+    closure_fields.previous_compute_time[] = clock.time
+
+    return nothing
+end
+
+function TurbulenceClosures.step_closure_prognostics!(closure_fields, closure::LagrangianAveragedDynamicSmagorinsky, model, Δt)
+    grid = model.grid
+    arch = architecture(grid)
+    clock = model.clock
+    cˢ = closure.coefficient
+    u, v, w = model.velocities
+
+    time_to_compute = isnothing(cˢ.schedule) || (cˢ.schedule(model) && clock.stage == 1)
+
+    if time_to_compute
+        # This runs before `update_state!`, so that velocity halos may still hold
+        # the predictor velocity from before the pressure correction.
+        fill_halo_regions!(model.velocities, clock, Oceananigans.fields(model))
+
         Σ = closure_fields.Σ
         Σ̄ = closure_fields.Σ̄
         launch!(arch, grid, :xyz, _compute_Σ!, Σ, grid, u, v, w)
@@ -455,27 +475,19 @@ function compute_coefficient_fields!(closure_fields, closure::LagrangianAveraged
         𝒥ᴹᴹ  = closure_fields.𝒥ᴹᴹ
         𝒥ᴸᴹ_min = cˢ.minimum_numerator
 
-        if isnan(previous_compute_time[])
-            # Compute instantaneous LM, MM and spatially average for initialization.
-            # Don't commit previous_compute_time at iteration 0 because the model
-            # constructor calls update_state! before set! populates the velocities.
-            # This allows run! → initialize! to re-compute with the actual velocities.
-            launch!(arch, grid, :xyz, _compute_LM_MM!, 𝒥ᴸᴹ, 𝒥ᴹᴹ, Σ, Σ̄, grid, u, v, w)
-            parent(𝒥ᴸᴹ) .= max(mean(𝒥ᴸᴹ), 𝒥ᴸᴹ_min)
-            parent(𝒥ᴹᴹ) .= mean(𝒥ᴹᴹ)
+        # Compute time elapsed since last coefficient computation
+        Δt_lagrangian = clock.time - closure_fields.previous_compute_time[]
+        closure_fields.previous_compute_time[] = clock.time
 
-            if clock.iteration > 0
-                previous_compute_time[] = clock.time
-            end
-        else
-            previous_compute_time[] = clock.time
-            launch!(arch, grid, :xyz,
-                    _lagrangian_average_LM_MM!, 𝒥ᴸᴹ, 𝒥ᴹᴹ, 𝒥ᴸᴹ⁻, 𝒥ᴹᴹ⁻, 𝒥ᴸᴹ_min, Σ, Σ̄, grid, Δt, u, v, w)
-        end
+        launch!(arch, grid, :xyz,
+                _lagrangian_average_LM_MM!, 𝒥ᴸᴹ, 𝒥ᴹᴹ, 𝒥ᴸᴹ⁻, 𝒥ᴹᴹ⁻, 𝒥ᴸᴹ_min, Σ, Σ̄, grid, Δt_lagrangian, u, v, w)
     end
 
     return nothing
 end
+
+# Lagrangian-averaged coefficients are now stepped via step_closure_prognostics!
+compute_coefficient_fields!(closure_fields, closure::LagrangianAveragedDynamicSmagorinsky, model; parameters) = nothing
 
 function allocate_coefficient_fields(closure::LagrangianAveragedDynamicSmagorinsky, grid, clock)
     𝒥ᴸᴹ⁻ = CenterField(grid)
@@ -487,7 +499,8 @@ function allocate_coefficient_fields(closure::LagrangianAveragedDynamicSmagorins
     Σ = CenterField(grid)
     Σ̄ = CenterField(grid)
 
-    previous_compute_time = Ref(oftype(clock.time, NaN))
+    # Initialize to clock.time; will be properly set during initialize_closure_fields!
+    previous_compute_time = Ref(clock.time)
 
     return (; Σ, Σ̄, 𝒥ᴸᴹ, 𝒥ᴹᴹ, 𝒥ᴸᴹ⁻, 𝒥ᴹᴹ⁻, previous_compute_time)
 end
@@ -499,18 +512,18 @@ end
 const DirectionallyAveragedSmagorinskyFields = NamedTuple{(:νₑ, :Σ, :Σ̄, :LM, :MM, :𝒥ᴸᴹ, :𝒥ᴹᴹ)}
 const LagrangianAveragedSmagorinskyFields = NamedTuple{(:νₑ, :Σ, :Σ̄, :𝒥ᴸᴹ, :𝒥ᴹᴹ, :𝒥ᴸᴹ⁻, :𝒥ᴹᴹ⁻, :previous_compute_time)}
 
-function prognostic_state(cf::DirectionallyAveragedSmagorinskyFields)
+function Oceananigans.prognostic_state(cf::DirectionallyAveragedSmagorinskyFields)
     return (𝒥ᴸᴹ = prognostic_state(cf.𝒥ᴸᴹ),
             𝒥ᴹᴹ = prognostic_state(cf.𝒥ᴹᴹ))
 end
 
-function restore_prognostic_state!(restored::DirectionallyAveragedSmagorinskyFields, from)
+function Oceananigans.restore_prognostic_state!(restored::DirectionallyAveragedSmagorinskyFields, from)
     restore_prognostic_state!(restored.𝒥ᴸᴹ, from.𝒥ᴸᴹ)
     restore_prognostic_state!(restored.𝒥ᴹᴹ, from.𝒥ᴹᴹ)
     return restored
 end
 
-function prognostic_state(cf::LagrangianAveragedSmagorinskyFields)
+function Oceananigans.prognostic_state(cf::LagrangianAveragedSmagorinskyFields)
     return (𝒥ᴸᴹ = prognostic_state(cf.𝒥ᴸᴹ),
             𝒥ᴹᴹ = prognostic_state(cf.𝒥ᴹᴹ),
             𝒥ᴸᴹ⁻ = prognostic_state(cf.𝒥ᴸᴹ⁻),
@@ -518,7 +531,7 @@ function prognostic_state(cf::LagrangianAveragedSmagorinskyFields)
             previous_compute_time = cf.previous_compute_time[])
 end
 
-function restore_prognostic_state!(restored::LagrangianAveragedSmagorinskyFields, from)
+function Oceananigans.restore_prognostic_state!(restored::LagrangianAveragedSmagorinskyFields, from)
     restore_prognostic_state!(restored.𝒥ᴸᴹ, from.𝒥ᴸᴹ)
     restore_prognostic_state!(restored.𝒥ᴹᴹ, from.𝒥ᴹᴹ)
     restore_prognostic_state!(restored.𝒥ᴸᴹ⁻, from.𝒥ᴸᴹ⁻)
@@ -527,5 +540,5 @@ function restore_prognostic_state!(restored::LagrangianAveragedSmagorinskyFields
     return restored
 end
 
-restore_prognostic_state!(::DirectionallyAveragedSmagorinskyFields, ::Nothing) = nothing
-restore_prognostic_state!(::LagrangianAveragedSmagorinskyFields, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::DirectionallyAveragedSmagorinskyFields, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::LagrangianAveragedSmagorinskyFields, ::Nothing) = nothing

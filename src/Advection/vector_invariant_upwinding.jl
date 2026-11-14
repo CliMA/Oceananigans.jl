@@ -24,14 +24,10 @@ end
 # Therefore, for `@show` purposes it is better to convert an upwind scheme to it's centered counterpart
 # when it is passed as `cross_scheme`
 @inline extract_centered_scheme(scheme)       = scheme
-@inline extract_centered_scheme(scheme::AUAS) = scheme.advecting_velocity_scheme
+extract_centered_scheme(::AUAS{N, FT}) where {N, FT} = Centered(FT; order = max(2, 2N - 2))
 
 """
-    OnlySelfUpwinding(; cross_scheme = Centered(),
-                        δU_stencil   = FunctionStencil(divergence_smoothness),
-                        δV_stencil   = FunctionStencil(divergence_smoothness),
-                        δu²_stencil  = FunctionStencil(u_smoothness),
-                        δv²_stencil  = FunctionStencil(v_smoothness))
+$(SIGNATURES)
 
 Upwinding treatment of Kinetic Energy Gradient and Divergence fluxes in the Vector Invariant formulation, whereas only
 the terms corresponding to the transporting velocity are upwinded. (i.e., terms in `u` in the zonal momentum equation and
@@ -60,10 +56,7 @@ OnlySelfUpwinding(; cross_scheme = Centered(),
                     ) = OnlySelfUpwinding(extract_centered_scheme(cross_scheme), δU_stencil, δV_stencil, δu²_stencil, δv²_stencil)
 
 """
-    CrossAndSelfUpwinding(; cross_scheme       = Centered(),
-                            divergence_stencil = DefaultStencil(),
-                            δu²_stencil        = FunctionStencil(u_smoothness),
-                            δv²_stencil        = FunctionStencil(v_smoothness))
+$(SIGNATURES)
 
 Upwinding treatment of Divergence fluxes in the Vector Invariant formulation, whereas both terms corresponding to
 the transporting velocity (`u` in the zonal direction and terms in `v` in the meridional direction) and the

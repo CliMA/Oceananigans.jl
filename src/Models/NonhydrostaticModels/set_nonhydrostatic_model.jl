@@ -1,7 +1,7 @@
 using Oceananigans.BoundaryConditions: fill_halo_regions!
+using Oceananigans.Fields: set!
 using Oceananigans.TimeSteppers: update_state!
-
-import Oceananigans.Fields: set!
+using Oceananigans.TurbulenceClosures: initialize_closure_fields!
 
 """
     set!(model::NonhydrostaticModel; enforce_incompressibility=true, kwargs...)
@@ -35,10 +35,14 @@ set!(model, u=u₀, v=v₀, T=T₀)
 model.tracers.T
 ```
 """
-function set!(model::NonhydrostaticModel; enforce_incompressibility=true, kwargs...)
+function Fields.set!(model::NonhydrostaticModel; enforce_incompressibility=true, kwargs...)
+    velocity_names = propertynames(model.velocities)
+    velocities_are_set = false
+
     for (fldname, value) in kwargs
-        if fldname ∈ propertynames(model.velocities)
+        if fldname ∈ velocity_names
             ϕ = getproperty(model.velocities, fldname)
+            velocities_are_set = true
         elseif fldname ∈ propertynames(model.tracers)
             ϕ = getproperty(model.tracers, fldname)
         elseif !isnothing(model.free_surface) && fldname ∈ propertynames(model.free_surface)
@@ -46,7 +50,7 @@ function set!(model::NonhydrostaticModel; enforce_incompressibility=true, kwargs
         else
             throw(ArgumentError("name $fldname not found in model.velocities or model.tracers."))
         end
-        set!(ϕ, value)
+        set!(ϕ, value, model.clock, fields(model))
 
         fill_halo_regions!(ϕ, model.clock, fields(model))
     end
@@ -54,12 +58,14 @@ function set!(model::NonhydrostaticModel; enforce_incompressibility=true, kwargs
     # Apply a mask
     foreach(mask_immersed_field!, model.tracers)
     foreach(mask_immersed_field!, model.velocities)
+    velocities_are_set && initialize_closure_fields!(model.closure_fields, model.closure, model)
     update_state!(model)
 
     if enforce_incompressibility
         FT = eltype(model.grid)
         compute_pressure_correction!(model, one(FT))
         make_pressure_correction!(model, one(FT))
+        velocities_are_set && initialize_closure_fields!(model.closure_fields, model.closure, model)
         update_state!(model)
     end
 

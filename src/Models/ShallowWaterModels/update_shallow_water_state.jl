@@ -1,11 +1,11 @@
 using Oceananigans.BoundaryConditions: fill_halo_regions!
+using Oceananigans.Forcings: compute_forcing!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 using Oceananigans.Models: update_model_field_time_series!
-
-import Oceananigans.TimeSteppers: update_state!
+using Oceananigans.TimeSteppers: update_state!
 
 """
-    update_state!(model::ShallowWaterModel, callbacks=[]; compute_tendencies=true)
+    update_state!(model::ShallowWaterModel, callbacks=[])
 
 Update the diagnostic state of `ShallowWaterModel`.
 
@@ -15,10 +15,8 @@ compute diffusivity fields, fill halo regions for
 if using `ConservativeFormulation`.
 
 Next, `callbacks` are executed.
-
-Finally, tendencies are computed if `compute_tendencies=true`.
 """
-function update_state!(model::ShallowWaterModel, callbacks=[])
+function TimeSteppers.update_state!(model::ShallowWaterModel, callbacks=[])
 
     # Mask immersed fields
     foreach(mask_immersed_field!, merge(model.solution, model.tracers))
@@ -26,7 +24,9 @@ function update_state!(model::ShallowWaterModel, callbacks=[])
     # Update possible FieldTimeSeries used in the model
     update_model_field_time_series!(model, model.clock)
 
-    compute_diffusivities!(model.closure_fields, model.closure, model)
+    compute_forcing!(model.forcing)
+
+    compute_closure_fields!(model.closure_fields, model.closure, model)
 
     fill_halo_regions!(merge(model.solution, model.tracers), model.clock, fields(model))
 

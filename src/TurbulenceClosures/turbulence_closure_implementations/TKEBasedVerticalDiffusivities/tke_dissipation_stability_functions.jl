@@ -22,6 +22,8 @@ Base.@kwdef struct ConstantStabilityFunctions{FT} <: AbstractConstantSchmidtStab
     𝕊u₀ :: FT = 0.53 # √3
 end
 
+Adapt.@adapt_structure ConstantStabilityFunctions
+
 Base.summary(s::ConstantStabilityFunctions{FT}) where FT = "ConstantStabilityFunctions{$FT}"
 
 summarize_stability_functions(s::ConstantStabilityFunctions{FT}, prefix="", sep="│   ") where FT =
@@ -54,6 +56,8 @@ struct VariableStabilityFunctions{FT} <: AbstractConstantSchmidtStabilityFunctio
     Cd₅ :: FT
     𝕊u₀ :: FT
 end
+
+Adapt.@adapt_structure VariableStabilityFunctions
 
 VariableStabilityFunctions{FT}(; kw...) where FT = VariableStabilityFunctions(FT; kw...)
 
@@ -144,10 +148,15 @@ end
 Based on an argument for free convection, assuming a balance between
 buoyancy production and dissipation.
 
-See Umlauf and Burchard (2005) equation A.22.
+See [Umlauf and Burchard (2005)](@cite umlauf2005second) equation A.22.
 
 Note that _another_ condition could arise depending on the time discretization,
-as discussed in the text surrounding equation 45-46 in Umlauf and Buchard (2005).
+as discussed in the text surrounding equations 45-46 in [Umlauf and Burchard (2005)](@cite umlauf2005second).
+
+References
+==========
+* Umlauf, L., & Burchard, H. (2005). "Second-order turbulence closure models for geophysical
+  boundary layers. A review of recent work." Continental Shelf Research, 25(7-8), 795-827.
 """
 @inline function minimum_stratification_number(closure)
     m₀ = closure.stability_functions.Cc₀
@@ -179,7 +188,12 @@ end
 """
 Based on the condition that shear aniostropy must increase.
 
-See Umlauf and Burchard (2005) equation 44.
+See [Umlauf and Burchard (2005)](@cite umlauf2005second) equation 44.
+
+References
+==========
+* Umlauf, L., & Burchard, H. (2005). "Second-order turbulence closure models for geophysical
+  boundary layers. A review of recent work." Continental Shelf Research, 25(7-8), 795-827.
 """
 @inline function maximum_shear_number(closure, αᴺ)
     n₀ = closure.stability_functions.Cu₀

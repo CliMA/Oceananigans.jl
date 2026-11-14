@@ -1,21 +1,16 @@
-using Oceananigans: AbstractModel
-
+using Oceananigans: AbstractModel, prognostic_state, restore_prognostic_state!
 using Oceananigans.AbstractOperations: KernelFunctionOperation
-using Oceananigans.Advection: VectorInvariant
-using Oceananigans.Architectures: AbstractArchitecture
+using Oceananigans.Advection: VectorInvariant, materialize_advection
+using Oceananigans.Architectures: AbstractArchitecture, architecture
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
-using Oceananigans.DistributedComputations
-using Oceananigans.Fields: Field, tracernames, TracerFields, XFaceField, YFaceField, CenterField, compute!
+using Oceananigans.Fields: CenterField, Field, TracerFields, XFaceField, YFaceField, compute!, tracernames
 using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: topology, Flat, architecture, RectilinearGrid, Center
+using Oceananigans.Grids: Center, Flat, RectilinearGrid, architecture, topology
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models: validate_model_halo, validate_tracer_advection
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
-using Oceananigans.TurbulenceClosures: with_tracers, build_closure_fields
+using Oceananigans.TurbulenceClosures: build_closure_fields, with_tracers
 using Oceananigans.Utils: tupleit
-
-import Oceananigans: prognostic_state, restore_prognostic_state!
-import Oceananigans.Architectures: architecture
 
 const RectilinearGrids = Union{RectilinearGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:RectilinearGrid}}
 
@@ -36,10 +31,10 @@ function ShallowWaterSolutionFields(grid, bcs, prognostic_names)
     return NamedTuple{prognostic_names[1:3]}((u, v, h))
 end
 
-mutable struct ShallowWaterModel{G, A<:AbstractArchitecture, T, GR, V, U, R, F, E, B, Q, C, K, TS, FR} <: AbstractModel{TS, A}
+mutable struct ShallowWaterModel{G, A<:AbstractArchitecture, CL, GR, V, U, R, F, E, B, Q, C, K, TS, FR} <: AbstractModel{TS, A}
                           grid :: G         # Grid of physical points on which `Model` is solved
                   architecture :: A         # Computer `Architecture` on which `Model` is run
-                         clock :: Clock{T}  # Tracks iteration number and simulation time of `Model`
+                         clock :: CL        # Tracks iteration number and simulation time of `Model`
     gravitational_acceleration :: GR        # Gravitational acceleration, full, or reduced
                      advection :: V         # Advection scheme for velocities, mass and tracers
                     velocities :: U         # Velocities in the shallow water model
@@ -61,21 +56,7 @@ struct ConservativeFormulation end
 struct VectorInvariantFormulation end
 
 """
-    ShallowWaterModel(grid;
-                      gravitational_acceleration,
-                      clock = Clock(grid),
-                      momentum_advection = UpwindBiased(order=5),
-                      tracer_advection = WENO(),
-                      mass_advection = WENO(),
-                      coriolis = nothing,
-                      forcing::NamedTuple = NamedTuple(),
-                      closure = nothing,
-                      bathymetry = nothing,
-                      tracers = (),
-                      closure_fields = nothing,
-                      boundary_conditions::NamedTuple = NamedTuple(),
-                      timestepper::Symbol = :RungeKutta3,
-                      formulation = ConservativeFormulation())
+$(SIGNATURES)
 
 Construct a shallow water model on `grid` with `gravitational_acceleration` constant.
 
@@ -179,6 +160,10 @@ function ShallowWaterModel(grid;
 
     advection = merge((momentum=momentum_advection, mass=mass_advection), tracer_advection_tuple)
 
+    # Fill any settings in advection scheme that might have been deferred until
+    # the grid and backend is known
+    advection = NamedTuple(name => materialize_advection(scheme, grid) for (name, scheme) in pairs(advection))
+
     bathymetry_field = CenterField(grid)
     if !isnothing(bathymetry)
         set!(bathymetry_field, bathymetry)
@@ -232,8 +217,8 @@ validate_momentum_advection(momentum_advection, ::VectorInvariantFormulation) =
 validate_momentum_advection(momentum_advection::Union{VectorInvariant, Nothing}, ::VectorInvariantFormulation) = momentum_advection
 
 formulation(model::ShallowWaterModel)  = model.formulation
-architecture(model::ShallowWaterModel) = model.architecture
-timestepper(model::ShallowWaterModel)  = model.timestepper
+Architectures.architecture(model::ShallowWaterModel) = model.architecture
+Simulations.timestepper(model::ShallowWaterModel)  = model.timestepper
 
 # The w velocity is needed to use generic TurbulenceClosures methods, therefore it is set to nothing
 shallow_water_velocities(::VectorInvariantFormulation, solution) = (u = solution.u, v = solution.v, w = nothing)
@@ -254,7 +239,7 @@ shallow_water_fields(velocities, solution, tracers, ::VectorInvariantFormulation
 ##### Checkpointing
 #####
 
-function prognostic_state(model::ShallowWaterModel)
+function Oceananigans.prognostic_state(model::ShallowWaterModel)
     return (clock = prognostic_state(model.clock),
             solution = prognostic_state(model.solution),
             velocities = prognostic_state(model.velocities),
@@ -263,7 +248,7 @@ function prognostic_state(model::ShallowWaterModel)
             timestepper = prognostic_state(model.timestepper))
 end
 
-function restore_prognostic_state!(restored::ShallowWaterModel, from)
+function Oceananigans.restore_prognostic_state!(restored::ShallowWaterModel, from)
     restore_prognostic_state!(restored.clock, from.clock)
     restore_prognostic_state!(restored.solution, from.solution)
     restore_prognostic_state!(restored.velocities, from.velocities)
@@ -273,4 +258,4 @@ function restore_prognostic_state!(restored::ShallowWaterModel, from)
     return restored
 end
 
-restore_prognostic_state!(::ShallowWaterModel, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::ShallowWaterModel, ::Nothing) = nothing

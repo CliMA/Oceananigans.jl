@@ -1,8 +1,6 @@
-using Oceananigans.Fields: OneField
 using Base: @propagate_inbounds
-
 using Oceananigans.Architectures: Architectures, architecture, on_architecture
-import Oceananigans.Fields: condition_operand, conditional_length, set!, compute_at!, indices
+using Oceananigans.Fields: OneField, compute_at!, condition_operand, conditional_length, indices, set!
 
 # For conditional reductions such as mean(u * v, condition = u .> 0))
 struct ConditionalOperation{LX, LY, LZ, F, C, O, G, M, T} <: AbstractOperation{LX, LY, LZ, G, T}
@@ -17,11 +15,19 @@ struct ConditionalOperation{LX, LY, LZ, F, C, O, G, M, T} <: AbstractOperation{L
         if func === Base.identity
             func = nothing
         end
-        T = eltype(operand)
+        T = conditional_eltype(func, eltype(operand), condition, mask)
         F = typeof(func)
         return new{LX, LY, LZ, F, C, O, G, M, T}(operand, func, grid, condition, mask)
     end
 end
+
+# The type of the values: `func`'s of the operand's elements, or the mask where the condition doesn't hold
+@inline conditional_eltype(::Nothing, T, condition, mask) = T
+@inline conditional_eltype(::Nothing, T, ::Nothing, mask) = T
+@inline conditional_eltype(func, T, ::Nothing, mask) = concrete_or(Base.promote_op(func, T), T)
+@inline conditional_eltype(func, T, condition, mask) = promote_type(conditional_eltype(func, T, nothing, mask), typeof(mask))
+
+@inline concrete_or(T, fallback) = isconcretetype(T) ? T : fallback
 
 # Some special cases
 const NoFuncCO = ConditionalOperation{<:Any, <:Any, <:Any, Nothing}
@@ -29,10 +35,7 @@ const NoConditionCO = ConditionalOperation{<:Any, <:Any, <:Any, <:Any, Nothing}
 const NoFuncNoConditionCO = ConditionalOperation{<:Any, <:Any, <:Any, Nothing, Nothing}
 
 """
-    ConditionalOperation(operand::AbstractField;
-                         func = nothing,
-                         condition = nothing,
-                         mask = 0)
+$(SIGNATURES)
 
 Return an abstract representation of a masking procedure applied when `condition` is satisfied on a field
 described by `func(operand)`.
@@ -57,7 +60,7 @@ Keyword arguments
 `condition_operand` is a convenience function used to construct a `ConditionalOperation`, e.g.,
 
 ```julia
-condition_operand(func::Function, operand::AbstractField, condition, mask) =
+Fields.condition_operand(func::Function, operand::AbstractField, condition, mask) =
     ConditionalOperation(operand; func, condition, mask)
 ```
 
@@ -154,17 +157,18 @@ end
 @inline evaluate_condition(::Nothing, i, j, k, grid, args...) = true
 @propagate_inbounds evaluate_condition(condition::AbstractArray, i, j, k, grid, args...) = @inbounds condition[i, j, k]
 
-@inline condition_operand(func, op, condition, mask) = ConditionalOperation(op; func, condition, mask)
+@inline Fields.condition_operand(func, op, condition, mask) = ConditionalOperation(op; func, condition, mask)
 
-@inline condition_operand(func, op::ConditionalOperation, ::Nothing, mask) = op
-@inline condition_operand(::typeof(identity), op::ConditionalOperation, ::Nothing, mask) = op
-@inline condition_operand(op::ConditionalOperation, ::Nothing, mask) = op
+@inline Fields.condition_operand(func, op::ConditionalOperation, ::Nothing, mask) = op
+@inline Fields.condition_operand(::typeof(identity), op::ConditionalOperation, ::Nothing, mask) = op
+@inline Fields.condition_operand(::Nothing, op::ConditionalOperation, ::Nothing, mask) = op
+@inline Fields.condition_operand(op::ConditionalOperation, ::Nothing, mask) = op
 
-@inline condition_operand(func, op::ConditionalOperation, condition, mask) = error("not supported")
-@inline condition_operand(func, op::ConditionalOperation, condition::AbstractArray, mask) = error("not supported")
-@inline condition_operand(op::ConditionalOperation, condition, mask) = error("not supported")
+@inline Fields.condition_operand(func, op::ConditionalOperation, condition, mask) = error("not supported")
+@inline Fields.condition_operand(func, op::ConditionalOperation, condition::AbstractArray, mask) = error("not supported")
+@inline Fields.condition_operand(op::ConditionalOperation, condition, mask) = error("not supported")
 
-@inline function condition_operand(func, operand::AbstractField, condition::AbstractArray, mask)
+@inline function Fields.condition_operand(func, operand::AbstractField, condition::AbstractArray, mask)
     condition = validate_condition(condition, operand)
     condition = on_architecture(architecture(operand.grid), condition)
     return ConditionalOperation(operand; func, condition, mask)
@@ -196,18 +200,13 @@ end
     return ConditionalOperation{LX, LY, LZ}(one_field, nothing, grid, c.condition, mask)
 end
 
-@inline conditional_length(c::ConditionalOperation) = sum(conditional_one(c, 0))
-@inline conditional_length(c::ConditionalOperation, ::Colon) = conditional_length(c)
-@inline conditional_length(c::ConditionalOperation, ::NTuple{3}) = conditional_length(c)
-@inline conditional_length(c::ConditionalOperation, dims) = sum(conditional_one(c, 0); dims)
+@inline Fields.conditional_length(c::ConditionalOperation) = sum(conditional_one(c, 0))
+@inline Fields.conditional_length(c::ConditionalOperation, ::Colon) = conditional_length(c)
+@inline Fields.conditional_length(c::ConditionalOperation, dims::Int) = sum(conditional_one(c, 0); dims)
+@inline Fields.conditional_length(c::ConditionalOperation, dims::Tuple) = sum(conditional_one(c, 0); dims)
 
-# Disambiguations
-@inline conditional_length(c::ConditionalOperation, dims::Int) = sum(conditional_one(c, 0); dims)
-@inline conditional_length(c::ConditionalOperation, dims::NTuple{1}) = sum(conditional_one(c, 0); dims)
-@inline conditional_length(c::ConditionalOperation, dims::NTuple{2}) = sum(conditional_one(c, 0); dims)
-
-compute_at!(c::ConditionalOperation, time) = compute_at!(c.operand, time)
-indices(c::ConditionalOperation) = indices(c.operand)
+Fields.compute_at!(c::ConditionalOperation, time) = compute_at!(c.operand, time)
+Fields.indices(c::ConditionalOperation) = indices(c.operand)
 
 Adapt.adapt_structure(to, c::ConditionalOperation{LX, LY, LZ}) where {LX, LY, LZ} =
     ConditionalOperation{LX, LY, LZ}(adapt(to, c.operand),

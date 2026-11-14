@@ -19,21 +19,37 @@ using Dates: AbstractTime, Period, Nanosecond
     return convert(T, period_to_seconds(period))
 end
 
-@inline time_difference_seconds(target, current) = float(target - current)
-@inline time_difference_seconds(target::AbstractTime, current::AbstractTime) = period_to_seconds(target - current)
-@inline time_difference_seconds(target::Number, current::AbstractTime) = period_to_seconds(target - current)
-@inline time_difference_seconds(target::AbstractTime, current::Number) = period_to_seconds(target - current)
+@inline time_difference_in_seconds(target, current) = float(target - current)
+@inline time_difference_in_seconds(target::AbstractTime, current::AbstractTime) = period_to_seconds(target - current)
+@inline time_difference_in_seconds(target::Number, current::AbstractTime) = period_to_seconds(target - current)
+@inline time_difference_in_seconds(target::AbstractTime, current::Number) = period_to_seconds(target - current)
 
 @inline add_time_interval(base::Number, interval::Number, count=1) = base + count * interval
 @inline add_time_interval(base::Number, interval::Period, count=1) = base + count * period_to_seconds(interval)
 @inline add_time_interval(base::AbstractTime, interval::Number, count=1) = base + seconds_to_nanosecond(interval * count)
 @inline add_time_interval(base::AbstractTime, interval::Period, count=1) = base + count * interval
 
+@inline add_time_interval(base, interval::Array{<:Number}, count=1) = interval[count]
+@inline add_time_interval(base, interval::Array{<:Dates.Period}, count=1) = seconds_to_nanosecond(interval[count])
+@inline add_time_interval(base, interval::Array{Dates.DateTime}, count=1) = interval[count]
+
+period_type(interval::AbstractFloat) = typeof(interval)
+
 function period_type(interval::Number)
     FT = Oceananigans.defaults.FloatType
     return FT
 end
 
+period_type(interval::Array{<:AbstractFloat}) = Array{eltype(interval), 1}
+
+function period_type(interval::Array{<:Number})
+    FT = Oceananigans.defaults.FloatType
+    return Array{FT, 1}
+end
+
 period_type(interval::Dates.Period) = typeof(interval)
+period_type(interval) = typeof(interval)
+
 time_type(interval::Number) = typeof(interval)
 time_type(interval::Dates.Period) = Dates.DateTime
+time_type(interval::Array) = eltype(interval)

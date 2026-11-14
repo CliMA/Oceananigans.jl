@@ -1,49 +1,38 @@
 module Models
 
-import Oceananigans
-
-import Oceananigans.Models: initialization_update_state!
-import Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: maybe_extend_halos, FixedSubstepNumber
-import Oceananigans: initialize!
-
+using ..Grids: ShardedDistributed, ShardedGrid
+using ..TimeSteppers: ReactantModel
+using Oceananigans: Oceananigans
 using Oceananigans.Architectures: ReactantState
 using Oceananigans.DistributedComputations: Distributed
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: initialize_free_surface!, HydrostaticFreeSurfaceModel
-
-using ..TimeSteppers: ReactantModel
-using ..Grids: ReactantGrid, ReactantImmersedBoundaryGrid
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel
+using Oceananigans.TimeSteppers: RungeKutta3TimeStepper, SplitRungeKuttaTimeStepper, reconcile_state!
 
 const ReactantHFSM{TS, E} = Union{
     HydrostaticFreeSurfaceModel{TS, E, <:ReactantState},
-    HydrostaticFreeSurfaceModel{TS, E, <:Distributed{<:ReactantState}},
+    HydrostaticFreeSurfaceModel{TS, E, <:ShardedDistributed},
 }
 
-initialize_immersed_boundary_grid!(grid) = nothing
-
-using Oceananigans.ImmersedBoundaries:
-    GridFittedBottom,
-    PartialCellBottom
-
-function initialize_immersed_boundary_grid!(ibg::ReactantImmersedBoundaryGrid)
-    # TODO This assumes that the IBG is GridFittedBottom or PartialCellBottom
-    needs_initialization = ibg.immersed_boundary isa GridFittedBottom ||
-                           ibg.immersed_boundary isa PartialCellBottom
-
-    if needs_initialization
-        ib = ibg.immersed_boundary
-        bottom_field = ib.bottom_height
-        grid = ibg.underlying_grid
-        Oceananigans.ImmersedBoundaries.compute_numerical_bottom_height!(bottom_field, grid, ib)
-        Oceananigans.BoundaryConditions.fill_halo_regions!(bottom_field)
-    end
-
+function Oceananigans.initialize!(model::ReactantHFSM)
+    reconcile_state!(model)
     return nothing
 end
 
-function initialize!(model::ReactantHFSM)
-    initialize_immersed_boundary_grid!(model.grid)
-    Oceananigans.Models.HydrostaticFreeSurfaceModels.initialize_free_surface!(model.free_surface, model.grid, model.velocities)
-    return nothing
-end
+# No-op for Reactant: the iteration == 0 check evaluates at trace time,
+# causing a redundant update_state! to be compiled into every time_step!.
+# Instead, first_time_step! handles initialization explicitly.
+Oceananigans.TimeSteppers.maybe_prepare_first_time_step!(model::ReactantHFSM, Δt, callbacks) = nothing
+Oceananigans.TimeSteppers.maybe_prepare_first_time_step!(model::ReactantHFSM{<:RungeKutta3TimeStepper}, Δt, callbacks) = nothing
+Oceananigans.TimeSteppers.maybe_prepare_first_time_step!(model::ReactantHFSM{<:SplitRungeKuttaTimeStepper}, Δt, callbacks) = nothing
+
+# Undo all the pipelining for a `ShardedDistributed` architecture
+Oceananigans.Models.complete_communication_and_compute_buffer!(model, ::ShardedGrid, ::ShardedDistributed) = nothing
+Oceananigans.Models.interior_tendency_kernel_parameters(::ShardedDistributed, grid) = :xyz
+
+# Reactant uses CUDA version of the code to uplift program description to MLIR.
+# Since default `weno_weight_computation` on CUDA uses LLVM's NVPTX intrinsics
+# it causes Reactant to crash.
+# We need to fall back to different optimization when running with Reactant
+Oceananigans.Advection.default_weno_weight_computation(::ReactantState) = Oceananigans.Utils.ConvertingDivision{Float32}
 
 end # module

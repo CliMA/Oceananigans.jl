@@ -1,22 +1,20 @@
-using OffsetArrays: OffsetArray
-
-
 #####
 ##### Creating offset arrays for field data by dispatching on architecture.
 #####
 
 """
 Return a range of indices for a field located at either cell `Center`s or `Face`s along a
-grid dimension which is `Periodic`, or cell `Center`s for a grid dimension which is `Bounded`.
+grid dimension which is `Periodic`, or cell `Center`s for a grid dimension
+that has an extended topology.
 The dimension has length `N` and `H` halo points.
 """
 offset_indices(loc, topo, N, H=0) = 1 - H : N + H
 
 """
 Return a range of indices for a field located at cell `Face`s along a grid dimension which
-is `Bounded` and has length `N` and with halo points `H`.
+has an extended topology and has length `N` and with halo points `H`.
 """
-offset_indices(::Face, ::BoundedTopology, N, H=0) = 1 - H : N + H + 1
+offset_indices(::Face, ::FaceExtendedTopology, N, H=0) = 1 - H : N + H + 1
 
 """
 Return a range of indices for a field along a 'reduced' dimension.
@@ -45,32 +43,32 @@ function offset_data(underlying_data::A, loc, topo, N, H, indices::T=default_ind
         @inbounds axes(underlying_data, i+length(ii))
     end
 
-    return OffsetArray(underlying_data, ii..., extra_ii...)
+    return StaticStridesOffsetArray(underlying_data, map(r -> first(r) - 1, (ii..., extra_ii...))...)
 end
 
 """
-    offset_data(underlying_data, grid::AbstractGrid, loc, indices=default_indices(length(loc)))
+$(SIGNATURES)
 
-Return an `OffsetArray` that maps to `underlying_data` in memory, with offset indices
+Return a `StaticStridesOffsetArray` that maps to `underlying_data` in memory, with offset indices
 appropriate for the `data` of a field on a `grid` of `size(grid)` and located at `loc`.
 """
 offset_data(underlying_data::AbstractArray, grid::AbstractGrid, loc, indices=default_indices(length(loc))) =
     offset_data(underlying_data, loc, topology(grid), size(grid), halo_size(grid), indices)
 
 """
-    new_data(FT, arch, loc, topo, sz, halo_sz, indices)
+$(TYPEDSIGNATURES)
 
-Return an `OffsetArray` of zeros of float type `FT` on `arch`itecture,
+Return a `StaticStridesOffsetArray` of zeros of float type `FT` on `arch`itecture,
 with indices corresponding to a field on a `grid` of `size(grid)` and located at `loc`.
 """
-function new_data(FT::DataType, arch, loc, topo, sz, halo_sz, indices=default_indices(length(loc)))
+function new_data(::Type{FT}, arch, loc, topo, sz, halo_sz, indices=default_indices(length(loc))) where FT
     Tsz = total_size(loc, topo, sz, halo_sz, indices)
     underlying_data = zeros(arch, FT, Tsz...)
     indices = validate_indices(indices, loc, topo, sz, halo_sz)
     return offset_data(underlying_data, loc, topo, sz, halo_sz, indices)
 end
 
-new_data(FT::DataType, grid::AbstractGrid, loc, indices=default_indices(length(loc))) =
+new_data(::Type{FT}, grid::AbstractGrid, loc, indices=default_indices(length(loc))) where FT =
     new_data(FT, architecture(grid), loc, topology(grid), size(grid), halo_size(grid), indices)
 
 new_data(grid::AbstractGrid, loc, indices=default_indices) = new_data(eltype(grid), grid, loc, indices)

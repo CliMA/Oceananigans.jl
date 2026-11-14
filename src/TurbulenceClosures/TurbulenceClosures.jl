@@ -27,7 +27,9 @@ export
     VerticallyImplicitTimeDiscretization,
 
     build_closure_fields,
-    compute_diffusivities!,
+    compute_closure_fields!,
+    step_closure_prognostics!,
+    initialize_closure_fields!,
 
     viscosity, diffusivity,
 
@@ -39,30 +41,35 @@ export
     cell_diffusion_timescale,
     closure_required_tracers
 
-using KernelAbstractions: @index, @kernel
 using Adapt: Adapt, adapt
+using KernelAbstractions: @index, @kernel
 
 using Oceananigans: Oceananigans, fields
 using Oceananigans.Architectures: Architectures, on_architecture
-using Oceananigans.Grids: AbstractGrid, Bounded, Center, Face, znode
-using Oceananigans.Operators: Operators,
-    Ax_qᶜᶜᶜ, Ax_qᶠᶜᶜ, Ax_qᶠᶜᶠ, Ax_qᶠᶠᶜ, Ay_qᶜᶜᶜ, Ay_qᶜᶠᶜ, Ay_qᶜᶠᶠ, Ay_qᶠᶠᶜ, Az_qᶜᶜᶜ, Az_qᶜᶜᶠ, Az_qᶜᶠᶠ, Az_qᶠᶜᶠ, Az⁻¹ᶜᶜᶜ, Az⁻¹ᶜᶜᶠ, Az⁻¹ᶜᶠᶜ, Az⁻¹ᶠᶜᶜ, Az⁻¹ᶠᶠᶜ,
-    V⁻¹ᶜᶜᶜ, V⁻¹ᶜᶜᶠ, V⁻¹ᶜᶠᶜ, V⁻¹ᶠᶜᶜ,
-    Δx_qᶜᶜᶜ, Δx_qᶜᶠᶜ, Δx_qᶜᶠᶠ, Δx_qᶠᶜᶜ, Δxᶜᶜᶜ, Δy_qᶜᶜᶜ, Δy_qᶜᶠᶜ, Δy_qᶠᶜᶜ, Δy_qᶠᶜᶠ, Δyᶜᶜᶜ, Δzᶜᶜᶜ, Δz⁻¹ᶜᶠᶜ, Δz⁻¹ᶠᶜᶜ,
-    δxᶜᵃᵃ, δxᶜᶜᶜ, δxᶜᶠᶜ, δxᶠᵃᵃ, δxᶠᶜᶜ, δxᶠᶠᶜ, δyᵃᶜᵃ, δyᵃᶠᵃ, δyᶜᶜᶜ, δyᶜᶠᶜ, δyᶠᶜᶜ, δzᵃᵃᶜ, δzᵃᵃᶠ,
-    ζ₃ᶠᶠᶜ,
-    ℑxyzᶠᶠᶜ, ℑxyᶜᶜᵃ, ℑxyᶜᶠᵃ, ℑxyᶠᶜᵃ, ℑxzᶜᵃᶜ, ℑxzᶜᵃᶠ, ℑxzᶠᵃᶜ, ℑxᶜᵃᵃ, ℑxᶠᵃᵃ, ℑyzᵃᶜᶜ, ℑyzᵃᶜᶠ, ℑyzᵃᶠᶜ, ℑyᵃᶜᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶠ,
-    ∂xᶜᶜᶜ, ∂xᶜᶠᶜ, ∂xᶠᶜᶜ, ∂xᶠᶜᶠ, ∂xᶠᶠᶜ, ∂yᶜᶜᶜ, ∂yᶜᶠᶜ, ∂yᶜᶠᶠ, ∂yᶠᶜᶜ, ∂yᶠᶠᶜ, ∂zᶜᶜᶜ, ∂zᶜᶜᶠ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ, ∂²zᶜᶜᶠ, ∂²zᶜᶠᶜ, ∂²zᶠᶜᶜ, ∂³zᶜᶜᶠ,
-    ∇²hᶜᶜᶜ, ∇²hᶜᶠᶜ, ∇²hᶠᶜᶜ, ∇²ᶜᶜᶜ, ∇²ᶜᶜᶠ, ∇²ᶜᶠᶜ, ∇²ᶠᶜᶜ
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions, fill_halo_regions!
-using Oceananigans.Utils: Utils, launch!, prettysummary, with_tracers
+using Oceananigans.Fields: CenterField, Field, FunctionField, ZFaceField
+using Oceananigans.Grids: Grids, AbstractGrid, BoundaryTopology, Center, Face, required_halo_size_x,
+                          required_halo_size_y, required_halo_size_z, znode
+using Oceananigans.ImmersedBoundaries: AbstractGridFittedBottom, ImmersedBoundaryGrid, bottom_height
+using Oceananigans.Operators: Operators, Ax_qᶜᶜᶜ, Ax_qᶠᶜᶜ, Ax_qᶠᶜᶠ, Ax_qᶠᶠᶜ, Ay_qᶜᶜᶜ, Ay_qᶜᶠᶜ, Ay_qᶜᶠᶠ, Ay_qᶠᶠᶜ,
+                              Az_qᶜᶜᶜ, Az_qᶜᶜᶠ, Az_qᶜᶠᶠ, Az_qᶠᶜᶠ, Az⁻¹ᶜᶜᶜ, Az⁻¹ᶜᶜᶠ, Az⁻¹ᶜᶠᶜ, Az⁻¹ᶠᶜᶜ, Az⁻¹ᶠᶠᶜ, V⁻¹ᶜᶜᶜ,
+                              V⁻¹ᶜᶜᶠ, V⁻¹ᶜᶠᶜ, V⁻¹ᶠᶜᶜ, Δx_qᶜᶜᶜ, Δx_qᶜᶠᶜ, Δx_qᶜᶠᶠ, Δx_qᶠᶜᶜ, Δxᶜᶜᶜ, Δx⁻¹ᶜᶜᶜ, Δy_qᶜᶜᶜ,
+                              Δy_qᶜᶠᶜ, Δy_qᶠᶜᶜ, Δy_qᶠᶜᶠ, Δyᶜᶜᶜ, Δy⁻¹ᶜᶜᶜ, Δzᶜᶜᶜ, Δz⁻¹ᶜᶜᶜ, Δz⁻¹ᶜᶠᶜ, Δz⁻¹ᶠᶜᶜ, δxᶜᵃᵃ, δxᶜᶜᶜ,
+                              δxᶜᶠᶜ, δxᶠᵃᵃ, δxᶠᶜᶜ, δxᶠᶠᶜ, δyᵃᶜᵃ, δyᵃᶠᵃ, δyᶜᶜᶜ, δyᶜᶠᶜ, δyᶠᶜᶜ, δzᵃᵃᶜ, δzᵃᵃᶠ, ζ₃ᶠᶠᶜ,
+                              ℑxyzᶠᶠᶜ, ℑxyᶜᶜᵃ, ℑxyᶜᶠᵃ, ℑxyᶠᶜᵃ, ℑxzᶜᵃᶜ, ℑxzᶜᵃᶠ, ℑxzᶠᵃᶜ, ℑxᶜᵃᵃ, ℑxᶠᵃᵃ, ℑyzᵃᶜᶜ, ℑyzᵃᶜᶠ,
+                              ℑyzᵃᶠᶜ, ℑyᵃᶜᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶠ, ∂x_zᶜᶜᶠ, ∂x_zᶜᶠᶠ, ∂x_zᶠᶜᶜ, ∂x_zᶠᶜᶠ, ∂xᵣᶜᶜᶜ, ∂xᵣᶜᶠᶜ,
+                              ∂xᵣᶠᶜᶜ, ∂xᵣᶠᶜᶠ, ∂xᵣᶠᶠᶜ, ∂y_zᶜᶜᶠ, ∂y_zᶜᶠᶜ, ∂y_zᶜᶠᶠ, ∂y_zᶠᶜᶠ, ∂yᵣᶜᶜᶜ, ∂yᵣᶜᶠᶜ,
+                              ∂yᵣᶜᶠᶠ, ∂yᵣᶠᶜᶜ, ∂yᵣᶠᶠᶜ, ∂zᶜᶜᶜ, ∂zᶜᶜᶠ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ, ∂²zᶜᶜᶠ, ∂²zᶜᶠᶜ, ∂²zᶠᶜᶜ, ∂³zᶜᶜᶠ,
+                              ∇²hᶜᶜᶜ, ∇²hᶜᶠᶜ, ∇²hᶠᶜᶜ, ∇²ᶜᶜᶜ, ∇²ᶜᶜᶠ, ∇²ᶜᶠᶜ, ∇²ᶠᶜᶜ
+using Oceananigans.TimeSteppers: TimeSteppers,
+                                 AbstractTimeDiscretization,
+                                 ExplicitTimeDiscretization,
+                                 VerticallyImplicitTimeDiscretization,
+                                 reset!,
+                                 step_closure_prognostics!
+using Oceananigans.Utils: Utils, launch!, named_tuple, prettysummary, with_tracers, SIGNATURES, TYPEDSIGNATURES
 
-using Oceananigans.Fields: Field, CenterField, FunctionField, ZFaceField
-using Oceananigans.ImmersedBoundaries: AbstractGridFittedBottom, ImmersedBoundaryGrid
-
-import Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_halo_size_z
-
-const VerticallyBoundedGrid{FT} = AbstractGrid{FT, <:Any, <:Any, <:Bounded}
+const VerticallyBoundedGrid{FT} = AbstractGrid{FT, <:Any, <:Any, <:BoundaryTopology}
 
 #####
 ##### Abstract types
@@ -79,7 +86,29 @@ abstract type AbstractTurbulenceClosure{TimeDiscretization, RequiredHalo} end
 validate_closure(closure) = closure
 closure_summary(closure) = summary(closure)
 Utils.with_tracers(tracers, closure::AbstractTurbulenceClosure) = closure
-compute_diffusivities!(K, closure::AbstractTurbulenceClosure, args...; kwargs...) = nothing
+compute_closure_fields!(K, closure::AbstractTurbulenceClosure, args...; kwargs...) = nothing
+
+TimeSteppers.step_closure_prognostics!(K, closure::AbstractTurbulenceClosure, args...) = nothing
+TimeSteppers.step_closure_prognostics!(K, closure::AbstractArray{<:AbstractTurbulenceClosure}, args...) = nothing
+
+# Reset closure fields that carry state between time steps
+using Oceananigans.Solvers: Solvers
+TimeSteppers.reset!(K, closure::AbstractTurbulenceClosure) = nothing
+TimeSteppers.reset!(K, closure::AbstractArray{<:AbstractTurbulenceClosure}) = nothing
+TimeSteppers.reset!(K, ::Nothing) = nothing
+
+# Initialize closure fields when simulation starts (after velocities are properly set)
+initialize_closure_fields!(K, closure::AbstractTurbulenceClosure, args...) = nothing
+initialize_closure_fields!(K, closure::AbstractArray{<:AbstractTurbulenceClosure}, args...) = nothing
+initialize_closure_fields!(K, ::Nothing, args...) = nothing
+
+# Handle tuple of closures (iterate through each closure and its fields)
+function initialize_closure_fields!(closure_fields_tuple::Tuple, closures::Tuple, args...)
+    for (fields, closure) in zip(closure_fields_tuple, closures)
+        initialize_closure_fields!(fields, closure, args...)
+    end
+    return nothing
+end
 
 # Tracer names that a closure requires (eg TKE-based closures)
 # Fallbacks: by default closures do not require extra tracers.
@@ -103,9 +132,9 @@ end
 # point at each side to calculate viscous fluxes at the edge of the domain.
 # If diffusivity itself requires one halo to be computed (e.g. κ = ℑxᶠᵃᵃ(i, j, k, grid, ℑxᶜᵃᵃ, T),
 # or `AnisotropicMinimumDissipation` and `Smagorinsky`) then B = 2
-@inline required_halo_size_x(::AbstractTurbulenceClosure{TD, B}) where {TD, B} = B
-@inline required_halo_size_y(::AbstractTurbulenceClosure{TD, B}) where {TD, B} = B
-@inline required_halo_size_z(::AbstractTurbulenceClosure{TD, B}) where {TD, B} = B
+@inline Grids.required_halo_size_x(::AbstractTurbulenceClosure{TD, B}) where {TD, B} = B
+@inline Grids.required_halo_size_y(::AbstractTurbulenceClosure{TD, B}) where {TD, B} = B
+@inline Grids.required_halo_size_z(::AbstractTurbulenceClosure{TD, B}) where {TD, B} = B
 
 const ClosureKinda = Union{Nothing, AbstractTurbulenceClosure, AbstractArray{<:AbstractTurbulenceClosure}}
 add_closure_specific_boundary_conditions(closure::ClosureKinda, bcs, args...) = bcs
@@ -117,6 +146,18 @@ function dissipation end
 function hydrostatic_turbulent_kinetic_energy_tendency end
 function buoyancy_force end # to be defined by models that want to use TurbulenceClosures
 function buoyancy_tracers end # to be defined by models that want to use TurbulenceClosures
+
+#####
+##### Interface for radiation absorbed below the surface
+#####
+
+"""
+    with_penetrative_radiation(closure, radiation)
+
+Return `closure` with `radiation` handed to every closure in it that adjusts for radiation absorbed below the surface.
+"""
+with_penetrative_radiation(closure, radiation) = closure
+with_penetrative_radiation(closures::Tuple, radiation) = map(closure -> with_penetrative_radiation(closure, radiation), closures)
 
 #####
 ##### Fallback: flux = 0
@@ -157,7 +198,7 @@ const AGFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Abstra
 
 @inline z_top(i, j, grid) = znode(i, j, grid.Nz+1, grid, c, c, f)
 @inline z_bottom(i, j, grid) = znode(i, j, 1, grid, c, c, f)
-@inline z_bottom(i, j, ibg::AGFBIBG) = @inbounds ibg.immersed_boundary.bottom_height[i, j, 1]
+@inline z_bottom(i, j, ibg::AGFBIBG) = bottom_height(i, j, ibg)
 
 @inline depthᶜᶜᶠ(i, j, k, grid) = clip(z_top(i, j, grid) - znode(i, j, k, grid, c, c, f))
 @inline depthᶜᶜᶜ(i, j, k, grid) = clip(z_top(i, j, grid) - znode(i, j, k, grid, c, c, c))
@@ -185,6 +226,7 @@ include("turbulence_closure_utils.jl")
 include("closure_kernel_operators.jl")
 include("velocity_tracer_gradients.jl")
 include("abstract_scalar_diffusivity_closure.jl")
+include("stencil_order_derivatives.jl")
 include("abstract_scalar_biharmonic_diffusivity_closure.jl")
 include("closure_tuples.jl")
 include("isopycnal_rotation_tensor_components.jl")
@@ -218,7 +260,6 @@ include("turbulence_closure_implementations/ri_based_vertical_diffusivity.jl")
 # Special non-abstracted diffusivities:
 # TODO: introduce abstract typing for these
 include("turbulence_closure_implementations/isopycnal_skew_symmetric_diffusivity.jl")
-include("turbulence_closure_implementations/isopycnal_skew_symmetric_diffusivity_with_triads.jl")
 include("turbulence_closure_implementations/advective_skew_diffusion.jl")
 include("turbulence_closure_implementations/leith_enstrophy_diffusivity.jl")
 

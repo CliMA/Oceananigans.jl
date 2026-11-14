@@ -122,7 +122,10 @@ If a `Checkpointer` is configured, it will be used. Otherwise, a file named
 Checkpointing saves the **prognostic state** which is data that evolves during simulation. This includes
 prognostic model fields (velocities, tracers, diffusivities, etc.), the clock, the state of the
 time stepper, output writer state, turbulence closure state, free surface state, and Lagrangian particle
-properties.
+properties. Auxiliary `Field`s are checkpointed too, while auxiliary `AbstractOperation`s and `FunctionField`s
+are computed on the fly and have nothing to checkpoint. Biogeochemical models that evolve state outside of
+the tracers, such as sediment fields, checkpoint it by extending `Oceananigans.prognostic_state` and
+`Oceananigans.restore_prognostic_state!`.
 
 Static configuration is **not** checkpointed. This includes the grid, boundary conditions, forcing
 functions, closure parameters, model options, and callbacks.

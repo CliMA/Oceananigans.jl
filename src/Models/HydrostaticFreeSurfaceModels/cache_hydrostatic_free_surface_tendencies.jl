@@ -1,9 +1,8 @@
 using KernelAbstractions: @index, @kernel
+
 using Oceananigans: prognostic_fields
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Utils: launch!
-
-import Oceananigans.TimeSteppers: cache_previous_tendencies!
 
 #####
 ##### Storing previous tendencies for the AB2 update
@@ -18,7 +17,7 @@ end
 cache_free_surface_tendency!(free_surface, model) = nothing
 
 """
-    cache_free_surface_tendency!(::ExplicitFreeSurface, model)
+$(TYPEDSIGNATURES)
 
 Store the current free surface tendency `Gⁿ.η` into `G⁻.η` for AB2 time stepping.
 Only applicable to `ExplicitFreeSurface` where `η` is a prognostic variable
@@ -38,7 +37,7 @@ end
 end
 
 """
-    cache_previous_tendencies!(model::HydrostaticFreeSurfaceModel)
+$(TYPEDSIGNATURES)
 
 Store the current tendencies `Gⁿ` into `G⁻` for all prognostic fields.
 
@@ -48,32 +47,30 @@ preserving the tendencies needed for the AB2 time-stepping scheme.
 If CATKE or TD closures are active, their prognostic tracers (`e`, `ϵ`) are skipped.
 For `ExplicitFreeSurface`, the free surface tendency is also cached.
 """
-function cache_previous_tendencies!(model::HydrostaticFreeSurfaceModel)
-    prognostic_field_names = keys(prognostic_fields(model))
-    three_dimensional_prognostic_field_names = filter(name -> name != :η, prognostic_field_names)
-
-    closure = model.closure
-    catke_in_closures = hasclosure(closure, FlavorOfCATKE)
-    td_in_closures    = hasclosure(closure, FlavorOfTD)
-
-    for field_name in three_dimensional_prognostic_field_names
-
-        if catke_in_closures && field_name == :e
-            @debug "Skipping store tendencies for e"
-        elseif td_in_closures && field_name == :ϵ
-            @debug "Skipping store tendencies for ϵ"
-        elseif td_in_closures && field_name == :e
-            @debug "Skipping store tendencies for e"
-        else
-            launch!(model.architecture, model.grid, :xyz,
-                    _cache_field_tendencies!,
-                    model.timestepper.G⁻[field_name],
-                    model.timestepper.Gⁿ[field_name])
-        end
-    end
-
+function TimeSteppers.cache_previous_tendencies!(model::HydrostaticFreeSurfaceModel)
+    cache_prognostic_field_tendencies!(model, Val(keys(prognostic_fields(model))))
     cache_free_surface_tendency!(model.free_surface, model)
+    return nothing
+end
 
+@inline cache_prognostic_field_tendencies!(model, ::Val{()}) = nothing
+
+@inline function cache_prognostic_field_tendencies!(model, ::Val{names}) where names
+    cache_prognostic_field_tendency!(model, Val(first(names)))
+    cache_prognostic_field_tendencies!(model, Val(Base.tail(names)))
+    return nothing
+end
+
+@inline function cache_prognostic_field_tendency!(model, ::Val{field_name}) where field_name
+    closure = model.closure
+    skip = field_name == :η ||
+           (hasclosure(closure, FlavorOfCATKE) && field_name == :e) ||
+           (hasclosure(closure, FlavorOfTD) && (field_name == :ϵ || field_name == :e))
+    skip && return nothing
+    launch!(model.architecture, model.grid, :xyz,
+            _cache_field_tendencies!,
+            model.timestepper.G⁻[field_name],
+            model.timestepper.Gⁿ[field_name])
     return nothing
 end
 
@@ -88,7 +85,7 @@ end
 end
 
 """
-    cache_current_fields!(model::HydrostaticFreeSurfaceModel)
+$(TYPEDSIGNATURES)
 
 Cache the current prognostic fields at the beginning of a split Runge-Kutta time step.
 
@@ -99,22 +96,27 @@ For tracers, the cached quantity is `σ * c` (tracer times grid stretching facto
 properly handle mutable vertical coordinates (z-star). Velocities and free surface
 are cached directly without modification.
 """
-function cache_current_fields!(model::HydrostaticFreeSurfaceModel)
+function TimeSteppers.cache_current_fields!(model::HydrostaticFreeSurfaceModel)
+    cache_current_fields!(model, Val(keys(prognostic_fields(model))))
+    return nothing
+end
 
-    previous_fields = model.timestepper.Ψ⁻
-    model_fields = prognostic_fields(model)
+@inline TimeSteppers.cache_current_fields!(model, ::Val{()}) = nothing
+
+@inline function TimeSteppers.cache_current_fields!(model, ::Val{names}) where names
+    cache_current_field!(model, Val(first(names)))
+    cache_current_fields!(model, Val(Base.tail(names)))
+    return nothing
+end
+
+@inline function cache_current_field!(model, ::Val{name}) where name
     grid = model.grid
-    arch = architecture(grid)
-
-    for name in keys(model_fields)
-        Ψ⁻ = previous_fields[name]
-        Ψⁿ = model_fields[name]
-        if name ∈ keys(model.tracers) # Tracers are stored with the grid scaling
-            launch!(arch, grid, :xyz, _cache_tracer_fields!, Ψ⁻, grid, Ψⁿ)
-        else # Velocities and free surface are stored without the grid scaling
-            parent(Ψ⁻) .= parent(Ψⁿ)
-        end
+    Ψ⁻ = model.timestepper.Ψ⁻[name]
+    Ψⁿ = prognostic_fields(model)[name]
+    if name ∈ keys(model.tracers) # Tracers are stored with the grid scaling
+        launch!(architecture(grid), grid, :xyz, _cache_tracer_fields!, Ψ⁻, grid, Ψⁿ)
+    else # Velocities and free surface are stored without the grid scaling
+        parent(Ψ⁻) .= parent(Ψⁿ)
     end
-
     return nothing
 end

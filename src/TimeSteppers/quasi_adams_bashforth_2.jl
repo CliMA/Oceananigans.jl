@@ -8,10 +8,7 @@ mutable struct QuasiAdamsBashforth2TimeStepper{FT, GT, IT} <: AbstractTimeSteppe
 end
 
 """
-    QuasiAdamsBashforth2TimeStepper(grid, prognostic_fields, χ = 0.1;
-                                    implicit_solver = nothing,
-                                    Gⁿ = map(similar, prognostic_fields),
-                                    G⁻ = map(similar, prognostic_fields))
+$(SIGNATURES)
 
 Return a 2nd-order quasi Adams-Bashforth (AB2) time stepper (`QuasiAdamsBashforth2TimeStepper`)
 on `grid`, with `tracers`, and AB2 parameter `χ`. The tendency fields `Gⁿ` and `G⁻`, usually equal to
@@ -50,8 +47,13 @@ end
 
 reset!(timestepper::QuasiAdamsBashforth2TimeStepper) = nothing
 
+function materialize_clock!(clock::Clock, timestepper::QuasiAdamsBashforth2TimeStepper)
+    clock.last_Δt = clock.last_stage_Δt
+    return nothing
+end
+
 """
-    QuasiAdamsBashforth2TimeStepper(; χ = 0.1)
+$(SIGNATURES)
 
 Construct a `QuasiAdamsBashforth2TimeStepper` by specifying the `χ` parameter.
 """
@@ -62,7 +64,7 @@ QuasiAdamsBashforth2TimeStepper(; χ = 0.1) = QuasiAdamsBashforth2TimeStepper{ty
 #####
 
 """
-    time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt; euler=false, callbacks=[])
+$(SIGNATURES)
 
 Step forward `model` one time step `Δt` with a 2nd-order Adams-Bashforth method.
 Setting `euler=true` will take a forward Euler time step.
@@ -70,13 +72,15 @@ Setting `euler=true` will take a forward Euler time step.
 The steps of the Quasi-Adams-Bashforth second-order (AB2) algorithm are:
 
 1. If this is the first time step (`model.clock.iteration == 0`), call `update_state!`.
-2. Call `ab2_step!(model, Δt, callbacks)` which:
+2. Advance Lagrangian particles with `X += Δt * ((3/2 + χ) * Uⁿ - (1/2 + χ) * U⁻)`, where `Uⁿ`
+   is the particle velocity at the beginning of the step and `U⁻` is the particle velocity at the
+   beginning of the previous step. See `substep_lagrangian_particles!`.
+3. Call `ab2_step!(model, Δt, callbacks)` which:
    - Computes tendencies for all prognostic fields
    - Advances fields using AB2: `U += Δt * ((3/2 + χ) * Gⁿ - (1/2 + χ) * G⁻)`
    - Applies model-specific corrections (e.g., pressure correction for incompressibility)
-3. Store the current tendencies in `G⁻` for use in the next time step.
-4. Update the model state (fill halos, compute diagnostics).
-5. Advance the clock and step Lagrangian particles.
+4. Store the current tendencies in `G⁻` for use in the next time step.
+5. Advance the clock and update the model state (fill halos, compute diagnostics).
 
 The specific implementation of `ab2_step!` varies by model type (e.g., `NonhydrostaticModel`
 includes a pressure correction step, while `HydrostaticFreeSurfaceModel` handles the
@@ -87,18 +91,17 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
 
     Δt == 0 && @warn "Δt == 0 may cause model blowup!"
 
+    kernel_Δt = kernel_time_step(architecture(model.grid), model.grid, Δt)
+
     # Take an euler step if:
     #   * We detect that the time-step size has changed.
     #   * We detect that this is the "first" time-step, which means we
     #     need to take an euler step. Note that model.clock.last_Δt is
     #     initialized as Inf
     #   * The user has passed euler=true to time_step!
-    euler = euler || (Δt != model.clock.last_Δt)
-    euler && @debug "Taking a forward Euler step."
+    euler = euler | (Δt != model.clock.last_Δt)
 
-    if model.clock.iteration == 0
-        update_state!(model, callbacks)
-    end
+    maybe_prepare_first_time_step!(model, Δt, callbacks)
 
     # If euler, then set χ = -0.5
     minus_point_five = convert(eltype(model.grid), -0.5)
@@ -107,14 +110,16 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     χ₀ = ab2_timestepper.χ # Save initial value
     ab2_timestepper.χ = χ
 
-    ab2_step!(model, Δt, callbacks)
+    cache_boundary_conditions!(model)
+    substep_lagrangian_particles!(model, kernel_Δt, 1)
+    ab2_step!(model, kernel_Δt, callbacks)
     cache_previous_tendencies!(model)
 
     tick!(model.clock, Δt)
 
+    step_closure_prognostics!(model, kernel_Δt)
     update_state!(model, callbacks)
-
-    step_lagrangian_particles!(model, Δt)
+    update_lagrangian_particle_state!(model)
 
     # Return χ to initial value
     ab2_timestepper.χ = χ₀
@@ -132,7 +137,6 @@ Time step fields via the 2nd-order quasi Adams-Bashforth method
     i, j, k = @index(Global, NTuple)
 
     FT = eltype(u)
-    Δt = convert(FT, Δt)
     α = convert(FT, 3/2) + χ
     β = convert(FT, 1/2) + χ
     not_euler = χ != convert(FT, -0.5) # use to prevent corruption by leftover NaNs in G⁻
@@ -150,7 +154,7 @@ end
 #####
 
 """
-    ab2_step!(model::AbstractModel, Δt, callbacks)
+$(TYPEDSIGNATURES)
 
 Advance the model state by one Adams-Bashforth 2nd-order (AB2) time step of size `Δt`.
 
@@ -168,7 +172,7 @@ reduces to forward Euler (used for the first time step).
 ab2_step!(model::AbstractModel, Δt, callbacks) = error("ab2_step! not implemented for $(typeof(model))")
 
 """
-    cache_previous_tendencies!(model::AbstractModel)
+$(TYPEDSIGNATURES)
 
 Store the current tendencies `Gⁿ` into `G⁻` for use in the next AB2 time step.
 

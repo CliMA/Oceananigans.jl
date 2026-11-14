@@ -1,25 +1,72 @@
-using Oceananigans: AbstractModel
-import Dates
-
-using Dates: AbstractTime
+using Dates: Dates, AbstractTime
+using Oceananigans: AbstractModel, prognostic_state, restore_prognostic_state!
 using Oceananigans.Diagnostics: default_nan_checker
 using Oceananigans.DistributedComputations: Distributed, all_reduce
-using Oceananigans.OutputWriters: JLD2Writer, NetCDFWriter
-using Oceananigans.Utils: period_to_seconds
-
-import Oceananigans: prognostic_state, restore_prognostic_state!
-import Oceananigans.Diagnostics: CFL
-import Oceananigans.Utils: prettytime
-import Oceananigans.TimeSteppers: reset!
-import Oceananigans.OutputWriters: write_output!
-import Oceananigans.Solvers: iteration
+using Oceananigans.OutputWriters: JLD2Writer, NetCDFWriter, ZarrWriter, write_output!
+using Oceananigans.Solvers: iteration
+using Oceananigans.TimeSteppers: reset!
+using Oceananigans.Utils: period_to_seconds, prettytime
 
 default_progress(simulation) = nothing
 
-mutable struct Simulation{ML, DT, ST, DI, OW, CB, FT, BL}
+# The `stop_time` of a calendar clock that never stops
+const max_datetime = Dates.DateTime(9999, 12, 31, 23, 59, 59, 999)
+
+"""
+    AutomaticDifferentiation(; checkpointing, track_numbers = false, mincut = true)
+
+Options for differentiating a compiled `run!` of a `Simulation` on `ReactantState` in reverse mode,
+given to the `Simulation` constructor as `automatic_differentiation`, either as this struct or as
+a `NamedTuple` of the same fields. They are passed to `Reactant.@trace` for the loop over time
+steps, and only take effect under differentiation: the forward program is the same whatever they are.
+
+- `track_numbers`: whether plain Julia numbers captured by the loop are promoted to traced numbers.
+  Default: `false`, since the model holds numbers inside structs whose type parameters do not
+  cover every numeric field, and promoting those fails.
+
+- `mincut`: whether the reverse pass uses the mincut algorithm to reduce what is stored between
+  the forward and reverse sweeps. Default: `true`.
+
+- `checkpointing` (required): `false` stores every step's state for the reverse sweep;
+  `Reactant.Periodic(n)` stores a checkpoint every `n` steps and recomputes the steps in between;
+  `Reactant.Binomial(budget)` keeps at most `budget` checkpoints, placed by the revolve algorithm.
+  It also decides how the `Simulation` holds `stop_iteration`: binomial checkpointing
+  differentiates a loop whose step count is known only at run time, so with it `stop_iteration`
+  is a device number that a compiled `run!` reads at each call; with `false` or `Periodic` it is
+  an `Int`, a constant of the compiled program.
+
+Note that "checkpointing" here is the recomputation strategy of reverse-mode differentiation.
+Saving the state of a simulation to disk so it can be restarted is done by the [`Checkpointer`](@ref).
+
+```jldoctest
+using Oceananigans
+
+AutomaticDifferentiation(checkpointing = false)
+
+# output
+AutomaticDifferentiation(track_numbers=false, mincut=true, checkpointing=false)
+```
+"""
+struct AutomaticDifferentiation{C}
+    track_numbers :: Bool
+    mincut :: Bool
+    checkpointing :: C
+end
+
+AutomaticDifferentiation(; checkpointing, track_numbers = false, mincut = true) =
+    AutomaticDifferentiation(track_numbers, mincut, checkpointing)
+
+Base.convert(::Type{AutomaticDifferentiation}, options::NamedTuple) = AutomaticDifferentiation(; options...)
+
+Base.show(io::IO, ad::AutomaticDifferentiation) =
+    print(io, "AutomaticDifferentiation(track_numbers=", ad.track_numbers,
+              ", mincut=", ad.mincut,
+              ", checkpointing=", ad.checkpointing, ")")
+
+mutable struct Simulation{ML, DT, SI, ST, DI, OW, CB, FT, BL, AD}
     model :: ML
     Δt :: DT
-    stop_iteration :: FT
+    stop_iteration :: SI
     stop_time :: ST
     wall_time_limit :: FT
     diagnostics :: DI
@@ -31,17 +78,11 @@ mutable struct Simulation{ML, DT, ST, DI, OW, CB, FT, BL}
     initialized :: BL
     verbose :: BL
     minimum_relative_step :: FT
+    automatic_differentiation :: AD
 end
 
 """
-    Simulation(model;
-               Δt,
-               verbose = true,
-               stop_iteration = Inf,
-               stop_time = Inf,
-               wall_time_limit = Inf,
-               align_time_step = true,
-               minimum_relative_step = 0)
+$(SIGNATURES)
 
 Construct a `Simulation` for a `model` with time step `Δt`.
 
@@ -70,6 +111,10 @@ Keyword arguments
 - `minimum_relative_step`: time steps smaller than `Δt * minimum_relative_step` will be skipped.
                            This avoids extremely high values when writing the pressure to disk.
                            Default value is 0. See <https://github.com/CliMA/Oceananigans.jl/issues/3593> for details.
+
+- `automatic_differentiation`: [`AutomaticDifferentiation`](@ref) options for differentiating a compiled
+                               `run!` in reverse mode, which only a model on [`ReactantState`](@ref) supports.
+                               Default: `nothing`.
 """
 function Simulation(model;
                     Δt,
@@ -78,7 +123,12 @@ function Simulation(model;
                     stop_time = Inf,
                     wall_time_limit = Inf,
                     align_time_step = true,
-                    minimum_relative_step = 0)
+                    minimum_relative_step = 0,
+                    automatic_differentiation = nothing)
+
+   isnothing(automatic_differentiation) || throw(ArgumentError(
+       "automatic_differentiation = $automatic_differentiation needs a model on ReactantState, whose " *
+       "compiled run! is what gets differentiated; this model is on $(summary(architecture(model)))."))
 
    if verbose && stop_iteration == Inf && stop_time == Inf && wall_time_limit == Inf
        @warn "This simulation will run forever as stop iteration = stop time " *
@@ -108,6 +158,11 @@ function Simulation(model;
    end
    Δt = Δt isa Number ? TT(Δt) : Δt
    stop_time = stop_time isa Number ? TT(stop_time) : stop_time
+   if model.clock.time isa AbstractTime && stop_time isa Number
+       isinf(stop_time) || throw(ArgumentError(string("stop_time must be a date for a model with a ",
+                                                      typeof(model.clock.time), " clock, not ", stop_time)))
+       stop_time = max_datetime
+   end
 
    return Simulation(model,
                      Δt,
@@ -122,7 +177,8 @@ function Simulation(model;
                      false,
                      false,
                      verbose,
-                     Float64(minimum_relative_step))
+                     Float64(minimum_relative_step),
+                     automatic_differentiation)
 end
 
 function Base.show(io::IO, s::Simulation)
@@ -150,7 +206,7 @@ end
 #####
 
 """
-    validate_Δt(Δt, arch)
+$(TYPEDSIGNATURES)
 
 Make sure different workers are using the same time step
 """
@@ -166,52 +222,44 @@ end
 validate_Δt(Δt, arch) = Δt
 
 """
-    time(sim::Simulation)
+$(TYPEDSIGNATURES)
 
 Return the current simulation time.
 """
 Base.time(sim::Simulation) = time(sim.model)
 
 """
-    iteration(sim::Simulation)
+$(TYPEDSIGNATURES)
 
 Return the current simulation iteration.
 """
-iteration(sim::Simulation) = iteration(sim.model)
+Oceananigans.Solvers.iteration(sim::Simulation) = iteration(sim.model)
 
 """
-    prettytime(sim::Simulation, longform=true)
+$(SIGNATURES)
 
 Return `sim.model.clock.time` as a prettily formatted string."
 
 For more details, see [`prettytime`](@ref Oceananigans.Utils.prettytime).
 """
-prettytime(sim::Simulation, longform=true) = prettytime(time(sim), longform)
+Oceananigans.Utils.prettytime(sim::Simulation, longform=true) = prettytime(time(sim), longform)
 
 """
-    run_wall_time(sim::Simulation)
+$(TYPEDSIGNATURES)
 
-Return `sim.run_wall_time` as a prettily formatted string."
+Return `sim.run_wall_time` as a prettily formatted string.
 """
 run_wall_time(sim::Simulation) = prettytime(sim.run_wall_time)
 
 """
-    reset!(sim)
+$(TYPEDSIGNATURES)
 
 Reset `sim`ulation, `model.clock`, and `model.timestepper` to their initial state.
+The stop criteria `stop_iteration`, `stop_time`, and `wall_time_limit` are kept.
+`t_init` is the time the clock returns to; it is required for a calendar clock, which has no zero.
 """
-function reset!(sim::Simulation)
-    reset_clock!(sim.model)
-    sim.stop_iteration = Inf
-
-    if sim.stop_time isa Number
-        sim.stop_time = Inf
-    elseif sim.stop_time isa AbstractTime
-        max_datetime = Dates.DateTime(9999, 12, 31, 23, 59, 59, 999)
-        sim.stop_time = max_datetime
-    end
-
-    sim.wall_time_limit = Inf
+function Oceananigans.TimeSteppers.reset!(sim::Simulation; t_init = nothing)
+    reset_clock!(sim.model, t_init)
     sim.run_wall_time = 0.0
     sim.initialized = false
     sim.running = true
@@ -221,11 +269,13 @@ end
 
 # Fallback. Models without clocks should extend this function.
 """
-    reset_clock!(model::AbstractModel)
+$(TYPEDSIGNATURES)
 
-Reset `model.clock` to its initial state.
+Reset `model.clock` to its initial state, at `t_init` when given.
 """
 reset_clock!(model::AbstractModel) = reset!(model.clock)
+reset_clock!(model::AbstractModel, t_init) = reset!(model.clock, t_init)
+reset_clock!(model::AbstractModel, ::Nothing) = reset_clock!(model)
 
 #####
 ##### Default stop criteria callback functions
@@ -280,12 +330,12 @@ end
 #####
 
 # Fallback, to be elaborated on
-write_output!(writer::JLD2Writer,   sim::Simulation) = write_output!(writer, sim.model)
-write_output!(writer::NetCDFWriter, sim::Simulation) = write_output!(writer, sim.model)
+Oceananigans.OutputWriters.write_output!(writer::JLD2Writer,   sim::Simulation) = write_output!(writer, sim.model)
+Oceananigans.OutputWriters.write_output!(writer::NetCDFWriter, sim::Simulation) = write_output!(writer, sim.model)
+Oceananigans.OutputWriters.write_output!(writer::ZarrWriter,   sim::Simulation) = write_output!(writer, sim.model)
 
-function prognostic_state(sim::Simulation)
+function Oceananigans.prognostic_state(sim::Simulation)
     return (model = prognostic_state(sim.model),
-            Δt = sim.Δt,
             diagnostics = prognostic_state(sim.diagnostics),
             output_writers = prognostic_state(sim.output_writers),
             callbacks = prognostic_state(sim.callbacks),
@@ -295,11 +345,15 @@ function prognostic_state(sim::Simulation)
             minimum_relative_step = sim.minimum_relative_step)
 end
 
-function restore_prognostic_state!(restored::Simulation, from)
+function Oceananigans.restore_prognostic_state!(restored::Simulation, from)
     restore_prognostic_state!(restored.model, from.model)
-    restored.Δt = from.Δt
     restore_prognostic_state!(restored.diagnostics, from.diagnostics)
     restore_prognostic_state!(restored.output_writers, from.output_writers)
+
+    for writer in values(restored.output_writers)
+        OutputWriters.reconcile_restored_output_schedule!(writer, restored.model)
+    end
+
     restore_prognostic_state!(restored.callbacks, from.callbacks)
     restored.run_wall_time = from.run_wall_time
     restored.align_time_step = from.align_time_step
@@ -309,10 +363,10 @@ function restore_prognostic_state!(restored::Simulation, from)
 end
 
 # Disambiguation: handle case when no checkpoint file exists
-restore_prognostic_state!(::Simulation, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::Simulation, ::Nothing) = nothing
 
 #####
 ##### Diagnostics
 #####
 
-(c::CFL)(sim::Simulation) = c(sim.model)
+(c::Oceananigans.Diagnostics.CFL)(sim::Simulation) = c(sim.model)

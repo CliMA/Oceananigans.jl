@@ -102,7 +102,7 @@ always work on CPUs, but when their complexity is high (in terms of number of ab
 the compiler can't translate them into GPU code and they fail for GPU runs. (This limitation is summarized
 in [this Github issue](https://github.com/CliMA/Oceananigans.jl/issues/1886) and contributions are welcome.)
 For example, in the example below, calculating `u²` works in both CPUs and GPUs, but calculating
-`ε` will not compile on GPUs when we call [`compute!`](@ref):
+`ε` will not compile on GPUs when being computed (e.g. via [`compute!`](@ref)):
 
 ```julia
 using Oceananigans
@@ -115,9 +115,6 @@ u, v, w = model.velocities
 
 u² = Field(u^2)
 ε = Field(ν*(∂x(u)^2 + ∂x(v)^2 + ∂x(w)^2 + ∂y(u)^2 + ∂y(v)^2 + ∂y(w)^2 + ∂z(u)^2 + ∂z(v)^2 + ∂z(w)^2))
-
-compute!(u²)
-compute!(ε)
 ```
 
 There are a few ways to work around this issue.
@@ -127,7 +124,6 @@ ddx² = Field(∂x(u)^2 + ∂x(v)^2 + ∂x(w)^2)
 ddy² = Field(∂y(u)^2 + ∂y(v)^2 + ∂y(w)^2)
 ddz² = Field(∂z(u)^2 + ∂z(v)^2 + ∂z(w)^2)
 ε = Field(ν * (ddx² + ddy² + ddz²))
-compute!(ε)
 ```
 
 This method increases the computational cost since it requires computing and storing 3 intermediate terms.
@@ -157,8 +153,6 @@ end
                                                        grid, u, v, w, ν)
 
 ε = Field(ε_op)
-
-compute!(ε)
 ```
 
 Writing kernel functions like `isotropic_viscous_dissipation_rate_ccc`
@@ -168,10 +162,9 @@ requires understanding the C-grid, but incurs only one iteration over the domain
 [Oceanostics.jl](https://github.com/tomchor/Oceanostics.jl/blob/3b8f67338656557877ef8ef5ebe3af9e7b2974e2/src/TurbulentKineticEnergyTerms.jl#L35-L57),
 
 ```julia
-using Oceanostics: IsotropicPseudoViscousDissipationRate
+using Oceanostics.KineticEnergyEquation: IsotropicDissipationRate
 
-ε = IsotropicViscousDissipationRate(model, u, v, w, ν)
-compute!(ε)
+ε = IsotropicDissipationRate(model) |> Field
 ```
 [Start an issue on Github](https://github.com/CliMA/Oceananigans.jl/issues/new) if more help is needed.
 
@@ -195,7 +188,7 @@ For large simulations on the GPU, careful management of memory allocation may be
 
 - Try to use higher-order advection schemes. In general when you use a higher-order scheme you need
   fewer grid points to achieve the same accuracy that you would with a lower-order one. Refer to the
-  [documentation](https://clima.github.io/OceananigansDocumentation/stable/appendix/library/#Advection)
+  [documentation](@ref lib_advection)
   for available advection schemes.
 
 - Manually define scratch space to be reused in diagnostics. By default, every time a user-defined
@@ -221,8 +214,8 @@ are called [`CUDA.CuArray`](https://cuda.juliagpu.org/stable/usage/array/).
 One limitation of `GPUArray`s compared to the `Array`s used for
 CPU computations is that `GPUArray` elements in general cannot be accessed outside kernels
 launched through, e.g., CUDA.jl or KernelAbstractions.jl. (You can learn more about GPU kernels
-[here](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#kernels) and
-[here](https://cuda.juliagpu.org/stable/usage/overview/#Kernel-programming-with-@cuda).)
+[through Nvidia docs](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#kernels) and
+[CUDA.jl docs](https://cuda.juliagpu.org/stable/usage/overview/#Kernel-programming-with-@cuda).)
 Doing so requires individual elements to be copied from or to the GPU for processing,
 which is very slow and can result in huge slowdowns. To avoid such unintentional slowdowns,
 Oceananigans disables scalar indexing by default. See the
@@ -244,9 +237,9 @@ If we try to view the `CuArray` that stores values for `u` we hit a wall:
 
 ```julia
 julia> model.velocities.u.data
-3×3×3 OffsetArray(::CuArray{Float64, 3, CUDA.DeviceMemory}, 0:2, 0:2, 0:2) with eltype Float64 with indices 0:2×0:2×0:2:
+3×3×3 StaticStridesOffsetArray(::CuArray{Float64, 3, CUDA.DeviceMemory}, 0:2, 0:2, 0:2) with eltype Float64 with indices 0:2×0:2×0:2:
 [:, :, 0] =
-Error showing value of type OffsetArrays.OffsetArray{Float64, 3, CuArray{Float64, 3, CUDA.DeviceMemory}}:
+Error showing value of type Oceananigans.Utils.StaticStridesOffsetArray{Float64, 3, (3, 3, 3), (-1, -1, -1), CuArray{Float64, 3, CUDA.DeviceMemory}}:
 ERROR: Scalar indexing is disallowed.
 Invocation of getindex resulted in scalar indexing of a GPU array.
 This is typically caused by calling an iterating implementation of a method.

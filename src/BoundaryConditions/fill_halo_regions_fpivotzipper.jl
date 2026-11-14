@@ -21,27 +21,23 @@ Consider the northern edge of a tripolar grid where P indicates the pivot point,
 then there must be a 180° rotation symmetry around the pivot point:
 ```
                     │            │            │            │            │
-Ny + 1 (face)   ─▶  ├─── -v₆ ────┼─── -v₅ ────┼─── -v₄ ────┼─── -v₃ ────┤
+Ny + 1 (face)   ─▶  ├──── v₅ ────┼──── v₆ ─── P ── -v₆ ────┼─── -v₅ ────┤ ─── Fold
                     │            │            │            │            │
-Ny     (center) ─▶ -u₁    c₄    -u₄    c₃    -u₃    c₂    -u₂    c₁    -u₁
+Ny     (center) ─▶  u₁    c₁     u₂    c₂     u₃    c₃     u₄    c₄     u₁
                     │            │            │            │            │
-Ny     (face)   ─▶  ├──── v₁ ────┼──── v₂ ─── P ── -v₂ ────┼─── -v₁ ────┤ ◀─ Fold
+Ny     (face)   ─▶  ├──── v₁ ────┼──── v₂ ────┼──── v₃ ────┼──── v₄ ────┤
                     │            │            │            │            │
-Ny - 1 (center) ─▶  u₁    c₁     u₂    c₂     u₃    c₃     u₄    c₄     u₁
-                    │            │            │            │            │
-Ny - 1 (face)   ─▶  ├──── v₃ ────┼──── v₄ ────┼──── v₅ ────┼──── v₆ ────┤
+Ny - 1 (center) ─▶  u₅    c₅     u₆    c₆     u₇    c₇     u₈    c₈     u₅
                     │            │            │            │            │
                                                            ▲     ▲
                                                            Nx    Nx
                                                          (face) (center)
 ```
 
-Note that for the `RightFaceFolded` topology used here,
-`YFaceField`s have an extra row (size `Ny` in the y-direction)
-because the `v` velocities along the fold must be defined.
-
-There is also an extra row for tracers and u-velocities which will be computed
-dynamically but is redundant and will be eventually substituted by the boundary condition.
+Note that for the `FaceFolded` north side used here,
+the fold is located along the y-direction faces at `j = Ny+1` (i.e., the fold
+is exactly on the northern boundary of the grid). The boundary condition
+fills the halo regions by mirroring interior values across the fold.
 """
 
 #####
@@ -50,32 +46,31 @@ dynamically but is redundant and will be eventually substituted by the boundary 
 
 @inline function fold_north_face_face_fpivot!(i, k, grid, sign, ζ)
     Nx, Ny, _ = size(grid)
-    i′ = Nx - i + 2 # Element Nx + 1 does not exist?
+    # We use Nx - i + 2 because west y-faces map to east y-faces after folding
+    i′ = Nx - i + 2 # but element Nx + 1 does not exist so we use periodicity
     i′ = ifelse(i′ > Nx, i′ - Nx, i′) # Periodicity is hardcoded in the x-direction!!
     Hy = grid.Hy
 
+    # The Ny+1 line is the fold so we substitute starting from Ny + 2
     for j in 1:Hy
-        @inbounds begin
-            ζ[i, Ny + j, k] = sign * ζ[i′, Ny - j, k]
-        end
+        @inbounds ζ[i, Ny + 1 + j, k] = sign * ζ[i′, Ny + 1 - j, k]
     end
 
-    # We substitute the redundant part of the last row of ζ to ensure consistency
-    @inbounds ζ[i, Ny, k] = ifelse(i > Nx ÷ 2, sign * ζ[i′, Ny, k], ζ[i, Ny, k])
+    # We substitute the redundant part of the fold row (Ny + 1) to ensure consistency
+    @inbounds ζ[i, Ny + 1, k] = ifelse(i > Nx ÷ 2, sign * ζ[i′, Ny + 1, k], ζ[i, Ny + 1, k])
 
     return nothing
 end
 
 @inline function fold_north_face_center_fpivot!(i, k, grid, sign, u)
     Nx, Ny, _ = size(grid)
-    i′ = Nx - i + 2 # Element Nx + 1 does not exist?
+    # We use Nx - i + 2 because west y-faces map to east y-faces after folding
+    i′ = Nx - i + 2 # but element Nx + 1 does not exist so we use periodicity
     i′ = ifelse(i′ > Nx, i′ - Nx, i′) # Periodicity is hardcoded in the x-direction!!
     Hy = grid.Hy
 
-    for j in 1:Hy + 1
-        @inbounds begin
-            u[i, Ny + j - 1, k] = sign * u[i′, Ny - j, k]
-        end
+    for j in 1:Hy
+        @inbounds u[i, Ny + j, k] = sign * u[i′, Ny + 1 - j, k]
     end
 
     return nothing
@@ -87,14 +82,13 @@ end
     i′ = Nx + 1 - i
     Hy = grid.Hy
 
+    # The Ny + 1 line is the fold so we substitute starting from Ny + 2
     for j in 1:Hy
-        @inbounds begin
-            v[i, Ny + j, k] = sign * v[i′, Ny - j, k]
-        end
+        @inbounds v[i, Ny + 1 + j, k] = sign * v[i′, Ny + 1 - j, k]
     end
 
-    # We substitute the redundant part of the last row of v (index Ny + 1) to ensure consistency
-    @inbounds v[i, Ny, k] = ifelse(i > Nx ÷ 2, sign * v[i′, Ny, k], v[i, Ny, k])
+    # We substitute the redundant part of the fold row (Ny + 1) to ensure consistency
+    @inbounds v[i, Ny + 1, k] = ifelse(i > Nx ÷ 2, sign * v[i′, Ny + 1, k], v[i, Ny + 1, k])
 
     return nothing
 end
@@ -105,10 +99,8 @@ end
     i′ = Nx + 1 - i
     Hy = grid.Hy
 
-    for j in 1:Hy + 1
-        @inbounds begin
-            c[i, Ny - 1 + j, k] = sign * c[i′, Ny - j, k]
-        end
+    for j in 1:Hy
+        @inbounds c[i, Ny + j, k] = sign * c[i′, Ny + 1 - j, k]
     end
 
     return nothing
@@ -120,13 +112,17 @@ const CFLocation = Tuple{<:Center, <:Face, <:Any}
 const FFLocation = Tuple{<:Face, <:Face, <:Any}
 
 # tracers or similar fields
-@inline _fill_north_halo!(i, k, grid, c, bc::FZBC, ::CCLocation, args...) = fold_north_center_center_fpivot!(i, k, grid, bc.condition, c)
+@inline _fill_north_halo!(i, k, grid, c, bc::FZBC, ::CCLocation, args...) =
+    fold_north_center_center_fpivot!(i, k, grid, bc.condition, c)
 
 # u-velocity or similar fields
-@inline _fill_north_halo!(i, k, grid, u, bc::FZBC, ::FCLocation, args...) = fold_north_face_center_fpivot!(i, k, grid, bc.condition, u)
+@inline _fill_north_halo!(i, k, grid, u, bc::FZBC, ::FCLocation, args...) =
+    fold_north_face_center_fpivot!(i, k, grid, bc.condition, u)
 
 # v-velocity or similar fields
-@inline _fill_north_halo!(i, k, grid, v, bc::FZBC, ::CFLocation, args...) = fold_north_center_face_fpivot!(i, k, grid, bc.condition, v)
+@inline _fill_north_halo!(i, k, grid, v, bc::FZBC, ::CFLocation, args...) =
+    fold_north_center_face_fpivot!(i, k, grid, bc.condition, v)
 
 # vorticity or similar fields
-@inline _fill_north_halo!(i, k, grid, ζ, bc::FZBC, ::FFLocation, args...) = fold_north_face_face_fpivot!(i, k, grid, bc.condition, ζ)
+@inline _fill_north_halo!(i, k, grid, ζ, bc::FZBC, ::FFLocation, args...) =
+    fold_north_face_face_fpivot!(i, k, grid, bc.condition, ζ)

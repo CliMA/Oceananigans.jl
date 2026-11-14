@@ -2,11 +2,11 @@ module Logger
 
 export OceananigansLogger
 
-using Dates
-using Logging
-using Crayons
+using Dates: Dates
+using Logging: Logging
+using Crayons: Crayons, Crayon
 
-import Logging: shouldlog, min_enabled_level, catch_exceptions, handle_message
+using Oceananigans.Utils: SIGNATURES
 
 const RED    = Crayon(foreground=:red)
 const YELLOW = Crayon(foreground=:light_yellow)
@@ -24,7 +24,7 @@ struct OceananigansLogger <: Logging.AbstractLogger
 end
 
 """
-    OceananigansLogger(stream::IO=stdout, level=Logging.Info; show_info_source=false)
+$(SIGNATURES)
 
 Based on Logging.SimpleLogger, it tries to log all messages in the following format:
 
@@ -36,12 +36,12 @@ where the source of the message between the square brackets is included only if
 OceananigansLogger(stream::IO=stdout, level=Logging.Info; show_info_source=false) =
     OceananigansLogger(stream, level, Dict{Any,Int}(), show_info_source)
 
-shouldlog(logger::OceananigansLogger, level, _module, group, id) =
+Logging.shouldlog(logger::OceananigansLogger, level, _module, group, id) =
     get(logger.message_limits, id, 1) > 0
 
-min_enabled_level(logger::OceananigansLogger) = logger.min_level
+Logging.min_enabled_level(logger::OceananigansLogger) = logger.min_level
 
-catch_exceptions(logger::OceananigansLogger) = false
+Logging.catch_exceptions(logger::OceananigansLogger) = false
 
 function level_to_string(level)
     level == Logging.Error && return "ERROR"
@@ -59,7 +59,7 @@ function level_to_crayon(level)
     return identity
 end
 
-function handle_message(logger::OceananigansLogger, level, message, _module, group, id,
+function Logging.handle_message(logger::OceananigansLogger, level, message, _module, group, id,
                                 filepath, line; maxlog = nothing, kwargs...)
 
     if !isnothing(maxlog) && maxlog isa Int
