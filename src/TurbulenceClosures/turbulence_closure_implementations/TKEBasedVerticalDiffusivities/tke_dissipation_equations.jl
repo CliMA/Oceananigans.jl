@@ -94,7 +94,7 @@ end
 
 # Compute TKE and dissipation closure_fields
 @kernel function compute_tke_dissipation_closure_fields!(κe, κϵ, grid, closure,
-                                                        velocities, tracers, buoyancy)
+                                                         velocities, tracers, buoyancy)
     i, j, k = @index(Global, NTuple)
     closure_ij = getclosure(i, j, closure)
     κe★ = κeᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy)

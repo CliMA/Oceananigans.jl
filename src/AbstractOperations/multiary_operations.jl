@@ -119,7 +119,7 @@ into a multiary operator on `Oceananigans.Fields` for use in `AbstractOperations
 
 Note that a multiary operator:
   * is a function with two or more arguments: for example, `+(x, y, z)` is a multiary function;
-  * must be imported to be extended if part of `Base`: use `import Base: op; @multiary op`;
+  * must be qualified to be extended if part of `Base`: use `@multiary Base.op` (or `@multiary Base.:op` for operators);
   * can only be called on `Oceananigans.Field`s if the "location" is noted explicitly; see example.
 
 Example

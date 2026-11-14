@@ -1,4 +1,4 @@
-using Oceananigans.Grids: Flat, peripheral_node, immersed_peripheral_node
+using Oceananigans.Grids: Flat, XFlatGrid, YFlatGrid, ZFlatGrid, peripheral_node, immersed_peripheral_node
 
 #####
 ##### Base interpolation operators
@@ -80,8 +80,6 @@ using Oceananigans.Grids: Flat, peripheral_node, immersed_peripheral_node
 #####
 ##### Support for Flat Earths
 #####
-
-using Oceananigans.Grids: XFlatGrid, YFlatGrid, ZFlatGrid
 
 @inline ℑxᶜᵃᵃ(i, j, k, grid::XFlatGrid, u) = @inbounds u[i, j, k]
 @inline ℑxᶠᵃᵃ(i, j, k, grid::XFlatGrid, c) = @inbounds c[i, j, k]

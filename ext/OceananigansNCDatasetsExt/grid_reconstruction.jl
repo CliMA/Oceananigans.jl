@@ -57,7 +57,7 @@ write_immersed_boundary_data!(ds, grid, immersed_grid_args, prefix) = nothing
 # When grid_index is nothing (single grid), use unprefixed group names
 # for backward compatibility with the legacy format.
 # When grid_index is an integer (multi-grid), prefix groups with "grid_N_".
-function write_grid_reconstruction_data!(ds, grid, grid_index; array_type=Array{eltype(grid)}, deflatelevel=0)
+function OutputWriters.write_grid_reconstruction_data!(ds, grid, grid_index; array_type=Array{eltype(grid)}, deflatelevel=0)
     underlying_grid_args, underlying_grid_kwargs, immersed_grid_args, grid_metadata = netcdf_grid_constructor_info(grid)
     underlying_grid_args, underlying_grid_kwargs, grid_metadata = map(convert_for_netcdf, (underlying_grid_args, underlying_grid_kwargs, grid_metadata))
 
@@ -88,7 +88,7 @@ end
 write_ossg_conformal_mapping!(ds, grid::ImmersedBoundaryGrid, prefix) =
     write_ossg_conformal_mapping!(ds, grid.underlying_grid, prefix)
 
-function reconstruct_grid(filename::String; grid_index=1, architecture=nothing)
+function OutputWriters.reconstruct_grid(filename::String; grid_index=1, architecture=nothing)
     ds = NCDataset(filename, "r")
     grid = reconstruct_grid(ds; grid_index, architecture)
     close(ds)
@@ -124,7 +124,7 @@ function reconstruct_immersed_boundary(ds, prefix)
     return immersed_boundary
 end
 
-function reconstruct_grid(ds; grid_index=1, architecture=nothing)
+function OutputWriters.reconstruct_grid(ds; grid_index=1, architecture=nothing)
     # Try prefixed format (multi-grid) first, fall back to unprefixed format (single-grid / legacy)
     prefixed_key = "grid_$(grid_index)_underlying_grid_reconstruction_args"
     prefix = haskey(ds.group, prefixed_key) ? "grid_$(grid_index)_" : ""

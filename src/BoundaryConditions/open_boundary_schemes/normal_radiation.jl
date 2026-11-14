@@ -70,10 +70,10 @@ struct NormalRadiation{FT, S, TF} <: AbstractRadiationScheme{FT}
 end
 
 function NormalRadiation(FT = defaults.FloatType;
-                   inflow_timescale = 0,
-                   outflow_timescale = Inf,
-                   use_boundary_velocity = false,
-                   target_transport = nothing)
+                         inflow_timescale = 0,
+                         outflow_timescale = Inf,
+                         use_boundary_velocity = false,
+                         target_transport = nothing)
 
     outflow_timescale = convert(FT, outflow_timescale)
     inflow_timescale = convert(FT, inflow_timescale)

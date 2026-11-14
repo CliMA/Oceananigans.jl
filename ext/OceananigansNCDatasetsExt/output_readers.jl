@@ -7,22 +7,20 @@ using Oceananigans.BoundaryConditions: FieldBoundaryConditions
 using Oceananigans.Grids: offset_data
 using Oceananigans.Utils: @apply_regionally
 
-import Oceananigans.Fields: Field
-
 #####
 ##### FieldTimeSeries from NetCDF
 #####
 
-function FieldTimeSeries(typed_path::NetCDFPath, name::String;
-                         backend = InMemory(),
-                         architecture = CPU(),
-                         grid = nothing,
-                         location = nothing,
-                         boundary_conditions = UnspecifiedBoundaryConditions(),
-                         time_indexing = Linear(),
-                         iterations = nothing,
-                         times = nothing,
-                         reader_kw = NamedTuple())
+function OutputReaders.FieldTimeSeries(typed_path::NetCDFPath, name::String;
+                                       backend = InMemory(),
+                                       architecture = CPU(),
+                                       grid = nothing,
+                                       location = nothing,
+                                       boundary_conditions = UnspecifiedBoundaryConditions(),
+                                       time_indexing = Linear(),
+                                       iterations = nothing,
+                                       times = nothing,
+                                       reader_kw = NamedTuple())
 
     path = typed_path.path
     file = NCDataset(path; reader_kw...)
@@ -70,7 +68,7 @@ function find_time_index(t, file_times, Δt)
     return nothing
 end
 
-function set_from_netcdf!(fts::InMemoryFTS, path::String, name; warn_missing_data=true)
+function OutputReaders.set_from_netcdf!(fts::InMemoryFTS, path::String, name; warn_missing_data=true)
     file = NCDataset(path)
     file_iterations = iterations_from_file(file)
     file_times = collect(file["time"])
@@ -127,12 +125,12 @@ end
 Load a field called `name` saved in a NetCDF file at `path` at `iter`ation.
 Unless specified, the `grid` is loaded from `path`.
 """
-function Field(location, file::NCDataset, name::String, iter;
-               grid = nothing,
-               architecture = nothing,
-               indices = (:, :, :),
-               boundary_conditions = nothing,
-               reader_kw = NamedTuple())
+function Fields.Field(location, file::NCDataset, name::String, iter;
+                      grid = nothing,
+                      architecture = nothing,
+                      indices = (:, :, :),
+                      boundary_conditions = nothing,
+                      reader_kw = NamedTuple())
 
     # Default to CPU if neither architecture nor grid is specified
     if isnothing(architecture)

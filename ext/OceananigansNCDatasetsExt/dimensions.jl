@@ -81,7 +81,7 @@ end
 # pass them through `create_spatial_dimensions!`, which creates missing coord vars or
 # validates existing ones against the field's nodes. Returns the resolved dim names.
 Base.@nospecializeinfer function create_field_coord_variables!(ds, @nospecialize(fd), @nospecialize(grid), spatial_dim_names, dim_name_generator;
-                                        with_halos, dimension_type, grid_index)
+                                                               with_halos, dimension_type, grid_index)
     dimension_attributes = default_dimension_attributes(grid, dim_name_generator; grid_index)
     spatial_dim_data = nodes(fd; with_halos)
 
@@ -111,8 +111,8 @@ end
 # reconstruction record) whose dimension scope is local — for those, we need to
 # `defDim` the missing bare dims here on the fly, using the field's interior shape.
 function create_field_coord_variables!(ds, fd, grid::OrthogonalSphericalShellGrid,
-                                        spatial_dim_names, dim_name_generator;
-                                        with_halos, dimension_type, grid_index)
+                                       spatial_dim_names, dim_name_generator;
+                                       with_halos, dimension_type, grid_index)
     field_sizes = size(interior(fd))
     for (dname, dsize) in zip(spatial_dim_names, field_sizes)
         isempty(dname) && continue
