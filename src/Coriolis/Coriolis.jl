@@ -6,18 +6,18 @@ export
     ActiveWeightedEnstrophyConserving, ActiveWeightedEnergyConserving, TriadScheme, DualGridScheme,
     x_f_cross_U, y_f_cross_U, z_f_cross_U
 
-using DocStringExtensions: MethodSignatures
 using Printf: @sprintf
 using Adapt: Adapt
 using Oceananigans: Oceananigans
 using Oceananigans.Grids: AbstractGrid, Center, Face, ynode, znode
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Operators: ℑxᶜᵃᵃ, ℑxᶠᵃᵃ,
                               ℑyᵃᶜᵃ, ℑyᵃᶠᵃ,
                               ℑzᵃᵃᶜ, ℑzᵃᵃᶠ,
                               ℑxyᶜᶠᵃ, ℑxyᶠᶜᵃ, ℑxzᶜᵃᶠ,
                               Ay⁻¹ᶠᶜᶜ, Ax⁻¹ᶜᶠᶜ,
                               Ax_qᶠᶜᶜ, Ay_qᶜᶠᶜ
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+using Oceananigans.Utils: SIGNATURES
 
 """
     AbstractRotation{S}

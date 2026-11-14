@@ -1,5 +1,4 @@
 using Adapt: Adapt, adapt
-using DocStringExtensions: SIGNATURES
 using KernelAbstractions: @index, @kernel
 using Oceananigans.Architectures: AbstractArchitecture, CPU
 using Oceananigans.Grids: Grids, Bounded, Center, Face, OrthogonalSphericalShellGrid, architecture,

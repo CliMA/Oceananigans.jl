@@ -3,7 +3,6 @@ module NonhydrostaticModels
 export NonhydrostaticModel, BackgroundField, BackgroundFields
 
 using Adapt: Adapt, adapt
-using DocStringExtensions: MethodSignatures, TYPEDSIGNATURES
 using KernelAbstractions: @index, @kernel
 
 using Oceananigans: Oceananigans, fields, prognostic_fields
@@ -21,7 +20,7 @@ using Oceananigans.Solvers: ConjugateGradientPoissonSolver, GridWithFFTSolver, G
 using Oceananigans.TimeSteppers: TimeSteppers, substep_lagrangian_particles!, update_lagrangian_particle_state!,
                                  update_state!
 using Oceananigans.TurbulenceClosures: TurbulenceClosures
-using Oceananigans.Utils: foreach_name, named_tuple, sum_of_velocities
+using Oceananigans.Utils: foreach_name, named_tuple, sum_of_velocities, SIGNATURES, TYPEDSIGNATURES
 
 using ..Models: enforce_net_zero_transport!, initialize_boundary_transport
 

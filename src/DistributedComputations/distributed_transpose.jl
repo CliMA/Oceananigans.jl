@@ -1,5 +1,5 @@
-using Oceananigans.Grids: architecture
 using Oceananigans.Architectures: on_architecture
+using Oceananigans.Grids: architecture
 using KernelAbstractions: @index, @kernel
 using MPI: VBuffer, Alltoallv!, Alltoall!, UBuffer
 

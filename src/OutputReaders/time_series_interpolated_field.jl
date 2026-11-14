@@ -1,8 +1,8 @@
 using Adapt: Adapt, adapt
 
 using Oceananigans: location
-using Oceananigans.Architectures: Architectures, on_architecture
 using Oceananigans.AbstractOperations: AbstractOperation
+using Oceananigans.Architectures: Architectures, on_architecture
 using Oceananigans.Fields: Fields, indices, show_location
 using Oceananigans.Grids: size as grid_size
 using Oceananigans.Units: Time

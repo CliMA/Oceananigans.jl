@@ -1,6 +1,6 @@
-using Oceananigans.Grids: architecture, deflate_tuple
 using Oceananigans.Architectures: on_architecture
 using Oceananigans.Fields: instantiated_location
+using Oceananigans.Grids: architecture, deflate_tuple
 
 struct TransposableField{FX, FY, FZ, YZ, XY, C, Comms}
     xfield :: FX # X-direction is free (x-local)
@@ -16,7 +16,7 @@ const SlabYFields = TransposableField{<:Any, <:Any, <:Any, <:Nothing} # Y-direct
 const SlabXFields = TransposableField{<:Any, <:Any, <:Any, <:Any, <:Nothing} # X-direction is free
 
 """
-$(MethodSignatures(; defaults = true))
+$(SIGNATURES)
 
 Construct a TransposableField object that containes the allocated memory and the ruleset required
 for distributed transpositions. This includes:

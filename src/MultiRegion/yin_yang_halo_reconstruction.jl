@@ -1,8 +1,8 @@
 using Oceananigans: instantiated_location
 using Oceananigans.BoundaryConditions: BoundaryConditions, fill_halo_regions!, fill_bottom_and_top_halo!
-using Oceananigans.Utils: launch!
 using Oceananigans.Grids: immersed_peripheral_node, immersed_inactive_node
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaries, ImmersedBoundaryGrid, GridFittedBoundary
+using Oceananigans.Utils: launch!
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
 # The halos of a mask would be interpolated as a scalar, which a `Bool` cannot hold: only bottoms are immersed
