@@ -1,11 +1,11 @@
 using Adapt: Adapt
 using Dates: AbstractTime, Millisecond, Nanosecond
-using DocStringExtensions: TYPEDEF, TYPEDSIGNATURES
+using DocStringExtensions: TYPEDEF
 
 using Oceananigans: restore_prognostic_state!
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Units: Time
-using Oceananigans.Utils: prettytime, seconds_to_nanosecond, time_difference_in_seconds
+using Oceananigans.Utils: prettytime, seconds_to_nanosecond, time_difference_in_seconds, TYPEDSIGNATURES
 
 """
 $(TYPEDEF)
@@ -27,7 +27,7 @@ Clock{TT, DT, IT, S}(time, last_Δt, last_stage_Δt, iteration, stage) where {TT
     Clock{TT, TT, DT, IT, S}(time, last_Δt, last_stage_Δt, iteration, stage)
 
 """
-$(MethodSignatures(; defaults = true))
+$(SIGNATURES)
 
 Return a `Clock` object. By default, `Clock` is initialized to the zeroth `iteration`
 and first time step `stage` with `last_Δt=last_stage_Δt=Inf`.

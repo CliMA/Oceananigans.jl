@@ -60,10 +60,10 @@ export σⁿ, σ⁻, σ⁻¹ⁿ, ∂t_σ
 export vorticity_flux_xᶠᶜᶜ, vorticity_flux_yᶜᶠᶜ
 
 using Oceananigans.Grids: LatitudeLongitudeGrid, LLGOTF, XRegLLGOTF, YRegLLGOTF,
-    OrthogonalSphericalShellGrid, RectilinearGrid, XRegularLLG, XRegularRG, YRegularLLG,
-    YRegularRG, ZRegOrthogonalSphericalShellGrid, ZRegularLLG, ZRegularRG, AbstractGrid,
-    Center, Face, flip_location
-using DocStringExtensions: TYPEDSIGNATURES
+                          OrthogonalSphericalShellGrid, RectilinearGrid, XRegularLLG, XRegularRG, YRegularLLG,
+                          YRegularRG, ZRegOrthogonalSphericalShellGrid, ZRegularLLG, ZRegularRG, AbstractGrid,
+                          Center, Face, flip_location
+using Oceananigans.Utils: TYPEDSIGNATURES
 
 #####
 ##### Convenient aliases

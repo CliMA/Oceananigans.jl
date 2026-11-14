@@ -1,5 +1,5 @@
 using Adapt
-using DocStringExtensions: TYPEDFIELDS, TYPEDSIGNATURES
+using DocStringExtensions: TYPEDFIELDS
 import KernelAbstractions
 using KernelAbstractions: @index, @kernel
 

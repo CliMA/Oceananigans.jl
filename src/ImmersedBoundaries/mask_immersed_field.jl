@@ -1,9 +1,9 @@
 using KernelAbstractions: @kernel, @index
+using Oceananigans.AbstractOperations: BinaryOperation
+using Oceananigans.Fields: location, Field, ReducedField, instantiated_location,
+                           ConstantField, OneField, ZeroField
 using Oceananigans.Grids: interior_indices
 using Oceananigans.Utils: KernelParameters
-using Oceananigans.AbstractOperations: BinaryOperation
-using Oceananigans.Fields: location, Field, ReducedField, instantiated_location
-using Oceananigans.Fields: ConstantField, OneField, ZeroField
 
 instantiate(T::Type) = T()
 instantiate(t) = t

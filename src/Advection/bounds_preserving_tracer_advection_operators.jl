@@ -1,6 +1,6 @@
-using Oceananigans.Grids: AbstractGrid
-using Oceananigans.Fields: CenterField
 using Oceananigans.BoundaryConditions: fill_bottom_and_top_halo!
+using Oceananigans.Fields: CenterField
+using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Utils: launch!
 using KernelAbstractions: @index, @kernel
 
