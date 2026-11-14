@@ -1,5 +1,5 @@
-using Oceananigans.Operators: Δxᶜᶜᶜ, Δxᶜᵃᵃ, Δyᵃᶜᵃ, Δyᶜᶜᶜ, Δzᵃᵃᶜ, Δzᶜᶜᶜ, Δx⁻¹ᶠᵃᵃ, Δy⁻¹ᵃᶠᵃ, Δz⁻¹ᵃᵃᶠ
 using Oceananigans.Grids: XYRegularRG, XZRegularRG, YZRegularRG, XYZRegularRG
+using Oceananigans.Operators: Δxᶜᶜᶜ, Δxᶜᵃᵃ, Δyᵃᶜᵃ, Δyᶜᶜᶜ, Δzᵃᵃᶜ, Δzᶜᶜᶜ, Δx⁻¹ᶠᵃᵃ, Δy⁻¹ᵃᶠᵃ, Δz⁻¹ᵃᵃᶠ
 
 struct FourierTridiagonalPoissonSolver{G, F, Λ, B, R, S, β, T}
     grid :: G
@@ -58,7 +58,7 @@ const InhomogeneousYFormulation = InhomogeneousFormulation{<:YDirection}
 const InhomogeneousZFormulation = InhomogeneousFormulation{<:ZDirection}
 
 """
-$(MethodSignatures(; defaults = true))
+$(SIGNATURES)
 
 Construct a `FourierTridiagonalPoissonSolver` on `grid` with `tridiagonal_formulation` either
 `XDirection()`, `YDirection()`, or `ZDirection()`. The `tridiagonal_formulation` can be used to tweak

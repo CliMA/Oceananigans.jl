@@ -95,7 +95,7 @@ Architectures.on_architecture(arch, fbcs::FieldBoundaryConditions) =
                             on_architecture(arch, fbcs.ordered_bcs))
 
 """
-$(MethodSignatures(; defaults = true))
+$(SIGNATURES)
 
 Return a template for boundary conditions on prognostic fields.
 
@@ -243,7 +243,7 @@ function regularize_boundary_condition(c::IMEXFlux, grid, args...)
 end
 
 """
-$(MethodSignatures(; defaults = true))
+$(SIGNATURES)
 
 Compute default boundary conditions and attach field locations to ContinuousBoundaryFunction
 boundary conditions for prognostic model field boundary conditions.

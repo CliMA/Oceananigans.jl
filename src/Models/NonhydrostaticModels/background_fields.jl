@@ -71,7 +71,7 @@ struct BackgroundField{F, P}
 end
 
 """
-$(MethodSignatures(; defaults = true))
+$(SIGNATURES)
 
 Returns a `BackgroundField` to be passed to `NonhydrostaticModel` for use
 as a background velocity or tracer field.

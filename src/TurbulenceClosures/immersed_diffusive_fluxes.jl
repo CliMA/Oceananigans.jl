@@ -1,19 +1,16 @@
-using Oceananigans.BoundaryConditions: Value, Gradient, BoundaryCondition
-using Oceananigans.BoundaryConditions: getbc, explicit_flux, ImmersedFacet
-using Oceananigans.BoundaryConditions: FBC, ZFBC
-using Oceananigans.Operators: index_left, index_right, Δx⁻¹, Δy⁻¹, Δz⁻¹, div
-
-using Oceananigans.Advection: conditional_flux
-
-using Oceananigans.Advection: conditional_flux_ccc,
+using Oceananigans.Advection: conditional_flux,
+                              conditional_flux_ccc,
                               conditional_flux_ffc,
                               conditional_flux_fcf,
                               conditional_flux_cff,
                               conditional_flux_fcc,
                               conditional_flux_cfc,
                               conditional_flux_ccf
-
+using Oceananigans.BoundaryConditions: Value, Gradient, BoundaryCondition,
+                                       getbc, explicit_flux, ImmersedFacet,
+                                       FBC, ZFBC
 using Oceananigans.ImmersedBoundaries: GFIBG, IBC
+using Oceananigans.Operators: index_left, index_right, Δx⁻¹, Δy⁻¹, Δz⁻¹, div
 
 const IBG = ImmersedBoundaryGrid
 

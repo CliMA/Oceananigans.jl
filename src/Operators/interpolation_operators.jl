@@ -1,5 +1,5 @@
-using Oceananigans.Grids: Flat
-using Oceananigans.Grids: peripheral_node
+using Oceananigans.Grids: Flat,
+                          peripheral_node
 
 #####
 ##### Base interpolation operators

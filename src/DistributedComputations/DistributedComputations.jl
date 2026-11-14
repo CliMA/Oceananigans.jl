@@ -9,7 +9,6 @@ export
     @root, @onrank, @distribute, @handshake,
     SimplifiedGeneralizedBlockDistribution, create_cost_map, create_balanced_partition
 
-using DocStringExtensions: MethodSignatures, TYPEDSIGNATURES
 using GPUArraysCore: GPUArraysCore
 using LinearAlgebra: LinearAlgebra
 using MPI: MPI
@@ -29,7 +28,7 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaries, ImmersedBoundaryGrid,
                                        materialize_immersed_boundary
 using Oceananigans.Solvers: Solvers, GridWithFourierTridiagonalSolver, compute_preconditioner_rhs!,
                             fft_poisson_solver
-using Oceananigans.Utils: Utils, StaticStridesOffsetArray
+using Oceananigans.Utils: Utils, StaticStridesOffsetArray, SIGNATURES, TYPEDSIGNATURES
 
 
 include("distributed_macros.jl")

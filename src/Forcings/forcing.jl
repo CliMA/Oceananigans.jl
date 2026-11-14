@@ -1,5 +1,5 @@
 """
-$(MethodSignatures(; defaults = true))
+$(SIGNATURES)
 
 Return a `Forcing` `func`tion, which can be added to the tendency of a model field.
 

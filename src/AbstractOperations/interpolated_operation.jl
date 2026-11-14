@@ -1,7 +1,7 @@
 using Adapt
 
-using Oceananigans.Grids: ξnode, ηnode, znode
 using Oceananigans.Fields: interpolate
+using Oceananigans.Grids: ξnode, ηnode, znode
 using Oceananigans.Utils: Utils
 
 """
