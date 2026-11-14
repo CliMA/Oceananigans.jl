@@ -40,9 +40,12 @@ const AGYFF = AbstractGrid{FT, <:Any, TwoSided{L, FaceFolded}} where {FT, L}
 @inline δxTᶜᵃᵃ(i, j, k, grid::AGXP, u::AbstractArray) = @inbounds u[ifelse(i == grid.Nx, 1, i + 1), j, k] - u[i, j, k]
 @inline δyTᵃᶜᵃ(i, j, k, grid::AGYP, v::AbstractArray) = @inbounds v[i, ifelse(j == grid.Ny, 1, j + 1), k] - v[i, j, k]
 
-# Enforce NoFlux conditions on a left wall
-@inline δxTᶠᵃᵃ(i, j, k, grid::AGXS{FT, L}, f, args...) where {FT, L} = ifelse((L === Closed) & (i == 1), zero(FT), δxᶠᵃᵃ(i, j, k, grid, f, args...))
-@inline δyTᵃᶠᵃ(i, j, k, grid::AGYS{FT, L}, f, args...) where {FT, L} = ifelse((L === Closed) & (j == 1), zero(FT), δyᵃᶠᵃ(i, j, k, grid, f, args...))
+# Enforce NoFlux conditions on a left wall (i = 1) and a right wall (i = Nx + 1)
+@inline δxTᶠᵃᵃ(i, j, k, grid::AGXS{FT, L, R}, f, args...) where {FT, L, R} =
+    ifelse(((L === Closed) & (i == 1)) | ((R === Closed) & (i == grid.Nx + 1)), zero(FT), δxᶠᵃᵃ(i, j, k, grid, f, args...))
+
+@inline δyTᵃᶠᵃ(i, j, k, grid::AGYS{FT, L, R}, f, args...) where {FT, L, R} =
+    ifelse(((L === Closed) & (j == 1)) | ((R === Closed) & (j == grid.Ny + 1)), zero(FT), δyᵃᶠᵃ(i, j, k, grid, f, args...))
 
 # Enforce Impenetrability conditions: `u⁻` vanishes on a left wall and `u⁺` on a right wall
 @inline impenetrable_difference(u⁺, u⁻, left_wall, right_wall) = ifelse(right_wall, -u⁻, ifelse(left_wall, u⁺, u⁺ - u⁻))
@@ -127,12 +130,21 @@ end
 @inline ℑxTᶜᵃᵃ(i, j, k, grid::AGXP{FT}, u::AbstractArray) where FT = @inbounds FT(0.5) * (u[i, j, k] + u[ifelse(i == grid.Nx, 1, i + 1), j, k])
 @inline ℑyTᵃᶜᵃ(i, j, k, grid::AGYP{FT}, v::AbstractArray) where FT = @inbounds FT(0.5) * (v[i, j, k] + v[i, ifelse(j == grid.Ny, 1, j + 1), k])
 
-# Enforce zero-gradient conditions on a left wall
-@inline ℑxTᶠᵃᵃ(i, j, k, grid::AGXS{FT, L}, f, args...) where {FT, L} = FT(0.5) * (f(ifelse((L === Closed) & (i == 1), i, i - 1), j, k, grid, args...) + f(i, j, k, grid, args...))
-@inline ℑyTᵃᶠᵃ(i, j, k, grid::AGYS{FT, L}, f, args...) where {FT, L} = FT(0.5) * (f(i, ifelse((L === Closed) & (j == 1), j, j - 1), k, grid, args...) + f(i, j, k, grid, args...))
+# Enforce zero-gradient conditions on a left wall (i = 1) and a right wall (i = Nx + 1): the image of
+# the cell-centered `f` across a `Closed` wall is the wall cell itself
+@inline ℑxTᶠᵃᵃ(i, j, k, grid::AGXS{FT, L, R}, f, args...) where {FT, L, R} =
+    FT(0.5) * (f(ifelse((L === Closed) & (i == 1), i, i - 1), j, k, grid, args...) +
+               f(ifelse((R === Closed) & (i == grid.Nx + 1), i - 1, i), j, k, grid, args...))
 
-@inline ℑxTᶠᵃᵃ(i, j, k, grid::AGXS{FT, L}, c::AbstractArray) where {FT, L} = @inbounds FT(0.5) * (c[ifelse((L === Closed) & (i == 1), i, i - 1), j, k] + c[i, j, k])
-@inline ℑyTᵃᶠᵃ(i, j, k, grid::AGYS{FT, L}, c::AbstractArray) where {FT, L} = @inbounds FT(0.5) * (c[i, ifelse((L === Closed) & (j == 1), j, j - 1), k] + c[i, j, k])
+@inline ℑyTᵃᶠᵃ(i, j, k, grid::AGYS{FT, L, R}, f, args...) where {FT, L, R} =
+    FT(0.5) * (f(i, ifelse((L === Closed) & (j == 1), j, j - 1), k, grid, args...) +
+               f(i, ifelse((R === Closed) & (j == grid.Ny + 1), j - 1, j), k, grid, args...))
+
+@inline ℑxTᶠᵃᵃ(i, j, k, grid::AGXS{FT, L, R}, c::AbstractArray) where {FT, L, R} =
+    @inbounds FT(0.5) * (c[ifelse((L === Closed) & (i == 1), i, i - 1), j, k] + c[ifelse((R === Closed) & (i == grid.Nx + 1), i - 1, i), j, k])
+
+@inline ℑyTᵃᶠᵃ(i, j, k, grid::AGYS{FT, L, R}, c::AbstractArray) where {FT, L, R} =
+    @inbounds FT(0.5) * (c[i, ifelse((L === Closed) & (j == 1), j, j - 1), k] + c[i, ifelse((R === Closed) & (j == grid.Ny + 1), j - 1, j), k])
 
 # Enforce a north fold local to the rank, mirroring `δyTᵃᶜᵃ` and `δyTᵃᶠᵃ` above
 @inline function ℑyTᵃᶜᵃ(i, j, k, grid::AGYCF{FT}, f, args...) where FT

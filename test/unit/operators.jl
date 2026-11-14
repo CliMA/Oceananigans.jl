@@ -428,6 +428,20 @@ end
                 @test all(δxTᶠᵃᵃ(1, j, k, grid, c) == 0 for j in 1:Ny, k in 1:Nz)
                 @test all(δyTᵃᶠᵃ(i, 1, k, grid, c) == 0 for i in 1:Nx, k in 1:Nz)
 
+                # ... and at the closed right wall face (i = Nx + 1), beyond which the halos are poisoned
+                @test all(ℑxTᶠᵃᵃ(Nx+1, j, k, grid, c) == c[Nx, j, k] for j in 1:Ny, k in 1:Nz)
+                @test all(ℑyTᵃᶠᵃ(i, Ny+1, k, grid, c) == c[i, Ny, k] for i in 1:Nx, k in 1:Nz)
+                @test all(δxTᶠᵃᵃ(Nx+1, j, k, grid, c) == 0 for j in 1:Ny, k in 1:Nz)
+                @test all(δyTᵃᶠᵃ(i, Ny+1, k, grid, c) == 0 for i in 1:Nx, k in 1:Nz)
+                @test all(ℑxTᶠᵃᵃ(Nx+1, j, k, grid, grid_marked_value, c) == c[Nx, j, k] for j in 1:Ny, k in 1:Nz)
+                @test all(ℑyTᵃᶠᵃ(i, Ny+1, k, grid, grid_marked_value, c) == c[i, Ny, k] for i in 1:Nx, k in 1:Nz)
+                @test all(δxTᶠᵃᵃ(Nx+1, j, k, grid, grid_marked_value, c) == 0 for j in 1:Ny, k in 1:Nz)
+                @test all(δyTᵃᶠᵃ(i, Ny+1, k, grid, grid_marked_value, c) == 0 for i in 1:Nx, k in 1:Nz)
+
+                # Interior faces are unchanged by the wall branches
+                @test all(δxTᶠᵃᵃ(i, j, k, grid, c) ≈ δxᶠᵃᵃ(i, j, k, grid, c) for i in 2:Nx, j in 1:Ny, k in 1:Nz)
+                @test all(δyTᵃᶠᵃ(i, j, k, grid, c) ≈ δyᵃᶠᵃ(i, j, k, grid, c) for i in 1:Nx, j in 2:Ny, k in 1:Nz)
+
                 # The right-wall face is interior data, so the center interpolation reads it as usual
                 @test all(ℑxTᶜᵃᵃ(Nx, j, k, grid, U) ≈ (U[Nx, j, k] + U[Nx+1, j, k]) / 2 for j in 1:Ny, k in 1:Nz)
                 @test all(ℑyTᵃᶜᵃ(i, Ny, k, grid, V) ≈ (V[i, Ny, k] + V[i, Ny+1, k]) / 2 for i in 1:Nx, k in 1:Nz)
