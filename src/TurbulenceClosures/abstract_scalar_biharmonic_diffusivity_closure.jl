@@ -1,6 +1,6 @@
 using Oceananigans.Grids: peripheral_node
-using Oceananigans.ImmersedBoundaries: PCBIBG, XFlatPCBIBG, YFlatPCBIBG, XYFlatPCBIBG
-using Oceananigans.Operators: div_xyᶜᶜᶜ, Δzᶜᶠᶜ, Δzᶠᶜᶜ
+using Oceananigans.ImmersedBoundaries: PCBIBG
+using Oceananigans.Operators: div_xyᶜᶜᶜ
 
 """
     abstract type AbstractScalarBiharmonicDiffusivity <: AbstractTurbulenceClosure end
@@ -142,19 +142,8 @@ end
 ##### Horizontal biharmonic viscosity on partial cells
 #####
 
-# ∇⁴u = L(L(u)), with L(u) = V⁻¹ [ ∇(Az Δzᵐⁱⁿ δ) - ẑ × ∇(Az Δzᶠᶠᶜ ζ) ] and Δzᵐⁱⁿ the thinnest velocity face of a cell
-@inline Δzᵐⁱⁿᶜᶜᶜ(i, j, k, grid) = min(Δzᶠᶜᶜ(i, j, k, grid), Δzᶠᶜᶜ(i+1, j, k, grid), Δzᶜᶠᶜ(i, j, k, grid), Δzᶜᶠᶜ(i, j+1, k, grid))
-@inline Δzᵐⁱⁿᶜᶜᶜ(i, j, k, grid::XFlatPCBIBG) = min(Δzᶜᶠᶜ(i, j, k, grid), Δzᶜᶠᶜ(i, j+1, k, grid))
-@inline Δzᵐⁱⁿᶜᶜᶜ(i, j, k, grid::YFlatPCBIBG) = min(Δzᶠᶜᶜ(i, j, k, grid), Δzᶠᶜᶜ(i+1, j, k, grid))
-@inline Δzᵐⁱⁿᶜᶜᶜ(i, j, k, grid::XYFlatPCBIBG) = Δzᶜᶜᶜ(i, j, k, grid)
-
-@inline Δzᵐⁱⁿδᶜᶜᶜ(i, j, k, grid, u, v) = Δzᵐⁱⁿᶜᶜᶜ(i, j, k, grid) * Az⁻¹ᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, u) + δyᵃᶜᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, v))
-
-@inline function free_slip_vorticityᶠᶠᶜ(i, j, k, grid, u, v)
-    ζ = Az⁻¹ᶠᶠᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, Δy_qᶜᶠᶜ, v) - δyᵃᶠᵃ(i, j, k, grid, Δx_qᶠᶜᶜ, u))
-    return ifelse(peripheral_node(i, j, k, grid, Face(), Face(), Center()), zero(grid), ζ)
-end
-
+# ∇⁴u = L(L(u)), with L the thickness-weighted vector Laplacian of the horizontal Laplacian viscosity on partial cells,
+# L(u) = V⁻¹ [ ∇(Az Δzᵐⁱⁿ δ) - ẑ × ∇(Az Δzᶠᶠᶜ ζ) ]; see `abstract_scalar_diffusivity_closure.jl`
 @inline ∇²★uᶠᶜᶜ(i, j, k, grid, u, v) = V⁻¹ᶠᶜᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, Δy_qᶜᶜᶜ, Δzᵐⁱⁿδᶜᶜᶜ, u, v) - δyᵃᶜᵃ(i, j, k, grid, Ay_qᶠᶠᶜ, free_slip_vorticityᶠᶠᶜ, u, v))
 @inline ∇²★vᶜᶠᶜ(i, j, k, grid, u, v) = V⁻¹ᶜᶠᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_qᶠᶠᶜ, free_slip_vorticityᶠᶠᶜ, u, v) + δyᵃᶠᵃ(i, j, k, grid, Δx_qᶜᶜᶜ, Δzᵐⁱⁿδᶜᶜᶜ, u, v))
 
