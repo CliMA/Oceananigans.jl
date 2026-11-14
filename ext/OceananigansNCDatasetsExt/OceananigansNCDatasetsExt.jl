@@ -36,7 +36,6 @@ using Oceananigans.OrthogonalSphericalShellGrids:
     Tripolar, LatitudeLongitudeRotation,
     conformal_mapping_info
 using Oceananigans.Grids: OrthogonalSphericalShellGrid
-
 using Oceananigans.ImmersedBoundaries:
     ImmersedBoundaryGrid, GridFittedBottom, GridFittedBoundary, PartialCellBottom,
     GridFittedVerticalBoundaries, PartialCellVerticalBoundaries,

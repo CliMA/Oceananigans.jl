@@ -5,10 +5,9 @@ using ..Grids: ShardedGrid, ReactantGrid
 
 using Reactant
 using Oceananigans
-
 using Oceananigans: AbstractModel, Distributed, initialize!
-using Oceananigans.Grids: architecture
 using Oceananigans.BoundaryConditions: cache_boundary_conditions!, initialize_boundary_conditions!
+using Oceananigans.Grids: architecture
 using Oceananigans.TimeSteppers:
     TimeSteppers as OceananigansTimeSteppers,
     update_state!,

@@ -291,6 +291,7 @@ makedocs(; sitename = "Oceananigans.jl",
          warnonly = [:cross_references],
          clean = true,
          linkcheck = true,
+         linkcheck_timeout = 60,
          linkcheck_ignore = [
              r"jstor\.org",
              r"^https://github\.com/.*?/blob/",

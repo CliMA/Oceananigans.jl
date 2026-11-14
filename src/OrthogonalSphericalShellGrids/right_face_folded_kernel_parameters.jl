@@ -1,5 +1,5 @@
-using Oceananigans.Utils: Utils
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaries
+using Oceananigans.Utils: Utils
 
 #####
 ##### `FaceFolded` north sides have prognostic values at Ny+1 for `Face` fields in y
