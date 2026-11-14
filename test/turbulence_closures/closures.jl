@@ -2,6 +2,9 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Random
 
+using Oceananigans.TurbulenceClosures: shear_production
+using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: explicit_buoyancy_flux
+
 using Oceananigans.Grids: znode
 using Oceananigans.Grids: ZDirection
 using Oceananigans.ImmersedBoundaries: immersed_cell
@@ -217,6 +220,8 @@ function time_step_with_isopycnal_skew_symmetric_diffusivity(arch, FT, time_disc
     return !any(isnan, interior(model.tracers.b))
 end
 
+@inline positive_buoyancy_flux(i, j, k, grid, args...) = max(0, explicit_buoyancy_flux(i, j, k, grid, args...))
+
 function run_catke_tke_substepping_tests(arch, closure)
     # A large domain to make sure we do not have viscous CFL problems
     # with the explicit CATKE time-stepping necessary for this test
@@ -233,25 +238,45 @@ function run_catke_tke_substepping_tests(arch, closure)
     Random.seed!(1234)
     set!(model, u = (x, y, z) -> rand(), v = (x, y, z) -> rand())
 
-    # time step the model
-    time_step!(model, 1)
+    # Shear production and positive buoyancy flux, which enter the TKE with a forward-Euler weight,
+    # from the diffusivities of the coming step and the velocities and tracers after it
+    closures = model.closure isa Tuple ? model.closure : (model.closure,)
+    closure_fields = model.closure isa Tuple ? model.closure_fields : (model.closure_fields,)
+    catke_index = findfirst(c -> c isa CATKEVerticalDiffusivity, closures)
+    catke, catke_fields = closures[catke_index], closure_fields[catke_index]
+    κu = ZFaceField(grid)
+    κc = ZFaceField(grid)
+    u, v, w = model.velocities
+    P = KernelFunctionOperation{Center, Center, Center}(shear_production, grid, κu, u, u, v, v)
+    wb⁺ = KernelFunctionOperation{Center, Center, Center}(positive_buoyancy_flux, grid, catke, model.velocities,
+                                                          model.tracers, model.buoyancy, (; κc))
+    conversion = Field(P + wb⁺)
 
-    # Check that eⁿ⁺¹ == Δt * Gⁿ.e with Δt = 1 (euler step)
-    @test model.tracers.e ≈ model.timestepper.G⁻.e
+    function time_step_and_compute_conversion!(model)
+        parent(κu) .= parent(catke_fields.κu)
+        parent(κc) .= parent(catke_fields.κc)
+        time_step!(model, 1)
+        return compute!(conversion)
+    end
+
+    time_step_and_compute_conversion!(model)
+
+    # Check that eⁿ⁺¹ == Δt * (Gⁿ.e + conversion) with Δt = 1 (euler step)
+    @test model.tracers.e ≈ compute!(Field(model.timestepper.G⁻.e + conversion))
 
     eⁿ  = deepcopy(model.tracers.e)
     G⁻⁻ = deepcopy(model.timestepper.G⁻.e)
 
     # time step the model again
-    time_step!(model, 1)
+    time_step_and_compute_conversion!(model)
     G⁻ = model.timestepper.G⁻.e
 
     C₁ = 1.5 + model.timestepper.χ
     C₂ = 0.5 + model.timestepper.χ
 
-    eⁿ⁺¹ = compute!(Field(eⁿ + C₁ * G⁻ - C₂ * G⁻⁻))
+    eⁿ⁺¹ = compute!(Field(eⁿ + C₁ * G⁻ - C₂ * G⁻⁻ + conversion))
 
-    # Check that eⁿ⁺¹ == eⁿ + Δt * (C₁ Gⁿ.e - C₂ G⁻.e)
+    # Check that eⁿ⁺¹ == eⁿ + Δt * (C₁ Gⁿ.e - C₂ G⁻.e + conversion)
     @test model.tracers.e ≈ eⁿ⁺¹
 
     return model
