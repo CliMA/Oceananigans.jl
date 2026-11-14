@@ -1,12 +1,15 @@
-using Oceananigans.Grids: AbstractUnderlyingGrid, Closed, CenterFolded, FaceFolded, Periodic, TwoSided
+using Oceananigans.Grids: AbstractGrid, Closed, CenterFolded, FaceFolded, Periodic, TwoSided
 
-const AGXP  = AbstractUnderlyingGrid{FT, Periodic} where FT
-const AGXS  = AbstractUnderlyingGrid{FT, TwoSided{L, R}} where {FT, L, R}
+# These aliases cover every `AbstractGrid` with the given topology, including `ImmersedBoundaryGrid`,
+# so an immersed grid dispatches to the topology-aware methods directly and `f` is evaluated on the
+# immersed grid rather than on its underlying grid.
+const AGXP  = AbstractGrid{FT, Periodic} where FT
+const AGXS  = AbstractGrid{FT, TwoSided{L, R}} where {FT, L, R}
 
-const AGYP  = AbstractUnderlyingGrid{FT, <:Any, Periodic} where FT
-const AGYS  = AbstractUnderlyingGrid{FT, <:Any, TwoSided{L, R}} where {FT, L, R}
-const AGYCF = AbstractUnderlyingGrid{FT, <:Any, TwoSided{L, CenterFolded}} where {FT, L}
-const AGYFF = AbstractUnderlyingGrid{FT, <:Any, TwoSided{L, FaceFolded}} where {FT, L}
+const AGYP  = AbstractGrid{FT, <:Any, Periodic} where FT
+const AGYS  = AbstractGrid{FT, <:Any, TwoSided{L, R}} where {FT, L, R}
+const AGYCF = AbstractGrid{FT, <:Any, TwoSided{L, CenterFolded}} where {FT, L}
+const AGYFF = AbstractGrid{FT, <:Any, TwoSided{L, FaceFolded}} where {FT, L}
 
 # Topology-aware Operators with the following convention:
 #
@@ -37,9 +40,12 @@ const AGYFF = AbstractUnderlyingGrid{FT, <:Any, TwoSided{L, FaceFolded}} where {
 @inline δxTᶜᵃᵃ(i, j, k, grid::AGXP, u::AbstractArray) = @inbounds u[ifelse(i == grid.Nx, 1, i + 1), j, k] - u[i, j, k]
 @inline δyTᵃᶜᵃ(i, j, k, grid::AGYP, v::AbstractArray) = @inbounds v[i, ifelse(j == grid.Ny, 1, j + 1), k] - v[i, j, k]
 
-# Enforce NoFlux conditions on a left wall
-@inline δxTᶠᵃᵃ(i, j, k, grid::AGXS{FT, L}, f, args...) where {FT, L} = ifelse((L === Closed) & (i == 1), zero(FT), δxᶠᵃᵃ(i, j, k, grid, f, args...))
-@inline δyTᵃᶠᵃ(i, j, k, grid::AGYS{FT, L}, f, args...) where {FT, L} = ifelse((L === Closed) & (j == 1), zero(FT), δyᵃᶠᵃ(i, j, k, grid, f, args...))
+# Enforce NoFlux conditions on a left wall (i = 1) and a right wall (i = Nx + 1)
+@inline δxTᶠᵃᵃ(i, j, k, grid::AGXS{FT, L, R}, f, args...) where {FT, L, R} =
+    ifelse(((L === Closed) & (i == 1)) | ((R === Closed) & (i == grid.Nx + 1)), zero(FT), δxᶠᵃᵃ(i, j, k, grid, f, args...))
+
+@inline δyTᵃᶠᵃ(i, j, k, grid::AGYS{FT, L, R}, f, args...) where {FT, L, R} =
+    ifelse(((L === Closed) & (j == 1)) | ((R === Closed) & (j == grid.Ny + 1)), zero(FT), δyᵃᶠᵃ(i, j, k, grid, f, args...))
 
 # Enforce Impenetrability conditions: `u⁻` vanishes on a left wall and `u⁺` on a right wall
 @inline impenetrable_difference(u⁺, u⁻, left_wall, right_wall) = ifelse(right_wall, -u⁻, ifelse(left_wall, u⁺, u⁺ - u⁻))
@@ -93,6 +99,90 @@ end
     fold = j == grid.Ny + 1
     v⁺   = @inbounds v[ifelse(fold, north_fold_index(i, grid), i), ifelse(fold, grid.Ny, j + 1), k]
     return @inbounds impenetrable_difference(ifelse(fold, -v⁺, v⁺), v[i, j, k], (L === Closed) & (j == 1), false)
+end
+
+# Topology-aware interpolations with the same convention:
+#
+#   `ℑxTᶠᵃᵃ` : Interpolates a (Center, Center, Center) function `f` to faces in the x-direction, wrapping across
+#              `Periodic` boundaries and returning the adjacent cell value at a `Closed` left wall (zero-gradient,
+#              consistent with `δxTᶠᵃᵃ` vanishing there).
+#   `ℑxTᶜᵃᵃ` : Interpolates a (Face, Center, Center) function `U` to centers in the x-direction, wrapping across
+#              `Periodic` boundaries. The right-wall face is interior data on `TwoSided` grids, so needs no treatment.
+#
+#   `ℑyTᵃᶠᵃ`, `ℑyTᵃᶜᵃ` : the same in the y-direction, also mirroring across a tripolar north fold.
+
+# Fallback
+@inline ℑxTᶠᵃᵃ(i, j, k, grid, f, args...) = ℑxᶠᵃᵃ(i, j, k, grid, f, args...)
+@inline ℑyTᵃᶠᵃ(i, j, k, grid, f, args...) = ℑyᵃᶠᵃ(i, j, k, grid, f, args...)
+@inline ℑxTᶜᵃᵃ(i, j, k, grid, f, args...) = ℑxᶜᵃᵃ(i, j, k, grid, f, args...)
+@inline ℑyTᵃᶜᵃ(i, j, k, grid, f, args...) = ℑyᵃᶜᵃ(i, j, k, grid, f, args...)
+
+# Enforce Periodic conditions
+@inline ℑxTᶠᵃᵃ(i, j, k, grid::AGXP{FT}, f, args...) where FT = FT(0.5) * (f(ifelse(i == 1, grid.Nx, i - 1), j, k, grid, args...) + f(i, j, k, grid, args...))
+@inline ℑyTᵃᶠᵃ(i, j, k, grid::AGYP{FT}, f, args...) where FT = FT(0.5) * (f(i, ifelse(j == 1, grid.Ny, j - 1), k, grid, args...) + f(i, j, k, grid, args...))
+
+@inline ℑxTᶠᵃᵃ(i, j, k, grid::AGXP{FT}, c::AbstractArray) where FT = @inbounds FT(0.5) * (c[ifelse(i == 1, grid.Nx, i - 1), j, k] + c[i, j, k])
+@inline ℑyTᵃᶠᵃ(i, j, k, grid::AGYP{FT}, c::AbstractArray) where FT = @inbounds FT(0.5) * (c[i, ifelse(j == 1, grid.Ny, j - 1), k] + c[i, j, k])
+
+@inline ℑxTᶜᵃᵃ(i, j, k, grid::AGXP{FT}, f, args...) where FT = FT(0.5) * (f(i, j, k, grid, args...) + f(ifelse(i == grid.Nx, 1, i + 1), j, k, grid, args...))
+@inline ℑyTᵃᶜᵃ(i, j, k, grid::AGYP{FT}, f, args...) where FT = FT(0.5) * (f(i, j, k, grid, args...) + f(i, ifelse(j == grid.Ny, 1, j + 1), k, grid, args...))
+
+@inline ℑxTᶜᵃᵃ(i, j, k, grid::AGXP{FT}, u::AbstractArray) where FT = @inbounds FT(0.5) * (u[i, j, k] + u[ifelse(i == grid.Nx, 1, i + 1), j, k])
+@inline ℑyTᵃᶜᵃ(i, j, k, grid::AGYP{FT}, v::AbstractArray) where FT = @inbounds FT(0.5) * (v[i, j, k] + v[i, ifelse(j == grid.Ny, 1, j + 1), k])
+
+# Enforce zero-gradient conditions on a left wall (i = 1) and a right wall (i = Nx + 1): the image of
+# the cell-centered `f` across a `Closed` wall is the wall cell itself
+@inline ℑxTᶠᵃᵃ(i, j, k, grid::AGXS{FT, L, R}, f, args...) where {FT, L, R} =
+    FT(0.5) * (f(ifelse((L === Closed) & (i == 1), i, i - 1), j, k, grid, args...) +
+               f(ifelse((R === Closed) & (i == grid.Nx + 1), i - 1, i), j, k, grid, args...))
+
+@inline ℑyTᵃᶠᵃ(i, j, k, grid::AGYS{FT, L, R}, f, args...) where {FT, L, R} =
+    FT(0.5) * (f(i, ifelse((L === Closed) & (j == 1), j, j - 1), k, grid, args...) +
+               f(i, ifelse((R === Closed) & (j == grid.Ny + 1), j - 1, j), k, grid, args...))
+
+@inline ℑxTᶠᵃᵃ(i, j, k, grid::AGXS{FT, L, R}, c::AbstractArray) where {FT, L, R} =
+    @inbounds FT(0.5) * (c[ifelse((L === Closed) & (i == 1), i, i - 1), j, k] + c[ifelse((R === Closed) & (i == grid.Nx + 1), i - 1, i), j, k])
+
+@inline ℑyTᵃᶠᵃ(i, j, k, grid::AGYS{FT, L, R}, c::AbstractArray) where {FT, L, R} =
+    @inbounds FT(0.5) * (c[i, ifelse((L === Closed) & (j == 1), j, j - 1), k] + c[i, ifelse((R === Closed) & (j == grid.Ny + 1), j - 1, j), k])
+
+# Enforce a north fold local to the rank, mirroring `δyTᵃᶜᵃ` and `δyTᵃᶠᵃ` above
+@inline function ℑyTᵃᶜᵃ(i, j, k, grid::AGYCF{FT}, f, args...) where FT
+    fold = j == grid.Ny
+    v⁺   = f(ifelse(fold, north_fold_index(i, grid), i), ifelse(fold, grid.Ny, j + 1), k, grid, args...)
+    return FT(0.5) * (f(i, j, k, grid, args...) + ifelse(fold, -v⁺, v⁺))
+end
+
+@inline function ℑyTᵃᶜᵃ(i, j, k, grid::AGYCF{FT}, v::AbstractArray) where FT
+    fold = j == grid.Ny
+    v⁺   = @inbounds v[ifelse(fold, north_fold_index(i, grid), i), ifelse(fold, grid.Ny, j + 1), k]
+    return @inbounds FT(0.5) * (v[i, j, k] + ifelse(fold, -v⁺, v⁺))
+end
+
+@inline function ℑyTᵃᶠᵃ(i, j, k, grid::AGYFF{FT, L}, f, args...) where {FT, L}
+    fold = j == grid.Ny + 1
+    c⁺   = f(ifelse(fold, north_fold_index(i, grid), i), ifelse(fold, grid.Ny, j), k, grid, args...)
+    c⁻   = f(i, ifelse((L === Closed) & (j == 1), j, j - 1), k, grid, args...)
+    return FT(0.5) * (c⁺ + c⁻)
+end
+
+@inline function ℑyTᵃᶠᵃ(i, j, k, grid::AGYFF{FT, L}, c::AbstractArray) where {FT, L}
+    fold = j == grid.Ny + 1
+    c⁺   = @inbounds c[ifelse(fold, north_fold_index(i, grid), i), ifelse(fold, grid.Ny, j), k]
+    c⁻   = @inbounds c[i, ifelse((L === Closed) & (j == 1), j, j - 1), k]
+    return FT(0.5) * (c⁺ + c⁻)
+end
+
+@inline function ℑyTᵃᶜᵃ(i, j, k, grid::AGYFF{FT}, f, args...) where FT
+    fold = j == grid.Ny + 1
+    v⁺   = f(ifelse(fold, north_fold_index(i, grid), i), ifelse(fold, grid.Ny, j + 1), k, grid, args...)
+    return FT(0.5) * (f(i, j, k, grid, args...) + ifelse(fold, -v⁺, v⁺))
+end
+
+@inline function ℑyTᵃᶜᵃ(i, j, k, grid::AGYFF{FT}, v::AbstractArray) where FT
+    fold = j == grid.Ny + 1
+    v⁺   = @inbounds v[ifelse(fold, north_fold_index(i, grid), i), ifelse(fold, grid.Ny, j + 1), k]
+    return @inbounds FT(0.5) * (v[i, j, k] + ifelse(fold, -v⁺, v⁺))
 end
 
 # Derivative operators
