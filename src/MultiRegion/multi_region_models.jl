@@ -1,22 +1,21 @@
 using Oceananigans.Advection: Advection, WENO, VectorInvariant, adapt_advection_order, cell_advection_timescale, materialize_advection,
-                              BoundsPreservation
+                              BoundsPreservation, OnlySelfUpwinding, CrossAndSelfUpwinding
 using Oceananigans.BuoyancyFormulations: BuoyancyFormulations, BuoyancyForce, NegativeZDirection, AbstractBuoyancyFormulation, validate_unit_vector
-using Oceananigans.TimeSteppers: TimeSteppers, QuasiAdamsBashforth2TimeStepper, SplitRungeKuttaTimeStepper
+using Oceananigans.Fields: XFaceField, YFaceField
+using Oceananigans.ImmersedBoundaries: GridFittedVerticalBoundaries, PartialCellVerticalBoundaries, GridFittedBoundary
 using Oceananigans.Models: Models, ExplicitFreeSurface, HydrostaticFreeSurfaceModel, ImplicitFreeSurface, PrescribedVelocityFields
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModels
-using Oceananigans.Fields: XFaceField, YFaceField
-using Oceananigans.Operators: rotation_angle
 using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: SplitExplicitFreeSurfaces,
                                                                                   FillHaloSplitExplicit,
                                                                                   apply_barotropic_kernel!,
                                                                                   _split_explicit_barotropic_velocity!,
                                                                                   _split_explicit_free_surface!
+using Oceananigans.Operators: rotation_angle
+using Oceananigans.Solvers: ConjugateGradientSolver
+using Oceananigans.TimeSteppers: TimeSteppers, QuasiAdamsBashforth2TimeStepper, SplitRungeKuttaTimeStepper
 using Oceananigans.TurbulenceClosures: TurbulenceClosures, VerticallyImplicitTimeDiscretization, implicit_diffusion_solver,
                                        add_closure_specific_boundary_conditions, closure_required_tracers, step_closure_prognostics!
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE, FlavorOfTD, CATKEClosureFields, TKEDissipationClosureFields
-using Oceananigans.Advection: OnlySelfUpwinding, CrossAndSelfUpwinding
-using Oceananigans.ImmersedBoundaries: GridFittedVerticalBoundaries, PartialCellVerticalBoundaries, GridFittedBoundary
-using Oceananigans.Solvers: ConjugateGradientSolver
 using Oceananigans.Utils: configure_kernel
 using KernelAbstractions.Extras.LoopInfo: @unroll
 

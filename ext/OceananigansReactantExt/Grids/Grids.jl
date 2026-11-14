@@ -10,8 +10,8 @@ using Oceananigans
 using Oceananigans: Distributed
 using Oceananigans.Architectures: ReactantState, CPU
 using Oceananigans.Fields: Field
-using Oceananigans.Grids: AbstractGrid, AbstractUnderlyingGrid, StaticVerticalDiscretization, MutableVerticalDiscretization
-using Oceananigans.Grids: LatitudeLongitudeGrid, RectilinearGrid, OrthogonalSphericalShellGrid,
+using Oceananigans.Grids: AbstractGrid, AbstractUnderlyingGrid, StaticVerticalDiscretization, MutableVerticalDiscretization,
+                          LatitudeLongitudeGrid, RectilinearGrid, OrthogonalSphericalShellGrid,
                           Center, Face, Periodic, TwoSided, Bounded, Closed, Connected, Flat, FaceExtendedTopology
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedVerticalBoundaries, AbstractImmersedBoundary
 using Oceananigans.OrthogonalSphericalShellGrids: TripolarGrid

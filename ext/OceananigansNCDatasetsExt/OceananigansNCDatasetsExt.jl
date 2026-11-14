@@ -26,12 +26,11 @@ using Oceananigans.Architectures: Architectures, CPU, GPU, architecture, on_arch
 using Oceananigans.Fields: Fields, AbstractField, Field, data, interior, set!, Reduction, location, indices
 using Oceananigans.Grids:
     Center, Face, TwoSided, grid, nodes, constructor_arguments,
-    generate_coordinate, validate_topology, AbstractVerticalCoordinate
+    generate_coordinate, validate_topology, AbstractVerticalCoordinate, OrthogonalSphericalShellGrid
 using Oceananigans.OrthogonalSphericalShellGrids:
     TripolarGrid, RotatedLatitudeLongitudeGrid,
     Tripolar, LatitudeLongitudeRotation,
     conformal_mapping_info
-using Oceananigans.Grids: OrthogonalSphericalShellGrid
 using Oceananigans.ImmersedBoundaries:
     ImmersedBoundaryGrid, GridFittedBottom, GridFittedBoundary, PartialCellBottom,
     GridFittedVerticalBoundaries, PartialCellVerticalBoundaries,

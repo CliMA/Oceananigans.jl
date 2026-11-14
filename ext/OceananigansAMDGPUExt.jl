@@ -1,7 +1,6 @@
 module OceananigansAMDGPUExt
 
 using Oceananigans
-using Oceananigans.Utils: linear_expand, __linear_ndrange, MappedCompilerMetadata
 using AMDGPU, AMDGPU.rocSPARSE
 using AbstractFFTs: plan_fft!, plan_ifft!
 using InteractiveUtils
