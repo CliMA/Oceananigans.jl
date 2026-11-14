@@ -23,7 +23,7 @@ using Oceananigans.Grids: Grids, AbstractGrid, Center, Face, Flat, LatitudeLongi
                           grid, topology, halo_size, xspacings, yspacings, rspacings,
                           λspacings, φspacings, λnodes, φnodes, ξnodes, ηnodes,
                           ξname, ηname, validate_index, peripheral_node, inactive_node,
-                          interior_indices
+                          interior_indices, new_data as allocate_grid_data
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary,
                                        GridFittedBottom, PartialCellBottom,
                                        GridFittedVerticalBoundaries, PartialCellVerticalBoundaries,
@@ -39,7 +39,6 @@ using Oceananigans.OrthogonalSphericalShellGrids: OrthogonalSphericalShellGrid,
 using Oceananigans.Solvers: iteration
 using Oceananigans.Utils: Utils, StaticStridesOffsetArray, TimeInterval, IterationInterval, WallTimeInterval, instantiate,
                           pretty_filesize, SIGNATURES, TYPEDSIGNATURES
-using Oceananigans.Grids: new_data as allocate_grid_data
 
 const c = Center()
 const f = Face()
