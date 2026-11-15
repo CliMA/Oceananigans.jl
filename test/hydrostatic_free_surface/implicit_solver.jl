@@ -11,6 +11,8 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     step_free_surface!,
     implicit_free_surface_linear_operation!
 
+using Oceananigans.Solvers: precondition!
+
 
 function set_simple_divergent_velocity!(model)
     # Create a divergent velocity
@@ -172,5 +174,58 @@ end
         @info "    maximum(abs, η_fft): $(maximum(abs, fft_η_cpu))"
 
         @test all(isapprox.(Δη_pcg, 0, atol=1e-15))
+    end
+
+    # A lat-lon grid with a small inlet of land at the northern boundary and a long time step:
+    # the coefficients of the implicit free-surface operator vary strongly from cell to cell.
+    # The conjugate gradient method needs a symmetric preconditioner to converge there.
+    for arch in archs
+        A = typeof(arch)
+        @info "Testing the symmetry of DiagonallyDominantInversePreconditioner [$A]..."
+
+        Nx, Ny = 45, 20
+        underlying_grid = LatitudeLongitudeGrid(arch, size = (Nx, Ny, 4), longitude = (0, 360), latitude = (-80, 80), z = (-4000, 0))
+        land = [1 1 0 0 1 1
+                1 0 0 0 1 1
+                1 1 1 1 1 1]
+        depth = fill(-4000.0, Nx, Ny)
+        depth[28:33, 18:20] .= ifelse.(land' .== 1, 0.0, -4000.0)
+        grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(depth))
+        Δt = 2400
+
+        iterations = map((nothing, DiagonallyDominantInversePreconditioner())) do preconditioner
+            free_surface = ImplicitFreeSurface(solver_method = :PreconditionedConjugateGradient; preconditioner)
+            model = HydrostaticFreeSurfaceModel(grid; free_surface)
+            set!(model, u = (λ, φ, z) -> 0.1 * cosd(φ))
+            time_step!(model, Δt)
+            model.free_surface.implicit_step_solver.preconditioned_conjugate_gradient_solver
+        end
+
+        unpreconditioned, preconditioned = iterations
+        @test preconditioned.iteration < preconditioned.maxiter
+        @test preconditioned.iteration < unpreconditioned.iteration
+
+        # ⟨x, P y⟩ = ⟨P x, y⟩ for random x and y
+        free_surface = ImplicitFreeSurface(solver_method = :PreconditionedConjugateGradient,
+                                           preconditioner = DiagonallyDominantInversePreconditioner())
+        model = HydrostaticFreeSurfaceModel(grid; free_surface)
+        solver = model.free_surface.implicit_step_solver
+        ∫ᶻA = solver.vertically_integrated_lateral_areas
+        P = solver.preconditioned_conjugate_gradient_solver.preconditioner
+        g = model.free_surface.gravitational_acceleration
+
+        x, y, Px, Py = Tuple(similar(solver.right_hand_side) for _ in 1:4)
+        for f in (x, y, Px, Py)
+            fill!(parent(f), 0)
+        end
+        interior(x) .= on_architecture(arch, rand(Nx, Ny, 1))
+        interior(y) .= on_architecture(arch, rand(Nx, Ny, 1))
+
+        precondition!(Px, P, x, ∫ᶻA.xᶠᶜᶜ, ∫ᶻA.yᶜᶠᶜ, g, Δt)
+        precondition!(Py, P, y, ∫ᶻA.xᶠᶜᶜ, ∫ᶻA.yᶜᶠᶜ, g, Δt)
+
+        x_Py = sum(Array(interior(x)) .* Array(interior(Py)))
+        Px_y = sum(Array(interior(Px)) .* Array(interior(y)))
+        @test x_Py ≈ Px_y rtol = 1e-12
     end
 end
