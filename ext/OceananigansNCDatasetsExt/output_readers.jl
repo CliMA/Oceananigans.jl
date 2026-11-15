@@ -2,8 +2,8 @@
 ##### Reading FieldTimeSeries from NetCDF Files
 #####
 
-using Oceananigans.BoundaryConditions: FieldBoundaryConditions
 using Oceananigans: instantiated_location
+using Oceananigans.BoundaryConditions: FieldBoundaryConditions
 using Oceananigans.Grids: offset_data
 using Oceananigans.Utils: @apply_regionally
 

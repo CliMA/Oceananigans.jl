@@ -14,7 +14,6 @@ export
     time_discretization
 
 using Adapt: Adapt
-using DocStringExtensions: MethodSignatures, TYPEDSIGNATURES
 using KernelAbstractions: @index, @kernel
 
 using Oceananigans: Oceananigans, AbstractModel, fields, initialize!, prognostic_fields
@@ -27,7 +26,7 @@ using Oceananigans.Utils: @apply_regionally,
                           AdaptiveVerticallyImplicitDiscretization,
                           ExplicitTimeDiscretization,
                           VerticallyImplicitTimeDiscretization,
-                          kernel_time_step
+                          kernel_time_step, SIGNATURES, TYPEDSIGNATURES
 
 """
     abstract type AbstractTimeStepper

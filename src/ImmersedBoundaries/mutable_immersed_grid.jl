@@ -1,3 +1,6 @@
+using Oceananigans.Grids: AbstractUnderlyingGrid, Bounded, Center, Closed, Face, FaceFolded,
+                          MutableVerticalDiscretization, Periodic, TwoSided, column_depthᶜᶜᵃ, column_depthᶜᶠᵃ,
+                          column_depthᶠᶜᵃ, column_depthᶠᶠᵃ, znode
 using Oceananigans.Operators
 using Oceananigans.Operators: MLLG, MOSG, MRG, north_fold_index, superscript_location, Δx⁻¹ᶜᶜᶜ, Δx⁻¹ᶜᶜᶠ, Δx⁻¹ᶜᶠᶜ,
                               Δx⁻¹ᶜᶠᶠ, Δx⁻¹ᶠᶜᶜ, Δx⁻¹ᶠᶜᶠ, Δx⁻¹ᶠᶠᶜ, Δy⁻¹ᶜᶜᶜ, Δy⁻¹ᶜᶜᶠ, Δy⁻¹ᶜᶠᶜ, Δy⁻¹ᶜᶠᶠ, Δy⁻¹ᶠᶜᶜ, Δy⁻¹ᶠᶜᶠ,
@@ -5,10 +8,6 @@ using Oceananigans.Operators: MLLG, MOSG, MRG, north_fold_index, superscript_loc
                               δyᶠᶜᶜ, δyᶠᶜᶠ, δyᶠᶠᶜ, σ⁻, σ⁻¹ⁿ, σⁿ, ℑxzᶜᵃᶜ, ℑxzᶠᵃᶜ, ℑxzᶠᵃᶠ, ℑyzᵃᶜᶜ, ℑyzᵃᶠᶜ, ℑyzᵃᶠᶠ, ∂t_σ,
                               ∂x_zᶜᶜᶜ, ∂x_zᶜᶠᶜ, ∂x_zᶠᶜᶜ, ∂x_zᶠᶜᶠ, ∂x_zᶠᶠᶜ, ∂y_zᶜᶜᶜ, ∂y_zᶜᶠᶜ, ∂y_zᶜᶠᶠ, ∂y_zᶠᶜᶜ, ∂y_zᶠᶠᶜ,
                               ∂zᶜᶜᶜ, ∂zᶜᶜᶠ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ, ∂zᶠᶠᶠ
-
-using Oceananigans.Grids: AbstractUnderlyingGrid, Bounded, Center, Closed, Face, FaceFolded,
-                          MutableVerticalDiscretization, Periodic, TwoSided, column_depthᶜᶜᵃ, column_depthᶜᶠᵃ,
-                          column_depthᶠᶜᵃ, column_depthᶠᶠᵃ, znode
 
 const UnderlyingMutableGrid{FT, TX, TY} = AbstractUnderlyingGrid{FT, TX, TY, <:Bounded, <:MutableVerticalDiscretization}
 const MutableImmersedGrid{FT, TX, TY}   = ImmersedBoundaryGrid{FT, TX, TY, <:Bounded, <:UnderlyingMutableGrid}

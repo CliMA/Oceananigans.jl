@@ -4,8 +4,8 @@ using NCCL
 using CUDA
 using MPI
 using Oceananigans
-using Oceananigans.Utils: launch!
 using Oceananigans.DistributedComputations: Distributed
+using Oceananigans.Utils: launch!
 
 import Oceananigans.DistributedComputations as DC
 

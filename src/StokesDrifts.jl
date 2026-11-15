@@ -13,7 +13,6 @@ export
     z_curl_Uˢ_cross_U,
     compute_stokes_drift!
 
-using DocStringExtensions: MethodSignatures
 using Adapt: Adapt, adapt
 using KernelAbstractions: @kernel, @index
 using Oceananigans.Architectures: architecture
@@ -22,7 +21,7 @@ using Oceananigans.Fields: Field
 using Oceananigans.Grids: AbstractGrid, node, znode, Face, Center
 using Oceananigans.Operators: ℑxᶜᵃᵃ, ℑyᵃᶜᵃ, ℑzᵃᵃᶜ, ℑxyᶠᶜᵃ, ℑxyᶜᶠᵃ, ℑxzᶠᵃᶜ, ℑxzᶜᵃᶠ, ℑyzᵃᶠᶜ, ℑyzᵃᶜᶠ,
                               ∂xᶠᶠᶜ, ∂xᶠᶜᶠ, ∂yᶠᶠᶜ, ∂yᶜᶠᶠ, ∂zᶠᶜᶠ, ∂zᶜᶠᶠ, flux_div_xyᶜᶜᶜ, Az⁻¹ᶜᶜᶜ
-using Oceananigans.Utils: prettysummary, launch!, KernelParameters
+using Oceananigans.Utils: prettysummary, launch!, KernelParameters, SIGNATURES
 
 #####
 ##### Abstract Stokes-drift type
@@ -106,7 +105,7 @@ end
 @inline zerofunction(args...) = 0
 
 """
-$(MethodSignatures(; defaults = true))
+$(SIGNATURES)
 
 Construct a set of functions for a Stokes drift velocity field
 corresponding to a horizontally-uniform surface gravity wave field, with optional `parameters`.
@@ -260,7 +259,7 @@ function Base.show(io::IO, sd::StokesDrift)
 end
 
 """
-$(MethodSignatures(; defaults = true))
+$(SIGNATURES)
 
 Construct a set of functions of space and time for a Stokes drift velocity field
 corresponding to a surface gravity wave field with an envelope that (potentially) varies

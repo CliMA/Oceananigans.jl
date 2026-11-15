@@ -11,9 +11,8 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
                                                                                   apply_barotropic_kernel!,
                                                                                   _split_explicit_barotropic_velocity!,
                                                                                   _split_explicit_free_surface!
-
 using Oceananigans.TurbulenceClosures: TurbulenceClosures, VerticallyImplicitTimeDiscretization, implicit_diffusion_solver,
-    add_closure_specific_boundary_conditions, closure_required_tracers, step_closure_prognostics!
+                                       add_closure_specific_boundary_conditions, closure_required_tracers, step_closure_prognostics!
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE, FlavorOfTD, CATKEClosureFields, TKEDissipationClosureFields
 using Oceananigans.Advection: OnlySelfUpwinding, CrossAndSelfUpwinding
 using Oceananigans.ImmersedBoundaries: GridFittedVerticalBoundaries, PartialCellVerticalBoundaries, GridFittedBoundary
