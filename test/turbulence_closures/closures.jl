@@ -11,6 +11,7 @@ using Oceananigans.ImmersedBoundaries: immersed_cell
 using Oceananigans.Operators: Δz
 using Oceananigans.Solvers: get_coefficient
 using Oceananigans.TimeSteppers: implicit_step!
+using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: CATKEMixingLength
 using Oceananigans.TurbulenceClosures: VerticallyImplicitDiffusionLowerDiagonal,
                                        VerticallyImplicitDiffusionDiagonal,
                                        VerticallyImplicitDiffusionUpperDiagonal
@@ -421,6 +422,39 @@ function test_discrete_function_scalar_diffusivity()
     return cell_diffusion_timescale(model) == τκ
 end
 
+function catke_entrainment_face_diffusivity_ratio(arch, mixing_length)
+    # Surface cooling with wind over a uniformly stratified interior.
+    grid = RectilinearGrid(arch, size=128, z=(-256, 0), topology=(Flat, Flat, Bounded))
+    closure = CATKEVerticalDiffusivity(; mixing_length)
+    b_bcs = FieldBoundaryConditions(top=FluxBoundaryCondition(4e-8))
+    u_bcs = FieldBoundaryConditions(top=FluxBoundaryCondition(-1e-4))
+    model = HydrostaticFreeSurfaceModel(grid; closure, tracers=:b, buoyancy=BuoyancyTracer(),
+                                        coriolis=FPlane(f=1e-4), boundary_conditions=(b=b_bcs, u=u_bcs))
+    set!(model, b = z -> 1e-5 * z)
+
+    # Largest ratio of κc at a face to the larger of its two neighbours within the mixed layer,
+    # over the third day. A smooth profile gives ≈ 1; a one-face spike at the base of the
+    # convecting layer gives a ratio well above 1.
+    Nz = size(grid, 3)
+    max_ratio = Ref(0.0)
+
+    function record_ratio!(sim)
+        κc = Array(interior(sim.model.closure_fields.κc, 1, 1, :))
+        for k in 3:Nz
+            κc[k] > 1e-4 && (max_ratio[] = max(max_ratio[], κc[k] / max(κc[k-1], κc[k+1])))
+        end
+        return nothing
+    end
+
+    simulation = Simulation(model, Δt=600, stop_time=2 * 86400, verbose=false)
+    run!(simulation)
+    simulation.stop_time = 3 * 86400
+    add_callback!(simulation, record_ratio!)
+    run!(simulation)
+
+    return max_ratio[]
+end
+
 @testset "Turbulence closures" begin
     @testset "Closure instantiation" begin
         for closurename in closures
@@ -645,6 +679,14 @@ end
                 @test first(model.closure) === closure[2]
                 closure = (HorizontalScalarDiffusivity(), explicit_catke, VerticalScalarDiffusivity())
                 run_catke_tke_substepping_tests(arch, closure)
+            end
+
+            @testset "CATKE penetration length bound removes the entrainment-face spike [$(typeof(arch))]" begin
+                @info "  Testing the bound on CATKE's penetration length [$(typeof(arch))]..."
+                unbounded = CATKEMixingLength()
+                bounded = CATKEMixingLength(Cᵉʰ=1.0)
+                @test catke_entrainment_face_diffusivity_ratio(arch, unbounded) > 1.5
+                @test catke_entrainment_face_diffusivity_ratio(arch, bounded) < 1.1
             end
 
             @testset "Surface TKE flux with CATKE in closure tuples of length 1 to 6 [$(typeof(arch))]" begin

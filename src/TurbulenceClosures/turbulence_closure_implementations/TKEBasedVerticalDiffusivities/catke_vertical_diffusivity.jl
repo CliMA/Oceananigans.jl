@@ -443,6 +443,7 @@ function Base.show(io::IO, clo::CATKEVD)
               "│   ├── Cᶜe:  ", prettysummary(clo.mixing_length.Cᶜe), '\n',
               "│   ├── Cᵉc:  ", prettysummary(clo.mixing_length.Cᵉc), '\n',
               "│   ├── Cᵉe:  ", prettysummary(clo.mixing_length.Cᵉe), '\n',
+              "│   ├── Cᵉʰ:  ", prettysummary(clo.mixing_length.Cᵉʰ), '\n',
               "│   ├── Cˢᵖ:  ", prettysummary(clo.mixing_length.Cˢᵖ), '\n',
               "│   ├── CRiᵟ: ", prettysummary(clo.mixing_length.CRiᵟ), '\n',
               "│   └── CRi⁰: ", prettysummary(clo.mixing_length.CRi⁰), '\n',
