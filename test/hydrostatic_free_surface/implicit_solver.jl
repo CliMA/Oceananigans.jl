@@ -125,6 +125,11 @@ end
                                                abstol=1e-15, reltol=0)
             run_implicit_free_surface_solver_tests(arch, grid, free_surface)
 
+            @info "Testing PreconditionedConjugateGradient implicit free surface solver without preconditioner [$A, $G]..."
+            free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient,
+                                               preconditioner=nothing, abstol=1e-15, reltol=0)
+            run_implicit_free_surface_solver_tests(arch, grid, free_surface)
+
             @info "Testing PreconditionedConjugateGradient implicit free surface solver with DiagonallyDominantInversePreconditioner [$A, $G]..."
             free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient,
                                                preconditioner=DiagonallyDominantInversePreconditioner(),
@@ -149,6 +154,12 @@ end
 
         @test fft_model.free_surface.implicit_step_solver isa FFTImplicitFreeSurfaceSolver
         @test pcg_model.free_surface.implicit_step_solver isa PCGImplicitFreeSurfaceSolver
+
+        # default preconditioner of the PCG solver on a non-rectilinear grid
+        lat_lon_pcg_model = HydrostaticFreeSurfaceModel(lat_lon_grid; momentum_advection = nothing,
+                                                        free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient))
+        @test lat_lon_pcg_model.free_surface.implicit_step_solver.preconditioned_conjugate_gradient_solver.preconditioner isa
+              DiagonallyDominantInversePreconditioner
 
         Δt₁ = 900
         Δt₂ = 920.0

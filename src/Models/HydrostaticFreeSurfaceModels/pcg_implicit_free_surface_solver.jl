@@ -57,10 +57,10 @@ function PCGImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitationa
     if grid isa DistributedGrid
         settings[:preconditioner] = nothing
     else
-        # FFT preconditioner for rectilinear grids, nothing otherwise.
+        # FFT preconditioner for rectilinear grids, diagonally dominant inverse otherwise
         settings[:preconditioner] = isrectilinear(grid) ?
             get(settings, :preconditioner, FFTImplicitFreeSurfaceSolver(grid)) :
-            get(settings, :preconditioner, nothing)
+            get(settings, :preconditioner, DiagonallyDominantInversePreconditioner())
     end
 
     # TODO: reuse solver.storage for rhs when preconditioner isa FFTImplicitFreeSurfaceSolver?
