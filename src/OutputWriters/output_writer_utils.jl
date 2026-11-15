@@ -35,14 +35,25 @@ has_initial_output(schedule) = true
     write_to_disk!(write_data, writer)
 
 Call `write_data()`, on a background task if `writer.asynchronous`.
+The task runs on the interactive threadpool when Julia is started with interactive threads
+(for example `julia -t 4,1`), so disk writes don't compete with threads doing computation.
+Otherwise it runs on the default threadpool.
 """
 function write_to_disk!(write_data, writer)
     if writer.asynchronous
-        writer.task = Threads.@spawn write_data()
+        writer.task = spawn_write(write_data)
     else
         write_data()
     end
     return nothing
+end
+
+function spawn_write(write_data)
+    if Threads.nthreads(:interactive) > 0
+        return Threads.@spawn :interactive write_data()
+    else
+        return Threads.@spawn write_data()
+    end
 end
 
 """
