@@ -4,7 +4,7 @@ using Oceananigans.Advection: div_Uc, materialize_advection, update_advection!
 
 function advective_tendency(grid, advection, c, U)
     scheme = materialize_advection(advection, grid)
-    update_advection!(scheme, (; grid), c)
+    update_advection!(scheme, (; grid, timestepper=nothing, clock=Clock(time=0)), c)
     operation = KernelFunctionOperation{Center, Center, Center}(div_Uc, grid, scheme, U, c)
     return Array(interior(compute!(Field(operation))))
 end
@@ -21,11 +21,11 @@ end
 slope(s) = -1250 - 750tanh((s - 40e3) / 7e3)
 
 # Densest water, in units of the source's, of a dense overflow down a steep slope (Ilicak et al. 2012) at 4 km resolution after 8 hours
-function densest_overflow_water(arch, bottom_kind)
+function densest_overflow_water(arch, bottom_kind, tracer_advection)
     underlying = RectilinearGrid(arch, size=(50, 20), halo=(6, 6), x=(0, 200e3), z=(-2000, 0), topology=(Bounded, Flat, Bounded))
     grid = ImmersedBoundaryGrid(underlying, bottom_kind(slope))
     closure = (HorizontalScalarDiffusivity(ν=100), VerticalScalarDiffusivity(ν=1e-4))
-    model = HydrostaticFreeSurfaceModel(grid; tracer_advection=THINCBVD(), momentum_advection=UpwindBiased(order=3), closure,
+    model = HydrostaticFreeSurfaceModel(grid; tracer_advection, momentum_advection=UpwindBiased(order=3), closure,
                                         buoyancy=BuoyancyTracer(), tracers=:b, timestepper=:SplitRungeKutta3,
                                         free_surface=SplitExplicitFreeSurface(grid; substeps=40))
     Δb = 0.0196
@@ -40,7 +40,7 @@ end
 
 @testset "THINC-BVD advection" begin
     for arch in archs
-        @testset "Smooth tracer takes WENO's tendency [$(summary(arch)), $steepnesses]" for steepnesses in ((1.6, 2.5), (1.25, 2.5))
+        @testset "Smooth tracer takes WENO's tendency [$(summary(arch)), $steepnesses]" for steepnesses in ((1.6, 2.5), (1.25, 2.5), ())
             grid = RectilinearGrid(arch, size=(16, 16, 16), halo=(5, 5, 5), extent=(1, 1, 1), topology=(Periodic, Periodic, Periodic))
             c = CenterField(grid)
             set!(c, (x, y, z) -> sin(2π * x) * cos(2π * y) * sin(2π * z))
@@ -65,8 +65,9 @@ end
             @test maximum(abs, vec(tx) .- vec(ty)) ≤ 1e-12 * maximum(abs, tx)
         end
 
-        @testset "Overflow stays within 10% of its source density [$(summary(arch)), $bottom_kind]" for bottom_kind in (GridFittedBottom, PartialCellBottom)
-            @test densest_overflow_water(arch, bottom_kind) < 1.1
+        @testset "Overflow stays within 0.1% of its source density [$(summary(arch)), $bottom_kind, $steepnesses]" for bottom_kind in (GridFittedBottom, PartialCellBottom),
+                                                                                                                   steepnesses in ((1.6, 2.5), ())
+            @test densest_overflow_water(arch, bottom_kind, THINCBVD(; steepnesses)) < 1.001
         end
     end
 end

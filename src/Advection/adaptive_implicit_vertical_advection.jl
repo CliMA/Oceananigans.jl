@@ -135,11 +135,11 @@ end
     return nothing
 end
 
-@inline update_tracer_advection!(advection::NamedTuple, model, ::Val{name}) where name = update_tracer_advection!(advection[name], model.grid, model.tracers[name])
+@inline update_tracer_advection!(advection::NamedTuple, model, ::Val{name}) where name = update_tracer_advection!(advection[name], model, model.tracers[name])
 
 @inline function update_advection!(scheme, model, tracer)
     update_adaptive_timestep!(scheme, model)
-    update_tracer_advection!(scheme, model.grid, tracer)
+    update_tracer_advection!(scheme, model, tracer)
     return nothing
 end
 
