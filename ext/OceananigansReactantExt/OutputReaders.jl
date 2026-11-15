@@ -29,7 +29,9 @@ end
 
 function Oceananigans.OutputReaders.cpu_interpolating_time_indices(::ReactantState, times, time_indexing, t)
     cpu_times = on_architecture(CPU(), times)
-    return TimeInterpolator(time_indexing, cpu_times, t)
+    # At a traced time, vector `times` stay traced and `find_time_index` reads `times[n]` at a traced index,
+    # a dynamic slice (as in `getindex(fts, ::Time{<:TracedRNumber})`)
+    return @allowscalar TimeInterpolator(time_indexing, cpu_times, t)
 end
 
 # A dynamic slice along the time axis, so the index may be known only at run time

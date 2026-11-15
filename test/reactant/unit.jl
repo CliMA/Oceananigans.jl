@@ -3,8 +3,8 @@ include(joinpath(@__DIR__, "..", "setup", "reactant_test_utils.jl"))
 using CUDA
 using KernelAbstractions: get_backend
 using Statistics: mean
-using Oceananigans.OutputReaders: cpu_interpolating_time_indices, Clamp, Cyclical, update_field_time_series!, InMemory,
-                                  TimeSeriesInterpolation
+using Oceananigans.OutputReaders: cpu_interpolating_time_indices, Clamp, Cyclical, Linear, update_field_time_series!,
+                                  InMemory, TimeSeriesInterpolation, TimeInterpolator
 using Oceananigans.Units: Time
 
 arch = ReactantState()
@@ -496,6 +496,21 @@ interpolate_in_time!(c, fts, t) = set!(c, fts[Time(t)])
             r_interpolate!(c, fts, Reactant.ConcreteRNumber(t))
             interpolate_in_time!(cpu_c, cpu_fts, t)
             @test Array(interior(c)) ≈ Array(interior(cpu_c))
+        end
+    end
+end
+
+@testset "cpu_interpolating_time_indices at a traced time" begin
+    grid = RectilinearGrid(arch; size=(4, 4, 1), extent=(1, 1, 1))
+    indices(ti) = (ti.fractional_index, ti.first_index, ti.second_index)
+    traced_indices(fts, t) = indices(cpu_interpolating_time_indices(arch, fts.times, fts.time_indexing, t))
+
+    # Unevenly spaced (vector) times are read at a traced index
+    for times in (0:1.0:3.0, [0.0, 1.0, 3.0, 7.0]), time_indexing in (Clamp(), Linear(), Cyclical())
+        fts = FieldTimeSeries{Center, Center, Center}(grid, times; time_indexing)
+        for t in (-1.0, 2.0, 5.5, 9.0)
+            expected = indices(TimeInterpolator(fts.time_indexing, collect(times), t))
+            @test map(Reactant.to_number, @jit(traced_indices(fts, Reactant.ConcreteRNumber(t)))) == expected
         end
     end
 end
