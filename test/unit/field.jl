@@ -19,6 +19,31 @@ using Oceananigans.ImmersedBoundaries: mask_immersed_field!, mask_immersed_field
 using Random
 using GPUArraysCore: @allowscalar
 
+using Oceananigans.ImmersedBoundaries: immersed_peripheral_node, inactive_node
+
+# Reference for `dot` and `norm`: an explicit sum over the points of the field's window that are
+# neither in the immersed periphery nor inactive (on immersed grids) and satisfy `condition`
+window_range(::Colon, n) = 1:n
+window_range(r, n) = r
+
+wet_node(i, j, k, grid, ℓ) = true
+wet_node(i, j, k, grid::ImmersedBoundaryGrid, ℓ) =
+    !(immersed_peripheral_node(i, j, k, grid, ℓ...) | inactive_node(i, j, k, grid, ℓ...))
+
+function reference_dot(a, b, condition = (i, j, k, A, B) -> true)
+    grid = on_architecture(CPU(), a.grid)
+    ℓ = instantiated_location(a)
+    A, B = on_architecture(CPU(), a), on_architecture(CPU(), b)
+    ranges = map(window_range, indices(a), size(a))
+    Σ = zero(promote_type(eltype(a), eltype(b)))
+    for k in ranges[3], j in ranges[2], i in ranges[1]
+        if wet_node(i, j, k, grid, ℓ) && condition(i, j, k, A, B)
+            Σ += A[i, j, k] * B[i, j, k]
+        end
+    end
+    return Σ
+end
+
 """
     correct_field_size(grid, FieldType, Tx, Ty, Tz)
 
@@ -1474,4 +1499,61 @@ end
             @test dot(η, η) == 5 * 5 * 16
         end
     end
+
+    @testset "Dot products and norms on (immersed, windowed) fields" begin
+        @info "  Testing dot!, dot and norm against explicit sums..."
+        for arch in archs, FT in float_types
+            underlying_grid = LatitudeLongitudeGrid(arch, FT, size=(12, 8, 4), longitude=(0, 360), latitude=(-60, 60), z=(-1, 0))
+
+            # Land (bottom at the surface), shallow and deep columns
+            bottom(λ, φ) = λ < 90 ? 0 : (φ > 0 ? -0.6 : -0.3)
+            immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom))
+
+            for grid in (underlying_grid, immersed_grid)
+                Nz = size(grid, 3)
+                for (a, b) in ((ZFaceField(grid, indices=(:, :, Nz+1)), ZFaceField(grid, indices=(:, :, Nz+1))),
+                               (CenterField(grid), CenterField(grid)),
+                               (ZFaceField(grid), ZFaceField(grid)))
+
+                    # Random values, also in immersed and halo regions, which must not contribute
+                    Random.seed!(1234)
+                    parent(a) .= on_architecture(arch, randn(FT, size(parent(a))))
+                    parent(b) .= on_architecture(arch, randn(FT, size(parent(b))))
+
+                    r = on_architecture(arch, zeros(FT, 1))
+                    tol = sqrt(eps(FT))
+
+                    # No condition
+                    expected = reference_dot(a, b)
+                    @test dot!(r, a, b) === r
+                    @test isapprox(Array(r)[1], expected; rtol=tol, atol=tol)
+                    @test isapprox(dot(a, b), expected; rtol=tol, atol=tol)
+                    @test isapprox(norm(a), sqrt(reference_dot(a, a)); rtol=tol, atol=tol)
+
+                    # A condition on the indices
+                    west(i, j, k, grid, co) = i > 4
+                    expected = reference_dot(a, b, (i, j, k, A, B) -> i > 4)
+                    @test isapprox(Array(dot!(r, a, b; condition=west))[1], expected; rtol=tol, atol=tol)
+                    @test isapprox(dot(a, b; condition=west), expected; rtol=tol, atol=tol)
+                    @test isapprox(norm(a; condition=west), sqrt(reference_dot(a, a, (i, j, k, A, B) -> i > 4)); rtol=tol, atol=tol)
+
+                    # A condition on the operand: each of `a` and `b` is conditioned on its own values
+                    positive(i, j, k, grid, co) = @inbounds co.operand[i, j, k] > 0
+                    expected = reference_dot(a, b, (i, j, k, A, B) -> A[i, j, k] > 0 && B[i, j, k] > 0)
+                    @test isapprox(Array(dot!(r, a, b; condition=positive))[1], expected; rtol=tol, atol=tol)
+                    @test isapprox(norm(a; condition=positive), sqrt(reference_dot(a, a, (i, j, k, A, B) -> A[i, j, k] > 0)); rtol=tol, atol=tol)
+
+                    # A Boolean array condition (array conditions index the field's own indices, so not windowed fields)
+                    if indices(a) == (:, :, :)
+                        mask = rand(Bool, size(a))
+                        in_mask(i, j, k, A, B) = mask[i, j, k]
+                        expected = reference_dot(a, b, in_mask)
+                        @test isapprox(Array(dot!(r, a, b; condition=mask))[1], expected; rtol=tol, atol=tol)
+                        @test isapprox(norm(a; condition=mask), sqrt(reference_dot(a, a, in_mask)); rtol=tol, atol=tol)
+                    end
+                end
+            end
+        end
+    end
+
 end

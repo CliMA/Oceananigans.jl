@@ -722,15 +722,15 @@ dot!(r, a::AbstractField, b::AbstractField; condition = nothing) = local_dot!(r,
 # The dot product over the cells of `a` and `b` that live on this rank; distributed fields
 # extend `dot!` to reduce it across ranks
 function local_dot!(r, a::AbstractField, b::AbstractField; condition = nothing)
-    ca = condition_operand(a, condition, 0)
-    cb = condition_operand(b, condition, 0)
-
-    B = ca * cb # Binary operation
     fill!(r, 0)
-
-    Base.mapreducedim!(identity, +, r, reduction_operand(B))
+    Base.mapreducedim!(identity, +, r, reduction_operand(dot_operand(a, b, condition)))
     return r
 end
+
+# The lazy operand whose sum is the dot product of `a` and `b` under `condition`: the product of
+# `a` and `b`, each conditioned as by `condition_operand`. `AbstractOperations` extends it to
+# condition the product once for fields at the same location.
+dot_operand(a, b, condition) = condition_operand(a, condition, 0) * condition_operand(b, condition, 0)
 
 function LinearAlgebra.dot(a::AbstractField, b::AbstractField; condition = nothing)
     r = dot!(zeros(a.grid, 1), a, b; condition)
@@ -739,7 +739,7 @@ end
 
 function LinearAlgebra.norm(a::AbstractField; condition = nothing)
     r = zeros(a.grid, 1)
-    Base.mapreducedim!(x -> x * x, +, r, reduction_operand(condition_operand(a, condition, 0)))
+    Base.mapreducedim!(x -> x * x, +, r, reduction_operand(condition_operand(a, condition, zero(eltype(a)))))
     return @allowscalar sqrt(r[1])
 end
 
