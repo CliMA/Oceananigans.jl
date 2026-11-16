@@ -379,12 +379,12 @@ end
     time_step!(model, 0.25)
 
     scheme.time_discretization.Δt[] = NaN
-    fill!(parent(scheme.bounds.limiter), NaN)
+    fill!(parent(scheme.bounds.reconstruction_limiter), NaN)
 
     update_advection!(model.advection, model)
 
     @test isfinite(scheme.time_discretization.Δt[])
-    @test all(isfinite, interior(scheme.bounds.limiter))
+    @test all(isfinite, interior(scheme.bounds.reconstruction_limiter))
 end
 
 @testset "AIVA Δt is the Δt of the upcoming RK3 stage" begin

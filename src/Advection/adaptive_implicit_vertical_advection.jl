@@ -140,12 +140,12 @@ end
     return nothing
 end
 
-@inline update_tracer_bounds_preserving_limiter!(advection, model, ::Val{name}) where name =
-    update_bounds_preserving_limiter!(advection[name], model.grid, model.tracers[name])
+@inline update_tracer_bounds_preserving_limiter!(advection, model, val_name::Val{name}) where name =
+    update_bounds_preserving_limiters!(advection[name], model, val_name)
 
 @inline function update_advection!(scheme, model, tracer)
     update_adaptive_timestep!(scheme, model)
-    update_bounds_preserving_limiter!(scheme, model.grid, tracer)
+    update_bounds_preserving_limiter!(scheme, model, tracer)
     return nothing
 end
 
@@ -155,9 +155,20 @@ update_adaptive_timestep!(scheme::FluxFormAdvection, model) = update_adaptive_ti
 
 @inline function update_adaptive_timestep!(scheme::AdaptiveImplicitVerticalAdvection, model)
     td = TimeSteppers.time_discretization(scheme)
-    td.Δt[] = adaptive_advection_timestep(model.timestepper, model.clock)
+    td.Δt[] = flux_limiter_timestep(model.timestepper, model.clock)
     return nothing
 end
+
+"""
+    flux_limiter_timestep(timestepper, clock)
+
+The forward Euler step of the coming stage, which both the bounds-preserving limiters and the explicit/implicit
+split of `AdaptiveImplicitVerticalAdvection` use, so that the explicit part's Courant cap holds over the step the
+limiters bound. For a stage written as a convex combination of forward Euler steps (an SSP Runge–Kutta or a
+convex multirate stage), this is `Δt` times the largest ratio `βᵢₖ / αᵢₖ` with which the coming tendency enters.
+Time steppers extend this; the default is the step of `adaptive_advection_timestep`.
+"""
+@inline flux_limiter_timestep(timestepper, clock) = adaptive_advection_timestep(timestepper, clock)
 
 # Δτ of the *next* substep, so that wᵉ in Gⁿ matches the next wⁱ.
 @inline adaptive_advection_timestep(timestepper, clock) = clock.last_Δt
