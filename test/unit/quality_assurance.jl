@@ -83,8 +83,7 @@ using oneAPI: oneAPI
 using Reactant: Reactant
 
 # Checks that fail today; fixing an extension makes its check pass unexpectedly and must remove it here
-broken_extension_checks = Dict(:OceananigansAMDGPUExt   => (:implicit, :stale, :qualified),
-                               :OceananigansEnzymeExt   => (:implicit, :stale, :qualified),
+broken_extension_checks = Dict(:OceananigansEnzymeExt   => (:implicit, :stale, :qualified),
                                :OceananigansMakieExt    => (:implicit, :owners, :stale),
                                :OceananigansMetalExt    => (:stale,),
                                :OceananigansNCCLExt     => (:implicit, :stale, :qualified),
