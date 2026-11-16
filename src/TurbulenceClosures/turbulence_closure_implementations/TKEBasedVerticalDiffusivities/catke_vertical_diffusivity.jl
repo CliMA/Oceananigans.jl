@@ -62,17 +62,7 @@ const FlavorOfCATKE{TD} = Union{CATKEVD{TD}, CATKEVDArray{TD}} where TD
 TurbulenceClosures.with_penetrative_radiation(closures::CATKEVDArray, radiation) = map(closure -> with_penetrative_radiation(closure, radiation), closures)
 
 """
-    CATKEVerticalDiffusivity([time_discretization = VerticallyImplicitTimeDiscretization(),
-                             FT = Float64;]
-                             mixing_length = CATKEMixingLength(),
-                             turbulent_kinetic_energy_equation = CATKEEquation(),
-                             maximum_tracer_diffusivity = Inf,
-                             maximum_tke_diffusivity = Inf,
-                             maximum_viscosity = Inf,
-                             minimum_tke = 1e-9,
-                             minimum_convective_buoyancy_flux = 1e-11,
-                             negative_tke_damping_time_scale = 1minute,
-                             tke_time_step = nothing)
+$(SIGNATURES)
 
 Return the `CATKEVerticalDiffusivity` turbulence closure for vertical mixing by
 small-scale ocean turbulence based on the prognostic evolution of subgrid

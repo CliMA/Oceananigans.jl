@@ -4,7 +4,6 @@ export LagrangianParticles, DroguedParticleDynamics, CountingSort, ComparisonSor
        ParticleBoundaryConditions, ReflectingBoundary, AbsorbingBoundary
 
 using Adapt: Adapt, adapt
-using DocStringExtensions: TYPEDSIGNATURES
 using KernelAbstractions: @atomic, @index, @kernel
 using Printf: @sprintf
 using StructArrays: StructArray, components
@@ -18,7 +17,7 @@ using Oceananigans.Grids: AbstractGrid, Bounded, Center, Face, Flat, LatitudeLon
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, immersed_cell
 using Oceananigans.OutputWriters: OutputWriters, serializeproperty!
 using Oceananigans.TimeSteppers: TimeSteppers, AbstractLagrangianParticles
-using Oceananigans.Utils: datatuple, launch!, prettysummary
+using Oceananigans.Utils: datatuple, launch!, prettysummary, SIGNATURES, TYPEDSIGNATURES
 
 abstract type AbstractParticle end
 
@@ -47,11 +46,7 @@ end
 @inline no_dynamics(args...) = nothing
 
 """
-    LagrangianParticles(; x, y, z,
-                        boundary_conditions = ParticleBoundaryConditions(),
-                        dynamics = no_dynamics,
-                        parameters = nothing,
-                        sorting = nothing)
+$(SIGNATURES)
 
 Construct some `LagrangianParticles` that can be passed to a model. The particles have initial locations
 `x`, `y`, and `z`. The behavior of particles at boundaries is specified by `boundary_conditions`;

@@ -1,7 +1,6 @@
 using Base: @propagate_inbounds
-using Oceananigans.Fields: OneField, compute_at!, condition_operand, conditional_length, indices, set!
-
 using Oceananigans.Architectures: Architectures, architecture, on_architecture
+using Oceananigans.Fields: OneField, compute_at!, condition_operand, conditional_length, indices, set!
 
 # For conditional reductions such as mean(u * v, condition = u .> 0))
 struct ConditionalOperation{LX, LY, LZ, F, C, O, G, M, T} <: AbstractOperation{LX, LY, LZ, G, T}
@@ -36,10 +35,7 @@ const NoConditionCO = ConditionalOperation{<:Any, <:Any, <:Any, <:Any, Nothing}
 const NoFuncNoConditionCO = ConditionalOperation{<:Any, <:Any, <:Any, Nothing, Nothing}
 
 """
-    ConditionalOperation(operand::AbstractField;
-                         func = nothing,
-                         condition = nothing,
-                         mask = 0)
+$(SIGNATURES)
 
 Return an abstract representation of a masking procedure applied when `condition` is satisfied on a field
 described by `func(operand)`.

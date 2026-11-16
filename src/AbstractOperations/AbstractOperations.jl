@@ -10,7 +10,6 @@ export at_minimum, at_maximum
 
 using Adapt: Adapt, adapt
 using Base: @propagate_inbounds
-using DocStringExtensions: TYPEDSIGNATURES
 
 using Oceananigans: Oceananigans, location
 using Oceananigans.Architectures: Architectures, architecture, on_architecture
@@ -18,6 +17,7 @@ using Oceananigans.BoundaryConditions: BoundaryConditions, fill_halo_regions!
 using Oceananigans.Fields: Fields, AbstractField, compute_at!, fieldify_function, indices, instantiated_location
 using Oceananigans.Grids: Grids, Center, Face, unwrapped_eltype
 using Oceananigans.Operators: interpolation_operator
+using Oceananigans.Utils: SIGNATURES, TYPEDSIGNATURES
 
 #####
 ##### Basic functionality
