@@ -10,8 +10,9 @@ Perform one strong-stability-preserving Runge-Kutta stage for `HydrostaticFreeSu
 
 Velocities and thickness-weighted tracers take an implicit-explicit forward-Euler step of `Δt` from the previous
 stage and are blended with the state at `tⁿ` by the Shu-Osher pair `(a, b)`. The barotropic solve restarts from
-`(ηⁿ, Uⁿ)` and spans `[tⁿ, tⁿ + Δt]`; its increment is blended, `Ψᵐ = a Ψⁿ + b (Ψᵐ⁻¹ + Ψ⋆ - Ψⁿ)`. The last solve is driven by
-the stage-weighted slow forcing `Σₘ βₘ Ĝᵐ` [Lan et al. (2022)](@cite Lan2022).
+`(ηⁿ, Uⁿ)` and spans `[tⁿ, tⁿ + Δt]`; its increment is blended, `Ψᵐ = a Ψⁿ + b (Ψᵐ⁻¹ + Ψ⋆ - Ψⁿ)`. Every solve is driven by
+the slow forcing of its own stage, and the increment blend gives the stage forcings the weights `(1/6, 1/6, 2/3)`, the
+same weights the blend gives the baroclinic tendencies.
 """
 function TimeSteppers.ssp_substep!(model::HydrostaticFreeSurfaceModel, Δt, a, b, callbacks)
     grid = model.grid
@@ -140,7 +141,11 @@ end
 
     launch!(architecture(grid), grid, :xyz, _ssp_euler_substep_tracer_field!, c, grid, convert(FT, Δt), Gⁿ)
 
+    # The adaptive implicit advection must see the same total velocity as the explicit flux, drift included
     @inbounds c_advection = model.advection[tracer_name]
+    c_velocities = tracer_advecting_velocities(model.transport_velocities, model.biogeochemistry, closure,
+                                               model.closure_fields, model.forcing[tracer_name], Val(tracer_name))
+
     implicit_step!(c,
                    model.timestepper.implicit_solver,
                    closure,
@@ -150,7 +155,7 @@ end
                    fields(model),
                    Δt,
                    c_advection,
-                   model.transport_velocities)
+                   c_velocities)
 
     launch!(architecture(grid), grid, :xyz, _ssp_blend_tracer_field!, c, grid, Ψ⁻, convert(FT, a), convert(FT, b))
 

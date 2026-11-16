@@ -1,5 +1,5 @@
 """
-    SSPRungeKutta3TimeStepper{C, TG, PF, TI, B, S} <: AbstractTimeStepper
+    SSPRungeKutta3TimeStepper{C, TG, PF, TI, B} <: AbstractTimeStepper
 
 Hold the coefficients, tendencies and cached states of the three-stage strong-stability-preserving Runge-Kutta
 scheme, coupled to the barotropic mode as in [Lan et al. (2022)](@cite Lan2022).
@@ -12,16 +12,14 @@ Fields
 - `Ψ⁻`: prognostic fields cached at the beginning of the time step
 - `implicit_solver`: solver for implicit vertical diffusion, or `nothing`
 - `Ψᵐ⁻¹`: barotropic fields `(η, U, V)` of a split-explicit free surface at the previous stage
-- `Ĝ`: stage-weighted barotropic slow forcing `Σₘ βₘ Ĝᵐ` of a split-explicit free surface
 """
-struct SSPRungeKutta3TimeStepper{C, TG, PF, TI, B, S} <: AbstractTimeStepper
+struct SSPRungeKutta3TimeStepper{C, TG, PF, TI, B} <: AbstractTimeStepper
     Nstages :: Int
     coefficients :: C
     Gⁿ :: TG
     Ψ⁻ :: PF
     implicit_solver :: TI
     Ψᵐ⁻¹ :: B
-    Ĝ :: S
 end
 
 """
@@ -44,9 +42,8 @@ function SSPRungeKutta3TimeStepper(grid, prognostic_fields, args...;
 
     coefficients = ((0//1, 1//1), (3//4, 1//4), (1//3, 2//3))
     Ψᵐ⁻¹ = map(similar, haskey(Ψ⁻, :U) ? (; Ψ⁻.η, Ψ⁻.U, Ψ⁻.V) : NamedTuple())
-    Ĝ = map(similar, haskey(Gⁿ, :U) ? (; Gⁿ.U, Gⁿ.V) : NamedTuple())
 
-    return SSPRungeKutta3TimeStepper(length(coefficients), coefficients, Gⁿ, Ψ⁻, implicit_solver, Ψᵐ⁻¹, Ĝ)
+    return SSPRungeKutta3TimeStepper(length(coefficients), coefficients, Gⁿ, Ψ⁻, implicit_solver, Ψᵐ⁻¹)
 end
 
 """
@@ -79,9 +76,13 @@ end
 $(TYPEDSIGNATURES)
 
 Step forward `model` one time step `Δt` with the strong-stability-preserving Runge-Kutta scheme: every stage
-advances the previous stage by `Δt` and blends the result with the state cached at `tⁿ`.
+advances the previous stage by `Δt` and blends the result with the state cached at `tⁿ`. Lagrangian particles
+are advanced at the beginning of each stage with the same blend, `Xᵐ = a Xⁿ + b (Xᵐ⁻¹ + Δt Uᵐ⁻¹)`, where `Uᵐ⁻¹`
+is the particle velocity at the beginning of the stage (see `substep_lagrangian_particles!`).
 """
 function time_step!(model::AbstractModel{<:SSPRungeKutta3TimeStepper}, Δt; callbacks=[])
+
+    kernel_Δt = kernel_time_step(architecture(model.grid), model.grid, Δt)
 
     maybe_prepare_first_time_step!(model, Δt, callbacks)
 
@@ -95,8 +96,11 @@ function time_step!(model::AbstractModel{<:SSPRungeKutta3TimeStepper}, Δt; call
         model.clock.stage = stage
         model.clock.last_stage_Δt = Δt
 
-        ssp_substep!(model, Δt, a, b, callbacks)
-        step_closure_prognostics!(model, Δt)
+        # Advance particles with the velocities at the beginning of the stage
+        substep_lagrangian_particles!(model, kernel_Δt, stage)
+
+        ssp_substep!(model, kernel_Δt, a, b, callbacks)
+        step_closure_prognostics!(model, kernel_Δt)
 
         model.clock.time = stage_times[stage]
 
@@ -106,8 +110,6 @@ function time_step!(model::AbstractModel{<:SSPRungeKutta3TimeStepper}, Δt; call
 
         update_state!(model, callbacks)
     end
-
-    step_lagrangian_particles!(model, Δt)
 
     model.clock.iteration += 1
 

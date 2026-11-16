@@ -1,4 +1,5 @@
-using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper, SplitRungeKuttaTimeStepper
+using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper, SplitRungeKuttaTimeStepper,
+                                 SSPRungeKutta3TimeStepper
 
 #####
 ##### Time stepping Lagrangian particles
@@ -28,7 +29,8 @@ using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3Tim
 The `tendencies` property of `LagrangianParticles` that belong to a model whose time-stepping
 scheme needs tendencies from previous stages: the velocity of each particle at the previous stage
 (`RungeKutta3TimeStepper`, `QuasiAdamsBashforth2TimeStepper`), or its displacement since the
-beginning of the time step, i.e. the tendency integrated over the stage (`SplitRungeKuttaTimeStepper`).
+beginning of the time step, i.e. the tendency integrated over the stage (`SplitRungeKuttaTimeStepper`,
+`SSPRungeKutta3TimeStepper`).
 
 - `state`: a `NamedTuple` of vectors, each with one element per particle.
 - `buffers`: scratch vectors used to reorder `state`.
@@ -64,8 +66,8 @@ no per-particle state. The vectors are resized to the number of particles at the
 every time step. `x` is the vector of particle `x`-positions.
 
 The default is `nothing`. `RungeKutta3TimeStepper` and `QuasiAdamsBashforth2TimeStepper` store
-the previous particle velocity `(u⁻, v⁻, w⁻)`, and `SplitRungeKuttaTimeStepper` stores the
-displacement `(Dx, Dy, Dz)` from the position at the beginning of the time step, all in the
+the previous particle velocity `(u⁻, v⁻, w⁻)`, and `SplitRungeKuttaTimeStepper` and `SSPRungeKutta3TimeStepper`
+store the displacement `(Dx, Dy, Dz)` from the position at the beginning of the time step, all in the
 coordinates of the grid.
 """
 particle_time_stepper_state(timestepper, x) = nothing
@@ -320,6 +322,41 @@ end
 @inline advance_particle_position(stage::SplitRungeKuttaParticleStage, X, Ẋ, Δt, ::Nothing, p) =
     advance_particle_position(ForwardEulerParticleStep(), X, Ẋ, split_rk_stage_Δt(Δt, stage.β, stage.β⁻), nothing, p)
 
+# Strong-stability-preserving Runge-Kutta: Xᵐ = a Xⁿ + b (Xᵐ⁻¹ + Δt Ẋᵐ⁻¹). Since a + b = 1, the displacement
+# Dᵐ = Xᵐ - Xⁿ obeys Dᵐ = b (Dᵐ⁻¹ + Δt Ẋᵐ⁻¹), and the position is advanced by Dᵐ - Dᵐ⁻¹ as in split Runge-Kutta.
+struct SSPRungeKuttaParticleStage{B}
+        b :: B
+    first :: Bool
+end
+
+particle_stages(timestepper::SSPRungeKutta3TimeStepper) = timestepper.Nstages
+particle_time_stepper_state(::SSPRungeKutta3TimeStepper, x) = particle_displacements(x)
+particle_stage(timestepper::SSPRungeKutta3TimeStepper, stage, restart) =
+    SSPRungeKuttaParticleStage(timestepper.coefficients[stage][2], stage == 1)
+
+@inline function advance_particle_position(stage::SSPRungeKuttaParticleStage, (x, y, z), (ẋ, ẏ, ż), Δt, state, p)
+    b = stage.b
+
+    # The stored displacement is not used at the first stage, and may not be initialized
+    @inbounds begin
+        Dx⁻ = ifelse(stage.first, zero(x), state.Dx[p])
+        Dy⁻ = ifelse(stage.first, zero(y), state.Dy[p])
+        Dz⁻ = ifelse(stage.first, zero(z), state.Dz[p])
+    end
+
+    Dx = b * (Dx⁻ + Δt * ẋ)
+    Dy = b * (Dy⁻ + Δt * ẏ)
+    Dz = b * (Dz⁻ + Δt * ż)
+
+    @inbounds begin
+        state.Dx[p] = Dx
+        state.Dy[p] = Dy
+        state.Dz[p] = Dz
+    end
+
+    return (x + Dx - Dx⁻, y + Dy - Dy⁻, z + Dz - Dz⁻)
+end
+
 #####
 ##### Stepping particles
 #####
@@ -410,7 +447,8 @@ where `U⁽ᵏ⁻¹⁾` is the particle velocity at the beginning of stage `k`. 
 Xⁿ⁺¹ = Xⁿ + Δt * ((3/2 + χ) * Uⁿ - (1/2 + χ) * Uⁿ⁻¹),
 ```
 
-and with `SplitRungeKuttaTimeStepper`, particles are advanced with `X⁽ᵐ⁾ = Xⁿ + Δt / βᵐ * U⁽ᵐ⁻¹⁾`.
+with `SplitRungeKuttaTimeStepper`, particles are advanced with `X⁽ᵐ⁾ = Xⁿ + Δt / βᵐ * U⁽ᵐ⁻¹⁾`, and with
+`SSPRungeKutta3TimeStepper`, particles are advanced with the Shu-Osher blend `X⁽ᵐ⁾ = a Xⁿ + b (X⁽ᵐ⁻¹⁾ + Δt * U⁽ᵐ⁻¹⁾)`.
 
 ## Extending to other time steppers
 

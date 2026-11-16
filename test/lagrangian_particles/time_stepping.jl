@@ -16,11 +16,11 @@ rotation_u(x, y, z, t) = - Ω * y
 rotation_v(x, y, z, t) = + Ω * x
 
 # NonhydrostaticModel supports RungeKutta3 and QuasiAdamsBashforth2, while
-# HydrostaticFreeSurfaceModel supports SplitRungeKutta3 and QuasiAdamsBashforth2.
+# HydrostaticFreeSurfaceModel supports SplitRungeKutta3, SSPRungeKutta3 and QuasiAdamsBashforth2.
 # The fields of the HydrostaticFreeSurfaceModel include a passive tracer, so that particles
 # are advanced with the scheme of the model rather than with a forward Euler step.
 function particle_test_model(grid, timestepper, particles, velocities)
-    if timestepper == :SplitRungeKutta3
+    if timestepper in (:SplitRungeKutta3, :SSPRungeKutta3)
         return HydrostaticFreeSurfaceModel(grid; particles, timestepper, tracers=:c, buoyancy=nothing,
                                            velocities=PrescribedVelocityFields(; velocities...))
     else
@@ -55,7 +55,8 @@ convergence_rate(errors) = log2(errors[end-1] / errors[end])
     # χ = 0 gives the second-order Adams-Bashforth scheme
     timesteppers_and_orders = ((:RungeKutta3, 3),
                                (QuasiAdamsBashforth2TimeStepper(χ=0.0), 2),
-                               (:SplitRungeKutta3, 3))
+                               (:SplitRungeKutta3, 3),
+                               (:SSPRungeKutta3, 3))
 
     for (timestepper, order) in timesteppers_and_orders
         errors = [rotating_particle_error(arch, timestepper, Nt) for Nt in Nts]
