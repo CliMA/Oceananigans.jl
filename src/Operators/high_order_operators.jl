@@ -15,9 +15,14 @@ for (ξ, RegularGrid) in ((:x, :(RG{<:Any, <:NonFlat, <:Any, <:Any, <:Any, <:Num
 
     ℑ = Symbol(:ℑ, ξ, insert_symbol(ξ, :ᶠ, :ᵃ, :ᵃ)...)
 
-    @eval @generated function $ℑ(i, j, k, grid::AG{FT}, ::Val{O}, ψ, args...) where {FT, O}
-        stencil = calc_reconstruction_stencil(FT, O ÷ 2, :symmetric, $(QuoteNode(ξ)), ψ <: Callable)
-        return :($(Expr(:meta, :inline)); @inbounds @muladd $stencil)
+    @eval begin
+        # Coefficients take the type of zero(grid), which is a float also when eltype(grid) is a traced number
+        @inline $ℑ(i, j, k, grid::AG, order::Val, ψ, args...) = $ℑ(i, j, k, grid, order, typeof(zero(grid)), ψ, args...)
+
+        @generated function $ℑ(i, j, k, grid::AG, ::Val{O}, ::Type{FT}, ψ, args...) where {O, FT}
+            stencil = calc_reconstruction_stencil(FT, O ÷ 2, :symmetric, $(QuoteNode(ξ)), ψ <: Callable)
+            return :($(Expr(:meta, :inline)); @inbounds @muladd $stencil)
+        end
     end
 
     for location in (:ᶠ, :ᶜ)
@@ -25,9 +30,10 @@ for (ξ, RegularGrid) in ((:x, :(RG{<:Any, <:NonFlat, <:Any, <:Any, <:Any, <:Num
 
         @eval begin
             @inline $δ(i, j, k, grid, ::Val, ψ) = $δ(i, j, k, grid, ψ)
+            @inline $δ(i, j, k, grid::$RegularGrid, order::Val, ψ) = $δ(i, j, k, grid, order, typeof(zero(grid)), ψ)
 
-            @generated function $δ(i, j, k, grid::$RegularGrid, ::Val{O}, ψ) where O
-                stencil = calc_reconstruction_stencil(eltype(grid), O ÷ 2, Val(:first_derivative), $(QuoteNode(ξ)), $(QuoteNode(location)))
+            @generated function $δ(i, j, k, grid, ::Val{O}, ::Type{FT}, ψ) where {O, FT}
+                stencil = calc_reconstruction_stencil(FT, O ÷ 2, Val(:first_derivative), $(QuoteNode(ξ)), $(QuoteNode(location)))
                 return :($(Expr(:meta, :inline)); @inbounds @muladd $stencil)
             end
         end
