@@ -6,7 +6,7 @@ export
     PrescribedVelocityFields, ZStarCoordinate, ZCoordinate
 
 using Adapt: Adapt
-using DocStringExtensions: TYPEDFIELDS, TYPEDSIGNATURES
+using DocStringExtensions: TYPEDFIELDS
 using KernelAbstractions: @index, @kernel
 
 using Oceananigans: Oceananigans, fields, prognostic_fields
@@ -23,10 +23,11 @@ using Oceananigans.Operators: Δzᶜᶠᶜ, Δzᶠᶜᶜ
 using Oceananigans.Simulations: Simulations, timestepper
 using Oceananigans.TimeSteppers: TimeSteppers, MultiStageTimeStepper, QuasiAdamsBashforth2TimeStepper, SplitRungeKuttaName,
                                  SSPRungeKutta3TimeStepper, SplitRungeKuttaTimeStepper, step_lagrangian_particles!,
+                                 substep_lagrangian_particles!,
                                  update_lagrangian_particle_state!
 using Oceananigans.TurbulenceClosures: TurbulenceClosures
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: TKEBasedVerticalDiffusivities
-using Oceananigans.Utils: Utils, @apply_regionally, foreach_name, launch!
+using Oceananigans.Utils: Utils, @apply_regionally, foreach_name, launch!, SIGNATURES, TYPEDSIGNATURES
 
 # The only grid type that can support an FFT implicit free-surface solver
 const XYRegularStaticRG = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:StaticVerticalDiscretization, <:Number, <:Any, <:Any, <:Any, <:Number}
@@ -188,6 +189,7 @@ displacement(::Nothing) = nothing
 
 # Unpack model.particles to update particle properties. See Models/LagrangianParticleTracking/LagrangianParticleTracking.jl
 TimeSteppers.step_lagrangian_particles!(model::HydrostaticFreeSurfaceModel, Δt) = step_lagrangian_particles!(model.particles, model, Δt)
+TimeSteppers.substep_lagrangian_particles!(model::HydrostaticFreeSurfaceModel, Δt, stage) = substep_lagrangian_particles!(model.particles, model, Δt, stage)
 TimeSteppers.update_lagrangian_particle_state!(model::HydrostaticFreeSurfaceModel) = update_lagrangian_particle_state!(model.particles, model)
 
 include("boundary_targeted_transport.jl")

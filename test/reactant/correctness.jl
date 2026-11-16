@@ -96,10 +96,6 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
             end
         end
 
-        # TripolarGrid tests commented out: Reactant MLIR segfaults
-        # in CanonicalizeLoopsPass when compiling Zipper boundary conditions
-        # on TripolarGrid. This crash is non-deterministic and kills the
-        # entire test process, preventing subsequent tests from running.
         @testset "TripolarGrid" begin
             @info "Testing fill_halo_regions! correctness on TripolarGrid..."
             kw = (size=(8, 10, 4), halo=(3, 3, 3), z=(0, 1))

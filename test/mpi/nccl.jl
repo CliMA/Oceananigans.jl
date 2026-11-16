@@ -160,6 +160,37 @@ function test_nccl_halo_neighbor_values(grid_points, ranks, topo;
     return all(nccl_halo_values_correct(c, conn, H) for c in fields)
 end
 
+# Rank-constant values cannot catch a corner swap on 2×2: all four corner neighbors are the same
+# rank. Position-dependent values can: each cell holds a function of its global (i, j).
+nccl_global_position_value(x, y) = x + 1000y
+
+function nccl_halos_match_global_positions(partition; N = 16, Nz = 4, H = 3)
+    arch = NCCLDistributed(GPU(); partition)
+    grid = RectilinearGrid(arch; size = (N, N, Nz), extent = (N, N, Nz), halo = (H, H, H),
+                           topology = (Periodic, Periodic, Bounded))
+    c = CenterField(grid)
+    set!(c, (x, y, z) -> nccl_global_position_value(x, y))
+    fill_halo_regions!(c)
+    CUDA.synchronize()
+    Nx, Ny = N, N
+    ox = (arch.local_index[1] - 1) * size(grid, 1)
+    oy = (arch.local_index[2] - 1) * size(grid, 2)
+    P = Array(parent(c))
+    correct = true
+    for j in axes(P, 2), i in axes(P, 1)
+        gi = mod1(ox + i - H, Nx)
+        gj = mod1(oy + j - H, Ny)
+        correct &= P[i, j, H + 1] == nccl_global_position_value(gi - 1/2, gj - 1/2)
+    end
+    return correct
+end
+
+@testset "NCCL halos match global positions (corners on shared peers)" begin
+    for partition in (Partition(4, 1), Partition(1, 4), Partition(2, 2))
+        @test nccl_halos_match_global_positions(partition)
+    end
+end
+
 @testset "NCCL halo correctness (neighbor-value ping-pong)" begin
     # The Buildkite distributed GPU pipeline launches this job with 4 ranks
     # (slurm_ntasks: 4), so we cover the 1D strip decompositions (edges only) AND

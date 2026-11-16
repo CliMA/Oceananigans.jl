@@ -14,9 +14,16 @@ TimeSteppers.time_discretization(::EnstrophyConserving) = ExplicitTimeDiscretiza
     EnergyConservingUpwinding(scheme)
 
 Vorticity scheme for `VectorInvariant` that reconstructs vorticity with the upwind-biased `scheme` and pairs
-the reconstructed values symmetrically between the `u` and `v` equations, as in the TRiSK scheme of Ringler et al. (2010).
+the reconstructed values symmetrically between the `u` and `v` equations, as in the TRiSK scheme
+of [Ringler et al. (2010)](@cite Ringler2010).
 The horizontal vorticity flux does no work on the flow for any reconstructed vorticity, so the upwinding
 dissipates enstrophy while conserving kinetic energy.
+
+References
+==========
+* Ringler, T. D., Thuburn, J., Klemp, J. B., & Skamarock, W. C. (2010). "A unified approach to energy
+  conservation and potential vorticity dynamics for arbitrarily-structured C-grids." Journal of
+  Computational Physics, 229(9), 3065-3090.
 """
 struct EnergyConservingUpwinding{N, FT, TD, S} <: AbstractAdvectionScheme{N, FT, TD}
     scheme :: S
@@ -56,13 +63,7 @@ struct VectorInvariant{N, FT, TD, Z, ZS, V, K, D, U, M} <: AbstractAdvectionSche
 end
 
 """
-    VectorInvariant(; vorticity_scheme = EnstrophyConserving(),
-                      vorticity_stencil = VelocityStencil(),
-                      vertical_advection_scheme = EnergyConserving(),
-                      divergence_scheme = vertical_advection_scheme,
-                      kinetic_energy_gradient_scheme = divergence_scheme,
-                      upwinding = OnlySelfUpwinding(; cross_scheme = divergence_scheme),
-                      multi_dimensional_stencil = false)
+$(SIGNATURES)
 
 Return a vector-invariant momentum advection scheme.
 
@@ -192,17 +193,7 @@ end
 nothing_to_default(user_value; default=nothing) = isnothing(user_value) ? default : user_value
 
 """
-    WENOVectorInvariant(FT = Float64;
-                        upwinding = nothing,
-                        vorticity_stencil = VelocityStencil(),
-                        order = nothing,
-                        vorticity_order = nothing,
-                        vertical_order = nothing,
-                        divergence_order = nothing,
-                        kinetic_energy_gradient_order = nothing,
-                        multi_dimensional_stencil = false,
-                        minimum_buffer_upwind_order = 1,
-                        weno_kw...)
+$(SIGNATURES)
 
 Return a vector-invariant weighted essentially non-oscillatory (WENO) scheme.
 See [`VectorInvariant`](@ref) and [`WENO`](@ref) for kwargs definitions.
@@ -412,6 +403,10 @@ end
 
 @inline horizontal_advection_U(i, j, k, grid, ::VectorInvariantEnergyConserving, u, v) = - ℑyᵃᶜᵃ(i, j, k, grid, ζ_ℑx_vᶠᶠᵃ, u, v) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
 @inline horizontal_advection_V(i, j, k, grid, ::VectorInvariantEnergyConserving, u, v) = + ℑxᶜᵃᵃ(i, j, k, grid, ζ_ℑy_uᶠᶠᵃ, u, v) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
+
+# With partial cells Δz varies horizontally, so the flux uses transports and q = ζ / h to stay energy-neutral
+@inline horizontal_advection_U(i, j, k, grid::PCBIBG, ::VectorInvariantEnergyConserving, u, v) = - vorticity_flux_xᶠᶜᶜ(i, j, k, grid, v, ζ₃ᶠᶠᶜ, u, v)
+@inline horizontal_advection_V(i, j, k, grid::PCBIBG, ::VectorInvariantEnergyConserving, u, v) = + vorticity_flux_yᶜᶠᶜ(i, j, k, grid, u, ζ₃ᶠᶠᶜ, u, v)
 
 @inline horizontal_advection_U(i, j, k, grid, ::VectorInvariantEnstrophyConserving, u, v) = - ℑyᵃᶜᵃ(i, j, k, grid, ζ₃ᶠᶠᶜ, u, v) * ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, v) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
 @inline horizontal_advection_V(i, j, k, grid, ::VectorInvariantEnstrophyConserving, u, v) = + ℑxᶜᵃᵃ(i, j, k, grid, ζ₃ᶠᶠᶜ, u, v) * ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, u) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)

@@ -25,8 +25,8 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Return the tapering factor `min(1, Sₘₐₓ² / S²)`, where `S² = Sx² + Sy²`
-that multiplies all components of the isopycnal slope tensor.
+Return the tapering factor `min(1, Sₘₐₓ² / S²)` of [Gerdes et al. (1991)](@cite Gerdes1991),
+where `S² = Sx² + Sy²`, that multiplies all components of the isopycnal slope tensor.
 
 References
 ==========

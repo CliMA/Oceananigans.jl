@@ -46,16 +46,23 @@ calculated isopycnal slope values.
 
 Both `κ_skew` and `κ_symmetric` may be constants, arrays, fields, or functions of `(x, y, z, t)`.
 
-The fluxes are discretized on the triads of Griffies et al. (1998), which makes the symmetric part exactly
-adiabatic and the skew part exactly antisymmetric. With `skew_flux_formulation = AdvectiveFormulation()`
-the skew part is instead carried by an eddy-induced velocity, which the tracer advection scheme transports.
+The fluxes are discretized on the triads of [Griffies et al. (1998)](@cite Griffies1998Isoneutral),
+which makes the symmetric part exactly adiabatic and the skew part exactly antisymmetric.
+With `skew_flux_formulation = AdvectiveFormulation()` the skew part is instead carried by an
+eddy-induced velocity, which the tracer advection scheme transports.
 
 This closure implements the mesoscale eddy parameterization developed by
 [Gent and McWilliams (1990)](@cite GentMcWilliams90) and [Redi (1982)](@cite Redi82).
 
 References
 ==========
-* Griffies, S. M., A. Gnanadesikan, R. C. Pacanowski, V. D. Larichev, J. K. Dukowicz, and R. D. Smith (1998) Isoneutral diffusion in a z-coordinate ocean model. _J. Phys. Oceanogr._, **28**, 805–830, doi:10.1175/1520-0485(1998)028<0805:IDIAZC>2.0.CO;2
+* Gent, P. R., & McWilliams, J. C. (1990). "Isopycnal mixing in ocean circulation models."
+  Journal of Physical Oceanography, 20(1), 150-155. doi:10.1175/1520-0485(1990)020<0150:IMIOCM>2.0.CO;2
+* Griffies, S. M., Gnanadesikan, A., Pacanowski, R. C., Larichev, V. D., Dukowicz, J. K., & Smith, R. D.
+  (1998). "Isoneutral diffusion in a z-coordinate ocean model." Journal of Physical Oceanography,
+  28(5), 805-830. doi:10.1175/1520-0485(1998)028<0805:IDIAZC>2.0.CO;2
+* Redi, M. H. (1982). "Oceanic isopycnal mixing by coordinate rotation." Journal of Physical
+  Oceanography, 12(10), 1154-1158. doi:10.1175/1520-0485(1982)012<1154:OIMBCR>2.0.CO;2
 """
 function IsopycnalSkewSymmetricDiffusivity(time_disc::TD=VerticallyImplicitTimeDiscretization(), FT=Oceananigans.defaults.FloatType;
                                            κ_skew = 0,

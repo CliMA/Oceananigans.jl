@@ -44,7 +44,11 @@ function Diagnostics.cell_diffusion_timescale(closure::ScalarDiffusivity{TD, Dir
     Δ = min_Δxyz(grid, formulation(closure))
     max_κ = maximum_numeric_diffusivity(closure.κ, grid, clock, fields)
     max_ν = maximum_numeric_diffusivity(closure.ν, grid, clock, fields)
-    return min(Δ^2 / max_ν, Δ^2 / max_κ)
+
+    # The largest eigenvalue of the fourth-order Laplacian is 4/3 that of the second-order Laplacian
+    Δ² = stencil_order(closure) isa Val{4} ? 3Δ^2 / 4 : Δ^2
+
+    return min(Δ² / max_ν, Δ² / max_κ)
 end
 
 Diagnostics.cell_diffusion_timescale(::VerticalScalarDiffusivity{<:VerticallyImplicitTimeDiscretization},

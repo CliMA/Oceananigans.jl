@@ -39,8 +39,10 @@ on RectilinearGrid, LatitudeLongitudeGrid, ConformalCubedSphereGrid, TripolarGri
 
 ### Docstrings
 
-- Use DocStringExtensions.jl with `$(TYPEDSIGNATURES)` when the signature does not include
-  default values for args and/or kwargs.
+- Use `$(TYPEDSIGNATURES)` when the signature has no default values, and `$(SIGNATURES)` when it does.
+  Import both from `Oceananigans.Utils`, not DocStringExtensions: they show defaults with DocStringExtensions
+  v0.10 and fall back to plain signatures with v0.9. Write the signature by hand only when the
+  generated one would mislead, e.g. when it would drop a type the method dispatches on.
 - **ALWAYS `jldoctest` blocks, NEVER plain `julia` blocks** — doctests are tested; plain blocks rot
 - Include `# output` with verifiable output; prefer `show` methods over boolean comparisons
 - Use unicode for math (`Δt`, `η`, `ρ`), not LaTeX — LaTeX doesn't render in the REPL
@@ -159,6 +161,7 @@ Rules in `.claude/rules/` load automatically when you touch matching files:
 - `docs-rules.md` — documentation building and style (docs/)
 - `examples-rules.md` — Literate.jl example conventions (examples/)
 - `style-rules.md` — naming, notation, and comment style (src/, test/, validation/, examples/)
+- `restriction-rules.md` — small diffs, no scaffolding, scarce comments, and a self-review checklist (src/, test/, validation/, examples/)
 - `julia-repl-rules.md` — prefer an MCP Julia REPL over Bash when available (always)
 
 ### Skills (slash commands)

@@ -497,6 +497,23 @@ boundaries) to satisfy the zero-net-transport solvability condition.
 before the implicit free-surface solve so that the free surface stays consistent, but the
 subsequent barotropic correction perturbs the boundary velocity slightly.
 
+### 13. Imposed open boundary with balanced transport
+
+An imposed `NormalFlowBoundaryCondition` is never adjusted. With `scheme = BalancedTransport()`,
+the net-zero transport correction may adjust it, for example for inflow from a coarser model
+that need not balance exactly:
+
+```jldoctest
+julia> using Oceananigans
+
+julia> inflow = NormalFlowBoundaryCondition(1; scheme = BalancedTransport())
+NormalFlowBoundaryCondition{BalancedTransport}: 1
+```
+
+The correction, `Oceananigans.Models.enforce_net_zero_transport!`, acts only
+on the faces off an immersed boundary, and works on momentum components `(; ρu, ρv, ρw)` as well
+as on velocities: the shift is then uniform in mass flux, and the velocity increment scales as `1/ρ`.
+
 ## Building boundary conditions on a field
 
 To create a set of [`FieldBoundaryConditions`](@ref) for a temperature field,

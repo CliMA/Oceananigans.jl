@@ -68,13 +68,13 @@ const NCCLDistributedField = Oceananigans.Fields.Field{<:Any, <:Any, <:Any, <:An
 #####
 
 function DC.NCCLDistributed(child_arch = GPU(); partition = nothing, kwargs...)
-    mpi_arch = Distributed(child_arch; partition, kwargs...)
+    mpi_arch = DC.distributed_architecture(child_arch; partition, kwargs...)
     nccl_comm = create_nccl_comm_from_mpi(mpi_arch.communicator)
     comm_stream = CUDA.CuStream(; flags=CUDA.STREAM_NON_BLOCKING)
     nccl_communicator = NCCLCommunicator(nccl_comm, mpi_arch.communicator, comm_stream)
 
     S = mpi_arch isa DC.SynchronizedDistributed
-    return Distributed{S}(mpi_arch.child_architecture,
+    arch = Distributed{S}(mpi_arch.child_architecture,
                           mpi_arch.partition,
                           mpi_arch.ranks,
                           mpi_arch.local_rank,
@@ -83,6 +83,10 @@ function DC.NCCLDistributed(child_arch = GPU(); partition = nothing, kwargs...)
                           nccl_communicator,
                           mpi_arch.field_count,
                           mpi_arch.devices)
+
+    DC.validate_distributed_configuration(arch)
+
+    return arch
 end
 
 #####
@@ -174,24 +178,30 @@ function DC.fill_corners!(c, connectivity, arch::NCCLDistributedArchitecture,
     DC.fill_send_buffers!(c, buffers, grid, Val(:corners))
 
     nccl_comm = arch.communicator.nccl
+    # NCCL pairs messages by post order per peer, so receive in the reverse of the send order: what arrives
+    # in corner X was sent as the peer's opposite corner, and on a 2×2 partition all corners share one peer.
     NCCL.groupStart()
-    nccl_corner_send_recv!(nccl_comm, connectivity.southwest, buffers.southwest)
-    nccl_corner_send_recv!(nccl_comm, connectivity.southeast, buffers.southeast)
-    nccl_corner_send_recv!(nccl_comm, connectivity.northwest, buffers.northwest)
-    nccl_corner_send_recv!(nccl_comm, connectivity.northeast, buffers.northeast)
+    nccl_corner_send!(nccl_comm, connectivity.southwest, buffers.southwest)
+    nccl_corner_send!(nccl_comm, connectivity.southeast, buffers.southeast)
+    nccl_corner_send!(nccl_comm, connectivity.northwest, buffers.northwest)
+    nccl_corner_send!(nccl_comm, connectivity.northeast, buffers.northeast)
+    nccl_corner_recv!(nccl_comm, connectivity.northeast, buffers.northeast)
+    nccl_corner_recv!(nccl_comm, connectivity.northwest, buffers.northwest)
+    nccl_corner_recv!(nccl_comm, connectivity.southeast, buffers.southeast)
+    nccl_corner_recv!(nccl_comm, connectivity.southwest, buffers.southwest)
     NCCL.groupEnd()
 
     DC.recv_from_buffers!(c, buffers, grid, Val(:corners))
     return nothing
 end
 
-nccl_corner_send_recv!(nccl_comm, ::Nothing, buffers) = nothing
-nccl_corner_send_recv!(nccl_comm, corner_rank, ::Nothing) = nothing
-nccl_corner_send_recv!(nccl_comm, ::Nothing, ::Nothing) = nothing
+function nccl_corner_send!(nccl_comm, corner_rank, buffers)
+    isnothing(corner_rank) || isnothing(buffers) || NCCL.Send(nccl_buffer(buffers.send), nccl_comm; dest=corner_rank)
+    return nothing
+end
 
-function nccl_corner_send_recv!(nccl_comm, corner_rank, buffers)
-    NCCL.Send(nccl_buffer(buffers.send), nccl_comm; dest=corner_rank)
-    NCCL.Recv!(nccl_buffer(buffers.recv), nccl_comm; source=corner_rank)
+function nccl_corner_recv!(nccl_comm, corner_rank, buffers)
+    isnothing(corner_rank) || isnothing(buffers) || NCCL.Recv!(nccl_buffer(buffers.recv), nccl_comm; source=corner_rank)
     return nothing
 end
 
