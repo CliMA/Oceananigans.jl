@@ -30,7 +30,9 @@ fields per tracer: the tracer with these ghost values, the two WENO edges of eve
 fluxes that raise and that lower every cell, refreshed by `update_tracer_advection!` before the tendencies are
 computed. The scheme needs halos one cell wider than `WENO(FT; order)`. All steepnesses share one exponential per cell,
 cheapest when they are small integer multiples of a common value, as 1.6 and 2.5 are of 1/10. With `steepnesses=()` every
-cell takes WENO's face values, read from the tracer with ghost values.
+cell takes WENO's face values, read from the tracer with ghost values. With `time_discretization=AdaptiveVerticallyImplicitDiscretization()`
+the vertical transport beyond its `cfl` is implicit and first-order upwind: the range then bounds the tracer after the explicit
+transport, which the implicit solve keeps within it.
 
 ```jldoctest
 julia> using Oceananigans
@@ -48,8 +50,8 @@ References
 * Zalesak, S. T. (1979). "Fully multidimensional flux-corrected transport algorithms for fluids." Journal of Computational
   Physics, 31(3), 335-362.
 """
-function THINCBVD(FT::DataType=Oceananigans.defaults.FloatType; order=7, steepnesses=(1.6, 2.5))
-    weno = WENO(FT; order)
+function THINCBVD(FT::DataType=Oceananigans.defaults.FloatType; order=7, steepnesses=(1.6, 2.5), time_discretization=ExplicitTimeDiscretization())
+    weno = WENO(FT; order, time_discretization)
     N  = required_halo_size_x(weno) + 1
     β₀ = reduce(gcd, map(rationalize, steepnesses); init=0//1)
     thinc = map(steepnesses) do steepness
@@ -261,12 +263,13 @@ for (flux, interpolate, area, FlatGrid, d) in ((:_advective_tracer_flux_x, :_bia
                                                (:_advective_tracer_flux_y, :_biased_interpolate_yᵃᶠᵃ, :Ayᶜᶠᶜ, :YFlatGrid, 2),
                                                (:_advective_tracer_flux_z, :_biased_interpolate_zᵃᵃᶠ, :Azᶜᶜᶠ, :ZFlatGrid, 3))
     minus_side = d == 1 ? (:(i - 1), :j, :k) : d == 2 ? (:i, :(j - 1), :k) : (:i, :j, :(k - 1))
+    velocity_scale = d == 3 ? :(explicit_velocity_scaleᶜᶜᶠ(i, j, k, grid, scheme, TimeSteppers.time_discretization(scheme), u)) : 1
 
     @eval begin
-        # transport q, upwind value cᵘ and antidiffusive flux A = q (ψ - cᵘ) through the face at i, j, k
+        # explicit transport q, upwind value cᵘ and antidiffusive flux A = q (ψ - cᵘ) through the face at i, j, k
         @inline function face_flux_parts(i, j, k, grid, scheme, u, r, ::Val{$d})
             ũ  = @inbounds u[i, j, k]
-            q  = $area(i, j, k, grid) * ũ
+            q  = $area(i, j, k, grid) * ũ * $velocity_scale
             ψ  = $interpolate(i, j, k, grid, scheme, bias(ũ), r)
             cᵘ = ifelse(ũ > 0, r[$(minus_side...)], r[i, j, k])
             return q, cᵘ, q * (ψ - cᵘ)
@@ -284,7 +287,8 @@ for (flux, interpolate, area, FlatGrid, d) in ((:_advective_tracer_flux_x, :_bia
 end
 
 # R± = min(1, Q± / P±): P± is the stage change that the antidiffusive fluxes into or out of a cell would make, Q± the room between the
-# upwind update cᵗᵈ and the bounds, the range (m, M) widened by the cell and the values that flow into it
+# upwind update cᵗᵈ and the bounds, the range (m, M) widened by the cell and the values that flow into it. Vᵗᵈ is the cell volume, in
+# units of V, after the explicit transport, which differs from 1 by the implicit vertical transport
 @kernel function _compute_antidiffusive_fractions!(R⁺, R⁻, grid, scheme, U, r, Δτ, (m, M))
     i, j, k = @index(Global, NTuple)
     c = r[i, j, k]
@@ -297,13 +301,14 @@ end
     qᵗ, cᵗ, Aᵗ = face_flux_parts(i,     j,     k + 1, grid, scheme, U.w, r, Val(3))
 
     κ   = Δτ * V⁻¹ᶜᶜᶜ(i, j, k, grid)
-    cᵗᵈ = c + κ * (qʷ * cʷ - qᵉ * cᵉ + qˢ * cˢ - qⁿ * cⁿ + qᵇ * cᵇ - qᵗ * cᵗ)
+    Vᵗᵈ = 1 + κ * (qʷ - qᵉ + qˢ - qⁿ + qᵇ - qᵗ)
+    cᵗᵈ = (c + κ * (qʷ * cʷ - qᵉ * cᵉ + qˢ * cˢ - qⁿ * cⁿ + qᵇ * cᵇ - qᵗ * cᵗ)) / Vᵗᵈ
     P⁺  = κ * (positive_part(Aʷ) + positive_part(-Aᵉ) + positive_part(Aˢ) + positive_part(-Aⁿ) + positive_part(Aᵇ) + positive_part(-Aᵗ))
     P⁻  = κ * (positive_part(-Aʷ) + positive_part(Aᵉ) + positive_part(-Aˢ) + positive_part(Aⁿ) + positive_part(-Aᵇ) + positive_part(Aᵗ))
 
     inflows = (ifelse(qʷ > 0, cʷ, c), ifelse(qᵉ < 0, cᵉ, c), ifelse(qˢ > 0, cˢ, c), ifelse(qⁿ < 0, cⁿ, c), ifelse(qᵇ > 0, cᵇ, c), ifelse(qᵗ < 0, cᵗ, c))
-    Q⁺ = positive_part(max(M, c, inflows...) - cᵗᵈ)
-    Q⁻ = positive_part(cᵗᵈ - min(m, c, inflows...))
+    Q⁺ = Vᵗᵈ * positive_part(max(M, c, inflows...) - cᵗᵈ)
+    Q⁻ = Vᵗᵈ * positive_part(cᵗᵈ - min(m, c, inflows...))
 
     @inbounds R⁺[i, j, k] = ifelse(P⁺ ≤ Q⁺, one(c), Q⁺ / P⁺)
     @inbounds R⁻[i, j, k] = ifelse(P⁻ ≤ Q⁻, one(c), Q⁻ / P⁻)

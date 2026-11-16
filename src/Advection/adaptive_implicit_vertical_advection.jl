@@ -17,6 +17,8 @@ const AVID = AdaptiveVerticallyImplicitDiscretization
 # Scale factor: min(1, cfl * Δz / (|w| * Δt))
 # When |w| * Δt / Δz ≤ cfl: scale = 1 (fully explicit)
 # When |w| * Δt / Δz > cfl: scale = cfl * Δz / (|w| * Δt) < 1
+@inline explicit_velocity_scaleᶜᶜᶠ(i, j, k, grid, scheme, ::ExplicitTimeDiscretization, W) = one(grid)
+
 @inline function explicit_velocity_scaleᶜᶜᶠ(i, j, k, grid, scheme, td, W)
     Δt = _unwrap_for_gpu(td.Δt)
     Δz⁻¹ = Δz⁻¹ᶜᶜᶠ(i, j, k, grid)

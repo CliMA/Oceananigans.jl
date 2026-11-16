@@ -2,6 +2,7 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Oceananigans.Advection: div_Uc, materialize_advection, update_advection!
 using Oceananigans.ImmersedBoundaries: CutCellBottom
+using Oceananigans.TimeSteppers: SplitRungeKuttaTimeStepper
 
 function advective_tendency(grid, advection, c, U)
     scheme = materialize_advection(advection, grid)
@@ -39,6 +40,23 @@ function densest_overflow_water(arch, bottom_kind, tracer_advection)
     return densest
 end
 
+# Extrema of a two-layer tracer in a cellular flow from a discrete streamfunction, after forward Euler steps at vertical Courant number 4
+function cellular_flow_extrema(arch, tracer_advection; Nx=24, Nz=128, nsteps=32)
+    Ψ = [sinpi(2i / Nx) * sinpi(k / Nz) / 2π for i in 0:Nx, k in 0:Nz]
+    u = [(Ψ[i, k] - Ψ[i, k+1]) * Nz for i in 1:Nx, _ in 1:1, k in 1:Nz]
+    grid = RectilinearGrid(arch, size=(Nx, Nz), halo=(5, 5), x=(0, 1), z=(0, 1), topology=(Periodic, Flat, Bounded))
+    model = HydrostaticFreeSurfaceModel(grid; tracer_advection, momentum_advection=nothing, free_surface=nothing, buoyancy=nothing,
+                                        tracers=:c, timestepper=SplitRungeKuttaTimeStepper(coefficients=(1,)))
+    set!(model; u, c=(x, z) -> z > 1/2)
+    Δt = 4 / (Nz * maximum(abs, interior(model.velocities.w)))
+    extrema = (0.0, 1.0)
+    for _ in 1:nsteps
+        time_step!(model, Δt)
+        extrema = (min(extrema[1], minimum(model.tracers.c)), max(extrema[2], maximum(model.tracers.c)))
+    end
+    return extrema
+end
+
 @testset "THINC-BVD advection" begin
     for arch in archs
         @testset "Smooth tracer takes WENO's tendency [$(summary(arch)), $steepnesses]" for steepnesses in ((1.6, 2.5), (1.25, 2.5), ())
@@ -69,6 +87,12 @@ end
         @testset "Overflow stays within 0.1% of its source density [$(summary(arch)), $bottom_kind, $steepnesses]" for bottom_kind in (GridFittedBottom, PartialCellBottom, CutCellBottom),
                                                                                                                    steepnesses in ((1.6, 2.5), ())
             @test densest_overflow_water(arch, bottom_kind, THINCBVD(; steepnesses)) < 1.001
+        end
+
+        @testset "Implicit vertical advection keeps a two-layer tracer within its range [$(summary(arch))]" begin
+            minimum_value, maximum_value = cellular_flow_extrema(arch, THINCBVD(time_discretization=AdaptiveVerticallyImplicitDiscretization(cfl=0.5)))
+            @test minimum_value > -1e-12
+            @test maximum_value < 1 + 1e-12
         end
     end
 end
