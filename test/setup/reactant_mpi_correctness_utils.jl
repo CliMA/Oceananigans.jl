@@ -1,0 +1,89 @@
+using MPI
+using Random
+using Test
+using Oceananigans
+using Oceananigans.BoundaryConditions: fill_halo_regions!
+
+rectilinear_grid(arch, topology) = RectilinearGrid(arch; size = (16, 16, 4), extent = (1, 1, 1), halo = (3, 3, 3), topology)
+
+function latitude_longitude_grid(arch, topology)
+    longitude = topology[1] == Periodic ? (0, 360) : (0, 90)
+    return LatitudeLongitudeGrid(arch; size = (16, 16, 4), halo = (3, 3, 3), longitude, latitude = (0, 10), z = (0, 1), topology)
+end
+
+mpi_reactant_architecture(partition) = Distributed(ReactantState(); partition, communicator = MPI.COMM_WORLD)
+
+"""
+    test_mpi_fill_halo_regions(make_grid, partition, topology)
+
+Test that one compiled `fill_halo_regions!` of fields at every location matches `Distributed(child_arch)` on each rank.
+"""
+function test_mpi_fill_halo_regions(make_grid, partition, topology)
+    rank = MPI.Comm_rank(MPI.COMM_WORLD)
+    vanilla_grid = make_grid(Distributed(child_arch; partition), topology)
+    reactant_grid = make_grid(mpi_reactant_architecture(partition), topology)
+    locations = vec(collect(Iterators.product((Center, Face), (Center, Face), (Center, Face))))
+
+    vanilla_fields = Tuple(Field{LX, LY, LZ}(vanilla_grid) for (LX, LY, LZ) in locations)
+    reactant_fields = Tuple(Field{LX, LY, LZ}(reactant_grid) for (LX, LY, LZ) in locations)
+
+    Random.seed!(12345 + rank)
+    for (vanilla_field, reactant_field) in zip(vanilla_fields, reactant_fields)
+        data = randn(size(vanilla_field)...)
+        set!(vanilla_field, data)
+        set!(reactant_field, data)
+    end
+
+    fill_halo_regions!(vanilla_fields)
+    rfill! = @compile raise=true raise_first=true fill_halo_regions!(reactant_fields)
+    rfill!(reactant_fields)
+
+    for (location, vanilla_field, reactant_field) in zip(locations, vanilla_fields, reactant_fields)
+        @test compare_parent("loc=$location", vanilla_field, reactant_field)
+    end
+
+    return nothing
+end
+
+"""
+    test_mpi_compute_simple_Gu(make_grid, topology, coriolis)
+
+Test that `compute_simple_Gu!` with WENO, which reads every halo cell in both horizontal directions,
+matches `Distributed(child_arch)` on each rank of a `Partition(2, 2)`.
+"""
+function test_mpi_compute_simple_Gu(make_grid, topology, coriolis)
+    rank = MPI.Comm_rank(MPI.COMM_WORLD)
+    partition = Partition(2, 2)
+    vanilla_grid = make_grid(Distributed(child_arch; partition), topology)
+    reactant_grid = make_grid(mpi_reactant_architecture(partition), topology)
+
+    vanilla_velocities = (u = XFaceField(vanilla_grid), v = YFaceField(vanilla_grid), w = ZFaceField(vanilla_grid))
+    reactant_velocities = (u = XFaceField(reactant_grid), v = YFaceField(reactant_grid), w = ZFaceField(reactant_grid))
+
+    Random.seed!(54321 + rank)
+    for (vanilla_velocity, reactant_velocity) in zip(vanilla_velocities, reactant_velocities)
+        data = randn(size(vanilla_velocity)...)
+        set!(vanilla_velocity, data)
+        set!(reactant_velocity, data)
+    end
+
+    fill_halo_regions!(vanilla_velocities)
+    rfill! = @compile raise=true raise_first=true fill_halo_regions!(reactant_velocities)
+    rfill!(reactant_velocities)
+
+    advection = Oceananigans.Advection.materialize_advection(WENO(), reactant_grid)
+    vanilla_Gu = XFaceField(vanilla_grid)
+    reactant_Gu = XFaceField(reactant_grid)
+    compute_simple_Gu!(vanilla_Gu, advection, coriolis, vanilla_velocities)
+
+    # raise=true is broken with WENO and a Bounded x-axis
+    rcompute_Gu! = if topology[1] == Bounded
+        @compile compute_simple_Gu!(reactant_Gu, advection, coriolis, reactant_velocities)
+    else
+        @compile raise=true raise_first=true compute_simple_Gu!(reactant_Gu, advection, coriolis, reactant_velocities)
+    end
+    rcompute_Gu!(reactant_Gu, advection, coriolis, reactant_velocities)
+    @test compare_interior("Gu", vanilla_Gu, reactant_Gu)
+
+    return nothing
+end
