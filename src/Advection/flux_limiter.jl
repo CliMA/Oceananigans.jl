@@ -1,5 +1,4 @@
-using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.Fields: XFaceField, YFaceField, ZFaceField
+using Oceananigans.BoundaryConditions: fill_bottom_and_top_halo!
 using Oceananigans.Grids: topology
 using Oceananigans.Utils: KernelParameters
 
@@ -48,26 +47,36 @@ antidiffusive fluxes that fit below `cᵐᵃˣ`. A face takes ``ϑ`` as the smal
 cell the antidiffusive flux leaves and the incoming fraction of the cell it enters. Where ``ϑ = 1`` the scheme
 is bounds-preserving WENO, and where ``ϑ = 0`` it is first-order upwind.
 
-The fractions and the face fluxes they are built from are computed by [`update_flux_limiter!`](@ref) before
-the fluxes are evaluated; the fields are `nothing` until the scheme is materialized on a grid.
+The fractions are computed by [`update_flux_limiter!`](@ref) before the fluxes are evaluated; the fields are
+`nothing` until the scheme is materialized on a grid. The fractions are computed in the first horizontal halo
+layer without communication, so the horizontal halo must be two cells wider than the WENO stencil reaches.
+
+The guarantee holds for each forward Euler update over [`flux_limiter_timestep`](@ref) when
+- every cell's outgoing Courant number, summed over its faces, is at most one. With
+  `AdaptiveImplicitVerticalAdvection` this applies to the explicit part only, whose vertical Courant number is capped
+  at `cfl`; a cell with outflow through both vertical faces needs `cfl ≤ (1 - λʰ) / 2`, with `λʰ` its horizontal
+  outgoing Courant number. The implicit upwind remainder preserves the bounds at any Courant number;
+- the transport is divergence-free, or `ρ` satisfies discrete continuity with the transport (on grids whose
+  cells change thickness, pass the cell thickness or density as `ρ`);
+- the time stepper is a convex combination of forward Euler steps (forward Euler, SSP Runge–Kutta, or a
+  multirate scheme with non-negative weights), and `flux_limiter_timestep` returns its largest forward Euler step.
+  `RungeKutta3TimeStepper` and `SplitRungeKuttaTimeStepper` are not of this kind, so with them only the first
+  stage is guaranteed.
 """
-struct FluxLimiter{R, F}
-    outgoing_fraction :: R  # R⁻, the fraction of each cell's outgoing fluxes its lower bound affords
-    incoming_fraction :: R  # R⁺, the fraction of each cell's incoming fluxes its upper bound affords
-    fluxes :: F             # the antidiffusive face fluxes (x, y, z) A = Jᴴ - Jᵘ the fractions are built from
+struct FluxLimiter{R}
+    outgoing_fraction :: R  # R⁻, the fraction of each cell's outgoing antidiffusive fluxes its lower bound affords
+    incoming_fraction :: R  # R⁺, the fraction of each cell's incoming antidiffusive fluxes its upper bound affords
 end
 
-FluxLimiter() = FluxLimiter(nothing, nothing, nothing)
+FluxLimiter() = FluxLimiter(nothing, nothing)
 
 Adapt.adapt_structure(to, limiter::FluxLimiter) =
     FluxLimiter(Adapt.adapt(to, limiter.outgoing_fraction),
-                Adapt.adapt(to, limiter.incoming_fraction),
-                Adapt.adapt(to, limiter.fluxes))
+                Adapt.adapt(to, limiter.incoming_fraction))
 
 Architectures.on_architecture(to, limiter::FluxLimiter) =
     FluxLimiter(on_architecture(to, limiter.outgoing_fraction),
-                on_architecture(to, limiter.incoming_fraction),
-                on_architecture(to, limiter.fluxes))
+                on_architecture(to, limiter.incoming_fraction))
 
 const FluxLimitedBounds = BoundsPreservation{<:Any, <:Any, <:Any, <:FluxLimiter}
 const FluxLimitedWENO = WENO{<:Any, <:Any, <:Any, <:Any, <:FluxLimitedBounds}
@@ -75,7 +84,7 @@ const FluxLimitedWENO = WENO{<:Any, <:Any, <:Any, <:Any, <:FluxLimitedBounds}
 flux_limiter_summary(::FluxLimitedBounds) = ", flux_limiter=FluxLimiter()"
 
 #####
-##### Upwind and bound-transporting face fluxes, and the cached antidiffusive fluxes
+##### Upwind, bound-transporting and antidiffusive face fluxes
 #####
 
 # The flux ρ u A b that transports the uniform value b through a face, and the first-order upwind flux of c,
@@ -109,20 +118,16 @@ end
 @inline upwind_face_flux_z(i, j, k, grid, advection, ρ, w, c) =
     @inbounds upwind_biased_product(transport_z(i, j, k, grid, advection, ρ, w), c[i, j, k-1], c[i, j, k])
 
-# The faces the interior cells' divergences read: one more than the cells in every non-Flat direction.
-function face_flux_kernel_parameters(grid)
-    N = size(grid)
-    T = topology(grid)
-    faces = ntuple(d -> T[d] === Flat ? N[d] : N[d] + 1, 3)
-    return KernelParameters(faces, (0, 0, 0))
-end
+# The antidiffusive flux A = Jᴴ - Jᵘ through a face, recomputed wherever it is needed rather than stored:
+# the kernels are bandwidth-bound, so the extra reconstructions cost less than writing and reading A.
+@inline antidiffusive_flux_x(i, j, k, grid, advection, ρ, u, c) =
+    bounded_face_flux_x(i, j, k, grid, advection, ρ, u, c) - upwind_face_flux_x(i, j, k, grid, advection, ρ, u, c)
 
-@kernel function _compute_antidiffusive_face_fluxes!(fluxes, grid, advection, ρ, U, c)
-    i, j, k = @index(Global, NTuple)
-    @inbounds fluxes.x[i, j, k] = bounded_face_flux_x(i, j, k, grid, advection, ρ, U.u, c) - upwind_face_flux_x(i, j, k, grid, advection, ρ, U.u, c)
-    @inbounds fluxes.y[i, j, k] = bounded_face_flux_y(i, j, k, grid, advection, ρ, U.v, c) - upwind_face_flux_y(i, j, k, grid, advection, ρ, U.v, c)
-    @inbounds fluxes.z[i, j, k] = bounded_face_flux_z(i, j, k, grid, advection, ρ, U.w, c) - upwind_face_flux_z(i, j, k, grid, advection, ρ, U.w, c)
-end
+@inline antidiffusive_flux_y(i, j, k, grid, advection, ρ, v, c) =
+    bounded_face_flux_y(i, j, k, grid, advection, ρ, v, c) - upwind_face_flux_y(i, j, k, grid, advection, ρ, v, c)
+
+@inline antidiffusive_flux_z(i, j, k, grid, advection, ρ, w, c) =
+    bounded_face_flux_z(i, j, k, grid, advection, ρ, w, c) - upwind_face_flux_z(i, j, k, grid, advection, ρ, w, c)
 
 #####
 ##### Limited face fluxes and their divergence
@@ -138,23 +143,26 @@ end
 
 @inline function limited_face_flux_x(i, j, k, grid, advection, ρ, u, c)
     limiter = advection.bounds.flux_limiter
-    E = @inbounds limiter.fluxes.x[i, j, k]
-    ϑ = face_factor(E, limiter.outgoing_fraction, limiter.incoming_fraction, i-1, j, k, i, j, k)
-    return upwind_face_flux_x(i, j, k, grid, advection, ρ, u, c) + ϑ * E
+    Jᵘ = upwind_face_flux_x(i, j, k, grid, advection, ρ, u, c)
+    A = bounded_face_flux_x(i, j, k, grid, advection, ρ, u, c) - Jᵘ
+    ϑ = face_factor(A, limiter.outgoing_fraction, limiter.incoming_fraction, i-1, j, k, i, j, k)
+    return Jᵘ + ϑ * A
 end
 
 @inline function limited_face_flux_y(i, j, k, grid, advection, ρ, v, c)
     limiter = advection.bounds.flux_limiter
-    E = @inbounds limiter.fluxes.y[i, j, k]
-    ϑ = face_factor(E, limiter.outgoing_fraction, limiter.incoming_fraction, i, j-1, k, i, j, k)
-    return upwind_face_flux_y(i, j, k, grid, advection, ρ, v, c) + ϑ * E
+    Jᵘ = upwind_face_flux_y(i, j, k, grid, advection, ρ, v, c)
+    A = bounded_face_flux_y(i, j, k, grid, advection, ρ, v, c) - Jᵘ
+    ϑ = face_factor(A, limiter.outgoing_fraction, limiter.incoming_fraction, i, j-1, k, i, j, k)
+    return Jᵘ + ϑ * A
 end
 
 @inline function limited_face_flux_z(i, j, k, grid, advection, ρ, w, c)
     limiter = advection.bounds.flux_limiter
-    E = @inbounds limiter.fluxes.z[i, j, k]
-    ϑ = face_factor(E, limiter.outgoing_fraction, limiter.incoming_fraction, i, j, k-1, i, j, k)
-    return upwind_face_flux_z(i, j, k, grid, advection, ρ, w, c) + ϑ * E
+    Jᵘ = upwind_face_flux_z(i, j, k, grid, advection, ρ, w, c)
+    A = bounded_face_flux_z(i, j, k, grid, advection, ρ, w, c) - Jᵘ
+    ϑ = face_factor(A, limiter.outgoing_fraction, limiter.incoming_fraction, i, j, k-1, i, j, k)
+    return Jᵘ + ϑ * A
 end
 
 # Support for Flat directions, which have no neighbors to index
@@ -175,8 +183,8 @@ end
 @inline div_Uc(i, j, k, grid, advection::FluxLimitedWENO, ::ZeroU, c) = zero(grid)
 @inline div_Uc(i, j, k, grid, advection::FluxLimitedWENO, ::ZeroU, ::ZeroField) = zero(grid)
 
-# The divergence of the upwind fluxes of `c` plus the cached antidiffusive fluxes `update_flux_limiter!` built
-# from `U` and `c`, each scaled by its factor. With every fraction equal to one this is the bounds-preserving divergence.
+# The divergence of the upwind fluxes of `c` plus the antidiffusive fluxes, each scaled by the factor of its face
+# from the fractions `update_flux_limiter!` computed. With every fraction equal to one this is the bounds-preserving divergence.
 @inline function div_Uc(i, j, k, grid, advection::FluxLimitedWENO, U, c)
     div_x = limited_tracer_flux_divergence_x(i, j, k, grid, advection, 1, U.u, c)
     div_y = limited_tracer_flux_divergence_y(i, j, k, grid, advection, 1, U.v, c)
@@ -189,30 +197,37 @@ end
 ##### Fractions
 #####
 
-# Flat directions have no faces to sum over and no neighbors to credit
-@inline outgoing_flux_x(i, j, k, grid::XFlatGrid, fluxes) = zero(grid)
-@inline outgoing_flux_y(i, j, k, grid::YFlatGrid, fluxes) = zero(grid)
-@inline outgoing_flux_z(i, j, k, grid::ZFlatGrid, fluxes) = zero(grid)
-@inline incoming_flux_x(i, j, k, grid::XFlatGrid, fluxes) = zero(grid)
-@inline incoming_flux_y(i, j, k, grid::YFlatGrid, fluxes) = zero(grid)
-@inline incoming_flux_z(i, j, k, grid::ZFlatGrid, fluxes) = zero(grid)
+# The antidiffusive fluxes leaving and entering cell (i, j, k) through its two faces in one direction.
+# Flat directions have no faces to sum over.
+@inline antidiffusion_x(i, j, k, grid::XFlatGrid, advection, ρ, U, c) = zero(grid), zero(grid)
+@inline antidiffusion_y(i, j, k, grid::YFlatGrid, advection, ρ, U, c) = zero(grid), zero(grid)
+@inline antidiffusion_z(i, j, k, grid::ZFlatGrid, advection, ρ, U, c) = zero(grid), zero(grid)
 
-@inline outgoing_flux_x(i, j, k, grid, fluxes) = @inbounds max(0, fluxes.x[i+1, j, k]) - min(0, fluxes.x[i, j, k])
-@inline outgoing_flux_y(i, j, k, grid, fluxes) = @inbounds max(0, fluxes.y[i, j+1, k]) - min(0, fluxes.y[i, j, k])
-@inline outgoing_flux_z(i, j, k, grid, fluxes) = @inbounds max(0, fluxes.z[i, j, k+1]) - min(0, fluxes.z[i, j, k])
-@inline incoming_flux_x(i, j, k, grid, fluxes) = @inbounds max(0, fluxes.x[i, j, k]) - min(0, fluxes.x[i+1, j, k])
-@inline incoming_flux_y(i, j, k, grid, fluxes) = @inbounds max(0, fluxes.y[i, j, k]) - min(0, fluxes.y[i, j+1, k])
-@inline incoming_flux_z(i, j, k, grid, fluxes) = @inbounds max(0, fluxes.z[i, j, k]) - min(0, fluxes.z[i, j, k+1])
-
-# P⁻ and P⁺: the antidiffusive fluxes leaving and entering cell (i, j, k), per unit volume, over Δt
-@inline function outgoing_antidiffusion(i, j, k, grid, fluxes, Δt)
-    outgoing = outgoing_flux_x(i, j, k, grid, fluxes) + outgoing_flux_y(i, j, k, grid, fluxes) + outgoing_flux_z(i, j, k, grid, fluxes)
-    return Δt * V⁻¹ᶜᶜᶜ(i, j, k, grid) * outgoing
+@inline function antidiffusion_x(i, j, k, grid, advection, ρ, U, c)
+    A⁻ = antidiffusive_flux_x(i,   j, k, grid, advection, ρ, U.u, c)
+    A⁺ = antidiffusive_flux_x(i+1, j, k, grid, advection, ρ, U.u, c)
+    return max(0, A⁺) - min(0, A⁻), max(0, A⁻) - min(0, A⁺)
 end
 
-@inline function incoming_antidiffusion(i, j, k, grid, fluxes, Δt)
-    incoming = incoming_flux_x(i, j, k, grid, fluxes) + incoming_flux_y(i, j, k, grid, fluxes) + incoming_flux_z(i, j, k, grid, fluxes)
-    return Δt * V⁻¹ᶜᶜᶜ(i, j, k, grid) * incoming
+@inline function antidiffusion_y(i, j, k, grid, advection, ρ, U, c)
+    A⁻ = antidiffusive_flux_y(i, j,   k, grid, advection, ρ, U.v, c)
+    A⁺ = antidiffusive_flux_y(i, j+1, k, grid, advection, ρ, U.v, c)
+    return max(0, A⁺) - min(0, A⁻), max(0, A⁻) - min(0, A⁺)
+end
+
+@inline function antidiffusion_z(i, j, k, grid, advection, ρ, U, c)
+    A⁻ = antidiffusive_flux_z(i, j, k,   grid, advection, ρ, U.w, c)
+    A⁺ = antidiffusive_flux_z(i, j, k+1, grid, advection, ρ, U.w, c)
+    return max(0, A⁺) - min(0, A⁻), max(0, A⁻) - min(0, A⁺)
+end
+
+# P⁻ and P⁺: the antidiffusive fluxes leaving and entering cell (i, j, k), per unit volume, over Δt
+@inline function antidiffusion(i, j, k, grid, advection, ρ, U, c, Δt)
+    Oˣ, Iˣ = antidiffusion_x(i, j, k, grid, advection, ρ, U, c)
+    Oʸ, Iʸ = antidiffusion_y(i, j, k, grid, advection, ρ, U, c)
+    Oᶻ, Iᶻ = antidiffusion_z(i, j, k, grid, advection, ρ, U, c)
+    scale = Δt * V⁻¹ᶜᶜᶜ(i, j, k, grid)
+    return scale * (Oˣ + Oʸ + Oᶻ), scale * (Iˣ + Iʸ + Iᶻ)
 end
 
 # The density of cell (i, j, k): a field, or the number `1` of `div_Uc`
@@ -247,21 +262,33 @@ end
     ifelse(isfinite(transported) & (transported > available), available / transported, one(available))
 
 # R⁻ = min(1, Q⁻ / P⁻) and R⁺ = min(1, Q⁺ / P⁺)
-@kernel function _compute_flux_fractions!(R⁻, R⁺, grid, advection, fluxes, U, c, ρ, Δt)
+@kernel function _compute_flux_fractions!(R⁻, R⁺, grid, advection, U, c, ρ, Δt)
     i, j, k = @index(Global, NTuple)
     Q⁻, Q⁺ = upwind_room(i, j, k, grid, advection, ρ, U, c, Δt)
-    @inbounds R⁻[i, j, k] = flux_fraction(outgoing_antidiffusion(i, j, k, grid, fluxes, Δt), Q⁻)
-    @inbounds R⁺[i, j, k] = flux_fraction(incoming_antidiffusion(i, j, k, grid, fluxes, Δt), Q⁺)
+    P⁻, P⁺ = antidiffusion(i, j, k, grid, advection, ρ, U, c, Δt)
+    @inbounds R⁻[i, j, k] = flux_fraction(P⁻, Q⁻)
+    @inbounds R⁺[i, j, k] = flux_fraction(P⁺, Q⁺)
+end
+
+# The fractions are computed in the first horizontal halo layer too, from the halos of `c`, `U` and θ (which
+# the rescaling then computes in two halo layers), so that the faces of every interior cell find the fractions
+# of both their cells without a halo fill: only the bottom and top halos, which are never communicated, are filled.
+function flux_fraction_kernel_parameters(grid)
+    Nx, Ny, Nz = size(grid)
+    Tx, Ty, Tz = topology(grid)
+    ii = ifelse(Tx == Flat, 1:Nx, 0:Nx+1)
+    jj = ifelse(Ty == Flat, 1:Ny, 0:Ny+1)
+    return KernelParameters(ii, jj, 1:Nz)
 end
 
 """
 $(TYPEDSIGNATURES)
 
 Refresh a flux-limited `scheme` (see [`FluxLimiter`](@ref)) for the coming forward Euler update
-`c - Δt * div_Uc(c)` of a tracer: cache the antidiffusive face fluxes of `c`, the bounds-preserving WENO fluxes
-minus the first-order upwind fluxes, and compute the fractions of each cell's outgoing and incoming
-antidiffusive fluxes the update applies. `U` are the velocities the fluxes
-transport with and `ρ` the density weighting the fluxes, which `div_Uc` takes as `1`.
+`c - Δt * div_Uc(c)` of a tracer: compute the fractions of each cell's outgoing and incoming antidiffusive
+fluxes (the bounds-preserving WENO fluxes minus the first-order upwind fluxes) the update applies. The
+rescaling factor θ must be up to date. No horizontal halo is filled or communicated. `U` are the velocities
+the fluxes transport with and `ρ` the density weighting the fluxes, which `div_Uc` takes as `1`.
 
 A no-op for every other scheme.
 """
@@ -269,13 +296,26 @@ update_flux_limiter!(scheme, grid, c, U, Δt, ρ=1) = nothing
 
 function update_flux_limiter!(scheme::FluxLimitedWENO, grid, c, U, Δt, ρ=1)
     limiter = scheme.bounds.flux_limiter
-    fluxes = limiter.fluxes
     R⁻ = limiter.outgoing_fraction
     R⁺ = limiter.incoming_fraction
-    parameters = face_flux_kernel_parameters(grid)
-    launch!(architecture(grid), grid, parameters, _compute_antidiffusive_face_fluxes!, fluxes, grid, scheme, ρ, U, c)
-    launch!(architecture(grid), grid, :xyz, _compute_flux_fractions!, R⁻, R⁺, grid, scheme, fluxes, U, c, ρ, Δt)
-    fill_halo_regions!(R⁻)
-    fill_halo_regions!(R⁺)
+    parameters = flux_fraction_kernel_parameters(grid)
+    launch!(architecture(grid), grid, parameters, _compute_flux_fractions!, R⁻, R⁺, grid, scheme, U, c, ρ, Δt)
+    loc = (Center(), Center(), Center())
+    fill_bottom_and_top_halo!(R⁻.data, R⁻.boundary_conditions, R⁻.indices, loc, grid)
+    fill_bottom_and_top_halo!(R⁺.data, R⁺.boundary_conditions, R⁺.indices, loc, grid)
     return nothing
+end
+
+# The fractions in the first horizontal halo layer need θ in the second, whose reconstructions reach one cell further
+@inline Grids.required_halo_size_x(::FluxLimitedWENO{N}) where N = N + 2
+@inline Grids.required_halo_size_y(::FluxLimitedWENO{N}) where N = N + 2
+
+rescaling_kernel_parameters(grid, scheme::FluxLimitedWENO) = doubly_extended_interior_kernel_parameters(grid)
+
+function doubly_extended_interior_kernel_parameters(grid)
+    Nx, Ny, Nz = size(grid)
+    Tx, Ty, Tz = topology(grid)
+    ii = ifelse(Tx == Flat, 1:Nx, -1:Nx+2)
+    jj = ifelse(Ty == Flat, 1:Ny, -1:Ny+2)
+    return KernelParameters(ii, jj, 1:Nz)
 end

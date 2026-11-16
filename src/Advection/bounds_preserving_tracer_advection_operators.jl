@@ -296,11 +296,13 @@ function update_bounds_preserving_limiter!(scheme::BoundsPreservingWENO, grid, c
     isnothing(c) && return nothing # the `momentum` entry has no tracer to limit
     θ = scheme.bounds.reconstruction_limiter
     Δt = limiter_timestep(eltype(grid), Δt)
-    parameters = horizontally_extended_interior_kernel_parameters(grid)
+    parameters = rescaling_kernel_parameters(grid, scheme)
     launch!(architecture(grid), grid, parameters, _compute_bounds_preserving_limiter!, θ, grid, scheme, c, U, Δt)
     fill_bottom_and_top_halo!(θ.data, θ.boundary_conditions, θ.indices, (Center(), Center(), Center()), grid)
     return nothing
 end
+
+rescaling_kernel_parameters(grid, scheme) = horizontally_extended_interior_kernel_parameters(grid)
 
 limiter_timestep(FT, ::Nothing) = nothing
 limiter_timestep(FT, Δt) = convert(FT, Δt)
@@ -328,7 +330,7 @@ update_bounds_preserving_limiters!(scheme::FluxFormAdvection, model, val_name) =
 function update_bounds_preserving_limiters!(scheme::BoundsPreservingWENO, model, val_name::Val{name}) where name
     c = model.tracers[name]
     U = tracer_transport_velocities(model, val_name)
-    Δt = adaptive_advection_timestep(model.timestepper, model.clock)
+    Δt = flux_limiter_timestep(model.timestepper, model.clock)
     update_bounds_preserving_limiter!(scheme, model.grid, c, U, Δt)
     return update_flux_limiter!(scheme, model.grid, c, U, Δt)
 end
@@ -343,7 +345,7 @@ update_bounds_preserving_limiter!(scheme::FixedWeightWENO, model, tracer) =
     update_bounds_preserving_limiter!(scheme, model.grid, tracer, nothing, nothing)
 
 function update_bounds_preserving_limiter!(scheme::AdaptiveWeightWENO, model, tracer)
-    Δt = adaptive_advection_timestep(model.timestepper, model.clock)
+    Δt = flux_limiter_timestep(model.timestepper, model.clock)
     return update_bounds_preserving_limiter!(scheme, model.grid, tracer, model.velocities, Δt)
 end
 
