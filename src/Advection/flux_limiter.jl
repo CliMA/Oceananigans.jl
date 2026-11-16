@@ -246,15 +246,19 @@ end
 @inline cell_density(i, j, k, ρ::Number) = ρ
 @inline cell_density(i, j, k, ρ) = @inbounds ρ[i, j, k]
 
-# The divergence ∇⋅(Jᵘ - Jᵇ) of the upwind fluxes of c relative to the fluxes transporting the value b
-@inline function relative_upwind_divergence(i, j, k, grid, advection, ρ, U, c, b)
-    div_x = (upwind_face_flux_x(i+1, j, k, grid, advection, ρ, U.u, c) - bound_flux_x(i+1, j, k, grid, advection, ρ, U.u, b)) -
-            (upwind_face_flux_x(i,   j, k, grid, advection, ρ, U.u, c) - bound_flux_x(i,   j, k, grid, advection, ρ, U.u, b))
-    div_y = (upwind_face_flux_y(i, j+1, k, grid, advection, ρ, U.v, c) - bound_flux_y(i, j+1, k, grid, advection, ρ, U.v, b)) -
-            (upwind_face_flux_y(i, j,   k, grid, advection, ρ, U.v, c) - bound_flux_y(i, j,   k, grid, advection, ρ, U.v, b))
-    div_z = (upwind_face_flux_z(i, j, k+1, grid, advection, ρ, U.w, c) - bound_flux_z(i, j, k+1, grid, advection, ρ, U.w, b)) -
-            (upwind_face_flux_z(i, j, k,   grid, advection, ρ, U.w, c) - bound_flux_z(i, j, k,   grid, advection, ρ, U.w, b))
-    return V⁻¹ᶜᶜᶜ(i, j, k, grid) * (div_x + div_y + div_z)
+# The divergences ∇⋅Jᵘ of the upwind fluxes of c and ∇⋅(ρ u A) of the mass fluxes, per unit volume, from
+# which the divergence of the fluxes transporting a uniform b follows as b ∇⋅(ρ u A)
+@inline function upwind_and_mass_divergences(i, j, k, grid, advection, ρ, U, c)
+    Dᵘ = (upwind_face_flux_x(i+1, j, k, grid, advection, ρ, U.u, c) - upwind_face_flux_x(i, j, k, grid, advection, ρ, U.u, c)) +
+         (upwind_face_flux_y(i, j+1, k, grid, advection, ρ, U.v, c) - upwind_face_flux_y(i, j, k, grid, advection, ρ, U.v, c)) +
+         (upwind_face_flux_z(i, j, k+1, grid, advection, ρ, U.w, c) - upwind_face_flux_z(i, j, k, grid, advection, ρ, U.w, c))
+
+    Dᵐ = (bound_flux_x(i+1, j, k, grid, advection, ρ, U.u, 1) - bound_flux_x(i, j, k, grid, advection, ρ, U.u, 1)) +
+         (bound_flux_y(i, j+1, k, grid, advection, ρ, U.v, 1) - bound_flux_y(i, j, k, grid, advection, ρ, U.v, 1)) +
+         (bound_flux_z(i, j, k+1, grid, advection, ρ, U.w, 1) - bound_flux_z(i, j, k, grid, advection, ρ, U.w, 1))
+
+    V⁻¹ = V⁻¹ᶜᶜᶜ(i, j, k, grid)
+    return V⁻¹ * Dᵘ, V⁻¹ * Dᵐ
 end
 
 # Q⁻ and Q⁺: the room the upwind update leaves above cᵐⁱⁿ and below cᵐᵃˣ, in the units of ρ c
@@ -264,8 +268,9 @@ end
     M = bounds.maximum_value
     ρᶜ = cell_density(i, j, k, ρ)
     @inbounds cᵢ = c[i, j, k]
-    Q⁻ = ρᶜ * (cᵢ - m) - Δt * relative_upwind_divergence(i, j, k, grid, advection, ρ, U, c, m)
-    Q⁺ = ρᶜ * (M - cᵢ) + Δt * relative_upwind_divergence(i, j, k, grid, advection, ρ, U, c, M)
+    Dᵘ, Dᵐ = upwind_and_mass_divergences(i, j, k, grid, advection, ρ, U, c)
+    Q⁻ = ρᶜ * (cᵢ - m) - Δt * (Dᵘ - m * Dᵐ)
+    Q⁺ = ρᶜ * (M - cᵢ) + Δt * (Dᵘ - M * Dᵐ)
     return max(0, Q⁻), max(0, Q⁺)
 end
 
