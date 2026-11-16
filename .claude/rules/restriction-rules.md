@@ -223,9 +223,10 @@ columns, and then break at an argument boundary, never straight after the `=`.
 
 ## Rule 14 — Before opening a PR, look for an open one with the same scope
 
-Two PRs that fix the same thing split the review, and all but one of them are wasted work. Before opening a PR,
-or proposing one, search the open PRs for the same or a similar scope: by the keywords of your title and of the
-error you fixed, and by the files your diff touches.
+Two PRs that do the same thing — fix the same bug or add the same feature — split the review, and all but one of
+them are wasted work. Before opening a PR, or proposing one, search the open PRs for the same or a similar scope:
+by the keywords of your title (the error message for a fix, the new type, function or keyword for a feature), and
+by the files your diff touches.
 
 ```bash
 gh pr list -R CliMA/Oceananigans.jl --state open --search "<keywords> in:title,body"
@@ -233,11 +234,17 @@ gh pr list -R CliMA/Oceananigans.jl --state open --limit 400 --json number,title
     --jq '.[] | select(any(.files[].path; . == "<path in your diff>")) | "#\(.number) \(.title)"'
 ```
 
-If one exists, do not open a PR. Tell the user, link it, and propose a comment on it instead — the case it
-misses, a reproducer, a test. A new PR is opened only if the user decides so after seeing the existing one.
+A match on keywords or files is a candidate, not a duplicate. Read its description and diff (`gh pr view <number>`,
+`gh pr diff <number>`) and check that it is after the same thing: the same bug fixed or the same feature added, by
+whatever means. A PR that touches the same files for another reason is not one; a PR that does the same thing
+through other files is.
+
+If it is the same scope, do not open a PR. Tell the user, link it, say what it covers and what your change adds,
+and propose a comment on it instead — the case it misses, a reproducer, a test. A new PR is opened only if the
+user decides so after seeing the existing one.
 
 ❌ Two PRs opened on the same day, each adding the same one-line `regularize_boundary_condition(f::FTS0, ...) = f`.
-✅ One PR. Whoever finds the bug next comments there with the case it misses.
+✅ One PR. Whoever gets there second comments on it with what it misses.
 
 ## Mandatory self-review
 
