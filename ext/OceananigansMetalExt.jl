@@ -8,8 +8,7 @@ using Oceananigans: Oceananigans, CPU, GPU
 using Oceananigans.Architectures: Architectures
 using Oceananigans.Grids: BoundaryTopology, Periodic
 using Oceananigans.Solvers: Solvers
-using Oceananigans.Utils: linear_expand, __linear_ndrange, MappedCompilerMetadata
-import Oceananigans.Utils as UT
+using Oceananigans.Utils: Utils as UT, linear_expand, __linear_ndrange, MappedCompilerMetadata
 
 const MetalGPU = GPU{<:Metal.MetalBackend}
 MetalGPU() = GPU(Metal.MetalBackend())
