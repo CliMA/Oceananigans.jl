@@ -73,10 +73,13 @@ DistributedComputations.side_requests(::ConcreteReactantBuffer) = TracedRequests
 DistributedComputations.isend!(state, array, rank, tag, communicator, side::TracedRequests) = push!(side.requests, MPI.Isend(array, rank, tag, communicator))
 DistributedComputations.irecv!(state, array, rank, tag, communicator, side::TracedRequests) = push!(side.requests, MPI.Irecv!(array, rank, tag, communicator))
 
-# Emptied so that no request outlives the trace that created it
-function DistributedComputations.waitall_requests!(side::TracedRequests)
-    foreach(MPI.Wait, side.requests)
-    empty!(side.requests)
+# One `Waitall` for all sides lets Reactant fuse each pass's sends, receives and wait into a single call.
+# The requests are emptied so that no request outlives the trace that created it
+function DistributedComputations.waitall_requests!(sides::Tuple{Vararg{Union{Nothing, TracedRequests}}})
+    active_sides = filter(side -> side isa TracedRequests, sides)
+    requests = [request for side in active_sides for request in side.requests]
+    isempty(requests) || MPI.Waitall(requests)
+    foreach(side -> empty!(side.requests), active_sides)
     return nothing
 end
 
