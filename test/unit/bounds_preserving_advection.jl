@@ -296,36 +296,46 @@ end
         @test_throws ArgumentError BoundsPreservation(0, 1; adaptive_weight=:yes)
     end
 
-    # In a uniform column falling at a vertical Courant number ν > 1 under forward Euler, every cell with
-    # outflow is limited to the fraction r = 1/ν its content affords, and the update stays non-negative
-    # and conserves the tracer.
-    @testset "Fractions of a uniform column at vertical Courant number 1.5" begin
-        Nz = 16
-        grid = RectilinearGrid(CPU(), size=Nz, z=(0, Nz), topology=(Flat, Flat, Bounded), halo=4)
-        ν = 1.5
+    # A step falling through a periodic column at vertical Courant number 0.9 for 20 forward Euler steps, where the
+    # first-order upwind update still stays within the bounds but the bounds-preserving WENO update alone does not: flux-corrected
+    # transport keeps the forward Euler update within the bounds and conserves the tracer.
+    @testset "Step in a column at vertical Courant number 0.9" begin
+        Nz = 32
+        grid = RectilinearGrid(CPU(), size=Nz, z=(0, Nz), topology=(Flat, Flat, Periodic), halo=4)
+        ν = 0.9
 
-        function fractions_and_tendency(flux_limiter)
-            scheme = materialize_advection(WENO(; order=5, bounds=BoundsPreservation(0, 4; flux_limiter)), grid)
+        function updated_column(flux_limiter)
+            scheme = materialize_advection(WENO(; order=5, bounds=BoundsPreservation(0, 1; flux_limiter)), grid)
             c = CenterField(grid)
-            set!(c, 1)
+            set!(c, z -> 10 < z < 20 ? 1 : 0)
             fill_halo_regions!(c)
             U = (u = XFaceField(grid), v = YFaceField(grid), w = ZFaceField(grid))
             set!(U.w, -ν)
-            interior(U.w)[1, 1, 1] = 0    # impenetrable bottom
-            interior(U.w)[1, 1, Nz+1] = 0 # impenetrable top
             fill_halo_regions!(U.w)
-            update_advection!(scheme, (; grid), c)
-            update_flux_limiter!(scheme, grid, c, U, 1)
-            r = copy(interior(scheme.bounds.flux_limiter.outgoing_fraction)[1, 1, :])
-            tendency = [-div_Uc(1, 1, k, grid, scheme, U, c) for k in 1:Nz]
-            return r, tendency
+            c⁰ = interior(c)[1, 1, :]
+            minimum_fraction = 1.0
+            cᵐⁱⁿ, cᵐᵃˣ = 0.0, 1.0
+            for step in 1:20
+                update_advection!(scheme, (; grid), c)
+                update_flux_limiter!(scheme, grid, c, U, 1)
+                limiter = scheme.bounds.flux_limiter
+                isnothing(limiter) || (minimum_fraction = min(minimum_fraction, minimum(interior(limiter.outgoing_fraction))))
+                c′ = [c[1, 1, k] - div_Uc(1, 1, k, grid, scheme, U, c) for k in 1:Nz]
+                cᵐⁱⁿ, cᵐᵃˣ = min(cᵐⁱⁿ, minimum(c′)), max(cᵐᵃˣ, maximum(c′))
+                interior(c)[1, 1, :] .= c′
+                fill_halo_regions!(c)
+            end
+            return interior(c)[1, 1, :], c⁰, cᵐⁱⁿ, cᵐᵃˣ, minimum_fraction
         end
 
-        r, tendency = fractions_and_tendency(true)
-        @test all(r[2:Nz] .≈ 1 / ν) # every cell with outflow is limited by its content alone
-        @test r[1] == 1              # the bottom cell has no outflow
-        @test minimum(1 .+ tendency) ≥ -1e-12
-        @test abs(sum(tendency)) < 1e-12
+        _, _, cᵐⁱⁿ, cᵐᵃˣ, _ = updated_column(false)
+        @test cᵐⁱⁿ < -1e-6 || cᵐᵃˣ > 1 + 1e-6
+
+        c′, c⁰, cᵐⁱⁿ, cᵐᵃˣ, minimum_fraction = updated_column(true)
+        @test cᵐⁱⁿ ≥ -1e-12
+        @test cᵐᵃˣ ≤ 1 + 1e-12
+        @test sum(c′) ≈ sum(c⁰)
+        @test 0 ≤ minimum_fraction < 1 # the limiter acts at the step
     end
 
     @testset "Limiter is finite when the undershoot equals the regularizer" begin
