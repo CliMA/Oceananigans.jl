@@ -125,26 +125,26 @@ end
 
 # As `_pin_barotropic_face!`, over every pooled face at once: with sₙ = ±1 the inflow sign of side n and wᵢ = Hᵢᵖ,
 # Q = Σₙ sₙ ∮ U dl and L = Σₙ ∮ w dl over the wet columns, every wet column of side n is shifted by -sₙ wᵢ (Q - target) / L.
+# As in `_pin_barotropic_face!`, no local variable is carried across `@synchronize`: on the CPU, KernelAbstractions
+# splits the kernel there, and locals assigned before it are undefined after it.
 @kernel function _pin_net_barotropic_inflow!(U, V, grid, target, p, weights)
     t = @index(Local, Linear)
     ΣQ = @localmem eltype(grid) (FACE_WORKGROUP_SIZE,)
     ΣL = @localmem eltype(grid) (FACE_WORKGROUP_SIZE,)
-    sʷ, sᵉ, sˢ, sⁿ = weights
-    Nx, Ny = grid.Nx, grid.Ny
 
     Q = zero(grid)
     L = zero(grid)
-    for n in t:FACE_WORKGROUP_SIZE:Ny
-        Δlʷ = abs(sʷ) * wet_face_width(1, n, grid, Val(:x))
-        Δlᵉ = abs(sᵉ) * wet_face_width(Nx + 1, n, grid, Val(:x))
-        @inbounds Q += sʷ * U[1, n, 1] * Δlʷ + sᵉ * U[Nx + 1, n, 1] * Δlᵉ
-        L += Δlʷ * face_depth(1, n, grid, Val(:x))^p + Δlᵉ * face_depth(Nx + 1, n, grid, Val(:x))^p
+    for n in t:FACE_WORKGROUP_SIZE:grid.Ny
+        Δlʷ = abs(weights[1]) * wet_face_width(1, n, grid, Val(:x))
+        Δlᵉ = abs(weights[2]) * wet_face_width(grid.Nx + 1, n, grid, Val(:x))
+        @inbounds Q += weights[1] * U[1, n, 1] * Δlʷ + weights[2] * U[grid.Nx + 1, n, 1] * Δlᵉ
+        L += Δlʷ * face_depth(1, n, grid, Val(:x))^p + Δlᵉ * face_depth(grid.Nx + 1, n, grid, Val(:x))^p
     end
-    for n in t:FACE_WORKGROUP_SIZE:Nx
-        Δlˢ = abs(sˢ) * wet_face_width(n, 1, grid, Val(:y))
-        Δlⁿ = abs(sⁿ) * wet_face_width(n, Ny + 1, grid, Val(:y))
-        @inbounds Q += sˢ * V[n, 1, 1] * Δlˢ + sⁿ * V[n, Ny + 1, 1] * Δlⁿ
-        L += Δlˢ * face_depth(n, 1, grid, Val(:y))^p + Δlⁿ * face_depth(n, Ny + 1, grid, Val(:y))^p
+    for n in t:FACE_WORKGROUP_SIZE:grid.Nx
+        Δlˢ = abs(weights[3]) * wet_face_width(n, 1, grid, Val(:y))
+        Δlⁿ = abs(weights[4]) * wet_face_width(n, grid.Ny + 1, grid, Val(:y))
+        @inbounds Q += weights[3] * V[n, 1, 1] * Δlˢ + weights[4] * V[n, grid.Ny + 1, 1] * Δlⁿ
+        L += Δlˢ * face_depth(n, 1, grid, Val(:y))^p + Δlⁿ * face_depth(n, grid.Ny + 1, grid, Val(:y))^p
     end
     @inbounds ΣQ[t] = Q
     @inbounds ΣL[t] = L
@@ -162,13 +162,13 @@ end
     @synchronize
 
     @inbounds shift = ΣQ[1]
-    for n in t:FACE_WORKGROUP_SIZE:Ny
-        @inbounds U[1, n, 1]      -= ifelse(wet_face_width(1, n, grid, Val(:x)) > 0, sʷ * shift * face_depth(1, n, grid, Val(:x))^p, zero(shift))
-        @inbounds U[Nx + 1, n, 1] -= ifelse(wet_face_width(Nx + 1, n, grid, Val(:x)) > 0, sᵉ * shift * face_depth(Nx + 1, n, grid, Val(:x))^p, zero(shift))
+    for n in t:FACE_WORKGROUP_SIZE:grid.Ny
+        @inbounds U[1, n, 1]      -= ifelse(wet_face_width(1, n, grid, Val(:x)) > 0, weights[1] * shift * face_depth(1, n, grid, Val(:x))^p, zero(shift))
+        @inbounds U[grid.Nx + 1, n, 1] -= ifelse(wet_face_width(grid.Nx + 1, n, grid, Val(:x)) > 0, weights[2] * shift * face_depth(grid.Nx + 1, n, grid, Val(:x))^p, zero(shift))
     end
-    for n in t:FACE_WORKGROUP_SIZE:Nx
-        @inbounds V[n, 1, 1]      -= ifelse(wet_face_width(n, 1, grid, Val(:y)) > 0, sˢ * shift * face_depth(n, 1, grid, Val(:y))^p, zero(shift))
-        @inbounds V[n, Ny + 1, 1] -= ifelse(wet_face_width(n, Ny + 1, grid, Val(:y)) > 0, sⁿ * shift * face_depth(n, Ny + 1, grid, Val(:y))^p, zero(shift))
+    for n in t:FACE_WORKGROUP_SIZE:grid.Nx
+        @inbounds V[n, 1, 1]      -= ifelse(wet_face_width(n, 1, grid, Val(:y)) > 0, weights[3] * shift * face_depth(n, 1, grid, Val(:y))^p, zero(shift))
+        @inbounds V[n, grid.Ny + 1, 1] -= ifelse(wet_face_width(n, grid.Ny + 1, grid, Val(:y)) > 0, weights[4] * shift * face_depth(n, grid.Ny + 1, grid, Val(:y))^p, zero(shift))
     end
 end
 
