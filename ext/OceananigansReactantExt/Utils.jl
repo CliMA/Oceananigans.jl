@@ -1,9 +1,9 @@
 module Utils
 
-using Oceananigans
+using Oceananigans: Oceananigans
 using Oceananigans.Architectures: ReactantState
 using Oceananigans.Utils: prettytime, prettysummary
-using Reactant
+using Reactant: Reactant, ConcreteIFRTNumber, ConcretePJRTNumber
 
 # Reactant tracing breaks if Δt is converted outside the kernel, so pass it through.
 @inline Oceananigans.Utils.kernel_time_step(::ReactantState, grid, Δt) = Δt

@@ -5,7 +5,7 @@ using Oceananigans: Oceananigans
 using Oceananigans.Architectures: ReactantState
 using Oceananigans.Grids: BoundaryTopology, Flat, Periodic
 using Oceananigans.Solvers: permute_index, unpermute_index
-using Reactant
+using Reactant: Reactant
 
 const AnyReactantArray = Union{AnyConcreteReactantArray, Reactant.AnyTracedRArray}
 const ReactantAbstractFFTsExt = Base.get_extension(Reactant, :ReactantAbstractFFTsExt)

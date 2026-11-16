@@ -1,14 +1,13 @@
 module OceananigansReactantExt
 
-using Reactant
-using Oceananigans
-using Oceananigans: Distributed, DistributedComputations, ReactantState, CPU,
-                    OrthogonalSphericalShellGrids
-using Oceananigans.Architectures: on_architecture
-using Oceananigans.Grids: Bounded, Periodic
+using Reactant: Reactant
+using Reactant.ReactantCore: ReactantCore
+using Oceananigans: Oceananigans
+using Oceananigans.Advection: VectorInvariant
+using Oceananigans.Grids: LatitudeLongitudeGrid, RectilinearGrid
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Utils: StaticStridesOffsetArray
-using OffsetArrays
-using OffsetArrays: AbstractOffsetArray
+using OffsetArrays: OffsetArrays, AbstractOffsetArray
 
 deconcretize(obj) = obj # fallback
 deconcretize(a::AbstractOffsetArray) = StaticStridesOffsetArray(Array(parent(a)), OffsetArrays.offsets(a)...)
@@ -308,14 +307,14 @@ function evalcond(c, i, j, k)
     Oceananigans.AbstractOperations.evaluate_condition(c.condition, i, j, k, c.grid, c)
 end
 
-@inline function Reactant.TracedUtils.broadcast_to_size(c::Oceananigans.AbstractOperations.ConditionalOperation, rsize)
+@inline function Reactant.broadcast_to_size(c::Oceananigans.AbstractOperations.ConditionalOperation, rsize)
     if c == rsize
-        return Reactant.TracedUtils.materialize_traced_array(c)
+        return ReactantCore.materialize_traced_array(c)
     end
     return c
 end
 
-@inline function Reactant.TracedUtils.materialize_traced_array(c::Oceananigans.AbstractOperations.ConditionalOperation)
+@inline function ReactantCore.materialize_traced_array(c::Oceananigans.AbstractOperations.ConditionalOperation)
     N = ndims(c)
     axes2 = ntuple(Val(N)) do i
         reshape(Base.OneTo(size(c, i)), (ntuple(Val(N)) do j
@@ -332,7 +331,7 @@ end
     if conds isa Bool
       conds = Reactant.Ops.fill(conds, size(c))
     else
-      conds = Reactant.TracedUtils.materialize_traced_array(conds)
+      conds = ReactantCore.materialize_traced_array(conds)
     end
 
     @assert size(conds) == size(c)
@@ -353,7 +352,7 @@ end
     return Reactant.Ops.select(
                 conds,
                 tvals,
-                Reactant.TracedUtils.broadcast_to_size(mask, size(c))
+                Reactant.broadcast_to_size(mask, size(c))
     )
 end
 
@@ -361,7 +360,7 @@ function eval_kernel_function(kfo, i, j, k)
     return kfo.kernel_function(i, j, k, kfo.grid, kfo.arguments...)
 end
 
-@inline function Reactant.TracedUtils.materialize_traced_array(c::Oceananigans.AbstractOperations.KernelFunctionOperation)
+@inline function ReactantCore.materialize_traced_array(c::Oceananigans.AbstractOperations.KernelFunctionOperation)
     N = ndims(c)
     axes2 = ntuple(Val(N)) do i
         reshape(Base.OneTo(size(c, i)), (ntuple(Val(N)) do j
@@ -389,9 +388,9 @@ end
     return tvals
 end
 
-@inline function Reactant.TracedUtils.broadcast_to_size(c::Oceananigans.AbstractOperations.KernelFunctionOperation, rsize)
+@inline function Reactant.broadcast_to_size(c::Oceananigans.AbstractOperations.KernelFunctionOperation, rsize)
     if c == rsize
-        return Reactant.TracedUtils.materialize_traced_array(c)
+        return ReactantCore.materialize_traced_array(c)
     end
     return c
 end

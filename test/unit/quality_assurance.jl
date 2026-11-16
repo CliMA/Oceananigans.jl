@@ -87,8 +87,7 @@ broken_extension_checks = Dict(:OceananigansAMDGPUExt   => (:implicit, :stale, :
                                :OceananigansEnzymeExt   => (:implicit, :stale, :qualified),
                                :OceananigansMakieExt    => (:implicit, :owners, :stale),
                                :OceananigansMetalExt    => (:stale,),
-                               :OceananigansNCCLExt     => (:implicit, :stale, :qualified),
-                               :OceananigansReactantExt => (:implicit, :owners, :stale, :qualified))
+                               :OceananigansNCCLExt     => (:implicit, :stale, :qualified))
 
 extension_names = Pkg.TOML.parsefile(joinpath(pkgdir(Oceananigans), "Project.toml"))["extensions"] |> keys |> collect |> sort
 
