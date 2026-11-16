@@ -86,7 +86,6 @@ using Reactant: Reactant
 broken_extension_checks = Dict(:OceananigansAMDGPUExt   => (:implicit, :stale, :qualified),
                                :OceananigansEnzymeExt   => (:implicit, :stale, :qualified),
                                :OceananigansMakieExt    => (:implicit, :owners, :stale),
-                               :OceananigansMetalExt    => (:stale,),
                                :OceananigansNCCLExt     => (:implicit, :stale, :qualified),
                                :OceananigansReactantExt => (:implicit, :owners, :stale, :qualified))
 
