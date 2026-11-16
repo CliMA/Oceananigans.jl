@@ -115,9 +115,9 @@ end
     launch!(architecture(grid), grid, :xyz, _ssp_euler_substep_tracer_field!, c, grid, Δt, Gⁿ)
 
     # The adaptive implicit advection must see the same total velocity as the explicit flux, drift included
+    @inbounds c_advection = model.advection[tracer_name]
     c_velocities = tracer_advecting_velocities(model.transport_velocities, model.biogeochemistry, closure,
                                                model.closure_fields, model.forcing[tracer_name], Val(tracer_name))
-
 
     implicit_step!(c,
                    model.timestepper.implicit_solver,
@@ -129,7 +129,7 @@ end
                    Δt,
                    c_advection,
                    c_velocities)
-                   
+
     launch!(architecture(grid), grid, :xyz, _ssp_blend_tracer_field!, c, grid, σc⁻, a, b)
 
     return nothing
