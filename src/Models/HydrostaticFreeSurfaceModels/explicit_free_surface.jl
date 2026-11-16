@@ -80,11 +80,9 @@ function step_free_surface!(free_surface::ExplicitFreeSurface, model, timesteppe
 end
 
 function step_free_surface!(free_surface::ExplicitFreeSurface, model, timestepper::SSPRungeKutta3TimeStepper, Δt)
-    FT = eltype(model.grid)
-    a, b = timestepper.coefficients[model.clock.stage]
-    @apply_regionally launch!(model.architecture, model.grid, :xy, _ssp_step_explicit_free_surface!,
-                              free_surface.displacement, convert(FT, Δt), timestepper.Gⁿ.η, timestepper.Ψ⁻.η,
-                              convert(FT, a), convert(FT, b), size(model.grid, 3))
+    a, b = convert.(eltype(model.grid), timestepper.coefficients[model.clock.stage])
+    @apply_regionally launch!(model.architecture, model.grid, :xy, _ssp_step_explicit_free_surface!, free_surface.displacement,
+                              Δt, timestepper.Gⁿ.η, timestepper.Ψ⁻.η, a, b, size(model.grid, 3))
     fill_halo_regions!(free_surface.displacement; async=true)
     return nothing
 end

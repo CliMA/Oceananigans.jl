@@ -258,13 +258,9 @@ end
 
 @inline fill_barotropic_state_halos!(field, ::FillHaloSplitExplicit, model; kwargs...) = fill_halo_regions!(field, model.clock, fields(model); async=true, kwargs...)
 
-# Every SSP solve restarts from ψⁿ at tⁿ, while the clock has reached the time of the stage
+# Every SSP solve restarts from ψⁿ at tⁿ, while the clock has reached the time of the previous stage
 @inline barotropic_start_time(clock, timestepper, Δt) = clock.time
-
-@inline function barotropic_start_time(clock, ts::SSPRungeKutta3TimeStepper, Δt)
-    τ = (0, ssp_stage_fractions(ts.coefficients)...)
-    return add_time_interval(clock.time, τ[clock.stage] * Δt, -1)
-end
+@inline barotropic_start_time(clock, ts::SSPRungeKutta3TimeStepper, Δt) = add_time_interval(clock.time, (0, ssp_stage_fractions(ts.coefficients)...)[clock.stage] * Δt, -1)
 
 function HydrostaticFreeSurfaceModels.step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroclinic_timestepper, Δt)
     # Note: free_surface.displacement.grid != model.grid for DistributedSplitExplicitFreeSurface since

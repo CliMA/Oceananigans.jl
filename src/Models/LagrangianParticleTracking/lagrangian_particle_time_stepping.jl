@@ -1,5 +1,5 @@
-using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper, SplitRungeKuttaTimeStepper,
-                                 SSPRungeKutta3TimeStepper
+using Oceananigans.TimeSteppers: MultiStageTimeStepper, QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper,
+                                 SplitRungeKuttaTimeStepper, SSPRungeKutta3TimeStepper
 
 #####
 ##### Time stepping Lagrangian particles
@@ -77,7 +77,7 @@ particle_displacements(x) = (Dx = similar(x, 0), Dy = similar(x, 0), Dz = simila
 
 particle_time_stepper_state(::RungeKutta3TimeStepper, x) = previous_particle_velocities(x)
 particle_time_stepper_state(::QuasiAdamsBashforth2TimeStepper, x) = previous_particle_velocities(x)
-particle_time_stepper_state(::SplitRungeKuttaTimeStepper, x) = particle_displacements(x)
+particle_time_stepper_state(::MultiStageTimeStepper, x) = particle_displacements(x)
 
 @inline previous_particle_velocity(state, p) = @inbounds (state.u⁻[p], state.v⁻[p], state.w⁻[p])
 
@@ -176,7 +176,7 @@ Return the number of stages of `timestepper`, that is, the number of times that
 """
 particle_stages(timestepper) = 1
 particle_stages(::RungeKutta3TimeStepper) = 3
-particle_stages(timestepper::SplitRungeKuttaTimeStepper) = timestepper.Nstages
+particle_stages(timestepper::MultiStageTimeStepper) = timestepper.Nstages
 
 """
     particle_stage(timestepper, stage, restart)
@@ -329,10 +329,7 @@ struct SSPRungeKuttaParticleStage{B}
     first :: Bool
 end
 
-particle_stages(timestepper::SSPRungeKutta3TimeStepper) = timestepper.Nstages
-particle_time_stepper_state(::SSPRungeKutta3TimeStepper, x) = particle_displacements(x)
-particle_stage(timestepper::SSPRungeKutta3TimeStepper, stage, restart) =
-    SSPRungeKuttaParticleStage(timestepper.coefficients[stage][2], stage == 1)
+particle_stage(ts::SSPRungeKutta3TimeStepper, stage, restart) = SSPRungeKuttaParticleStage(ts.coefficients[stage][2], stage == 1)
 
 @inline function advance_particle_position(stage::SSPRungeKuttaParticleStage, (x, y, z), (ẋ, ẏ, ż), Δt, state, p)
     b = stage.b

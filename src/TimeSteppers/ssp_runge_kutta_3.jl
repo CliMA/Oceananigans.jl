@@ -2,7 +2,8 @@
     SSPRungeKutta3TimeStepper{C, TG, PF, TI, B} <: AbstractTimeStepper
 
 Hold the coefficients, tendencies and cached states of the three-stage strong-stability-preserving Runge-Kutta
-scheme, coupled to the barotropic mode as in [Lan et al. (2022)](@cite Lan2022).
+scheme. With a split-explicit free surface, every stage restarts the barotropic solve from `(ηⁿ, Uⁿ)` over the full
+`Δt` and blends the increment it returns.
 
 Fields
 ======
@@ -14,19 +15,19 @@ Fields
 - `Ψᵐ⁻¹`: barotropic fields `(η, U, V)` of a split-explicit free surface at the previous stage
 """
 struct SSPRungeKutta3TimeStepper{C, TG, PF, TI, B} <: AbstractTimeStepper
-    Nstages :: Int
-    coefficients :: C
-    Gⁿ :: TG
-    Ψ⁻ :: PF
+    Nstages         :: Int
+    coefficients    :: C
+    Gⁿ              :: TG
+    Ψ⁻              :: PF
     implicit_solver :: TI
-    Ψᵐ⁻¹ :: B
+    Ψᵐ⁻¹            :: B
 end
 
 """
     SSPRungeKutta3TimeStepper(grid, prognostic_fields;
-                             implicit_solver = nothing,
-                             Gⁿ = map(similar, prognostic_fields),
-                             Ψ⁻ = map(similar, prognostic_fields))
+                              implicit_solver = nothing,
+                              Gⁿ = map(similar, prognostic_fields),
+                              Ψ⁻ = map(similar, prognostic_fields))
 
 Return the three-stage strong-stability-preserving Runge-Kutta time stepper in its Shu-Osher form,
 
@@ -35,10 +36,10 @@ Return the three-stage strong-stability-preserving Runge-Kutta time stepper in i
     Ψⁿ⁺¹ = 1/3 Ψⁿ + 2/3 (Ψ² + Δt G(Ψ²))
 """
 function SSPRungeKutta3TimeStepper(grid, prognostic_fields, args...;
-                                  implicit_solver::TI = nothing,
-                                  Gⁿ::TG = map(similar, prognostic_fields),
-                                  Ψ⁻::PF = map(similar, prognostic_fields),
-                                  kwargs...) where {TI, TG, PF}
+                                   implicit_solver = nothing,
+                                   Gⁿ = map(similar, prognostic_fields),
+                                   Ψ⁻ = map(similar, prognostic_fields),
+                                   kwargs...)
 
     coefficients = ((0//1, 1//1), (3//4, 1//4), (1//3, 2//3))
     Ψᵐ⁻¹ = map(similar, haskey(Ψ⁻, :U) ? (; Ψ⁻.η, Ψ⁻.U, Ψ⁻.V) : NamedTuple())
@@ -52,7 +53,7 @@ end
 Return the weights `βₘ` of the stage tendencies in `Ψⁿ⁺¹ = Ψⁿ + Δt Σₘ βₘ Gᵐ`, that is the product of the `b`
 coefficients of stage `m` and of every later stage: `(1/6, 1/6, 2/3)` for the three-stage scheme.
 """
-ssp_quadrature_weights(coefficients) = ntuple(m -> prod(coefficients[j][2] for j in m:length(coefficients)), length(coefficients))
+ssp_quadrature_weights(coefficients) = ntuple(m -> prod(last, coefficients[m:end]), length(coefficients))
 
 """
     ssp_stage_fractions(coefficients)
@@ -136,16 +137,6 @@ function maybe_prepare_first_time_step!(model::AbstractModel{<:SSPRungeKutta3Tim
         update_state!(model, callbacks)
     end
     return nothing
-end
-
-@kernel function _ssp_euler_substep_field!(field, Δt, Gⁿ)
-    i, j, k = @index(Global, NTuple)
-    @inbounds field[i, j, k] = field[i, j, k] + Δt * Gⁿ[i, j, k]
-end
-
-@kernel function _ssp_blend_field!(field, Ψ⁻, a, b)
-    i, j, k = @index(Global, NTuple)
-    @inbounds field[i, j, k] = a * Ψ⁻[i, j, k] + b * field[i, j, k]
 end
 
 # (σc)ᵐ = a (σc)ⁿ + b (σĉ), with (σc)ⁿ cached in σc⁻

@@ -97,9 +97,9 @@ end
 @kernel function _accumulate_ssp_advective_fluxes!(Fⁿ, grid, advection, U, tracer, β, keep)
     i, j, k = @index(Global, NTuple)
 
-    fx = _advective_tracer_flux_x(i, j, k, grid, advection, U.u, tracer)
-    fy = _advective_tracer_flux_y(i, j, k, grid, advection, U.v, tracer)
-    fz = _advective_tracer_flux_z(i, j, k, grid, advection, U.w, tracer)
+    fx = _advective_tracer_flux_x(i, j, k, grid, advection, U.u, tracer) * σⁿ(i, j, k, grid, f, c, c)
+    fy = _advective_tracer_flux_y(i, j, k, grid, advection, U.v, tracer) * σⁿ(i, j, k, grid, c, f, c)
+    fz = _advective_tracer_flux_z(i, j, k, grid, advection, U.w, tracer) * σⁿ(i, j, k, grid, c, c, f)
 
     @inbounds begin
         Fⁿ.x[i, j, k] = keep * Fⁿ.x[i, j, k] + β * fx
@@ -110,6 +110,7 @@ end
 
 @kernel function _accumulate_ssp_transport!(Uⁿ, grid, U, β, keep)
     i, j, k = @index(Global, NTuple)
+
     @inbounds begin
         Uⁿ.u[i, j, k] = keep * Uⁿ.u[i, j, k] + β * U.u[i, j, k] * Axᶠᶜᶜ(i, j, k, grid)
         Uⁿ.v[i, j, k] = keep * Uⁿ.v[i, j, k] + β * U.v[i, j, k] * Ayᶜᶠᶜ(i, j, k, grid)

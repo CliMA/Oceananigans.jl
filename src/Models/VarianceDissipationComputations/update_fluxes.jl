@@ -87,17 +87,13 @@ function cache_advective_fluxes!(Fⁿ, Fⁿ⁻¹, grid, params, ts::SplitRungeKu
     end
 end
 
-# Stage m's state feeds stage m+1, so it enters Σₘ βₘ Fᵐ with βₘ₊₁; the last stage restarts the sum.
-@inline function ssp_accumulation_weights(ts::SSPRungeKutta3TimeStepper, stage, FT)
-    β = ssp_quadrature_weights(ts.coefficients)
-    last_stage = stage == ts.Nstages
-    return convert(FT, last_stage ? β[1] : β[stage+1]), convert(FT, !last_stage)
-end
+# The state of stage m feeds stage m+1 and enters Σₘ βₘ Fᵐ with βₘ₊₁; the last stage restarts the sum with β₁
+ssp_accumulation_weights(ts, stage, grid) =
+    convert.(eltype(grid), (ssp_quadrature_weights(ts.coefficients)[mod1(stage + 1, ts.Nstages)], stage < ts.Nstages))
 
-function cache_advective_fluxes!(Fⁿ, Fⁿ⁻¹, grid, params, ts::SSPRungeKutta3TimeStepper, stage, advection, U, c)
-    β, keep = ssp_accumulation_weights(ts, stage, eltype(grid))
-    launch!(architecture(grid), grid, params, _accumulate_ssp_advective_fluxes!, Fⁿ, grid, advection, U, c, β, keep)
-end
+cache_advective_fluxes!(Fⁿ, Fⁿ⁻¹, grid, params, ts::SSPRungeKutta3TimeStepper, stage, advection, U, c) =
+    launch!(architecture(grid), grid, params, _accumulate_ssp_advective_fluxes!, Fⁿ, grid, advection, U, c,
+            ssp_accumulation_weights(ts, stage, grid)...)
 
 cache_diffusive_fluxes(Vⁿ, Vⁿ⁻¹, grid, params, ::QuasiAdamsBashforth2TimeStepper, stage, clo, D, B, c, tracer_id, clk, model_fields) =
     launch!(architecture(grid), grid, params, _cache_diffusive_fluxes!, Vⁿ, Vⁿ⁻¹, grid, clo, D, B, c, tracer_id, clk, model_fields)
@@ -108,10 +104,9 @@ function cache_diffusive_fluxes(Vⁿ, Vⁿ⁻¹, grid, params, ts::SplitRungeKut
     end
 end
 
-function cache_diffusive_fluxes(Vⁿ, Vⁿ⁻¹, grid, params, ts::SSPRungeKutta3TimeStepper, stage, clo, D, B, c, tracer_id, clk, model_fields)
-    β, keep = ssp_accumulation_weights(ts, stage, eltype(grid))
-    launch!(architecture(grid), grid, params, _accumulate_ssp_diffusive_fluxes!, Vⁿ, Vⁿ⁻¹, grid, clo, D, B, c, tracer_id, clk, model_fields, β, keep)
-end
+cache_diffusive_fluxes(Vⁿ, Vⁿ⁻¹, grid, params, ts::SSPRungeKutta3TimeStepper, stage, clo, D, B, c, tracer_id, clk, model_fields) =
+    launch!(architecture(grid), grid, params, _accumulate_ssp_diffusive_fluxes!, Vⁿ, Vⁿ⁻¹, grid, clo, D, B, c, tracer_id, clk, model_fields,
+            ssp_accumulation_weights(ts, stage, grid)...)
 
 update_transport!(Uⁿ, Uⁿ⁻¹, grid, params, ::QuasiAdamsBashforth2TimeStepper, stage, U) =
     launch!(architecture(grid), grid, params, _update_transport!, Uⁿ, Uⁿ⁻¹, grid, U)
@@ -122,10 +117,8 @@ function update_transport!(Uⁿ, Uⁿ⁻¹, grid, params, ts::SplitRungeKuttaTim
     end
 end
 
-function update_transport!(Uⁿ, Uⁿ⁻¹, grid, params, ts::SSPRungeKutta3TimeStepper, stage, U)
-    β, keep = ssp_accumulation_weights(ts, stage, eltype(grid))
-    launch!(architecture(grid), grid, params, _accumulate_ssp_transport!, Uⁿ, grid, U, β, keep)
-end
+update_transport!(Uⁿ, Uⁿ⁻¹, grid, params, ts::SSPRungeKutta3TimeStepper, stage, U) =
+    launch!(architecture(grid), grid, params, _accumulate_ssp_transport!, Uⁿ, grid, U, ssp_accumulation_weights(ts, stage, grid)...)
 
 @kernel function _update_transport!(Uⁿ, Uⁿ⁻¹, grid, U)
     i, j, k = @index(Global, NTuple)

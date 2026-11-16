@@ -34,8 +34,8 @@ end
 
 # z-star reads the same forcing for the grid motion, so a constant tracer stays constant only if the solve and the grid agree
 function η_forcing_constancy_drift(arch, timestepper)
-    grid = RectilinearGrid(arch; size=(4, 4, 4), x=(0, 1000), y=(0, 1000), z=MutableVerticalDiscretization((-100, 0)),
-                           topology=(Periodic, Periodic, Bounded))
+    grid  = RectilinearGrid(arch; size=(4, 4, 4), x=(0, 1000), y=(0, 1000), z=MutableVerticalDiscretization((-100, 0)),
+                            topology=(Periodic, Periodic, Bounded))
     model = HydrostaticFreeSurfaceModel(grid; timestepper, buoyancy=nothing, tracers=:c, vertical_coordinate=ZStarCoordinate(),
                                         free_surface=SplitExplicitFreeSurface(grid; substeps=20),
                                         forcing=(; η=Forcing(η_cosine_forcing; discrete_form=true)))
@@ -48,7 +48,7 @@ end
 
 # η(T) = (20 / 2π) sin(2π T / 20) for a uniform forcing: no pressure gradient, so only the time quadrature matters
 function η_forcing_error(arch, timestepper, Δt; stop_time = 5)
-    grid = RectilinearGrid(arch; size=(4, 4, 1), x=(0, 1000), y=(0, 1000), z=(-100, 0), topology=(Periodic, Periodic, Bounded))
+    grid  = RectilinearGrid(arch; size=(4, 4, 1), x=(0, 1000), y=(0, 1000), z=(-100, 0), topology=(Periodic, Periodic, Bounded))
     model = HydrostaticFreeSurfaceModel(grid; timestepper, buoyancy=nothing, tracers=(),
                                         free_surface=SplitExplicitFreeSurface(grid; substeps=20),
                                         forcing=(; η=Forcing(η_cosine_forcing; discrete_form=true)))
