@@ -221,6 +221,24 @@ columns, and then break at an argument boundary, never straight after the `=`.
 @inline interior_indices(i, j, grid) = wrap_index(i, grid.Nx, topology(grid, 1)), wrap_index(j, grid.Ny, topology(grid, 2))
 ```
 
+## Rule 14 — Before opening a PR, look for an open one with the same scope
+
+Two PRs that fix the same thing split the review, and all but one of them are wasted work. Before opening a PR,
+or proposing one, search the open PRs for the same or a similar scope: by the keywords of your title and of the
+error you fixed, and by the files your diff touches.
+
+```bash
+gh pr list -R CliMA/Oceananigans.jl --state open --search "<keywords> in:title,body"
+gh pr list -R CliMA/Oceananigans.jl --state open --limit 400 --json number,title,files \
+    --jq '.[] | select(any(.files[].path; . == "<path in your diff>")) | "#\(.number) \(.title)"'
+```
+
+If one exists, do not open a PR. Tell the user, link it, and propose a comment on it instead — the case it
+misses, a reproducer, a test. A new PR is opened only if the user decides so after seeing the existing one.
+
+❌ Two PRs opened on the same day, each adding the same one-line `regularize_boundary_condition(f::FTS0, ...) = f`.
+✅ One PR. Whoever finds the bug next comments there with the case it misses.
+
 ## Mandatory self-review
 
 **Claude: run the checklist below over every change you make, before you present it.** Not at PR time — at
