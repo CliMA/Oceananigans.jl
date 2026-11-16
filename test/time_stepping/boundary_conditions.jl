@@ -1046,4 +1046,31 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
             @test all(c[i, j, Nz+1] ≈ 2 * (j + 0.5) for i in 1:Nx, j in 1:Ny)
         end
     end
+
+    @testset "FieldTimeSeries reduced in all directions are uniform on every boundary [$(summary(arch))]" for arch in archs
+        for Nz in (1, 5)
+            Nx, Ny = 3, 4
+            grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(1, 1, 1), topology=(Bounded, Bounded, Bounded))
+            times = [0.0, 1.0]
+            series = FieldTimeSeries{Nothing, Nothing, Nothing}(grid, times)
+            for n in eachindex(times)
+                interior(series, :, :, :, n) .= times[n] + 1
+            end
+
+            bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center());
+                                          east = ValueBoundaryCondition(series),
+                                          north = ValueBoundaryCondition(series),
+                                          top = ValueBoundaryCondition(series))
+            c = CenterField(grid; boundary_conditions=bcs)
+
+            clock = Clock(time=0.5)
+            fill_halo_regions!(c, clock, (; c))
+
+            # The interior is zero, so the halo is twice the boundary value
+            c = on_architecture(CPU(), c)
+            @test all(c[Nx+1, j, k] ≈ 3 for j in 1:Ny, k in 1:Nz)
+            @test all(c[i, Ny+1, k] ≈ 3 for i in 1:Nx, k in 1:Nz)
+            @test all(c[i, j, Nz+1] ≈ 3 for i in 1:Nx, j in 1:Ny)
+        end
+    end
 end
