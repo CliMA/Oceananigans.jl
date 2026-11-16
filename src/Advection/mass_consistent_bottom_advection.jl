@@ -23,8 +23,12 @@ end
 @inline bottom_thickness_jump_y(i, j, k, grid) = wet_thickness_changes(wet_thickness(i, j-2, k, grid), wet_thickness(i, j-1, k, grid),
                                                                        wet_thickness(i, j,   k, grid), wet_thickness(i, j+1, k, grid))
 
+# vector-invariant schemes whose kinetic-energy gradient uses a reconstruction scheme that also has momentum fluxes
+const VectorInvariantWithFluxScheme = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any,
+                                                      <:Union{AbstractCenteredAdvectionScheme, AbstractUpwindBiasedAdvectionScheme}}
+
 # `if`, not `ifelse`: only one of the two advection forms is computed at each face
-@inline function U_dot_∇u(i, j, k, grid::PCBIBG, scheme::VectorInvariant, U)
+@inline function U_dot_∇u(i, j, k, grid::PCBIBG, scheme::VectorInvariantWithFluxScheme, U)
     if topology(grid, 1) !== Flat && bottom_thickness_jump_x(i, j, k, grid)
         flux_form = scheme.kinetic_energy_gradient_scheme
         return div_𝐯u(i, j, k, grid, flux_form, U, U.u) + U_dot_∇u_hydrostatic_metric(i, j, k, grid, flux_form, U, U)
@@ -35,7 +39,7 @@ end
     end
 end
 
-@inline function U_dot_∇v(i, j, k, grid::PCBIBG, scheme::VectorInvariant, U)
+@inline function U_dot_∇v(i, j, k, grid::PCBIBG, scheme::VectorInvariantWithFluxScheme, U)
     if topology(grid, 2) !== Flat && bottom_thickness_jump_y(i, j, k, grid)
         flux_form = scheme.kinetic_energy_gradient_scheme
         return div_𝐯v(i, j, k, grid, flux_form, U, U.v) + U_dot_∇v_hydrostatic_metric(i, j, k, grid, flux_form, U, U)
