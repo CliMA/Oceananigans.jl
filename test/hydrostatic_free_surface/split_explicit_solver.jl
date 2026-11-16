@@ -604,4 +604,42 @@ end
         @test ηf != ηp
         @test maximum(abs, ηp .- ηf) < 0.05 * maximum(abs, ηf)
     end
+
+    @testset "Reconstructing only the pressure gradient" begin
+        @test_throws ArgumentError ProgressiveSlowForcing(reconstructed_terms = :coriolis)
+        @test ProgressiveSlowForcing().pressure_gradient === nothing
+
+        grid = RectilinearGrid(size=(8, 8, 4), x=(0, 1.6e5), y=(0, 1.6e5), z=(-250, 0),
+                               topology=(Periodic, Bounded, Bounded))
+
+        function final_displacement(slow_forcing; ν, buoyancy)
+            free_surface = SplitExplicitFreeSurface(grid; substeps=30, timestepper=RungeKutta3Scheme(), slow_forcing)
+            tracers = isnothing(buoyancy) ? () : (:b,)
+            model = HydrostaticFreeSurfaceModel(grid; free_surface, buoyancy, tracers, momentum_advection=nothing,
+                                                closure=HorizontalScalarDiffusivity(; ν), timestepper=:SplitRungeKutta3)
+            Random.seed!(1234)
+            set!(model, u=(x, y, z) -> 1e-2 * randn(), v=(x, y, z) -> 1e-2 * randn())
+            isnothing(buoyancy) || set!(model, b=(x, y, z) -> 4e-4 * z + 1e-4 * randn())
+            for _ in 1:5
+                time_step!(model, 1200)
+            end
+            return Array(interior(model.free_surface.displacement))
+        end
+
+        pressure_only = ProgressiveSlowForcing(reconstructed_terms=:pressure_gradient)
+
+        # Inviscid and without Coriolis or momentum advection, the pressure gradient is the whole slow forcing.
+        η_all      = final_displacement(ProgressiveSlowForcing(); ν=0, buoyancy=BuoyancyTracer())
+        η_pressure = final_displacement(pressure_only; ν=0, buoyancy=BuoyancyTracer())
+        η_frozen   = final_displacement(FrozenSlowForcing(); ν=0, buoyancy=BuoyancyTracer())
+        @test maximum(abs, η_pressure .- η_all) < 1e-10 * maximum(abs, η_all)
+        @test maximum(abs, η_frozen .- η_all) > 1e-6 * maximum(abs, η_all)
+
+        # Without buoyancy the pressure gradient vanishes, and the viscous forcing is held as the frozen forcing holds it.
+        η_all      = final_displacement(ProgressiveSlowForcing(); ν=3e4, buoyancy=nothing)
+        η_pressure = final_displacement(pressure_only; ν=3e4, buoyancy=nothing)
+        η_frozen   = final_displacement(FrozenSlowForcing(); ν=3e4, buoyancy=nothing)
+        @test maximum(abs, η_pressure .- η_frozen) < 1e-10 * maximum(abs, η_frozen)
+        @test maximum(abs, η_all .- η_frozen) > 1e-6 * maximum(abs, η_frozen)
+    end
 end

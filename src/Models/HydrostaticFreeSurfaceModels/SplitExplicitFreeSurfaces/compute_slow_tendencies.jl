@@ -35,6 +35,8 @@ function HydrostaticFreeSurfaceModels.compute_free_surface_tendency!(grid, model
 
     fill_halo_regions!((GUⁿ, GVⁿ); async=true)
 
+    @apply_regionally compute_reconstructed_pressure_gradient!(free_surface.slow_forcing, grid, model.pressure.pHY′)
+
     # Stash the first two stage values for the quadratic reconstruction formed on the final stage.
     @apply_regionally cache_stage_slow_forcing!(free_surface.slow_forcing, GUⁿ, GVⁿ, model.clock.stage)
 
