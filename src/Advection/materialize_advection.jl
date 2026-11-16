@@ -43,7 +43,11 @@ end
 materialize_bounds(bounds, grid) = bounds
 materialize_bounds(bounds::BoundsPreservation, grid) =
     BoundsPreservation(bounds.minimum_value, bounds.maximum_value, bounds.maximum_cfl, bounds.minimum_weight,
-                       CenterField(grid), materialize_flux_limiter(bounds.flux_limiter, grid))
+                       materialize_rescaling(bounds.reconstruction_limiter, grid),
+                       materialize_flux_limiter(bounds.flux_limiter, grid))
+
+materialize_rescaling(::NoRescaling, grid) = NoRescaling()
+materialize_rescaling(θ, grid) = CenterField(grid)
 
 materialize_flux_limiter(::Nothing, grid) = nothing
 
@@ -52,7 +56,8 @@ function materialize_flux_limiter(limiter::FluxLimiter, grid)
     incoming_fraction = CenterField(grid)
     fill!(outgoing_fraction, 1)
     fill!(incoming_fraction, 1)
-    return FluxLimiter(outgoing_fraction, incoming_fraction)
+    antidiffusive_fluxes = (x = XFaceField(grid), y = YFaceField(grid), z = ZFaceField(grid))
+    return FluxLimiter(outgoing_fraction, incoming_fraction, antidiffusive_fluxes)
 end
 
 materialize_advection(weno::WENO{N, FT, WCT}, grid) where {N, FT, WCT} =

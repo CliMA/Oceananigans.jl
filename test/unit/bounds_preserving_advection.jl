@@ -183,6 +183,19 @@ end
                 @test sum(interior(c)) ≈ tracer_content
             end
 
+            # Without the rescaling θ the flux limiter alone keeps the bounds
+            for initial_condition in (sharp_cube, sharp_hole)
+                grid, scheme, c, U = periodic_advection_setup(5, BoundsPreservation(0, 1; flux_limiter=true, rescaling=false), N)
+                set!(c, initial_condition)
+                tracer_content = sum(interior(c))
+                cᵐⁱⁿ, cᵐᵃˣ = advect_forward_euler!(grid, scheme, c, U, N, 50, courant_number)
+                @test cᵐⁱⁿ ≥ -1e-12
+                @test cᵐᵃˣ ≤ 1 + 1e-12
+                @test sum(interior(c)) ≈ tracer_content
+            end
+
+            @test_throws ArgumentError BoundsPreservation(0, 1; rescaling=false)
+
             # A nonzero lower bound: the limiter acts on the fluxes of c - cᵐⁱⁿ
             grid, scheme, c, U = periodic_advection_setup(5, BoundsPreservation(2, 3; flux_limiter=true), N)
             set!(c, (x, y, z) -> 2 + sharp_cube(x, y, z))
