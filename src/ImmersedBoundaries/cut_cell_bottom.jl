@@ -1,5 +1,5 @@
 using Oceananigans.Fields: Field, fill_halo_regions!
-using Oceananigans.Grids: Grids, AbstractStaticGrid, constructor_arguments, XFlatGrid, YFlatGrid
+using Oceananigans.Grids: Grids, AbstractStaticGrid, Closed, TwoSided, constructor_arguments, XFlatGrid, YFlatGrid
 using Oceananigans.Utils: prettysummary, KernelParameters
 
 import Oceananigans.Grids: peripheral_node
@@ -282,8 +282,8 @@ end
     Δʸ⁻ = @inbounds 2rᵇ - corner_field[i, j, 1] - corner_field[iᴱ, j, 1]
     Δʸ⁺ = @inbounds corner_field[i, jᴺ, 1] + corner_field[iᴱ, jᴺ, 1] - 2rᵇ
 
-    sˣ = ifelse((TX === Bounded) & (i == 1), Δˣ⁺, ifelse((TX === Bounded) & (i == Nx), Δˣ⁻, minmod(Δˣ⁻, Δˣ⁺)))
-    sʸ = ifelse((TY === Bounded) & (j == 1), Δʸ⁺, ifelse((TY === Bounded) & (j == Ny), Δʸ⁻, minmod(Δʸ⁻, Δʸ⁺)))
+    sˣ = ifelse((TX <: TwoSided{Closed}) & (i == 1), Δˣ⁺, ifelse((TX <: TwoSided{<:Any, Closed}) & (i == Nx), Δˣ⁻, minmod(Δˣ⁻, Δˣ⁺)))
+    sʸ = ifelse((TY <: TwoSided{Closed}) & (j == 1), Δʸ⁺, ifelse((TY <: TwoSided{<:Any, Closed}) & (j == Ny), Δʸ⁻, minmod(Δʸ⁻, Δʸ⁺)))
 
     dry = (rᵇ ≥ rᵗ) | (i > Nx) | (j > Ny)
     aˣ = ifelse(dry, zero(rᵇ), rounded_half_slope(i, j, grid, rᵇ, min(abs(sˣ) / 2, rᵗ - rᵇ, rᵇ - rᵈ), ϵ))
@@ -422,8 +422,10 @@ end
 
 # A face column reaches down to the bottom height at that face, and is dry next to a dry column
 @inline function face_column_depth(i, j, i⁻, j⁻, ibg, ib::CutCellBottom)
-    underlying_grid = ibg.underlying_grid
-    rᵇ = ifelse(i⁻ == i, bottom_heightᶜᶠᵃ(i, j, underlying_grid, ib), bottom_heightᶠᶜᵃ(i, j, underlying_grid, ib))
+    xface = i⁻ != i
+    plane⁻ = @inbounds ifelse(xface, ib.west_bottom_height[i⁻, j⁻, 1], ib.south_bottom_height[i⁻, j⁻, 1])
+    plane  = @inbounds ifelse(xface, ib.west_bottom_height[i, j, 1],   ib.south_bottom_height[i, j, 1])
+    rᵇ = max(2 * bottom_height(i⁻, j⁻, ibg) - plane⁻, plane)
     rᵗ = rnode(i, j, ibg.Nz+1, ibg, c, c, f)
     dry = (bottom_height(i, j, ibg) ≥ rᵗ) | (bottom_height(i⁻, j⁻, ibg) ≥ rᵗ)
     return ifelse(dry, zero(rᵗ), rᵗ - rᵇ)
