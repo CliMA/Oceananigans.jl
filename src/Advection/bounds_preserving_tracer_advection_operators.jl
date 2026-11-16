@@ -43,14 +43,18 @@ Keyword arguments
 The materialized struct also holds the field `reconstruction_limiter` with the cell-wise rescaling factor ``θ``,
 which is `nothing` until the scheme is materialized on a grid, like the fields of `flux_limiter`.
 """
-struct BoundsPreservation{FT, W, L, F}
+struct BoundsPreservation{FT, W, L, F, C}
     minimum_value :: FT
     maximum_value :: FT
     maximum_cfl :: FT           # the fixed quadrature weight ω̂₁, or the upper clamp of the adaptive weight
     minimum_weight :: W         # the lower clamp of the adaptive weight, unresolved until WENO sets it from the order, or nothing
     reconstruction_limiter :: L
     flux_limiter :: F
+    upwind_face_values :: C     # the rescaled upwind reconstruction on each face (x, y, z), or nothing
 end
+
+BoundsPreservation(minimum_value, maximum_value, maximum_cfl, minimum_weight, reconstruction_limiter, flux_limiter) =
+    BoundsPreservation(minimum_value, maximum_value, maximum_cfl, minimum_weight, reconstruction_limiter, flux_limiter, nothing)
 
 # The `minimum_weight` of an adaptive weight before the order is known. Bounds carrying it are neither
 # fixed- nor adaptive-weight bounds, so they cannot enter a kernel before `WENO` resolves them.
@@ -88,7 +92,8 @@ function with_order_and_float_type(order, FT, bounds::BoundsPreservation)
     maximum_cfl = convert(FT, bounds.maximum_cfl)
     minimum_weight = minimum_weight_for_order(order, FT, bounds.minimum_weight, maximum_cfl)
     return BoundsPreservation(convert(FT, bounds.minimum_value), convert(FT, bounds.maximum_value),
-                              maximum_cfl, minimum_weight, bounds.reconstruction_limiter, bounds.flux_limiter)
+                              maximum_cfl, minimum_weight, bounds.reconstruction_limiter, bounds.flux_limiter,
+                              bounds.upwind_face_values)
 end
 
 minimum_weight_for_order(order, FT, ::Nothing, maximum_cfl) = nothing
@@ -113,7 +118,8 @@ Adapt.adapt_structure(to, bounds::BoundsPreservation) =
                        Adapt.adapt(to, bounds.maximum_cfl),
                        Adapt.adapt(to, bounds.minimum_weight),
                        Adapt.adapt(to, bounds.reconstruction_limiter),
-                       Adapt.adapt(to, bounds.flux_limiter))
+                       Adapt.adapt(to, bounds.flux_limiter),
+                       Adapt.adapt(to, bounds.upwind_face_values))
 
 Architectures.on_architecture(to, bounds::BoundsPreservation) =
     BoundsPreservation(on_architecture(to, bounds.minimum_value),
@@ -121,7 +127,8 @@ Architectures.on_architecture(to, bounds::BoundsPreservation) =
                        on_architecture(to, bounds.maximum_cfl),
                        on_architecture(to, bounds.minimum_weight),
                        on_architecture(to, bounds.reconstruction_limiter),
-                       on_architecture(to, bounds.flux_limiter))
+                       on_architecture(to, bounds.flux_limiter),
+                       on_architecture(to, bounds.upwind_face_values))
 
 const _ε₂ = 1e-20
 
@@ -234,7 +241,7 @@ end
     cᵢ = @inbounds c[i, j, k]
     p̃  = (cᵢ - ω̂₁ * (c⁻ + c⁺)) / (1 - 2ω̂₁)
 
-    return min(m, p̃, c⁻, c⁺), max(M, p̃, c⁻, c⁺)
+    return min(m, p̃, c⁻, c⁺), max(M, p̃, c⁻, c⁺), c⁻, c⁺
 end
 
 @inline function reconstruction_extrema_y(i, j, k, grid, scheme, c, m, M, ω̂₁)
@@ -243,7 +250,7 @@ end
     cᵢ = @inbounds c[i, j, k]
     p̃  = (cᵢ - ω̂₁ * (c⁻ + c⁺)) / (1 - 2ω̂₁)
 
-    return min(m, p̃, c⁻, c⁺), max(M, p̃, c⁻, c⁺)
+    return min(m, p̃, c⁻, c⁺), max(M, p̃, c⁻, c⁺), c⁻, c⁺
 end
 
 @inline function reconstruction_extrema_z(i, j, k, grid, scheme, c, m, M, ω̂₁)
@@ -252,17 +259,23 @@ end
     cᵢ = @inbounds c[i, j, k]
     p̃  = (cᵢ - ω̂₁ * (c⁻ + c⁺)) / (1 - 2ω̂₁)
 
-    return min(m, p̃, c⁻, c⁺), max(M, p̃, c⁻, c⁺)
+    return min(m, p̃, c⁻, c⁺), max(M, p̃, c⁻, c⁺), c⁻, c⁺
 end
 
 # Support for Flat directions
-@inline reconstruction_extrema_x(i, j, k, ::AbstractGrid{FT, Flat, TY, TZ}, scheme, c, m, M, ω̂₁) where {FT, TY, TZ} = (m, M)
-@inline reconstruction_extrema_y(i, j, k, ::AbstractGrid{FT, TX, Flat, TZ}, scheme, c, m, M, ω̂₁) where {FT, TX, TZ} = (m, M)
-@inline reconstruction_extrema_z(i, j, k, ::AbstractGrid{FT, TX, TY, Flat}, scheme, c, m, M, ω̂₁) where {FT, TX, TY} = (m, M)
+@inline reconstruction_extrema_x(i, j, k, ::AbstractGrid{FT, Flat, TY, TZ}, scheme, c, m, M, ω̂₁) where {FT, TY, TZ} = (m, M, m, M)
+@inline reconstruction_extrema_y(i, j, k, ::AbstractGrid{FT, TX, Flat, TZ}, scheme, c, m, M, ω̂₁) where {FT, TX, TZ} = (m, M, m, M)
+@inline reconstruction_extrema_z(i, j, k, ::AbstractGrid{FT, TX, TY, Flat}, scheme, c, m, M, ω̂₁) where {FT, TX, TY} = (m, M, m, M)
 
 # `U` and `Δt` are the transport velocities and time step of the coming forward Euler update, which only
 # an adaptive weight reads (see `quadrature_weights`); a fixed weight accepts `nothing` for both.
 @inline function bounds_preserving_limiter(i, j, k, grid, scheme::BoundsPreservingWENO, c, U, Δt)
+    θ, _ = bounds_preserving_limiter_and_face_values(i, j, k, grid, scheme, c, U, Δt)
+    return θ
+end
+
+# θ and the reconstructions on the two faces of the cell in each direction, ((c⁻ˣ, c⁺ˣ), (c⁻ʸ, c⁺ʸ), (c⁻ᶻ, c⁺ᶻ))
+@inline function bounds_preserving_limiter_and_face_values(i, j, k, grid, scheme::BoundsPreservingWENO, c, U, Δt)
     FT = eltype(c)
     ε₂ = convert(FT, _ε₂)
 
@@ -273,19 +286,55 @@ end
     cᵢ = @inbounds c[i, j, k]
 
     m, M = cᵢ, cᵢ
-    m, M = reconstruction_extrema_x(i, j, k, grid, scheme, c, m, M, ω̂₁ˣ)
-    m, M = reconstruction_extrema_y(i, j, k, grid, scheme, c, m, M, ω̂₁ʸ)
-    m, M = reconstruction_extrema_z(i, j, k, grid, scheme, c, m, M, ω̂₁ᶻ)
+    m, M, c⁻ˣ, c⁺ˣ = reconstruction_extrema_x(i, j, k, grid, scheme, c, m, M, ω̂₁ˣ)
+    m, M, c⁻ʸ, c⁺ʸ = reconstruction_extrema_y(i, j, k, grid, scheme, c, m, M, ω̂₁ʸ)
+    m, M, c⁻ᶻ, c⁺ᶻ = reconstruction_extrema_z(i, j, k, grid, scheme, c, m, M, ω̂₁ᶻ)
 
     θᵐᵃˣ = abs((cᵐᵃˣ - cᵢ) / (M - cᵢ + ε₂))
     θᵐⁱⁿ = abs((cᵐⁱⁿ - cᵢ) / (m - cᵢ - ε₂))
+    θ = min(θᵐᵃˣ, θᵐⁱⁿ, one(FT))
 
-    return min(θᵐᵃˣ, θᵐⁱⁿ, one(FT))
+    return θ, ((c⁻ˣ, c⁺ˣ), (c⁻ʸ, c⁺ʸ), (c⁻ᶻ, c⁺ᶻ))
 end
 
-@kernel function _compute_bounds_preserving_limiter!(θ, grid, scheme, c, U, Δt)
+# Each face has one upwind cell, which writes its rescaled reconstruction there; no two cells write the same face.
+# Faces without flow are not written: their flux vanishes whatever value they hold.
+@inline store_upwind_face_values_x!(ĉ, i, j, k, grid::XFlatGrid, u, cᵢ, θ, c⁻, c⁺) = nothing
+@inline store_upwind_face_values_y!(ĉ, i, j, k, grid::YFlatGrid, v, cᵢ, θ, c⁻, c⁺) = nothing
+@inline store_upwind_face_values_z!(ĉ, i, j, k, grid::ZFlatGrid, w, cᵢ, θ, c⁻, c⁺) = nothing
+
+@inline function store_upwind_face_values_x!(ĉ, i, j, k, grid, u, cᵢ, θ, c⁻, c⁺)
+    @inbounds begin
+        u[i,   j, k] < 0 && (ĉ[i,   j, k] = θ * (c⁻ - cᵢ) + cᵢ)
+        u[i+1, j, k] > 0 && (ĉ[i+1, j, k] = θ * (c⁺ - cᵢ) + cᵢ)
+    end
+    return nothing
+end
+
+@inline function store_upwind_face_values_y!(ĉ, i, j, k, grid, v, cᵢ, θ, c⁻, c⁺)
+    @inbounds begin
+        v[i, j,   k] < 0 && (ĉ[i, j,   k] = θ * (c⁻ - cᵢ) + cᵢ)
+        v[i, j+1, k] > 0 && (ĉ[i, j+1, k] = θ * (c⁺ - cᵢ) + cᵢ)
+    end
+    return nothing
+end
+
+@inline function store_upwind_face_values_z!(ĉ, i, j, k, grid, w, cᵢ, θ, c⁻, c⁺)
+    @inbounds begin
+        w[i, j, k]   < 0 && (ĉ[i, j, k]   = θ * (c⁻ - cᵢ) + cᵢ)
+        w[i, j, k+1] > 0 && (ĉ[i, j, k+1] = θ * (c⁺ - cᵢ) + cᵢ)
+    end
+    return nothing
+end
+
+@kernel function _compute_bounds_preserving_limiter!(θ, ĉ, grid, scheme, c, U, Δt)
     i, j, k = @index(Global, NTuple)
-    @inbounds θ[i, j, k] = bounds_preserving_limiter(i, j, k, grid, scheme, c, U, Δt)
+    θᵢ, faces = bounds_preserving_limiter_and_face_values(i, j, k, grid, scheme, c, U, Δt)
+    @inbounds θ[i, j, k] = θᵢ
+    cᵢ = @inbounds c[i, j, k]
+    store_upwind_face_values_x!(ĉ.x, i, j, k, grid, U.u, cᵢ, θᵢ, faces[1]...)
+    store_upwind_face_values_y!(ĉ.y, i, j, k, grid, U.v, cᵢ, θᵢ, faces[2]...)
+    store_upwind_face_values_z!(ĉ.z, i, j, k, grid, U.w, cᵢ, θᵢ, faces[3]...)
 end
 
 update_bounds_preserving_limiter!(scheme, grid, c, U, Δt) = nothing
@@ -305,9 +354,11 @@ function update_bounds_preserving_limiter!(scheme::BoundsPreservingWENO, grid, c
     isnothing(c) && return nothing # the `momentum` entry has no tracer to limit
     θ = scheme.bounds.reconstruction_limiter
     θ isa NoRescaling && return nothing
+    isnothing(U) && throw(ArgumentError("the bounds-preserving limiter needs the transport velocities `U`"))
+    ĉ = scheme.bounds.upwind_face_values
     Δt = limiter_timestep(eltype(grid), Δt)
     parameters = rescaling_kernel_parameters(grid, scheme)
-    launch!(architecture(grid), grid, parameters, _compute_bounds_preserving_limiter!, θ, grid, scheme, c, U, Δt)
+    launch!(architecture(grid), grid, parameters, _compute_bounds_preserving_limiter!, θ, ĉ, grid, scheme, c, U, Δt)
     fill_bottom_and_top_halo!(θ.data, θ.boundary_conditions, θ.indices, (Center(), Center(), Center()), grid)
     return nothing
 end
@@ -345,14 +396,14 @@ function update_bounds_preserving_limiters!(scheme::BoundsPreservingWENO, model,
     return update_flux_limiter!(scheme, model.grid, c, U, Δt)
 end
 
-# The scheme-wise hook of `update_advection!(scheme, model, tracer)` knows no tracer name, so an adaptive
-# weight transports with the model's `velocities`; a fixed weight needs neither velocities nor a time step.
+# The scheme-wise hook of `update_advection!(scheme, model, tracer)` knows no tracer name, so the limiter
+# transports with the model's `velocities`; a fixed weight needs no time step.
 update_bounds_preserving_limiter!(scheme, model, tracer) = nothing
 
 update_bounds_preserving_limiter!(scheme::FluxFormAdvection, model, tracer) = update_bounds_preserving_limiter!(scheme.z, model, tracer)
 
 update_bounds_preserving_limiter!(scheme::FixedWeightWENO, model, tracer) =
-    update_bounds_preserving_limiter!(scheme, model.grid, tracer, nothing, nothing)
+    update_bounds_preserving_limiter!(scheme, model.grid, tracer, model.velocities, nothing)
 
 function update_bounds_preserving_limiter!(scheme::AdaptiveWeightWENO, model, tracer)
     Δt = flux_limiter_timestep(model.timestepper, model.clock)
@@ -401,35 +452,50 @@ end
 @inline bounded_tracer_flux_divergence_y(i, j, k, ::AbstractGrid{FT, TX, Flat, TZ}, advection::BoundsPreservingWENO, args...) where {FT, TX, TZ} = zero(FT)
 @inline bounded_tracer_flux_divergence_z(i, j, k, ::AbstractGrid{FT, TX, TY, Flat}, advection::BoundsPreservingWENO, args...) where {FT, TX, TY} = zero(FT)
 
+# The rescaled upwind reconstruction at a face: read from the values the θ kernel stored, or, without them, computed
+# from the upwind reconstruction rescaled by θ of the upwind cell. In z the stored values are used only where the
+# boundary faces carry no flow (a Bounded z), because the θ kernel does not compute the cells below and above.
+@inline function upwind_face_value_x(i, j, k, grid, advection, ::Nothing, θ, ũ, c)
+    ĉ = _biased_interpolate_xᶠᵃᵃ(i, j, k, grid, advection, bias(ũ), c)
+    return ifelse(ũ > 0, rescaled_reconstruction(ĉ, i-1, j, k, grid, θ, c), rescaled_reconstruction(ĉ, i, j, k, grid, θ, c))
+end
+
+@inline function upwind_face_value_y(i, j, k, grid, advection, ::Nothing, θ, ṽ, c)
+    ĉ = _biased_interpolate_yᵃᶠᵃ(i, j, k, grid, advection, bias(ṽ), c)
+    return ifelse(ṽ > 0, rescaled_reconstruction(ĉ, i, j-1, k, grid, θ, c), rescaled_reconstruction(ĉ, i, j, k, grid, θ, c))
+end
+
+@inline function upwind_face_value_z(i, j, k, grid, advection, cache, θ, w̃, c)
+    ĉ = _biased_interpolate_zᵃᵃᶠ(i, j, k, grid, advection, bias(w̃), c)
+    return ifelse(w̃ > 0, rescaled_reconstruction(ĉ, i, j, k-1, grid, θ, c), rescaled_reconstruction(ĉ, i, j, k, grid, θ, c))
+end
+
+@inline upwind_face_value_x(i, j, k, grid, advection, ĉ::NamedTuple, θ, ũ, c) = @inbounds ĉ.x[i, j, k]
+@inline upwind_face_value_y(i, j, k, grid, advection, ĉ::NamedTuple, θ, ṽ, c) = @inbounds ĉ.y[i, j, k]
+@inline upwind_face_value_z(i, j, k, grid::AbstractGrid{<:Any, <:Any, <:Any, Bounded}, advection, ĉ::NamedTuple, θ, w̃, c) = @inbounds ĉ.z[i, j, k]
+
 # The advective flux of `c` through the face (i, j, k), weighted by the density `ρ` (`1` for `div_Uc`), built
-# from the upwind reconstruction only, rescaled by θ of the upwind cell. Both rescalings are evaluated and selected
-# with `ifelse` to keep the kernel branch-free; only the upwind reconstruction is computed.
+# from the upwind reconstruction only, rescaled by θ of the upwind cell.
 @inline function bounded_face_flux_x(i, j, k, grid, advection::BoundsPreservingWENO, ρ, u, c)
     θ = advection.bounds.reconstruction_limiter
     ũ = @inbounds u[i, j, k]
-    ĉ = _biased_interpolate_xᶠᵃᵃ(i, j, k, grid, advection, bias(ũ), c)
-    ĉᴸ = rescaled_reconstruction(ĉ, i-1, j, k, grid, θ, c)
-    ĉᴿ = rescaled_reconstruction(ĉ, i, j, k, grid, θ, c)
-    return ℑxᶠᵃᵃ(i, j, k, grid, ρ) * Axᶠᶜᶜ(i, j, k, grid) * ũ * ifelse(ũ > 0, ĉᴸ, ĉᴿ)
+    ĉ = upwind_face_value_x(i, j, k, grid, advection, advection.bounds.upwind_face_values, θ, ũ, c)
+    return ℑxᶠᵃᵃ(i, j, k, grid, ρ) * Axᶠᶜᶜ(i, j, k, grid) * ũ * ĉ
 end
 
 @inline function bounded_face_flux_y(i, j, k, grid, advection::BoundsPreservingWENO, ρ, v, c)
     θ = advection.bounds.reconstruction_limiter
     ũ = @inbounds v[i, j, k]
-    ĉ = _biased_interpolate_yᵃᶠᵃ(i, j, k, grid, advection, bias(ũ), c)
-    ĉᴸ = rescaled_reconstruction(ĉ, i, j-1, k, grid, θ, c)
-    ĉᴿ = rescaled_reconstruction(ĉ, i, j, k, grid, θ, c)
-    return ℑyᵃᶠᵃ(i, j, k, grid, ρ) * Ayᶜᶠᶜ(i, j, k, grid) * ũ * ifelse(ũ > 0, ĉᴸ, ĉᴿ)
+    ĉ = upwind_face_value_y(i, j, k, grid, advection, advection.bounds.upwind_face_values, θ, ũ, c)
+    return ℑyᵃᶠᵃ(i, j, k, grid, ρ) * Ayᶜᶠᶜ(i, j, k, grid) * ũ * ĉ
 end
 
 @inline function bounded_face_flux_z(i, j, k, grid, advection::BoundsPreservingWENO, ρ, w, c)
     θ = advection.bounds.reconstruction_limiter
     td = advection.time_discretization
     w̃ = @inbounds explicit_velocity_scaleᶜᶜᶠ(i, j, k, grid, advection, td, w) * w[i, j, k]
-    ĉ = _biased_interpolate_zᵃᵃᶠ(i, j, k, grid, advection, bias(w̃), c)
-    ĉᴸ = rescaled_reconstruction(ĉ, i, j, k-1, grid, θ, c)
-    ĉᴿ = rescaled_reconstruction(ĉ, i, j, k, grid, θ, c)
-    return ℑzᵃᵃᶠ(i, j, k, grid, ρ) * Azᶜᶜᶠ(i, j, k, grid) * w̃ * ifelse(w̃ > 0, ĉᴸ, ĉᴿ)
+    ĉ = upwind_face_value_z(i, j, k, grid, advection, advection.bounds.upwind_face_values, θ, w̃, c)
+    return ℑzᵃᵃᶠ(i, j, k, grid, ρ) * Azᶜᶜᶠ(i, j, k, grid) * w̃ * ĉ
 end
 
 @inline bounded_tracer_flux_divergence_x(i, j, k, grid, advection::BoundsPreservingWENO, ρ, u, c) =

@@ -109,7 +109,7 @@ end
                     fill_halo_regions!(field)
                 end
 
-                update_advection!(scheme, (; grid), c)
+                update_advection!(scheme, (; grid, velocities=U), c)
 
                 @test abs(sum(div_Uc(i, j, k, grid, scheme, U, c) * Vᶜᶜᶜ(i, j, k, grid)
                               for i in 1:N, j in 1:N, k in 1:N)) < 1e-12
@@ -329,7 +329,7 @@ end
             minimum_fraction = 1.0
             cᵐⁱⁿ, cᵐᵃˣ = 0.0, 1.0
             for step in 1:20
-                update_advection!(scheme, (; grid), c)
+                update_advection!(scheme, (; grid, velocities=U), c)
                 update_flux_limiter!(scheme, grid, c, U, 1)
                 limiter = scheme.bounds.flux_limiter
                 isnothing(limiter) || (minimum_fraction = min(minimum_fraction, minimum(interior(limiter.outgoing_fraction))))
