@@ -15,6 +15,7 @@ export
     VectorInvariant, WENOVectorInvariant,
     FluxFormAdvection,
     AdaptiveImplicitVerticalAdvection,
+    BoundsPreservation, FluxLimiter,
     update_advection!,
     EnergyConserving,
     EnstrophyConserving
@@ -84,6 +85,7 @@ include("momentum_advection_operators.jl")
 include("curvature_metric_terms.jl")
 include("tracer_advection_operators.jl")
 include("bounds_preserving_tracer_advection_operators.jl")
+include("flux_limiter.jl")
 include("cell_advection_timescale.jl")
 include("adapt_advection_order.jl")
 include("materialize_advection.jl")

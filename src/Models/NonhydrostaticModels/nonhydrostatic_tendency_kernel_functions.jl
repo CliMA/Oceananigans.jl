@@ -303,3 +303,9 @@ velocity components, tracer fields, and precalculated closure_fields where appli
              + bgc_tendency
              + forcing(i, j, k, grid, clock, model_fields))
 end
+
+# The velocities `tracer_tendency` advects the tracer `name` with, for the flux limiter.
+Advection.tracer_transport_velocities(model::NonhydrostaticModel, val_tracer_name::Val{name}) where name =
+    with_advective_forcing(model.forcing[name],
+                           sum_of_velocities(model.velocities, model.background_fields.velocities,
+                                             biogeochemical_drift_velocity(model.biogeochemistry, val_tracer_name)))
