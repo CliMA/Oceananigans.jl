@@ -665,7 +665,6 @@ end
 xz_reduced_boundary_condition(condition, dim) = condition
 xz_reduced_boundary_condition(condition::XZReducedField, dim) = BoundaryConditions.xz_reduced_condition(condition, dim)
 
-# `XZReducedField` also matches a field reduced in every direction, whose `getbc` reads its one point on any boundary
 xz_reduced_boundary_condition(condition::XYZReducedField, dim) = condition
 
 boundary_plane(::Type{LeftBoundary},  condition, dim) = 1

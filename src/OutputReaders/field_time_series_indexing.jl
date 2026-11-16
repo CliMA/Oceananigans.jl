@@ -244,7 +244,6 @@ end
 BoundaryConditions.regularize_boundary_condition(f::YFTS, grid, loc, dim, args...) =
     BoundaryConditions.xz_reduced_condition(f, Val(dim))
 
-# `YFTS` also matches a series reduced in every direction, whose `getbc` reads its one point on any boundary
 BoundaryConditions.regularize_boundary_condition(f::FTS0, grid, loc, dim, args...) = f
 
 # West - east and south - north boundary conditions, only the last index is valid (the first one is either i or j)
