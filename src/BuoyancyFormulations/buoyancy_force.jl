@@ -1,8 +1,8 @@
 using Oceananigans.Architectures: architecture
-using Oceananigans.Utils: launch!
+using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields: XFaceField, YFaceField, ZFaceField
 using Oceananigans.Grids: NegativeZDirection, validate_unit_vector
-using Oceananigans.BoundaryConditions: fill_halo_regions!
+using Oceananigans.Utils: launch!
 
 using KernelAbstractions: @kernel, @index
 using Adapt: Adapt

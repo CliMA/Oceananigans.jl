@@ -468,7 +468,7 @@ end
 end
 
 """
-$(MethodSignatures(; defaults = true))
+$(SIGNATURES)
 
 Stencils for WENO reconstruction calculations
 

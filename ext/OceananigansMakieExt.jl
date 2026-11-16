@@ -3,17 +3,16 @@ module OceananigansMakieExt
 export geo_surface!, geo_surface, spherical_coordinates
 
 using Oceananigans
-using Oceananigans.Grids: AbstractGrid, OrthogonalSphericalShellGrid, LatitudeLongitudeGrid,
-                          topology, xnode, ynode, znode, λnode, φnode, λnodes, φnodes
-using Oceananigans.Fields: AbstractField, location, interior
 using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Architectures: on_architecture, architecture
+using Oceananigans.Fields: AbstractField, location, interior
+using Oceananigans.Grids: AbstractGrid, OrthogonalSphericalShellGrid, LatitudeLongitudeGrid,
+                          topology, xnode, ynode, znode, λnode, φnode, λnodes, φnodes
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 using Oceananigans.MultiRegion: YinYangField, owned_weights
+using Oceananigans.Utils: SIGNATURES
 
 import Oceananigans: quadmesh, quadmesh!   # extend the main-package stubs
-
-using DocStringExtensions: MethodSignatures
 
 using Makie: Observable, AbstractPlot, Axis, Axis3, Figure, NoShading, @lift,
              Point, GLTriangleFace, mesh!, lines!
@@ -244,7 +243,7 @@ end
 #####
 
 """
-$(MethodSignatures(; defaults = true))
+$(SIGNATURES)
 
 Convert longitude `λ` (degrees), latitude `φ` (degrees), and radius `r` to
 Cartesian coordinates `(x, y, z)` for 3D plotting on a sphere.
@@ -420,7 +419,7 @@ function geo_surface!(ax, f::Field; kwargs...)
 end
 
 """
-$(MethodSignatures(; defaults = true))
+$(SIGNATURES)
 
 Plot 2D `data` on a 3D sphere using coordinates from `grid`.
 
@@ -648,7 +647,7 @@ quadmesh!(ax, xc::AbstractMatrix, yc::AbstractMatrix, vals; kw...) = build_quadm
 quadmesh!(ax, xc::AbstractMatrix, yc::AbstractMatrix, zc::AbstractMatrix, vals; kw...) = build_quadmesh!(ax, (xc, yc, zc), vals; kw...)
 
 """
-$(MethodSignatures(; defaults = true))
+$(SIGNATURES)
 
 Non-mutating [`quadmesh!`](@ref): build a `Figure` and `Axis`, draw, return
 `(figure, axis, plot)`.
@@ -808,7 +807,7 @@ function wireframe_lines!(ax, coords...; kwargs...)
 end
 
 """
-$(MethodSignatures(; defaults = true))
+$(SIGNATURES)
 
 Draw `grid` itself as a wireframe — cell edges, no fill — from the same corners
 `quadmesh!` would fill. A spherical grid is drawn as a 3-D shell graticule (use an
