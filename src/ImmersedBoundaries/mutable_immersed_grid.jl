@@ -238,8 +238,9 @@ end
 #####
 
 # Pressure is integrated on the underlying grid, and ∂z vanishes on peripheral faces
+@inline active_∂z(i, j, k, grid, args...) = ifelse(peripheral_node(i, j, k, grid, c, c, f), zero(grid), ∂zᶜᶜᶠ(i, j, k, grid.underlying_grid, args...))
+
 @inline function Operators.ℑxzᶠᵃᶜ(i, j, k, grid::MutableImmersedTopGrid, ::typeof(∂zᶜᶜᶠ), args...)
-    active_∂z = (i, j, k, grid, args...) -> ifelse(peripheral_node(i, j, k, grid, c, c, f), zero(grid), ∂zᶜᶜᶠ(i, j, k, grid.underlying_grid, args...))
     N = ℑxzᶠᵃᶜ(i, j, k, grid, not_peripheral_node, c, c, f)
     return ifelse(N == 0, zero(grid), ℑxzᶠᵃᶜ(i, j, k, grid, active_∂z, args...) / N)
 end
@@ -323,9 +324,7 @@ end
 ##### Chain-rule-correct y-derivatives: ∂ϕ/∂y|_z = ∂ϕ/∂y|_r - (∂z/∂y|_r)(∂ϕ/∂z)
 #####
 
-# Pressure is integrated on the underlying grid, and ∂z vanishes on peripheral faces
 @inline function Operators.ℑyzᵃᶠᶜ(i, j, k, grid::MutableImmersedTopGrid, ::typeof(∂zᶜᶜᶠ), args...)
-    active_∂z = (i, j, k, grid, args...) -> ifelse(peripheral_node(i, j, k, grid, c, c, f), zero(grid), ∂zᶜᶜᶠ(i, j, k, grid.underlying_grid, args...))
     N = ℑyzᵃᶠᶜ(i, j, k, grid, not_peripheral_node, c, c, f)
     return ifelse(N == 0, zero(grid), ℑyzᵃᶠᶜ(i, j, k, grid, active_∂z, args...) / N)
 end
