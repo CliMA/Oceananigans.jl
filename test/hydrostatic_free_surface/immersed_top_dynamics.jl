@@ -113,7 +113,11 @@ function test_immersed_top_zstar_conservation(FT, arch)
     for VerticalBoundaries in (GridFittedVerticalBoundaries, PartialCellVerticalBoundaries)
         ibg = ImmersedBoundaryGrid(underlying_grid, VerticalBoundaries(bottom_height=-4.5, top_height=top))
 
-        for (free_surface, Δt) in ((ExplicitFreeSurface(), 10), (SplitExplicitFreeSurface(ibg; substeps=8), 2minutes))
+        free_surfaces = ((ExplicitFreeSurface(), 10),
+                         (SplitExplicitFreeSurface(ibg; substeps=8), 2minutes),
+                         (SplitExplicitFreeSurface(ibg; substeps=8, extend_halos=false), 2minutes))
+
+        for (free_surface, Δt) in free_surfaces
             model = HydrostaticFreeSurfaceModel(ibg; free_surface,
                                                 tracers = (:b, :c, :constant),
                                                 timestepper = :SplitRungeKutta3,
@@ -170,6 +174,7 @@ function test_immersed_top_zstar_freshwater_flux(FT, arch)
         ibg = ImmersedBoundaryGrid(underlying_grid, VerticalBoundaries(bottom_height=-4.5, top_height=top))
         free_surfaces = ((ExplicitFreeSurface(), 10),
                          (SplitExplicitFreeSurface(ibg; substeps=8), 2minutes),
+                         (SplitExplicitFreeSurface(ibg; substeps=8, extend_halos=false), 2minutes),
                          (ImplicitFreeSurface(), 2minutes))
 
         for (free_surface, Δt) in free_surfaces
