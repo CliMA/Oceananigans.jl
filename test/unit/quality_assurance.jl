@@ -84,7 +84,7 @@ using Reactant: Reactant
 
 # Checks that fail today; fixing an extension makes its check pass unexpectedly and must remove it here
 broken_extension_checks = Dict(:OceananigansEnzymeExt   => (:implicit, :stale, :qualified),
-                               :OceananigansMakieExt    => (:implicit, :owners, :stale),
+                               :OceananigansMakieExt    => (:implicit, :owners),
                                :OceananigansMetalExt    => (:stale,),
                                :OceananigansNCCLExt     => (:implicit, :stale, :qualified),
                                :OceananigansReactantExt => (:implicit, :owners, :stale, :qualified))
