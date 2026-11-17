@@ -11,9 +11,8 @@ Extension that adds NetCDF (via NCDatasets.jl) read/write support to Oceananigan
 """
 module OceananigansNCDatasetsExt
 
-import NCDatasets
-using NCDatasets: NCDataset, defDim, defGroup, dimnames, name, sync
-using NCDatasets.CommonDataModel: AbstractDataset
+using NCDatasets: NCDataset, defDim, defGroup, defVar, dimnames, name, sync
+using NCDatasets.CommonDataModel: CommonDataModel, AbstractDataset
 using NCDatasets.DiskArrays: AbstractDiskArray
 
 using Dates: AbstractTime, UTC, now, DateTime
@@ -21,27 +20,25 @@ using Printf: @sprintf
 using OrderedCollections: OrderedDict
 using Statistics: mean
 
-import Oceananigans
-
-using Oceananigans: prettytime, pretty_filesize, AbstractModel
+using Oceananigans: Oceananigans, prettytime, pretty_filesize, AbstractModel, initialize!
 using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Architectures: Architectures, CPU, GPU, architecture, on_architecture
-import Oceananigans.Fields
 using Oceananigans.Fields: Fields, AbstractField, Field, data, interior, set!, Reduction, location, indices
 using Oceananigans.Grids:
     Center, Face, TwoSided, grid, nodes, constructor_arguments,
-    generate_coordinate, validate_topology, AbstractVerticalCoordinate
+    generate_coordinate, validate_topology, AbstractVerticalCoordinate, OrthogonalSphericalShellGrid
 using Oceananigans.OrthogonalSphericalShellGrids:
     TripolarGrid, RotatedLatitudeLongitudeGrid,
     Tripolar, LatitudeLongitudeRotation,
     conformal_mapping_info
-using Oceananigans.Grids: OrthogonalSphericalShellGrid
 using Oceananigans.ImmersedBoundaries:
     ImmersedBoundaryGrid, GridFittedBottom, GridFittedBoundary, PartialCellBottom,
     GridFittedVerticalBoundaries, PartialCellVerticalBoundaries,
     CenterImmersedCondition, InterfaceImmersedCondition, bottom_height_field
 using Oceananigans.Models: LagrangianParticles
 using Oceananigans.OutputReaders:
+    OutputReaders,
+    FieldTimeSeries,
     auto_extension,
     InMemoryFTS,
     time_indices,
@@ -52,6 +49,13 @@ using Oceananigans.OutputReaders:
     UnspecifiedBoundaryConditions,
     NetCDFPath
 using Oceananigans.OutputWriters:
+    OutputWriters,
+    NetCDFWriter,
+    write_grid_reconstruction_data!,
+    convert_for_netcdf,
+    materialize_from_netcdf,
+    reconstruct_grid,
+    trilocation_dim_name,
     output_averaging_schedule,
     show_averaging_schedule,
     WindowedTimeAverage,
@@ -83,17 +87,6 @@ using Oceananigans.OutputWriters:
 using Oceananigans.Utils:
     materialize_schedule, versioninfo_with_gpu, oceananigans_versioninfo, prettykeys,
     time_difference_in_seconds
-
-import NCDatasets: defVar
-import Oceananigans: initialize!, write_output!
-import Oceananigans.OutputReaders: FieldTimeSeries, set_from_netcdf!
-import Oceananigans.OutputWriters:
-    NetCDFWriter,
-    write_grid_reconstruction_data!,
-    convert_for_netcdf,
-    materialize_from_netcdf,
-    reconstruct_grid,
-    trilocation_dim_name
 
 const c = Center()
 const f = Face()
