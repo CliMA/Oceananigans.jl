@@ -1,9 +1,8 @@
+using Oceananigans: prognostic_state, restore_prognostic_state!
 using Oceananigans.Architectures: architecture
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields: CenterField, Field, compute!, interpolate, xnode, ynode, znode
 using Statistics: mean
-
-using Oceananigans: prognostic_state, restore_prognostic_state!
 
 mutable struct DynamicCoefficient{A, FT, S}
     averaging :: A
@@ -21,7 +20,7 @@ const DynamicSmagorinsky = Union{
 }
 
 """
-$(MethodSignatures(; defaults = true))
+$(SIGNATURES)
 
 Returns a `Smagorinsky`-type closure with dynamic computation of the Smagorinsky coefficient
 according to the scale invariant procedure described by [Bou-Zeid et al. (2005)](@cite BouZeid05).
@@ -129,7 +128,7 @@ tupleit(a::Number) = tuple(a)
 tupleit(a::Tuple) = a
 
 """
-$(MethodSignatures(; defaults = true))
+$(SIGNATURES)
 
 When used with `Smagorinsky`, it calculates the Smagorinsky coefficient dynamically from the flow
 according to the scale invariant procedure described by [Bou-Zeid et al. (2005)](@cite BouZeid05).

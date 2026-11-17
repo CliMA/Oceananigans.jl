@@ -5,18 +5,17 @@ export constant_with_arch
 using Reactant
 using Reactant: TracedRArray
 using OffsetArrays
-using Oceananigans.Utils: StaticStridesOffsetArray
 
 using Oceananigans
 using Oceananigans: Distributed
 using Oceananigans.Architectures: ReactantState, CPU
-using Oceananigans.Grids: AbstractGrid, AbstractUnderlyingGrid, StaticVerticalDiscretization, MutableVerticalDiscretization
-using Oceananigans.Grids: LatitudeLongitudeGrid, RectilinearGrid, OrthogonalSphericalShellGrid
-using Oceananigans.Utils: unparameterized_type
-using Oceananigans.Grids: Center, Face, Periodic, TwoSided, Bounded, Closed, Connected, Flat, FaceExtendedTopology
 using Oceananigans.Fields: Field
+using Oceananigans.Grids: AbstractGrid, AbstractUnderlyingGrid, StaticVerticalDiscretization, MutableVerticalDiscretization,
+                          LatitudeLongitudeGrid, RectilinearGrid, OrthogonalSphericalShellGrid,
+                          Center, Face, Periodic, TwoSided, Bounded, Closed, Connected, Flat, FaceExtendedTopology
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedVerticalBoundaries, AbstractImmersedBoundary
 using Oceananigans.OrthogonalSphericalShellGrids: TripolarGrid
+using Oceananigans.Utils: StaticStridesOffsetArray, unparameterized_type
 
 using ..OceananigansReactantExt: OceananigansReactantExt, deconcretize
 
@@ -95,7 +94,7 @@ reactant_offset_indices(ℓ,         topo, N, H, r::AbstractUnitRange) = r
 reactant_offset_indices(::Nothing, topo, N, H, ::AbstractUnitRange) = 1:1
 
 function Oceananigans.Grids.new_data(FT::DataType, arch::ShardedDistributed,
-        loc, topo, sz, halo_sz, indices=default_indices(length(loc)))
+                                     loc, topo, sz, halo_sz, indices=default_indices(length(loc)))
 
     Tsz = reactant_total_size(loc, topo, sz, halo_sz, indices)
     underlying_data = zeros(arch, FT, Tsz...)

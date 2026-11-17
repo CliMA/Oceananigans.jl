@@ -1,8 +1,6 @@
 using Oceananigans.BoundaryConditions: DistributedFillHalo, WestAndEast, SouthAndNorth,
                                        West, East, South, North, BottomAndTop, Bottom, Top
 
-import Oceananigans.DistributedComputations: synchronize_communication!
-
 #####
 ##### NCCLCommunicator
 #####
@@ -144,7 +142,7 @@ end
 ##### Waits for async NCCL comm_stream to complete, then unpacks recv buffers.
 #####
 
-function synchronize_communication!(field::NCCLDistributedField)
+function DC.synchronize_communication!(field::NCCLDistributedField)
     arch = DC.architecture(field.grid)
 
     # Synchronize when using heterogeneous NCCL/MPI

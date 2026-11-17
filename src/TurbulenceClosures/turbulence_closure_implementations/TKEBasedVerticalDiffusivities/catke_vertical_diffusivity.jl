@@ -62,7 +62,7 @@ const FlavorOfCATKE{TD} = Union{CATKEVD{TD}, CATKEVDArray{TD}} where TD
 TurbulenceClosures.with_penetrative_radiation(closures::CATKEVDArray, radiation) = map(closure -> with_penetrative_radiation(closure, radiation), closures)
 
 """
-$(MethodSignatures(; defaults = true))
+$(SIGNATURES)
 
 Return the `CATKEVerticalDiffusivity` turbulence closure for vertical mixing by
 small-scale ocean turbulence based on the prognostic evolution of subgrid

@@ -11,7 +11,6 @@ using Oceananigans.DistributedComputations:
     local_size,
     ranks
 using Oceananigans.Fields: Field, validate_boundary_conditions, validate_field_data, validate_indices
-
 using Oceananigans.Grids: Bounded, Connected, DistributedFoldedTopology, FaceFoldConnected, FaceFolded,
                           PencilFoldedTopology, RightFaceFolded, SlabFoldedTopology, TwoSided, topology
 using Oceananigans.Utils: Utils, StaticStridesOffsetArray
