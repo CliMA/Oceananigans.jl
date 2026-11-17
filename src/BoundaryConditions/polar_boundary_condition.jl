@@ -26,6 +26,27 @@ end
 
 const PolarBoundaryCondition = Union{PolarValueBoundaryCondition, PolarNormalFlowBoundaryCondition}
 
+"""
+$(TYPEDSIGNATURES)
+
+Return `bcs` with a new pole-value buffer for every polar boundary condition.
+Fields that share `bcs` and whose halos are filled concurrently need separate buffers,
+because each fill writes its pole average into the buffer before reading it back.
+"""
+with_separate_pole_values(bcs::FieldBoundaryConditions) =
+    FieldBoundaryConditions(with_separate_pole_values(bcs.west),
+                            with_separate_pole_values(bcs.east),
+                            with_separate_pole_values(bcs.south),
+                            with_separate_pole_values(bcs.north),
+                            with_separate_pole_values(bcs.bottom),
+                            with_separate_pole_values(bcs.top),
+                            with_separate_pole_values(bcs.immersed))
+
+with_separate_pole_values(bc::PolarBoundaryCondition) =
+    BoundaryCondition(bc.classification, PolarValue(similar(bc.condition.data), bc.condition.side))
+
+with_separate_pole_values(bc) = bc
+
 maybe_polar_boundary_condition(grid, side, ::Nothing, ℓz::LZ) where LZ = nothing
 maybe_polar_boundary_condition(grid, side, ::Center,  ℓz::LZ) where LZ = PolarValueBoundaryCondition(grid, side, LZ)
 maybe_polar_boundary_condition(grid, side, ::Face,    ℓz::LZ) where LZ = PolarNormalFlowBoundaryCondition(grid, side, LZ)

@@ -469,6 +469,24 @@ end
         @test model.clock.iteration == 1
     end
 
+    @testset "Polar boundary conditions on a FieldTimeSeries [$(typeof(arch))]" for arch in archs
+        grid = LatitudeLongitudeGrid(arch; size=(1440, 160, 1), latitude=(50, 90), longitude=(0, 360), z=(0, 1))
+        Nx, Ny, Nz = size(grid)
+        Nt = 24
+        fts = FieldTimeSeries{Center, Center, Center}(grid, 1:Nt)
+        @test fts.boundary_conditions.north isa Oceananigans.BoundaryConditions.PolarValueBoundaryCondition
+
+        # The slots share boundary conditions and are filled concurrently, so repeat to expose a race
+        for trial in 1:10
+            for n in 1:Nt
+                set!(fts[n], n)
+            end
+            fill_halo_regions!(fts)
+            north_halos = [Array(parent(fts[n]))[grid.Hx+1:grid.Hx+Nx, grid.Hy+Ny+1, grid.Hz+1:grid.Hz+Nz] for n in 1:Nt]
+            @test all(all(north_halos[n] .== n) for n in 1:Nt)
+        end
+    end
+
     @testset "Windowed Field boundary conditions [$(typeof(arch))]" for arch in archs
         @info "  Testing windowed Field boundary conditions [$(typeof(arch))]..."
 

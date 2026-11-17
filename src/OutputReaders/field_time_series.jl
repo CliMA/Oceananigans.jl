@@ -10,7 +10,8 @@ using OffsetArrays: OffsetArrays
 using Statistics: Statistics, mean
 
 using Oceananigans.Architectures: Architectures, CPU, GPU, on_architecture
-using Oceananigans.BoundaryConditions: BoundaryConditions, fill_halo_regions!, FieldBoundaryConditions
+using Oceananigans.BoundaryConditions: BoundaryConditions, fill_halo_regions!, FieldBoundaryConditions,
+                                      with_separate_pole_values
 using Oceananigans.Fields: Fields, AbstractField, compute!, data, field, interior,
                            interior_view_indices, indices_summary, instantiate
 using Oceananigans.Grids: Grids, Center, Flat, grid, offset_data,
@@ -1090,6 +1091,10 @@ end
 
 const MAX_FTS_TUPLE_SIZE = 10
 
+with_boundary_conditions(field, bcs) =
+    Field(instantiated_location(field), field.grid; data = field.data, boundary_conditions = bcs,
+          indices = field.indices, status = field.status)
+
 BoundaryConditions.fill_halo_regions!(fts::OnDiskFTS) = nothing
 
 function BoundaryConditions.fill_halo_regions!(fts::InMemoryFTS)
@@ -1098,7 +1103,8 @@ function BoundaryConditions.fill_halo_regions!(fts::InMemoryFTS)
 
     asyncmap(1:Ni) do i
         indices = partitioned_indices[i]
-        fts_tuple = Tuple(fts[n] for n in indices)
+        bcs = with_separate_pole_values(fts.boundary_conditions)
+        fts_tuple = Tuple(with_boundary_conditions(fts[n], bcs) for n in indices)
         fill_halo_regions!(fts_tuple)
     end
 
