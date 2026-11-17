@@ -1,7 +1,7 @@
 using Oceananigans.BoundaryConditions: BoundaryCondition, Zipper, UPivot, TPivot, FPivot, NoFluxBoundaryCondition
 using Oceananigans.Grids: Grids, Bounded, Closed, Flat, OrthogonalSphericalShellGrid, Periodic, RectilinearGrid, TwoSided,
-    architecture, cpu_face_constructor_z, validate_dimension_specification,
-    CenterFolded, FaceFolded, new_data, topology
+                          architecture, cpu_face_constructor_z, validate_dimension_specification,
+                          CenterFolded, FaceFolded, new_data, topology
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 
 """
@@ -38,7 +38,7 @@ const TripolarGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} = OrthogonalSpheric
 const TripolarGridOfSomeKind{FT, TX, TY, TZ} = Union{TripolarGrid{FT, TX, TY, TZ}, ImmersedBoundaryGrid{FT, TX, TY, TZ, <:TripolarGrid}}
 
 """
-$(MethodSignatures(; defaults = true))
+$(SIGNATURES)
 
 Return an `OrthogonalSphericalShellGrid` tripolar grid on the sphere. The
 tripolar grid replaces the North Pole singularity with two other singularities

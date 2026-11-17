@@ -21,7 +21,7 @@ end
 Base.getindex(dsrc::ExponentialDiscretization, i) = @inbounds dsrc.faces[i]
 
 """
-$(MethodSignatures(; defaults = true))
+$(SIGNATURES)
 
 Return a one-dimensional discretization with `N` cells that are exponentially spaced
 (or, equivalently, with spacings that grow linearly along the coordinate).
@@ -113,9 +113,9 @@ x = ExponentialDiscretization(N, l, r, bias=:left)
 ```
 """
 function ExponentialDiscretization(size::Int, left, right;
-                          scale = (right - left) / 5,
-                          bias = :right,
-                          mutable = false)
+                                   scale = (right - left) / 5,
+                                   bias = :right,
+                                   mutable = false)
 
     discretization = ExponentialDiscretization(size, left, right, scale, bias)
 
@@ -304,7 +304,7 @@ function compute_stretched_interfaces(; extent,
 end
 
 """
-$(MethodSignatures(; defaults = true))
+$(SIGNATURES)
 
 Return a one-dimensional coordinate that has `constant_spacing` over a `constant_spacing_extent`
 on the `bias`-side of the domain.

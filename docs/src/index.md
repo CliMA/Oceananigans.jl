@@ -137,6 +137,10 @@ the features they describe! Also, if you have developed a new feature in Oceanan
 
 If you have work using Oceananigans that you would like to have listed here, please open a pull request to add it or let us know!
 
+1. Whitley, V., Wenegrat, J. O., and Thomas, L. N. (2026). [Submesoscale dynamics of dense overflows. Part II: Near-inertial wave trapping and reflection](https://doi.org/10.31223/X5BC09), _EarthArXiv preprint_. DOI: [10.31223/X5BC09](https://doi.org/10.31223/X5BC09)
+
+1. Whitley, V., Wenegrat, J. O., and Thomas, L. N. (2026). [Submesoscale dynamics of dense overflows. Part I: Potential vorticity fluxes and symmetric instability](https://doi.org/10.31223/X5G527), _EarthArXiv preprint_. DOI: [10.31223/X5G527](https://doi.org/10.31223/X5G527)
+
 1. Zheng, Z., Wenegrat, J. O., Fox-Kemper, B., Chor, T., and Brett, G. J. (2026). [Submesoscale frontogenesis drives strong finescale tracer subduction](https://doi.org/10.1029/2026JC024594), _Journal of Geophysical Research: Oceans_, **131(10)**, e2026JC024594. DOI: [10.1029/2026JC024594](https://doi.org/10.1029/2026JC024594)
 
 1. Baker, L. E. (2026). [Online and offline Lagrangian filtering with PDEs: Theoretical framework and implementation in OceananigansLagrangianFilter.jl](https://doi.org/10.22541/essoar.15010660/v1), _ESS Open Archive_. DOI: [10.22541/essoar.15010660/v1](https://doi.org/10.22541/essoar.15010660/v1)
