@@ -80,13 +80,13 @@ function time_step_tke_dissipation_equations!(model, Δt)
                        model.closure_fields, Val(e_index),
                        model.clock,
                        fields(model),
-                       Δτ)
+                       Δτ; forcing = model.forcing.e)
 
         implicit_step!(ϵ, implicit_solver, closure,
                        model.closure_fields, Val(ϵ_index),
                        model.clock,
                        fields(model),
-                       Δτ)
+                       Δτ; forcing = model.forcing.ϵ)
     end
 
     return nothing

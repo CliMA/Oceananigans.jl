@@ -81,6 +81,7 @@ export
     TKEDissipationVerticalDiffusivity,
     RiBasedVerticalDiffusivity,
     ExplicitTimeDiscretization,
+    ImplicitTimeDiscretization,
     VerticallyImplicitTimeDiscretization,
     AdaptiveVerticallyImplicitDiscretization,
     viscosity, diffusivity,

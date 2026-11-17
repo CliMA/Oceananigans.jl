@@ -53,6 +53,14 @@ materialize_forcing(mf::MultipleForcings, args...) = materialize_forcing(mf.forc
     end
 end
 
+@inline implicit_forcing_coefficient(i, j, k, grid, forcing, clock, model_fields) = zero(grid)
+
+@inline implicit_forcing_coefficient(i, j, k, grid, mf::MultipleForcings, clock, model_fields) =
+    sum(forcing -> implicit_forcing_coefficient(i, j, k, grid, forcing, clock, model_fields), mf.forcings)
+
+BoundaryConditions.needs_implicit_solver(forcings::Tuple) = any(needs_implicit_solver, forcings)
+BoundaryConditions.needs_implicit_solver(mf::MultipleForcings) = needs_implicit_solver(mf.forcings)
+
 Base.summary(mf::MultipleForcings) = string("MultipleForcings with ", length(mf.forcings), " forcing",
                                             ifelse(length(mf.forcings) > 1, "s", ""))
 

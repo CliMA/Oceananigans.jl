@@ -33,6 +33,16 @@ struct VerticallyImplicitTimeDiscretization <: AbstractTimeDiscretization end
 
 Base.summary(::VerticallyImplicitTimeDiscretization) = "VerticallyImplicitTimeDiscretization"
 
+"""
+    struct ImplicitTimeDiscretization <: AbstractTimeDiscretization
+
+A time-discretization for a pointwise linear term, such as the decay of a `Relaxation`,
+that is integrated with backward Euler.
+"""
+struct ImplicitTimeDiscretization <: AbstractTimeDiscretization end
+
+Base.summary(::ImplicitTimeDiscretization) = "ImplicitTimeDiscretization"
+
 struct AdaptiveVerticallyImplicitDiscretization{FT, R} <: AbstractTimeDiscretization
     cfl :: FT
     Δt  :: R

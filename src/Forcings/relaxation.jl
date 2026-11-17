@@ -17,24 +17,25 @@ Base.summary(::T_zerofunction) = "0"
 Base.summary(::T_onefunction) = "1"
 
 """
-    struct Relaxation{R, F, M, T, L, Tr}
+    struct Relaxation{R, F, M, T, L, Tr, TD}
 
 Callable object for restoring fields to a `target` at some `rate` and within a
 `mask`ed region in `x, y, z`. The `F` parameter (the `relaxed` quantity) sits
-second because the kernel dispatches on it. The trailing parameters `L` and
-`Tr` carry the instantiated `location` and user-supplied `transform`. After
+second because the kernel dispatches on it. The trailing parameters `L`, `Tr` and `TD`
+carry the instantiated `location`, the user-supplied `transform` and the `time_discretization`. After
 `materialize_forcing` runs, `relaxed` is the forced field (or, when `transform`
 is set, a `Field` holding `transform(forced_field)`); `location` and
 `transform` carry their materialized values. All three are `nothing` for a
 freshly-constructed `Relaxation`.
 """
-struct Relaxation{R, F, M, T, L, Tr}
-         rate :: R
-      relaxed :: F
-         mask :: M
-       target :: T
-     location :: L
-    transform :: Tr
+struct Relaxation{R, F, M, T, L, Tr, TD}
+                   rate :: R
+                relaxed :: F
+                   mask :: M
+                 target :: T
+               location :: L
+              transform :: Tr
+    time_discretization :: TD
 end
 
 """
@@ -68,6 +69,11 @@ of the forced field — e.g. its horizontal average — toward a target profile.
 supported `Symbol` is `:horizontal_average`, equivalent to
 `f -> Field(Average(f, dims=(1, 2)))`. Transformed quantities are recomputed each
 step via `compute_forcing!`. `transform` is not supported with a `FieldTimeSeries` target.
+
+With `time_discretization = ImplicitTimeDiscretization()` the decay `- rate * mask * field` is integrated
+by the vertical tridiagonal solver, with backward Euler over each time step or substep, while
+`rate * mask * target` stays explicit. The relaxation is then stable for any `rate * Δt`.
+This requires a grid that is `Bounded` in `z`, a constant `rate` and no `transform`.
 
 Example
 =======
@@ -108,9 +114,29 @@ Relaxation{Float64}
 ├──   mask: exp(-(z + 100.0)^2 / (2 * 25.0^2))
 └── target: 20.0 + 0.001 * z
 ```
+
+* Reset a field to zero much faster than the time step can resolve.
+
+```jldoctest relaxation
+reset = Relaxation(rate = 1e3, time_discretization = ImplicitTimeDiscretization())
+
+# output
+Relaxation{Float64}
+├──                rate: 1000.0
+├──                mask: 1
+├──              target: 0
+└── time_discretization: ImplicitTimeDiscretization
+```
 """
-Relaxation(; rate, mask=onefunction, target=zerofunction, transform=nothing) =
-    Relaxation(rate, nothing, mask, target, nothing, transform)
+function Relaxation(; rate, mask=onefunction, target=zerofunction, transform=nothing,
+                      time_discretization::Union{ExplicitTimeDiscretization, ImplicitTimeDiscretization}=ExplicitTimeDiscretization())
+    if time_discretization isa ImplicitTimeDiscretization && !(rate isa Number && isnothing(transform))
+        throw(ArgumentError("an implicit Relaxation requires a constant rate and no transform"))
+    end
+    return Relaxation(rate, nothing, mask, target, nothing, transform, time_discretization)
+end
+
+const ImplicitRelaxation = Relaxation{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:ImplicitTimeDiscretization}
 
 apply_transform(t,          field) = t(field)
 apply_transform(s::Symbol,  field) = apply_transform(Val(s), field)
@@ -127,6 +153,17 @@ apply_transform(::Val{S}, field) where S =
     μ  = evaluate_mask(i, j, k, grid, r.mask, r.location)
     return r.rate * μ * (ϕᵣ - ϕ)
 end
+
+@inline function (r::Relaxation{R, F, <:Any, <:Any, <:Any, <:Any, <:ImplicitTimeDiscretization})(i, j, k, grid, clock, model_fields) where {R, F<:AbstractArray}
+    ϕᵣ = evaluate_target(i, j, k, grid, r.target, r.location, clock.time)
+    μ  = evaluate_mask(i, j, k, grid, r.mask, r.location)
+    return r.rate * μ * ϕᵣ
+end
+
+# A sink has a negative coefficient
+@inline implicit_forcing_coefficient(i, j, k, grid, r::ImplicitRelaxation, clock, model_fields) = -r.rate * evaluate_mask(i, j, k, grid, r.mask, r.location)
+
+BoundaryConditions.needs_implicit_solver(::ImplicitRelaxation) = true
 
 """
     InterpolatedFieldTarget(field, loc, grid)
@@ -218,7 +255,7 @@ function materialize_forcing(forcing::Relaxation, field, field_name, model_field
     mask = materialize_mask(forcing.mask, field)
     relaxed = isnothing(forcing.transform) ? field : apply_transform(forcing.transform, field)
     return Relaxation(forcing.rate, relaxed, mask, target,
-                      instantiated_location(field), forcing.transform)
+                      instantiated_location(field), forcing.transform, forcing.time_discretization)
 end
 
 function materialize_forcing(forcing::Relaxation{<:Any, <:Any, <:Any, <:FlavorOfFTS}, field,
@@ -228,7 +265,7 @@ function materialize_forcing(forcing::Relaxation{<:Any, <:Any, <:Any, <:FlavorOf
     validate_fts_target_extent(forcing.target, field)
     target = FieldTimeSeriesTarget(forcing.target, forcing.target.grid)
     mask = materialize_mask(forcing.mask, field)
-    return Relaxation(forcing.rate, field, mask, target, instantiated_location(field), nothing)
+    return Relaxation(forcing.rate, field, mask, target, instantiated_location(field), nothing, forcing.time_discretization)
 end
 
 function validate_fts_target_extent(fts, field)
@@ -267,7 +304,8 @@ Adapt.adapt_structure(to, r::Relaxation) =
                Adapt.adapt(to, r.mask),
                Adapt.adapt(to, r.target),
                Adapt.adapt(to, r.location),
-               nothing)
+               nothing,
+               r.time_discretization)
 
 """Show the innards of a `Relaxation` in the REPL."""
 function Base.show(io::IO, relaxation::Relaxation)
@@ -279,6 +317,7 @@ function Base.show(io::IO, relaxation::Relaxation)
     push!(rows, "mask"   => summary(relaxation.mask))
     push!(rows, "target" => summary(relaxation.target))
     isnothing(relaxation.transform) || push!(rows, "transform" => string(relaxation.transform))
+    relaxation isa ImplicitRelaxation && push!(rows, "time_discretization" => summary(relaxation.time_discretization))
     width = maximum(length(first(r)) for r in rows)
     for (i, (key, value)) in enumerate(rows)
         prefix = i == length(rows) ? "└── " : "├── "
@@ -291,6 +330,7 @@ function Base.summary(relaxation::Relaxation)
              "mask=$(summary(relaxation.mask))",
              "target=$(summary(relaxation.target))"]
     isnothing(relaxation.transform) || push!(parts, "transform=$(relaxation.transform)")
+    relaxation isa ImplicitRelaxation && push!(parts, "time_discretization=$(summary(relaxation.time_discretization))")
     return "Relaxation(" * join(parts, ", ") * ")"
 end
 
@@ -405,7 +445,7 @@ Adapt.adapt_structure(to, t::MaterializedRelaxationTarget{I}) where I =
 Base.summary(t::MaterializedRelaxationTarget) =
     "MaterializedRelaxationTarget(location=$(t.location), index=$(field_index(t)))"
 
-const InflowOutflowRelaxation{F, M, T<:MaterializedRelaxationTarget, L, Tr} = Relaxation{<:InflowOutflowRate, F, M, T, L, Tr}
+const InflowOutflowRelaxation{F, M, T<:MaterializedRelaxationTarget, L, Tr, TD} = Relaxation{<:InflowOutflowRate, F, M, T, L, Tr, TD}
 
 @inline function (f::InflowOutflowRelaxation)(i, j, k, grid, clock, model_fields)
     mt = f.target
@@ -427,7 +467,7 @@ inflow/outflow-dependent rate and read `ϕ` from `model_fields` directly (bypass
 function materialize_flow_dependent_forcing(forcing, field, field_name, model_field_names)
     index = findfirst(==(field_name), model_field_names)
     target = MaterializedRelaxationTarget{index}(instantiated_location(field), forcing.target)
-    return Relaxation(forcing.rate, field, forcing.mask, target, instantiated_location(field), forcing.transform)
+    return Relaxation(forcing.rate, field, forcing.mask, target, instantiated_location(field), forcing.transform, forcing.time_discretization)
 end
 
 materialize_forcing(forcing::Relaxation{<:InflowOutflowRate}, field, field_name, model_field_names) =

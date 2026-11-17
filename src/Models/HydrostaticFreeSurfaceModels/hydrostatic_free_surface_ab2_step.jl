@@ -194,7 +194,8 @@ end
                    fields(model),
                    Δt,
                    model.advection.momentum,
-                   model.velocities)
+                   model.velocities;
+                   forcing = model.forcing[name])
     return nothing
 end
 
@@ -255,7 +256,8 @@ end
                    fields(model),
                    Δt,
                    c_advection,
-                   c_velocities)
+                   c_velocities;
+                   forcing = model.forcing[tracer_name])
     return nothing
 end
 
