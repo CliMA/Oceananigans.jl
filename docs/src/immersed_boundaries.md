@@ -13,8 +13,8 @@ The cells that lie inside the boundary are "immersed" and excluded from the comp
 
 To see how the three bottom immersed boundaries differ, we build a two-dimensional grid in ``x, z``, embed the same linear slope into it
 with each of them, and draw the result. For every column we draw the water above the bottom that the grid sees, and a thick line over each
-lateral face down to the depth that the face leaves open. A cut column is bounded by the depths of its two lateral faces, while the
-other two are bounded by the depth at the cell center:
+lateral face down to the depth that the face leaves open. A cut column is bounded by its sloping bottom, while the other two are bounded by
+the depth at the cell center:
 
 ```@example immersed_boundaries
 using Oceananigans
@@ -39,22 +39,25 @@ x = range(0, 1, length=100)
 
 fig = Figure(size=(1200, 450))
 
+titles = ("GridFittedBottom", "PartialCellBottom", "CutCellBottom")
+
 for (n, immersed_grid) in enumerate((fitted_grid, partial_grid, cut_grid))
-    title = string(nameof(typeof(immersed_grid.immersed_boundary)))
-    ax = Axis(fig[1, n]; title, aspect=1, xticks=xᶠ, yticks=zᶠ, limits=(0, 1, -1, 0))
+    ax = Axis(fig[1, n]; title=titles[n], aspect=1, xticks=xᶠ, yticks=zᶠ, limits=(0, 1, -1, 0))
     hidedecorations!(ax, grid=false)
 
     band!(ax, x, -1, slope.(x), color=(:tan, 0.6))
 
+    ib = immersed_grid.immersed_boundary
+
     for i in 1:Nx
-        if immersed_grid.immersed_boundary isa CutCellBottom
-            west_depth = static_column_depthᶠᶜᵃ(i, 1, immersed_grid)
-            east_depth = static_column_depthᶠᶜᵃ(i+1, 1, immersed_grid)
+        if ib isa CutCellBottom
+            west_height = ib.west_bottom_height[i, 1, 1]
+            east_height = 2 * ib.bottom_height[i, 1, 1] - west_height
         else
-            west_depth = east_depth = static_column_depthᶜᶜᵃ(i, 1, immersed_grid)
+            west_height = east_height = -static_column_depthᶜᶜᵃ(i, 1, immersed_grid)
         end
 
-        column = Point2f[(xᶠ[i], -west_depth), (xᶠ[i+1], -east_depth), (xᶠ[i+1], 0), (xᶠ[i], 0)]
+        column = Point2f[(xᶠ[i], west_height), (xᶠ[i+1], east_height), (xᶠ[i+1], 0), (xᶠ[i], 0)]
         poly!(ax, column, color=(:dodgerblue, 0.4))
     end
 
@@ -89,25 +92,37 @@ so a flow running along the slope squeezes through the steps of a staircase.
 
 ### Cut cells
 
-With `CutCellBottom`, the bottom is a piecewise-bilinear surface defined by its heights at the cell corners. When `bottom_height` is a
-function it is evaluated at the corners, and when it is an array of cell-center values it is interpolated to the corners. Every lateral
-face of a bottom cell is cut by that surface where the face stands, so the faces of a cell have different heights. The height of the cell
-is the mean of the openings its lateral faces leave in its level, which in ``x, z`` reads
+With `CutCellBottom`, the bottom of each column is a plane through the height of the column. When `bottom_height` is a function, it is
+evaluated at the cell corners and the height of a column is the mean of its four corners. When it is an array or a field of cell-center
+values, it gives the height of each column, and each corner is the mean of the wet columns around it. The plane is as steep as it can be
+while each of its sides stays between the height of the column and the mean of the two corners on that side, so it is flat at a local
+extremum of the bottom. Against a wall of the domain, only the side facing the interior bounds the slope. In ``x, z``, the plane of column
+``i`` sits at ``r^W_i`` on its west side and at ``r^E_i = 2 r^b_i - r^W_i`` on its east side, where ``r^b_i`` is the height of the column.
+
+The height of a cell is the mean of the openings its plane leaves at its lateral sides,
 
 ```math
-\Delta z_{ccc}(i, k) = \frac{1}{2} \left[ o(i, k) + o(i+1, k) \right] \, ,
+\Delta z_{ccc}(i, k) = \frac{1}{2} \left[ o(r^W_i, k) + o(r^E_i, k) \right] \, ,
 ```
 
-where ``o(i, k)`` is the height of face ``i`` left open in level ``k``, zero where the face is closed. The faces therefore bound the volume
-of the cell, and every cut column in the figure above is a trapezoid. In three dimensions, the height of the cell is the mean of the
-openings of its four lateral faces. A closed face is peripheral and carries no flux; its spacing ``\Delta z_{fcc}`` keeps the height of the
-level, so that the velocity cell on it keeps a finite volume.
+where ``o(r, k)`` is the height that a bottom at ``r`` leaves open in level ``k``, zero where the bottom lies above the level. A column is
+therefore exactly as deep as its height, and every cut column in the figure above is a trapezoid. In three dimensions, the height of the cell
+is the mean of the openings at its four lateral sides. A plane that spans more than one level cuts every cell it crosses, so a steep slope
+cuts several cells of the same column.
 
-Where the slope crosses from one level to the next, the face between the two columns is cut in the upper level and closed in the lower
-one, so the cut cell in the lower level is a triangle. A slope steeper than one level per cell cuts the faces of a column in different
-levels, so cut cells are stacked in a staircase.
+The planes of two neighboring columns need not meet at their common face. A vertical wall then joins them, and the face opens down to the
+higher of the two,
 
-The opening a face leaves in the lowest level it reaches is rounded to the nearest of zero and ``\epsilon \Delta z``: a sliver thinner than
-``\epsilon \Delta z / 2`` closes the face in that level, and a thicker opening is at least ``\epsilon \Delta z`` tall. As for partial cells,
-a cut cell is at least ``\epsilon \Delta z`` tall: when the mean opening of its faces is shorter, the faces cut in its level are deepened
-until it is not, or until they leave the whole level open. `CutCellBottom` is inspired by the shaved cells of [Adcroft et al. (1997)](@cite AdcroftHillMarshall1997).
+```math
+\Delta z_{fcc}(i, k) = o \left( \max \left[ r^E_{i-1}, \, r^W_i \right], k \right) \, .
+```
+
+A face left with no opening in a level is peripheral and carries no flux, also between two active cells, as on a crest. Its spacing
+``\Delta z_{fcc}`` keeps the height of the level, so that the velocity cell on it keeps a finite volume.
+
+The opening the height of a column leaves in its level is rounded to the nearest of zero and ``\epsilon \Delta z``, where ``\epsilon`` is
+the `minimum_fractional_cell_height`: a sliver thinner than ``\epsilon \Delta z / 2`` closes, and a thicker opening is at least
+``\epsilon \Delta z`` tall. The slope of the plane is then reduced until neither of its sides leaves a thinner opening in any level, and the
+plane falls flat when that does not settle. No side of a plane, and therefore no face, opens less than ``\epsilon \Delta z``. A cell averages
+the openings of the sides of its plane, so it can be thinner, down to ``\epsilon \Delta z / 4``, or ``\epsilon \Delta z / 2`` in ``x, z``.
+`CutCellBottom` is inspired by the shaved cells of [Adcroft et al. (1997)](@cite AdcroftHillMarshall1997).
