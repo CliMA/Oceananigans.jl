@@ -150,8 +150,7 @@ end
 #####
 
 """
-    GravityWaveRadiationBoundaryCondition(val; gravitational_acceleration = defaults.gravitational_acceleration,
-                                          target_transport = nothing, kwargs...)
+$(SIGNATURES)
 
 Construct a `NormalFlowBoundaryCondition` with the [`GravityWaveRadiation`](@ref) scheme. `val` must be a 2-tuple `(U, η)` or a function
 returning a 2-tuple, where `U` is the external barotropic transport and `η` is the external free surface displacement. Each
@@ -182,7 +181,7 @@ end
 GravityWaveRadiationBoundaryCondition(U, η; kwargs...) = GravityWaveRadiationBoundaryCondition((U, η); kwargs...)
 
 """
-    SurfaceWaveRadiationBoundaryCondition(; gravitational_acceleration = defaults.gravitational_acceleration)
+$(SIGNATURES)
 
 Construct a `ValueBoundaryCondition` with the [`SurfaceWaveRadiation`](@ref) scheme for the free surface displacement `η`
 at an open boundary. Pair with [`GravityWaveRadiationBoundaryCondition`](@ref) on the barotropic transport.

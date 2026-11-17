@@ -30,6 +30,10 @@ steps, and only take effect under differentiation: the forward program is the sa
 - `checkpointing` (required): `false` stores every step's state for the reverse sweep;
   `Reactant.Periodic(n)` stores a checkpoint every `n` steps and recomputes the steps in between;
   `Reactant.Binomial(budget)` keeps at most `budget` checkpoints, placed by the revolve algorithm.
+  It also decides how the `Simulation` holds `stop_iteration`: binomial checkpointing
+  differentiates a loop whose step count is known only at run time, so with it `stop_iteration`
+  is a device number that a compiled `run!` reads at each call; with `false` or `Periodic` it is
+  an `Int`, a constant of the compiled program.
 
 Note that "checkpointing" here is the recomputation strategy of reverse-mode differentiation.
 Saving the state of a simulation to disk so it can be restarted is done by the [`Checkpointer`](@ref).
@@ -78,15 +82,7 @@ mutable struct Simulation{ML, DT, SI, ST, DI, OW, CB, FT, BL, AD}
 end
 
 """
-    Simulation(model;
-               Δt,
-               verbose = true,
-               stop_iteration = Inf,
-               stop_time = Inf,
-               wall_time_limit = Inf,
-               align_time_step = true,
-               minimum_relative_step = 0,
-               automatic_differentiation = nothing)
+$(SIGNATURES)
 
 Construct a `Simulation` for a `model` with time step `Δt`.
 
@@ -240,7 +236,7 @@ Return the current simulation iteration.
 Oceananigans.Solvers.iteration(sim::Simulation) = iteration(sim.model)
 
 """
-    prettytime(sim::Simulation, longform=true)
+$(SIGNATURES)
 
 Return `sim.model.clock.time` as a prettily formatted string."
 
@@ -260,9 +256,10 @@ $(TYPEDSIGNATURES)
 
 Reset `sim`ulation, `model.clock`, and `model.timestepper` to their initial state.
 The stop criteria `stop_iteration`, `stop_time`, and `wall_time_limit` are kept.
+`t_init` is the time the clock returns to; it is required for a calendar clock, which has no zero.
 """
-function Oceananigans.TimeSteppers.reset!(sim::Simulation)
-    reset_clock!(sim.model)
+function Oceananigans.TimeSteppers.reset!(sim::Simulation; t_init = nothing)
+    reset_clock!(sim.model, t_init)
     sim.run_wall_time = 0.0
     sim.initialized = false
     sim.running = true
@@ -274,9 +271,11 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Reset `model.clock` to its initial state.
+Reset `model.clock` to its initial state, at `t_init` when given.
 """
 reset_clock!(model::AbstractModel) = reset!(model.clock)
+reset_clock!(model::AbstractModel, t_init) = reset!(model.clock, t_init)
+reset_clock!(model::AbstractModel, ::Nothing) = reset_clock!(model)
 
 #####
 ##### Default stop criteria callback functions

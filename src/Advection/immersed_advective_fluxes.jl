@@ -1,7 +1,6 @@
-using Oceananigans.ImmersedBoundaries: immersed_peripheral_node
-using Oceananigans.Grids: peripheral_node
 using Oceananigans.Fields: ZeroField
-using Oceananigans.Grids: Open
+using Oceananigans.Grids: Open, peripheral_node
+using Oceananigans.ImmersedBoundaries: immersed_peripheral_node
 
 const IBG = ImmersedBoundaryGrid
 
@@ -59,7 +58,7 @@ end
 #####
 
 """
-    inside_immersed_boundary(buffer, shift, dir, side)
+$(SIGNATURES)
 
 Check if the stencil required for reconstruction contains immersed nodes: its first cell is inactive, or one of the faces
 crossed walking along it is peripheral.

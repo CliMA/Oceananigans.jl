@@ -6,7 +6,7 @@ export
     PrescribedVelocityFields, ZStarCoordinate, ZCoordinate
 
 using Adapt: Adapt
-using DocStringExtensions: TYPEDFIELDS, TYPEDSIGNATURES
+using DocStringExtensions: TYPEDFIELDS
 using KernelAbstractions: @index, @kernel
 
 using Oceananigans: Oceananigans, fields, prognostic_fields
@@ -27,7 +27,7 @@ using Oceananigans.TimeSteppers: TimeSteppers, QuasiAdamsBashforth2TimeStepper, 
                                  update_lagrangian_particle_state!
 using Oceananigans.TurbulenceClosures: TurbulenceClosures
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: TKEBasedVerticalDiffusivities
-using Oceananigans.Utils: Utils, @apply_regionally, foreach_name, launch!
+using Oceananigans.Utils: Utils, @apply_regionally, foreach_name, launch!, SIGNATURES, TYPEDSIGNATURES
 
 # The only grid type that can support an FFT implicit free-surface solver
 const XYRegularStaticRG = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:StaticVerticalDiscretization, <:Number, <:Any, <:Any, <:Any, <:Number}
