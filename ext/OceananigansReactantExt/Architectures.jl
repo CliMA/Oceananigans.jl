@@ -57,29 +57,47 @@ Oceananigans.Architectures.cpu_architecture(arch::ShardedDistributed) = CPU()
 Utils.sync_device!(::ReactantState) = nothing
 
 #####
-##### MPI halo requests, which only exist while tracing
+##### MPI halo requests
 #####
 
 const ConcreteReactantBuffer = Union{OneDBuffer{<:AnyConcreteReactantArray},
                                      TwoDBuffer{<:AnyConcreteReactantArray},
                                      CornerBuffer{<:AnyConcreteReactantArray}}
 
-struct TracedRequests
+struct ReactantRequests
     requests :: Vector{Any}
+    host_receives :: Vector{Any} # (device array, host array) pairs of receives posted outside a trace
 end
 
-DistributedComputations.side_requests(::ConcreteReactantBuffer) = TracedRequests([])
+DistributedComputations.side_requests(::ConcreteReactantBuffer) = ReactantRequests([], [])
 
-DistributedComputations.isend!(state, array, rank, tag, communicator, side::TracedRequests) = push!(side.requests, MPI.Isend(array, rank, tag, communicator))
-DistributedComputations.irecv!(state, array, rank, tag, communicator, side::TracedRequests) = push!(side.requests, MPI.Irecv!(array, rank, tag, communicator))
+DistributedComputations.isend!(state, array, rank, tag, communicator, side::ReactantRequests) = push!(side.requests, MPI.Isend(array, rank, tag, communicator))
+DistributedComputations.irecv!(state, array, rank, tag, communicator, side::ReactantRequests) = push!(side.requests, MPI.Irecv!(array, rank, tag, communicator))
+
+# Outside a trace MPI cannot use Reactant arrays, so messages go through host copies
+DistributedComputations.isend!(state, array::AnyConcreteReactantArray, rank, tag, communicator, side::ReactantRequests) =
+    push!(side.requests, MPI.Isend(Array(array), rank, tag, communicator))
+
+function DistributedComputations.irecv!(state, array::AnyConcreteReactantArray, rank, tag, communicator, side::ReactantRequests)
+    host_array = Array{eltype(array)}(undef, size(array))
+    push!(side.host_receives, (array, host_array))
+    push!(side.requests, MPI.Irecv!(host_array, rank, tag, communicator))
+    return nothing
+end
 
 # One `Waitall` for all sides lets Reactant fuse each pass's sends, receives and wait into a single call.
 # The requests are emptied so that no request outlives the trace that created it
-function DistributedComputations.waitall_requests!(sides::Tuple{Vararg{Union{Nothing, TracedRequests}}})
-    active_sides = filter(side -> side isa TracedRequests, sides)
+function DistributedComputations.waitall_requests!(sides::Tuple{Vararg{Union{Nothing, ReactantRequests}}})
+    active_sides = filter(side -> side isa ReactantRequests, sides)
     requests = [request for side in active_sides for request in side.requests]
     isempty(requests) || MPI.Waitall(requests)
-    foreach(side -> empty!(side.requests), active_sides)
+
+    for side in active_sides
+        foreach(((device_array, host_array),) -> copyto!(device_array, host_array), side.host_receives)
+        empty!(side.requests)
+        empty!(side.host_receives)
+    end
+
     return nothing
 end
 

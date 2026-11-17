@@ -14,11 +14,12 @@ end
 mpi_reactant_architecture(partition) = Distributed(ReactantState(); partition, communicator = MPI.COMM_WORLD)
 
 """
-    test_mpi_fill_halo_regions(make_grid, partition, topology)
+    test_mpi_fill_halo_regions(make_grid, partition, topology; traced=true)
 
-Test that one compiled `fill_halo_regions!` of fields at every location matches `Distributed(child_arch)` on each rank.
+Test that one `fill_halo_regions!` of fields at every location matches `Distributed(child_arch)` on each rank.
+The fill is compiled if `traced` and called directly on the concrete arrays otherwise.
 """
-function test_mpi_fill_halo_regions(make_grid, partition, topology)
+function test_mpi_fill_halo_regions(make_grid, partition, topology; traced=true)
     rank = MPI.Comm_rank(MPI.COMM_WORLD)
     vanilla_grid = make_grid(Distributed(child_arch; partition), topology)
     reactant_grid = make_grid(mpi_reactant_architecture(partition), topology)
@@ -35,8 +36,13 @@ function test_mpi_fill_halo_regions(make_grid, partition, topology)
     end
 
     fill_halo_regions!(vanilla_fields)
-    rfill! = @compile raise=true raise_first=true fill_halo_regions!(reactant_fields)
-    rfill!(reactant_fields)
+
+    if traced
+        rfill! = @compile raise=true raise_first=true fill_halo_regions!(reactant_fields)
+        rfill!(reactant_fields)
+    else
+        fill_halo_regions!(reactant_fields)
+    end
 
     for (location, vanilla_field, reactant_field) in zip(locations, vanilla_fields, reactant_fields)
         @test compare_parent("loc=$location", vanilla_field, reactant_field)
@@ -84,6 +90,61 @@ function test_mpi_compute_simple_Gu(make_grid, topology, coriolis)
     end
     rcompute_Gu!(reactant_Gu, advection, coriolis, reactant_velocities)
     @test compare_interior("Gu", vanilla_Gu, reactant_Gu)
+
+    return nothing
+end
+
+"""
+    test_mpi_hydrostatic_free_surface_model(partition, topology; Nx=16, Ny=16, Nz=4, stop_iteration=3)
+
+Test that compiled `first_time_step!` and `time_step!` of a `HydrostaticFreeSurfaceModel` with a
+`SplitExplicitFreeSurface`, WENO advection, and a TEOS10 equation of state match `Distributed(child_arch)`
+on each rank after `stop_iteration` steps.
+"""
+function test_mpi_hydrostatic_free_surface_model(partition, topology; Nx=16, Ny=16, Nz=4, stop_iteration=3)
+    rank = MPI.Comm_rank(MPI.COMM_WORLD)
+    grid_kw = (size = (Nx, Ny, Nz), halo = (6, 6, 3), x = (0, 1e5), y = (0, 1e5), z = (-100, 0), topology)
+    vanilla_grid = RectilinearGrid(Distributed(child_arch; partition); grid_kw...)
+    reactant_grid = RectilinearGrid(mpi_reactant_architecture(partition); grid_kw...)
+
+    model_kw = (coriolis = FPlane(f=1e-4),
+                buoyancy = SeawaterBuoyancy(equation_of_state = TEOS10EquationOfState()),
+                free_surface = SplitExplicitFreeSurface(vanilla_grid; substeps = 10),
+                tracers = (:T, :S),
+                tracer_advection = WENO(),
+                momentum_advection = WENOVectorInvariant(),
+                closure = nothing)
+
+    vanilla_model = HydrostaticFreeSurfaceModel(vanilla_grid; model_kw...)
+    reactant_model = HydrostaticFreeSurfaceModel(reactant_grid; model_kw...)
+
+    # Initial conditions are sized to the local grid
+    Random.seed!(98765 + rank)
+    lx, ly, lz = size(vanilla_grid)
+    u_init = 0.1 * randn(size(vanilla_model.velocities.u)...)
+    v_init = 0.1 * randn(size(vanilla_model.velocities.v)...)
+    T_init = [20.0 + 5.0 * (k - 0.5) / lz + 0.01 * randn() for i = 1:lx, j = 1:ly, k = 1:lz]
+    S_init = [35.0 + 0.01 * randn() for i = 1:lx, j = 1:ly, k = 1:lz]
+
+    set!(vanilla_model, u=u_init, v=v_init, T=T_init, S=S_init)
+    set!(reactant_model, u=u_init, v=v_init, T=T_init, S=S_init)
+
+    Δt = 60.0
+    vanilla_simulation = Simulation(vanilla_model; Δt, stop_iteration, verbose=false)
+    run!(vanilla_simulation)
+
+    @jit Oceananigans.TimeSteppers.update_state!(reactant_model)
+    r_first_time_step! = @compile sync=true Oceananigans.TimeSteppers.first_time_step!(reactant_model, Δt)
+    r_time_step! = @compile sync=true Oceananigans.TimeSteppers.time_step!(reactant_model, Δt)
+
+    reactant_simulation = Simulation(reactant_model; Δt, stop_iteration, verbose=false)
+    r_run!(reactant_simulation, r_time_step!, r_first_time_step!)
+
+    @test iteration(reactant_simulation) == iteration(vanilla_simulation)
+    @test compare_interior("u", vanilla_model.velocities.u, reactant_model.velocities.u)
+    @test compare_interior("v", vanilla_model.velocities.v, reactant_model.velocities.v)
+    @test compare_interior("T", vanilla_model.tracers.T, reactant_model.tracers.T)
+    @test compare_interior("S", vanilla_model.tracers.S, reactant_model.tracers.S)
 
     return nothing
 end
