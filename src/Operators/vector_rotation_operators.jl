@@ -1,4 +1,4 @@
-using Oceananigans.Grids: φnode
+using Oceananigans.Grids: λnode, φnode
 
 # TODO: have a general Oceananigans-wide function that retrieves a pointwise
 # value for a function, an array, a number, a field etc?
@@ -60,25 +60,26 @@ the grid's intrinsic coordinates in order to match the grid's extrinsic coordina
 """
 @inline function rotation_angle(i, j, grid::OrthogonalSphericalShellGrid)
 
-    φᶠᶠᵃ⁺⁺ = φnode(i+1, j+1, 1, grid, Face(), Face(), Center())
-    φᶠᶠᵃ⁺⁻ = φnode(i+1, j,   1, grid, Face(), Face(), Center())
-    φᶠᶠᵃ⁻⁺ = φnode(i,   j+1, 1, grid, Face(), Face(), Center())
-    φᶠᶠᵃ⁻⁻ = φnode(i,   j,   1, grid, Face(), Face(), Center())
+    # Cartesian positions of the four corners: unlike latitude differences, which vanish at a pole,
+    # they resolve the grid directions everywhere
+    r(i′, j′) = (λ = λnode(i′, j′, 1, grid, Face(), Face(), Center());
+                 φ = φnode(i′, j′, 1, grid, Face(), Face(), Center());
+                 (cosd(φ) * cosd(λ), cosd(φ) * sind(λ), sind(φ)))
 
-    Δy⁻¹ᶠᶜᵃ⁺ = Δy⁻¹ᶠᶜᶜ(i+1, j,   1, grid)
-    Δy⁻¹ᶠᶜᵃ⁻ = Δy⁻¹ᶠᶜᶜ(i,   j,   1, grid)
-    Δx⁻¹ᶜᶠᵃ⁺ = Δx⁻¹ᶜᶠᶜ(i,   j+1, 1, grid)
-    Δx⁻¹ᶜᶠᵃ⁻ = Δx⁻¹ᶜᶠᶜ(i,   j,   1, grid)
+    r⁻⁻, r⁺⁻, r⁻⁺, r⁺⁺ = r(i, j), r(i+1, j), r(i, j+1), r(i+1, j+1)
 
-    Rcosθ₁ = ifelse(isinf(Δy⁻¹ᶠᶜᵃ⁺), zero(grid), deg2rad(φᶠᶠᵃ⁺⁺ - φᶠᶠᵃ⁺⁻) * Δy⁻¹ᶠᶜᵃ⁺)
-    Rcosθ₂ = ifelse(isinf(Δy⁻¹ᶠᶜᵃ⁻), zero(grid), deg2rad(φᶠᶠᵃ⁻⁺ - φᶠᶠᵃ⁻⁻) * Δy⁻¹ᶠᶜᵃ⁻)
+    x = (r⁺⁻ .+ r⁺⁺) .- (r⁻⁻ .+ r⁻⁺)
+    y = (r⁻⁺ .+ r⁺⁺) .- (r⁻⁻ .+ r⁺⁻)
+    c = r⁻⁻ .+ r⁺⁻ .+ r⁻⁺ .+ r⁺⁺
+    e = (-c[2], c[1], zero(c[1]))                                                  # east  = ẑ × c
+    n = (-c[3] * c[1], -c[3] * c[2], c[1]^2 + c[2]^2)                             # north = c × east
 
-    Rsinθ₁ = ifelse(isinf(Δx⁻¹ᶜᶠᵃ⁺), zero(grid), deg2rad(φᶠᶠᵃ⁺⁺ - φᶠᶠᵃ⁻⁺) * Δx⁻¹ᶜᶠᵃ⁺)
-    Rsinθ₂ = ifelse(isinf(Δx⁻¹ᶜᶠᵃ⁻), zero(grid), deg2rad(φᶠᶠᵃ⁺⁻ - φᶠᶠᵃ⁻⁻) * Δx⁻¹ᶜᶠᵃ⁻)
+    dot(a, b) = a[1] * b[1] + a[2] * b[2] + a[3] * b[3]
+    cosine(a, b) = (ab = sqrt(dot(a, a) * dot(b, b)); ifelse(ab > 0, dot(a, b), zero(ab)) / ifelse(ab > 0, ab, one(ab)))
 
     # θ is the rotation angle between intrinsic and extrinsic reference frame
-    Rcosθ =   (Rcosθ₁ + Rcosθ₂) / 2
-    Rsinθ = - (Rsinθ₁ + Rsinθ₂) / 2
+    Rcosθ =   cosine(x, e) + cosine(y, n)
+    Rsinθ = - cosine(x, n) + cosine(y, e)
 
     θ = atan(Rsinθ, Rcosθ)
 

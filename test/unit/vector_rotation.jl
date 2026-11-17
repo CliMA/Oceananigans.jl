@@ -156,6 +156,23 @@ end
                         @test θ ≈ θᵢ
                     end
                 end
+
+                @info "  Testing the rotation angle next to the North Pole of a TripolarGrid"
+                r(λ, φ) = [cosd(φ) * cosd(λ), cosd(φ) * sind(λ), sind(φ)]
+
+                for fold_topology in (CenterFolded, FaceFolded)
+                    Nx, Ny = 360, 180
+                    grid = TripolarGrid(arch; size = (Nx, Ny, 1), z = (-1, 0), fold_topology)
+
+                    # compare with the angle of the cell's west → east face direction in the tangent plane at the cell centre
+                    for j in Ny-4:Ny, i in 1:Nx
+                        λ, φ = grid.λᶜᶜᵃ[i, j], grid.φᶜᶜᵃ[i, j]
+                        x = r(grid.λᶠᶜᵃ[i+1, j], grid.φᶠᶜᵃ[i+1, j]) - r(grid.λᶠᶜᵃ[i, j], grid.φᶠᶜᵃ[i, j])
+                        xᵉ = x' * [-sind(λ), cosd(λ), 0]
+                        xⁿ = x' * [-sind(φ) * cosd(λ), -sind(φ) * sind(λ), cosd(φ)]
+                        @test cos(rotation_angle(i, j, grid) - atan(-xⁿ, xᵉ)) ≈ 1 atol = 1e-6
+                    end
+                end
             end
         end
 
