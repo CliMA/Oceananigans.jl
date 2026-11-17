@@ -136,7 +136,7 @@ function Relaxation(; rate, mask=onefunction, target=zerofunction, transform=not
     return Relaxation(rate, nothing, mask, target, nothing, transform, time_discretization)
 end
 
-const ImplicitRelaxation = Relaxation{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:ImplicitTimeDiscretization}
+const ImplicitRelaxation = Relaxation{<:Number, <:Any, <:Any, <:Any, <:Any, <:Any, <:ImplicitTimeDiscretization}
 
 apply_transform(t,          field) = t(field)
 apply_transform(s::Symbol,  field) = apply_transform(Val(s), field)
@@ -154,7 +154,7 @@ apply_transform(::Val{S}, field) where S =
     return r.rate * μ * (ϕᵣ - ϕ)
 end
 
-@inline function (r::Relaxation{R, F, <:Any, <:Any, <:Any, <:Any, <:ImplicitTimeDiscretization})(i, j, k, grid, clock, model_fields) where {R, F<:AbstractArray}
+@inline function (r::Relaxation{<:Number, F, <:Any, <:Any, <:Any, <:Any, <:ImplicitTimeDiscretization})(i, j, k, grid, clock, model_fields) where F<:AbstractArray
     ϕᵣ = evaluate_target(i, j, k, grid, r.target, r.location, clock.time)
     μ  = evaluate_mask(i, j, k, grid, r.mask, r.location)
     return r.rate * μ * ϕᵣ
