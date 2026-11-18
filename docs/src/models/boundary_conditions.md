@@ -908,6 +908,6 @@ The explicit part ``\lambda U_\infty`` is integrated through the tendency, and t
 ``\lambda u`` is embedded in the boundary-cell diagonal of the implicit vertical solver, which the model
 builds automatically. For the quadratic formulation the speed ``|\boldsymbol{U}|`` is evaluated from the
 current velocities when the implicit solve is built, so the drag is linearized about the current speed.
-Like every [`IMEXTimeDiscretization`](@ref), this is supported only on the `bottom` and `top` domain
+[`IMEXTimeDiscretization`](@ref) for a `BulkDrag` is supported only on the `bottom` and `top` domain
 boundaries and on the `bottom` and `top` facets of an [`ImmersedBoundaryCondition`](@ref); lateral facets
 must keep the explicit drag.
