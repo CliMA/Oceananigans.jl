@@ -5,7 +5,7 @@ sub-grid scale motions. This is done usually be assuming eddy viscosity and eddy
 estimate for the eddy viscosity ``\nu_e`` and diffusivity ``\kappa_e``.
 
 Much of the early work on LES was motivated by the study of atmospheric boundary layer turbulence, being developed
-by [Smagorinsky63](@citet) and [Lilly66](@citet), then first implemented by [Deardorff70](@citet) and [Deardorff74](@citet).
+by [Smagorinsky1963](@citet) and [Lilly66](@citet), then first implemented by [Deardorff70](@citet) and [Deardorff74](@citet).
 
 In the LES framework, the Navier-Stokes equations are averaged in the same way as [Reynolds1895](@citet) except that the
 mean field ``\overline{\boldsymbol{v}}`` is obtained via convolution with a filter convolution kernel ``G``
@@ -46,7 +46,7 @@ which if evaluated at the cell centers just returns the cell averages we already
 
 ## Smagorinsky-Lilly model
 
-[Smagorinsky63](@citet) estimated the eddy viscosity ``\nu_e`` via a characteristic length scale ``\Delta`` times a velocity
+[Smagorinsky1963](@citet) estimated the eddy viscosity ``\nu_e`` via a characteristic length scale ``\Delta`` times a velocity
 scale given by ``\Delta |\overline{S}|`` where ``|\overline{S}| = \sqrt{2\overline{S}_{ij}\overline{S}_{ij}}``. Thus the
 SGS stress tensor is given by
 ```math

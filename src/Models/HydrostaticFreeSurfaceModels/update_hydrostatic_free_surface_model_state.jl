@@ -1,17 +1,17 @@
 using Oceananigans: UpdateStateCallsite
-using Oceananigans.Advection: update_advection!
+using Oceananigans.Advection: update_adaptive_timesteps!, update_bounds_preserving_limiters!
 using Oceananigans.Biogeochemistry: update_biogeochemical_state!
 using Oceananigans.BoundaryConditions: fill_halo_regions!, update_boundary_conditions!
 using Oceananigans.BuoyancyFormulations: compute_buoyancy_gradients!
 using Oceananigans.Coriolis: compute_coriolis_prognostic_tendencies!, step_coriolis_prognostics!
 using Oceananigans.Fields: compute!
 using Oceananigans.Forcings: compute_forcing!
-using Oceananigans.Grids: surface_kernel_parameters, volume_kernel_parameters, horizontally_extended_interior_kernel_parameters
+using Oceananigans.Grids: horizontally_extended_interior_kernel_parameters, surface_kernel_parameters,
+                          volume_kernel_parameters
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 using Oceananigans.Models: update_model_field_time_series!
 using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!
-using Oceananigans.TurbulenceClosures: compute_closure_fields!
-import Oceananigans.TurbulenceClosures: step_closure_prognostics!
+using Oceananigans.TurbulenceClosures: compute_closure_fields!, step_closure_prognostics!
 
 compute_auxiliary_fields!(auxiliary_fields) = Tuple(compute!(a) for a in auxiliary_fields)
 
@@ -39,9 +39,9 @@ This function performs the following steps:
 Note: Halo regions for free surface fields are filled separately after the barotropic step,
 while for velocities they are filled in the time-stepping function.
 """
-update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]) = update_state!(model, model.grid, callbacks)
+TimeSteppers.update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]) = update_state!(model, model.grid, callbacks)
 
-function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
+function TimeSteppers.update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
 
     arch = architecture(grid)
 
@@ -80,9 +80,13 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
     update_biogeochemical_state!(model.biogeochemistry, model)
 
     @apply_regionally begin
-        update_advection!(model.advection, model)
+        update_adaptive_timesteps!(model.advection, model)
         compute_momentum_tendencies!(model, callbacks)
         compute_coriolis_prognostic_tendencies!(model.coriolis, model)
+
+        # The bounds-preserving limiters read the tracer halos, which are synchronized
+        # when the momentum tendencies are completed.
+        update_bounds_preserving_limiters!(model.advection, model)
     end
 
     return nothing
@@ -99,7 +103,7 @@ function mask_immersed_horizontal_velocities!(velocities)
     return nothing
 end
 
-function step_closure_prognostics!(model::HydrostaticFreeSurfaceModel, Δt::Number)
+function TurbulenceClosures.step_closure_prognostics!(model::HydrostaticFreeSurfaceModel, Δt::Number)
     step_closure_prognostics!(model.closure_fields, model.closure, model, Δt)
     step_coriolis_prognostics!(model.coriolis, model, Δt)
     return nothing

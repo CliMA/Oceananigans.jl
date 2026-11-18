@@ -1,9 +1,8 @@
-using Oceananigans.Operators
 using Oceananigans.DistributedComputations: DistributedFFTBasedPoissonSolver
 using Oceananigans.Grids: XDirection, YDirection, ZDirection, inactive_cell
-using Oceananigans.Solvers: FFTBasedPoissonSolver, FourierTridiagonalPoissonSolver
-using Oceananigans.Solvers: ConjugateGradientPoissonSolver
-using Oceananigans.Solvers: solve!
+using Oceananigans.Operators: Vᶜᶜᶜ, divᶜᶜᶜ, Δxᶜᶜᶜ, Δyᶜᶜᶜ, Δzᵃᵃᶜ, Δzᵃᵃᶠ, Δz⁻¹ᵃᵃᶠ, ∂xᶠᶜᶜ, ∂yᶜᶠᶜ, ∂zᶜᶜᶠ
+using Oceananigans.Solvers: ConjugateGradientPoissonSolver, FFTBasedPoissonSolver, FourierTridiagonalPoissonSolver,
+                            solve!
 
 #####
 ##### Calculate the right-hand-side of the non-hydrostatic pressure Poisson equation.
@@ -143,7 +142,7 @@ end
     Δzᶠ = Δzᵃᵃᶠ(i, j, Nz+1, grid)
     Δzᶜ = Δzᵃᵃᶜ(i, j, Nz, grid)
     den = g * Δt^2 + Δzᶠ / 2
-    @inbounds diagonal[i, j, Nz] = - 1 / den - 1/Δzᵃᵃᶠ(i, j, Nz, grid) - Δzᶜ * (λx[i] + λy[j])
+    @inbounds diagonal[i, j, Nz] = - 1 / den - Δz⁻¹ᵃᵃᶠ(i, j, Nz, grid) - Δzᶜ * (λx[i] + λy[j])
 end
 
 function solve_for_pressure!(pressure, solver::ConjugateGradientPoissonSolver, free_surface, Ũ, Δt)

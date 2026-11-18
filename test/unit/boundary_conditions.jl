@@ -5,6 +5,7 @@ using Oceananigans.BoundaryConditions: Mixed, MixedBoundaryCondition
 using Oceananigans.BoundaryConditions: Zipper, ContinuousBoundaryFunction, DiscreteBoundaryFunction, regularize_field_boundary_conditions
 using Oceananigans.BoundaryConditions: compute_x_bcs!, compute_y_bcs!, compute_z_bcs!
 using Oceananigans.Fields: Face, Center
+using Oceananigans.Grids: Pole, with_halo
 
 simple_bc(ξ, η, t) = exp(ξ) * cos(η) * sin(t)
 
@@ -58,10 +59,48 @@ end
         @test default_bcs_N.north isa Nothing
         @test default_bcs_N.south isa Nothing
 
+        # Whether a boundary is a pole is decided on construction and kept through every rebuild of the grid
+        poles(grid) = (grid.south_pole, grid.north_pole)
+        @test poles(grid) === (Pole(), Pole())
+        @test poles(Adapt.adapt(Array, grid)) === poles(grid)
+        @test poles(with_halo((4, 4, 4), grid)) === poles(grid)
+        @test all(poles(on_architecture(arch, grid)) === poles(grid) for arch in archs)
+        @test poles(LatitudeLongitudeGrid(size=(10, 10, 10), latitude=(0, 90), longitude=(-10, 10), z=(0, 1))) === (nothing, Pole())
+        @test poles(LatitudeLongitudeGrid(size=(10, 10, 10), latitude=(-90, 0), longitude=(-10, 10), z=(0, 1))) === (Pole(), nothing)
+        @test poles(LatitudeLongitudeGrid(size=(10, 10, 10), latitude=(-30, 30), longitude=(-10, 10), z=(0, 1))) === (nothing, nothing)
+
         grid = TripolarGrid(size=(10, 10, 10), z = (0, 1))
         default_bcs = FieldBoundaryConditions(grid, loc)
         @test default_bcs.north.classification isa Zipper
         @test default_bcs.south isa ZFBC
+    end
+
+    @testset "Boundary conditions on Closed and Open sides" begin
+        grid = RectilinearGrid(size=(4, 4), x=(0, 1), z=(0, 1), topology=((Closed, Open), Flat, Bounded))
+        open_u = NormalFlowBoundaryCondition(1; scheme=PerturbationAdvection())
+        open_c = ValueBoundaryCondition(1; scheme=NormalRadiation())
+
+        boundary_conditions = (u = FieldBoundaryConditions(east=open_u), c = FieldBoundaryConditions(east=open_c))
+        model = NonhydrostaticModel(grid; tracers=:c, boundary_conditions)
+        u, v, w = model.velocities
+        c = model.tracers.c
+        @test u.boundary_conditions.west isa typeof(ImpenetrableBoundaryCondition())
+        @test u.boundary_conditions.east.classification.scheme isa PerturbationAdvection
+        @test w.boundary_conditions.west isa ZFBC
+        @test w.boundary_conditions.east isa ZFBC
+        @test c.boundary_conditions.west isa ZFBC
+        @test c.boundary_conditions.east.classification.scheme isa NormalRadiation
+
+        # The boundary-normal velocity on an Open side needs an open boundary condition
+        @test_throws ArgumentError NonhydrostaticModel(grid)
+
+        # Open schemes need an Open side
+        closed_west_u = FieldBoundaryConditions(west=open_u, east=open_u)
+        @test_throws ArgumentError NonhydrostaticModel(grid; boundary_conditions=(; u=closed_west_u))
+
+        # Fluxes through an Open side come from its exterior state
+        flux_c = FieldBoundaryConditions(east=FluxBoundaryCondition(1))
+        @test_throws ArgumentError NonhydrostaticModel(grid; tracers=:c, boundary_conditions=(u=FieldBoundaryConditions(east=open_u), c=flux_c))
     end
 
     @testset "Boundary condition instantiation" begin
@@ -533,7 +572,7 @@ end
         # field itself is adapted to its bare data like any other non-reduced field (e.g. the free
         # surface displacement of a hydrostatic model is a windowed field, and must adapt like the
         # other model fields, so that the tuple of model fields stays homogeneous)
-        @test Adapt.adapt(Array, ∂z_cᵗ) isa OffsetArray
+        @test Adapt.adapt(Array, ∂z_cᵗ) isa StaticStridesOffsetArray
         adapted_top = Adapt.adapt(Array, bcs.top)
         @test adapted_top.condition isa Field
         @test adapted_top.condition.indices == ∂z_cᵗ.indices

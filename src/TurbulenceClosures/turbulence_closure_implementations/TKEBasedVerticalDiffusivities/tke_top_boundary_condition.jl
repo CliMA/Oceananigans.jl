@@ -1,5 +1,5 @@
 using Oceananigans.Architectures: Architectures, on_architecture
-using Oceananigans.BoundaryConditions: BoundaryConditions, DiscreteBoundaryFunction, total_boundary_flux
+using Oceananigans.BoundaryConditions: BoundaryConditions, DiscreteBoundaryFunction, total_boundary_flux, Top
 using Oceananigans.Grids: AbstractGrid, topology
 
 struct TKETopBoundaryConditionParameters{C, U}
@@ -70,16 +70,17 @@ end
 @inline function friction_velocity(i, j, grid, clock, fields, velocity_bcs)
     FT = eltype(grid)
     Nz = size(grid, 3)
-    τx = total_boundary_flux(velocity_bcs.u, i, j, Nz, grid, clock, fields, fields.u)
-    τy = total_boundary_flux(velocity_bcs.v, i, j, Nz, grid, clock, fields, fields.v)
+    τx = total_boundary_flux(velocity_bcs.u, Top(), i, j, Nz, grid, fields.u, clock, fields)
+    τy = total_boundary_flux(velocity_bcs.v, Top(), i, j, Nz, grid, fields.v, clock, fields)
     return sqrt(sqrt(τx^2 + τy^2))
 end
 
-""" Computes the convective velocity w★. """
-@inline function top_convective_turbulent_velocity_cubed(i, j, grid, clock, fields, buoyancy, tracer_bcs)
-    Jᵇ = top_buoyancy_flux(i, j, grid, buoyancy, tracer_bcs, clock, fields)
+""" Computes the convective velocity w★ over the top cell, counting the `radiation` absorbed within it. """
+@inline function top_convective_turbulent_velocity_cubed(i, j, grid, clock, fields, buoyancy, tracer_bcs, radiation = nothing)
+    Jʳ = surface_radiative_buoyancy_flux(i, j, grid, radiation, buoyancy, fields)
+    Jᵇ = top_buoyancy_flux(i, j, grid, buoyancy, tracer_bcs, clock, fields) + Jʳ
     Δz = Δzᶜᶜᶜ(i, j, grid.Nz, grid)
-    return clip(Jᵇ) * Δz
+    return ifelse(Jᵇ > 0, convective_buoyancy_production(i, j, grid, radiation, Δz, Jᵇ, Jʳ), zero(Jᵇ))
 end
 
 @inline top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple::Tuple{<:Any}, buoyancy) =

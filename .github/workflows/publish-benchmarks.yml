@@ -339,6 +339,8 @@ jobs:
           {
             echo "## Benchmark Comparison"
             echo ""
+            echo "Commit: ${{ github.event.client_payload.commit }}"
+            echo ""
             if [ -f "artifacts/benchmark_comparison.md" ]; then
               cat artifacts/benchmark_comparison.md
             else
@@ -349,5 +351,24 @@ jobs:
               cat nsys_comparison.md
             fi
           } > pr_comment.md
+
+          gh api graphql --paginate \
+            -F owner="${GITHUB_REPOSITORY%/*}" -F name="${GITHUB_REPOSITORY#*/}" -F number="$PR_NUMBER" \
+            -f query='
+              query($owner: String!, $name: String!, $number: Int!, $endCursor: String) {
+                repository(owner: $owner, name: $name) {
+                  pullRequest(number: $number) {
+                    comments(first: 100, after: $endCursor) {
+                      nodes { id isMinimized body author { login } }
+                      pageInfo { hasNextPage endCursor }
+                    }
+                  }
+                }
+              }' \
+            --jq '.data.repository.pullRequest.comments.nodes[] | select(.author.login == "github-actions" and (.isMinimized | not) and (.body | startswith("## Benchmark Comparison"))) | .id' |
+            while read -r COMMENT_ID; do
+              gh api graphql -F id="$COMMENT_ID" \
+                -f query='mutation($id: ID!) { minimizeComment(input: {subjectId: $id, classifier: OUTDATED}) { clientMutationId } }'
+            done
 
           gh pr comment "$PR_NUMBER" --body-file pr_comment.md

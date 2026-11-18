@@ -1,11 +1,13 @@
-import Oceananigans: prognostic_state, restore_prognostic_state!
-import Oceananigans.Grids: grid
+using Oceananigans: prognostic_state, restore_prognostic_state!
+using Oceananigans.Grids: grid, unwrapped_eltype
 
 struct ZeroField{T, N} <: AbstractField{Nothing, Nothing, Nothing, Nothing, T, N} end
 struct OneField{T, N} <: AbstractField{Nothing, Nothing, Nothing, Nothing, T, N} end
 
-ZeroField(T=Int) = ZeroField{T, 3}() # default 3D, integer 0
-OneField(T=Int) = OneField{T, 3}() # default 3D, integer 1
+# The plain number type: inside a Reactant-compiled function `eltype(grid)` is a traced number type,
+# and `zero(T)` of one inside a kernel is a call into the tracer, which kernel compilation rejects.
+ZeroField(T=Int) = ZeroField{unwrapped_eltype(T), 3}() # default 3D, integer 0
+OneField(T=Int) = OneField{unwrapped_eltype(T), 3}() # default 3D, integer 1
 
 @inline Base.getindex(::ZeroField{T, N}, ind...) where {N, T} = zero(T)
 @inline Base.getindex(::OneField{T, N}, ind...) where {N, T} = one(T)
@@ -22,11 +24,11 @@ ConstantField(constant) = ConstantField{3}(constant)
 
 const CF = Union{ConstantField, ZeroField, OneField}
 
-grid(::CF) = nothing
+Grids.grid(::CF) = nothing
 
 BoundaryConditions.fill_halo_regions!(::ZeroField, args...; kw...) = nothing
 BoundaryConditions.fill_halo_regions!(::ConstantField, args...; kw...) = nothing
 
-prognostic_state(f::Union{ZeroField, OneField, ConstantField}) = nothing
-restore_prognostic_state!(restored::Union{ZeroField, OneField, ConstantField}, from) = restored
-restore_prognostic_state!(restored::Union{ZeroField, OneField, ConstantField}, ::Nothing) = restored
+Oceananigans.prognostic_state(f::Union{ZeroField, OneField, ConstantField}) = nothing
+Oceananigans.restore_prognostic_state!(restored::Union{ZeroField, OneField, ConstantField}, from) = restored
+Oceananigans.restore_prognostic_state!(restored::Union{ZeroField, OneField, ConstantField}, ::Nothing) = restored

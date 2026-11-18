@@ -48,9 +48,9 @@ end
     @inbounds bc_rhs[i, j, 1] = η[i, j, Nz+1] / Δt + w̃[i, j, Nz+1]
 
     # Compute ηⁿ⁺¹
-    Δzᶠ = Δzᵃᵃᶠ(i, j, Nz+1, grid)
-    a = 1 / Δzᶠ - 1 / (2g * Δt^2)
-    b = 1 / Δzᶠ + 1 / (2g * Δt^2)
+    Δz⁻¹ᶠ = Δz⁻¹ᵃᵃᶠ(i, j, Nz+1, grid)
+    a = Δz⁻¹ᶠ - 1 / (2g * Δt^2)
+    b = Δz⁻¹ᶠ + 1 / (2g * Δt^2)
     @inbounds begin
         η★ = η[i, j, Nz+1] + Δt * w̃[i, j, Nz+1]
         η[i, j, Nz+1] = (p_Δt[i, j, Nz] / Δt + (p_Δt[i, j, Nz] * a / (b * Δt) + η★ / (b * Δt^2))) / 2g

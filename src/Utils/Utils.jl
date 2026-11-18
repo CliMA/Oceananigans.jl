@@ -8,7 +8,7 @@ export instantiate
 export with_tracers
 export AbstractTimeDiscretization, ExplicitTimeDiscretization, VerticallyImplicitTimeDiscretization, AdaptiveVerticallyImplicitDiscretization
 export versioninfo_with_gpu, oceananigans_versioninfo
-export seconds_to_nanosecond, period_to_seconds, time_difference_seconds, add_time_interval
+export seconds_to_nanosecond, period_to_seconds, time_difference_in_seconds, add_time_interval
 export TimeInterval, IterationInterval, WallTimeInterval, SpecifiedTimes, AndSchedule, OrSchedule, ConsecutiveIterations, PrecedingIterations, TimeOffset
 export apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject
 export isregional, getregion, _getregion, regions, sync_device!
@@ -18,7 +18,27 @@ export TabulatedFunction
 export interpolator, _interpolate
 export ϕ₁, ϕ₂, ϕ₃, ϕ₄, ϕ₅, ϕ₆, ϕ₇, ϕ₈
 
-using DocStringExtensions: TYPEDSIGNATURES
+using Adapt: Adapt
+using DocStringExtensions: DocStringExtensions
+using KernelAbstractions: KernelAbstractions
+using Oceananigans: Oceananigans
+using Oceananigans.Architectures: Architectures
+
+# Docstring signatures that also show default argument values with DocStringExtensions v0.10, where
+# `MethodSignatures` and `TypedMethodSignatures` take a `defaults` keyword. In v0.9 they are empty structs,
+# so there we fall back to the plain signatures. Modules take `SIGNATURES` and `TYPEDSIGNATURES` from here,
+# not from DocStringExtensions.
+const SIGNATURES = if hasmethod(DocStringExtensions.MethodSignatures, Tuple{}, (:defaults,))
+    DocStringExtensions.MethodSignatures(; defaults = true)
+else
+    DocStringExtensions.SIGNATURES
+end
+
+const TYPEDSIGNATURES = if hasmethod(DocStringExtensions.TypedMethodSignatures, Tuple{}, (:defaults,))
+    DocStringExtensions.TypedMethodSignatures(; defaults = true)
+else
+    DocStringExtensions.TYPEDSIGNATURES
+end
 
 #####
 ##### Misc. small utils
@@ -27,7 +47,11 @@ using DocStringExtensions: TYPEDSIGNATURES
 instantiate(T::Type) = T()
 instantiate(t) = t
 
-getnamewrapper(type) = typeof(type).name.wrapper
+# Return the type `T` stripped of its type parameters, e.g. `RectilinearGrid`
+# for `RectilinearGrid{Float64, Periodic, Periodic, Bounded, ...}`. Relies on
+# `T` being bound to its name in the module that defines it, as every `struct`
+# definition does.
+unparameterized_type(T::Type) = getglobal(parentmodule(T), nameof(T))
 
 function get_active_cells_map end
 
@@ -53,5 +77,6 @@ include("newton_div.jl")
 include("f32_safe_cbrt.jl")
 include("interpolation.jl")
 include("tabulated_function.jl")
+include("static_strides_offset_array.jl")
 
 end # module

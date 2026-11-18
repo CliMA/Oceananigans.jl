@@ -1,8 +1,7 @@
 using Oceananigans: prognostic_fields
 using Oceananigans.Grids: AbstractGrid
+using Oceananigans.TimeSteppers: cache_previous_tendencies!
 using Oceananigans.Utils: launch!
-
-import Oceananigans.TimeSteppers: cache_previous_tendencies!
 
 """ Store source terms for `u`, `v`, and `w`. """
 @kernel function _cache_field_tendencies!(G⁻, G⁰)
@@ -18,14 +17,14 @@ Store the current tendencies `Gⁿ` into `G⁻` for all prognostic fields (veloc
 This function is called after advancing the model state but before computing new tendencies,
 preserving the tendencies needed for multi-step time-stepping schemes (:QuasiAdamsBashorth2 and :RungeKutta3)
 """
-function cache_previous_tendencies!(model::NonhydrostaticModel)
+function TimeSteppers.cache_previous_tendencies!(model::NonhydrostaticModel)
     cache_previous_tendencies!(model, Val(keys(prognostic_fields(model))))
     return nothing
 end
 
-@inline cache_previous_tendencies!(model, ::Val{()}) = nothing
+@inline TimeSteppers.cache_previous_tendencies!(model, ::Val{()}) = nothing
 
-@inline function cache_previous_tendencies!(model, ::Val{names}) where names
+@inline function TimeSteppers.cache_previous_tendencies!(model, ::Val{names}) where names
     name = first(names)
     launch!(model.architecture, model.grid, :xyz, _cache_field_tendencies!,
             model.timestepper.G⁻[name],

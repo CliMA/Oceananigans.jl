@@ -1,7 +1,7 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Oceananigans.Grids: total_extent, xspacings, yspacings, zspacings, rspacings, xnode, ynode, znode
-using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary, immersed_cell, _immersed_cell, CenterImmersedCondition, InterfaceImmersedCondition, bottom_height_interior
+using Oceananigans.ImmersedBoundaries: GridFittedBottom, GridFittedVerticalBoundaries, PartialCellBottom, PartialCellVerticalBoundaries, GridFittedBoundary, immersed_cell, _immersed_cell, CenterImmersedCondition, InterfaceImmersedCondition, bottom_height_interior
 
 #####
 ##### Basic immersed boundary grid construction tests
@@ -118,8 +118,8 @@ end
 function test_partial_cell_bottom_cell_detection(FT, arch)
     underlying_grid = RectilinearGrid(arch, FT, size=(4, 4, 8), extent=(1, 1, 1))
 
-    # Create a bottom at z = -0.5 with minimum fractional cell height
-    bottom_height = -0.5
+    # Create a bottom inside the fifth cell with minimum fractional cell height
+    bottom_height = -0.47
     ϵ = 0.2
     ib = PartialCellBottom(bottom_height; minimum_fractional_cell_height=ϵ)
     ibg = ImmersedBoundaryGrid(underlying_grid, ib)
@@ -127,9 +127,8 @@ function test_partial_cell_bottom_cell_detection(FT, arch)
     # Test immersed cell detection
     @allowscalar begin
         for i in 1:4, j in 1:4, k in 1:8
-            # The partial cell criterion is different - need to check grid spacing
             immersed = _immersed_cell(i, j, k, ibg.underlying_grid, ibg.immersed_boundary)
-            @test immersed isa Bool
+            @test immersed == (k ≤ 4)
         end
     end
 
@@ -378,7 +377,7 @@ function test_immersed_boundary_grid_show(FT, arch, boundary_type)
 
     # The array type in the bottom height summary depends on the architecture
     ib_shown = sprint(show, ib)
-    @test startswith(ib_shown, string(ib_summary, "\n", bottom_height_prefix, "10×10×1 OffsetArray("))
+    @test startswith(ib_shown, string(ib_summary, "\n", bottom_height_prefix, "10×10×1 StaticStridesOffsetArray("))
     @test endswith(ib_shown, string("with eltype $FT with indices -2:7×-2:7×1:1", ib_suffix))
 
     return nothing
@@ -592,6 +591,21 @@ end
             for boundary_type in (GridFittedBottom, PartialCellBottom)
                 @testset "Show [$FT, $(typeof(arch)), $boundary_type]" begin
                     test_immersed_boundary_grid_show(FT, arch, boundary_type)
+                end
+            end
+        end
+
+        @testset "Show with unmaterialized heights" begin
+            height_function(x, y) = -0.25
+
+            @test summary(GridFittedBottom(-0.5)) == "GridFittedBottom(mean(z)=-0.5, min(z)=-0.5, max(z)=-0.5)"
+            @test summary(PartialCellBottom(-0.5)) == "PartialCellBottom(mean(zb)=-0.5, min(zb)=-0.5, max(zb)=-0.5, ϵ=0.2)"
+
+            for Boundaries in (GridFittedVerticalBoundaries, PartialCellVerticalBoundaries)
+                for (bottom_height, top_height) in ((-0.5, -0.25), (-0.5, height_function), (height_function, -0.25))
+                    ib = Boundaries(; bottom_height, top_height)
+                    @test contains(summary(ib), string(nameof(Boundaries)))
+                    @test startswith(sprint(show, ib), summary(ib))
                 end
             end
         end

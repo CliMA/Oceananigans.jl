@@ -1,6 +1,6 @@
 using OrderedCollections: OrderedDict
 
-shortsummary(x, args...) = string(typeof(x).name.wrapper)
+shortsummary(x, args...) = string(nameof(typeof(x)))
 prettysummary(x, args...) = summary(x)
 
 function prettysummary(f::Function, showmethods=true)

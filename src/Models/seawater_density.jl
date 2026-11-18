@@ -1,8 +1,9 @@
+using SeawaterPolynomials: SeawaterPolynomials, BoussinesqEquationOfState, ρ
+
 using Oceananigans.AbstractOperations: AbstractOperation, KernelFunctionOperation
 using Oceananigans.BuoyancyFormulations: SeawaterBuoyancy, Zᶜᶜᶜ
 using Oceananigans.Fields: field
 using Oceananigans.Grids: Center
-using SeawaterPolynomials: SeawaterPolynomials, BoussinesqEquationOfState, ρ
 
 "Extend `SeawaterPolynomials.ρ` to compute density for a `KernelFunctionOperation` -
 **note** `eos` must be `BoussinesqEquationOfState` because a reference density is needed for the computation."
@@ -101,7 +102,7 @@ julia> density_operation = seawater_density(model)
 KernelFunctionOperation at (Center, Center, Center)
 ├── grid: 1×1×100 RectilinearGrid{Float64, Flat, Flat, Bounded} on CPU with 0×0×3 halo
 ├── kernel_function: ρ (generic function with 3 methods)
-└── arguments: ("SeawaterPolynomials.BoussinesqEquationOfState", "Field", "Field", "KernelFunctionOperation")
+└── arguments: ("BoussinesqEquationOfState", "Field", "Field", "KernelFunctionOperation")
 
 julia> density_field = Field(density_operation)
 1×1×100 Field{Center, Center, Center} on RectilinearGrid on CPU
@@ -110,12 +111,17 @@ julia> density_field = Field(density_operation)
 │   └── west: Nothing, east: Nothing, south: Nothing, north: Nothing, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
 ├── operand: KernelFunctionOperation at (Center, Center, Center)
 ├── status: time=0.0
-└── data: 1×1×106 OffsetArray(::Array{Float64, 3}, 1:1, 1:1, -2:103) with eltype Float64 with indices 1:1×1:1×-2:103
+└── data: 1×1×106 StaticStridesOffsetArray(::Array{Float64, 3}, 1:1, 1:1, -2:103) with eltype Float64 with indices 1:1×1:1×-2:103
     └── max=1032.38, min=1027.73, mean=1030.06
 ```
 
 Values for `temperature`, `salinity` and `geopotential_height` can be passed to
 `seawater_density` to override the defaults that are obtained from the `model`.
+
+References
+==========
+* Roquet, F., Madec, G., McDougall, T. J., & Barker, P. M. (2015). "Accurate polynomial expressions
+  for the density and specific volume of seawater using the TEOS-10 standard." Ocean Modelling, 90, 29-43.
 """
 function seawater_density(model::ModelsWithBuoyancy;
                           temperature = model_temperature(model.buoyancy.formulation, model),

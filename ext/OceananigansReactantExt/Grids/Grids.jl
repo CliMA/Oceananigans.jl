@@ -2,23 +2,19 @@ module Grids
 
 export constant_with_arch
 
-using Reactant
-using Reactant: TracedRArray
-using OffsetArrays
+using Reactant: Reactant, ConcreteRArray, Sharding, TracedRArray
+using OffsetArrays: OffsetArrays, OffsetArray
 
-using Oceananigans
-using Oceananigans: Distributed
+using Oceananigans: Oceananigans
 using Oceananigans.Architectures: ReactantState, CPU
-using Oceananigans.Grids: AbstractGrid, AbstractUnderlyingGrid, StaticVerticalDiscretization, MutableVerticalDiscretization
-using Oceananigans.Grids: Center, Face, RightConnected, LeftConnected, Periodic, Bounded, Flat, FaceExtendedTopology
-using Oceananigans.Fields: Field
-using Oceananigans.ImmersedBoundaries: GridFittedBottom, AbstractImmersedBoundary
+using Oceananigans.Grids: AbstractGrid, AbstractUnderlyingGrid, StaticVerticalDiscretization, MutableVerticalDiscretization,
+                          LatitudeLongitudeGrid, RectilinearGrid, OrthogonalSphericalShellGrid,
+                          Face, Periodic, TwoSided, Bounded, Closed, Connected, FaceExtendedTopology
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedVerticalBoundaries
+using Oceananigans.OrthogonalSphericalShellGrids: OrthogonalSphericalShellGrids, TripolarGrid
+using Oceananigans.Utils: StaticStridesOffsetArray, unparameterized_type
 
-import ..OceananigansReactantExt: deconcretize
-import Oceananigans.Grids: LatitudeLongitudeGrid, RectilinearGrid, OrthogonalSphericalShellGrid
-import Oceananigans.Grids: total_length
-import Oceananigans.OrthogonalSphericalShellGrids: RotatedLatitudeLongitudeGrid, TripolarGrid
-import Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, materialize_immersed_boundary
+using ..OceananigansReactantExt: OceananigansReactantExt, deconcretize
 
 const ShardedDistributed = Oceananigans.Distributed{<:ReactantState}
 
@@ -56,7 +52,22 @@ function Base.:(==)(grid1::ReactantStateLatitudeLongitudeGrid, grid2::ReactantSt
     return topology(grid1) == topology(grid2) && size(grid1) == size(grid2) && halo_size(grid1) == halo_size(grid2)
 end
 
-function total_size(grid::ShardedGrid, loc, indices)
+# The plural node accessors (`xnodes`, `λnodes`, `rnodes`, ...) are host conveniences built on views of a grid's
+# coordinate arrays, which on `ReactantState` are device arrays: reducing or broadcasting over those views reads
+# them element by element on the host. All of them take the arrays through `_property`, so it hands them host
+# copies. Inside a compiled function or a kernel the arrays are traced or adapted, not concrete, and unaffected.
+const ConcreteCoordinate = Union{Reactant.AbstractConcreteArray, OffsetArray{<:Any, <:Any, <:Reactant.AbstractConcreteArray}}
+
+host_coordinate(ξ::Reactant.AbstractConcreteArray) = Array(ξ)
+host_coordinate(ξ::OffsetArray) = OffsetArray(Array(parent(ξ)), ξ.offsets)
+
+Oceananigans.Grids._property(ξ::ConcreteCoordinate, ℓ, T, N, H, with_halos) =
+    Oceananigans.Grids._property(host_coordinate(ξ), ℓ, T, N, H, with_halos)
+
+Oceananigans.Grids._property(ξ::ConcreteCoordinate, ℓx, ℓy, Tx, Ty, Nx, Ny, Hx, Hy, with_halos) =
+    Oceananigans.Grids._property(host_coordinate(ξ), ℓx, ℓy, Tx, Ty, Nx, Ny, Hx, Hy, with_halos)
+
+function Oceananigans.Grids.total_size(grid::ShardedGrid, loc, indices)
     sz = size(grid)
     halo_sz = halo_size(grid)
     topo = topology(grid)
@@ -80,7 +91,7 @@ reactant_offset_indices(ℓ,         topo, N, H, r::AbstractUnitRange) = r
 reactant_offset_indices(::Nothing, topo, N, H, ::AbstractUnitRange) = 1:1
 
 function Oceananigans.Grids.new_data(FT::DataType, arch::ShardedDistributed,
-        loc, topo, sz, halo_sz, indices=default_indices(length(loc)))
+                                     loc, topo, sz, halo_sz, indices=default_indices(length(loc)))
 
     Tsz = reactant_total_size(loc, topo, sz, halo_sz, indices)
     underlying_data = zeros(arch, FT, Tsz...)
@@ -101,7 +112,7 @@ function reactant_offset_data(underlying_data::Union{ConcreteRArray, TracedRArra
         axes(underlying_data, i+length(ii))
     end
 
-    return OffsetArray(underlying_data, ii..., extra_ii...)
+    return StaticStridesOffsetArray(underlying_data, map(r -> first(r) - 1, (ii..., extra_ii...))...)
 end
 
 end # module

@@ -1,4 +1,4 @@
-import Oceananigans: summary
+using Oceananigans: summary
 using Oceananigans.Fields: show_location
 
 for op_string in ("UnaryOperation", "BinaryOperation", "MultiaryOperation", "Derivative", "KernelFunctionOperation")

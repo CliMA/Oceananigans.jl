@@ -2,6 +2,13 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Zarr
 using Dates: value
+using Oceananigans.Grids: MutableVerticalDiscretization, rnodes
+using Oceananigans.Utils: unparameterized_type
+
+struct ExtraPayloadTestVerticalCoordinate{C, P} <: Oceananigans.Grids.AbstractVerticalCoordinate
+    cᵃᵃᶠ :: C
+    payload :: P
+end
 
 #####
 ##### ZarrWriter construction and display
@@ -82,10 +89,15 @@ using Dates: value
 
     materialize = Oceananigans.OutputWriters.materialize_serialized_output
     @test materialize("Oceananigans.Grids.Periodic") === Periodic
+    @test materialize("Oceananigans.Grids.TwoSided{Oceananigans.Grids.Closed, Oceananigans.Grids.Open}") === Oceananigans.Grids.TwoSided{Closed, Open}
     @test materialize("(Colon(), 1:4, 3)") == (:, 1:4, 3)
     @test materialize("-Inf") === -Inf
     @test materialize("+Inf") === Inf
     @test_throws ArgumentError materialize("run(\`touch unsafe_output_metadata\`)")
+
+    mutable_coordinate = materialize("MutableVerticalDiscretization([-1.0, -0.5, 0.0])")
+    @test mutable_coordinate isa MutableVerticalDiscretization
+    @test mutable_coordinate.cᵃᵃᶠ == [-1.0, -0.5, 0.0]
 end
 
 #####
@@ -173,6 +185,7 @@ end
         grid = RectilinearGrid(arch; size=(1, 1, 1), extent=(1, 1, 1))
         clock = Clock(time=DateTime(2021, 1, 1))
         model = NonhydrostaticModel(grid; clock, timestepper=:QuasiAdamsBashforth2, tracers=:c)
+        set!(model, c=2)
 
         filepath = abspath("test_zarr_datetime.zarr")
         isdir(filepath) && rm(filepath; recursive=true, force=true)
@@ -192,6 +205,11 @@ end
         expected_initial_time = value(DateTime(2021, 1, 1) - epoch) / 1000
         @test group["time"].attrs["units"] == "seconds since 2000-01-01 00:00:00"
         @test group["time"][1] == expected_initial_time
+
+        # The reader decodes the CF axis back to the clock's instants and matches them to load data.
+        fts = FieldTimeSeries(filepath, "c"; architecture=arch)
+        @test fts.times == [DateTime(2021, 1, 1), DateTime(2021, 1, 1, 0, 0, 1)]
+        @test CUDA.@allowscalar fts[2][1, 1, 1] == 2
 
         rm(filepath; recursive=true, force=true)
     end
@@ -417,7 +435,45 @@ using Oceananigans.Fields: Field
         @test size(rg_coarse) == (2, 2, 2)
 
         rm(multi_path; recursive=true, force=true)
+
+        # --- Mutable vertical coordinate: only the reference interfaces are serialized ---
+        r_faces = collect(range(-100.0, 0.0; length=5))
+        mutable_grid = RectilinearGrid(arch; size=(4, 4, 4), x=(0, 1), y=(0, 1),
+                                       z=MutableVerticalDiscretization(r_faces),
+                                       topology=(Periodic, Periodic, Bounded))
+        ZStar = Oceananigans.Models.HydrostaticFreeSurfaceModels.ZStarCoordinate
+        mutable_model = HydrostaticFreeSurfaceModel(mutable_grid;
+                                                    free_surface=SplitExplicitFreeSurface(mutable_grid; substeps=10),
+                                                    tracers=(:T,),
+                                                    vertical_coordinate=ZStar())
+
+        mutable_path = abspath(joinpath(".", "test_zarr_mutable_grid.zarr"))
+        isdir(mutable_path) && rm(mutable_path; recursive=true, force=true)
+
+        simulation3 = Simulation(mutable_model; Δt=0.5, stop_iteration=1, verbose=false)
+        simulation3.output_writers[:fields] = ZarrWriter(mutable_model, (; T=mutable_model.tracers.T);
+                                                         filename = "test_zarr_mutable_grid",
+                                                         dir = ".",
+                                                         schedule = IterationInterval(1),
+                                                         overwrite_files = true)
+        run!(simulation3)
+
+        gz = Zarr.zopen(mutable_path)
+        @test gz.groups["grid"].attrs["underlying_grid_reconstruction_kwargs"]["z"] ==
+              "MutableVerticalDiscretization($r_faces)"
+
+        reconstructed_mutable = reconstruct_zarr_grid(gz; architecture=arch)
+        @test reconstructed_mutable.z isa MutableVerticalDiscretization
+        @test Array(rnodes(reconstructed_mutable, Face())) == r_faces
+
+        rm(mutable_path; recursive=true, force=true)
     end
+
+    # A vertical coordinate defined outside Oceananigans (e.g. terrain-following) is serialized
+    # by type name and reference interfaces alone, whatever else it carries.
+    large_payload = zeros(1000, 1000)
+    custom = ExtraPayloadTestVerticalCoordinate([0.0, 1.0, 2.0], large_payload)
+    @test ZarrExt.convert_for_zarr(custom) == "ExtraPayloadTestVerticalCoordinate([0.0, 1.0, 2.0])"
 end
 
 #####
@@ -622,12 +678,12 @@ matching_grid_structure(original, reconstructed) =
 function matching_grid_structure(original::OrthogonalSphericalShellGrid,
                                  reconstructed::OrthogonalSphericalShellGrid)
     return matching_grid_structure_base(original, reconstructed) &&
-           typeof(original.conformal_mapping).name.wrapper ===
-           typeof(reconstructed.conformal_mapping).name.wrapper
+           unparameterized_type(typeof(original.conformal_mapping)) ===
+           unparameterized_type(typeof(reconstructed.conformal_mapping))
 end
 
 matching_grid_structure_base(original, reconstructed) =
-    typeof(original).name.wrapper === typeof(reconstructed).name.wrapper &&
+    unparameterized_type(typeof(original)) === unparameterized_type(typeof(reconstructed)) &&
     typeof(architecture(original)) === typeof(architecture(reconstructed)) &&
     size(original) == size(reconstructed) &&
     halo_size(original) == halo_size(reconstructed) &&
@@ -637,8 +693,8 @@ matching_grid_structure_base(original, reconstructed) =
 function matching_grid_structure(original::ImmersedBoundaryGrid,
                                  reconstructed::ImmersedBoundaryGrid)
     return matching_grid_structure(original.underlying_grid, reconstructed.underlying_grid) &&
-           typeof(original.immersed_boundary).name.wrapper ===
-           typeof(reconstructed.immersed_boundary).name.wrapper
+           unparameterized_type(typeof(original.immersed_boundary)) ===
+           unparameterized_type(typeof(reconstructed.immersed_boundary))
 end
 
 function zarr_round_trip(grid; tag::String, with_halos = false)

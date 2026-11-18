@@ -345,7 +345,7 @@ for arch in archs
         immersed_active_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
 
         for grid in (underlying_grid, immersed_grid, immersed_active_grid)
-            G = typeof(grid).name.wrapper
+            G = nameof(typeof(grid))
             model = NonhydrostaticModel(grid; buoyancy, tracers = (:T, :S))
 
             @testset "Instantiating and computing computed fields [$A, $G]" begin
@@ -625,11 +625,8 @@ for arch in archs
         buoyancies = (BuoyancyTracer(), SeawaterBuoyancy(),
                       (SeawaterBuoyancy(equation_of_state=eos()) for eos in EquationsOfState)...)
 
-        for buoyancy in buoyancies
-            @testset "Computations with buoyancy_fields [$A, $(typeof(buoyancy).name.wrapper)]" begin
-                @info "      Testing computations with buoyancy_field [$A, $(typeof(buoyancy).name.wrapper)]..."
-                @test computations_with_buoyancy_field(arch, buoyancy)
-            end
+        @testset "Computations with buoyancy_fields [$A, $(nameof(typeof(buoyancy)))]" for buoyancy in buoyancies
+            @test computations_with_buoyancy_field(arch, buoyancy)
         end
     end
 end

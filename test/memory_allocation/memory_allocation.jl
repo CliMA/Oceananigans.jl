@@ -3,12 +3,12 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 using Oceananigans
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 using Oceananigans.DistributedComputations: @handshake, ranks
-using Oceananigans.Models: is_local_dimension
-using Oceananigans.Grids: RightConnected, LeftConnected
+using Oceananigans.Grids: Closed, Connected
 using Oceananigans.Models.NonhydrostaticModels: buffer_parameters
+using Oceananigans.Models.ShallowWaterModels: ShallowWaterScalarDiffusivity
 using Oceananigans.Fields: flattened_unique_values
 using Oceananigans.OutputReaders: extract_field_time_series, FieldTimeSeries
-using Oceananigans.Utils: pretty_filesize, work_layout, interior_work_layout
+using Oceananigans.Utils: pretty_filesize, work_layout, interior_work_layout, KernelParameters
 using Oceananigans.Architectures: convert_to_device
 using Oceananigans.Fields: instantiated_location
 
@@ -133,13 +133,12 @@ const distributed_memory_gpu = Dict(
 # For distributed this includes only (4, 1), (1, 4) and (2, 2)
 archs = nonhydrostatic_regression_test_architectures()
 
-@testset "local_dimension predicate" begin
-    @test is_local_dimension(Periodic) === true
-    @test is_local_dimension(Bounded)  === true
-    @test is_local_dimension(Flat)     === true
-    @test is_local_dimension(RightConnected) === false
-    @test is_local_dimension(LeftConnected)  === false
-    @test @inferred(is_local_dimension(Periodic)) === true
+@testset "buffer_parameters includes only communicating sides" begin
+    params = ntuple(n -> ((n, n, n), (0, 0, 0)), 4)
+    right_connected_grid = RectilinearGrid(CPU(), size=(8, 8, 8), extent=(1, 1, 1), topology=((Closed, Connected), Periodic, Bounded))
+    connected_grid = RectilinearGrid(CPU(), size=(8, 8, 8), extent=(1, 1, 1), topology=(Periodic, Connected, Bounded))
+    @test buffer_parameters(params, right_connected_grid, CPU()) === (KernelParameters((2, 2, 2), (0, 0, 0)),)
+    @test buffer_parameters(params, connected_grid, CPU()) === (KernelParameters((3, 3, 3), (0, 0, 0)), KernelParameters((4, 4, 4), (0, 0, 0)))
 end
 
 @testset "buffer_parameters is type-stable and allocation-free" begin
@@ -281,6 +280,28 @@ if !mpi_test
                 @info "  hydrostatic_split_rk3 | $(summary(arch)) | $immersed : $(pretty_filesize(allocations)) (≤ $(pretty_filesize(bound)))"
                 @test allocations ≤ bound
             end
+        end
+    end
+end
+
+function shallow_water_time_step_allocations(N, timestepper; kwargs...)
+    grid = RectilinearGrid(CPU(); size=(N, N), extent=(1, 1), topology=(Periodic, Periodic, Flat))
+    closure = ShallowWaterScalarDiffusivity(ν=1e-3)
+    model = ShallowWaterModel(grid; gravitational_acceleration=1, closure, tracers=:c, timestepper, kwargs...)
+    set!(model, h=1)
+    return time_step_allocations(model, 1e-3)
+end
+
+shallow_water_formulations = (
+    conservative     = (; formulation=ConservativeFormulation()),
+    vector_invariant = (; formulation=VectorInvariantFormulation(), momentum_advection=VectorInvariant()),
+)
+
+if !mpi_test && child_arch isa CPU
+    for (name, kwargs) in pairs(shallow_water_formulations), timestepper in (:RungeKutta3, :QuasiAdamsBashforth2)
+        @testset "ShallowWaterModel allocations do not grow with the grid [$name, $timestepper]" begin
+            @test shallow_water_time_step_allocations(16, timestepper; kwargs...) ==
+                  shallow_water_time_step_allocations(32, timestepper; kwargs...)
         end
     end
 end

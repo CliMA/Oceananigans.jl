@@ -94,7 +94,7 @@ end
 
 # Compute TKE and dissipation closure_fields
 @kernel function compute_tke_dissipation_closure_fields!(κe, κϵ, grid, closure,
-                                                        velocities, tracers, buoyancy)
+                                                         velocities, tracers, buoyancy)
     i, j, k = @index(Global, NTuple)
     closure_ij = getclosure(i, j, closure)
     κe★ = κeᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy)
@@ -191,7 +191,7 @@ end
     end
 end
 
-@inline function implicit_linear_coefficient(i, j, k, grid, closure::FlavorOfTD{<:VITD}, K, ::Val{id}, args...) where id
+@inline function TurbulenceClosures.implicit_linear_coefficient(i, j, k, grid, closure::FlavorOfTD{<:VITD}, K, ::Val{id}, args...) where id
     L = K._tupled_implicit_linear_coefficients[id]
     return @inbounds L[i, j, k]
 end
@@ -262,11 +262,11 @@ end
 #####
 
 """ Add TKE boundary conditions specific to `TKEDissipationVerticalDiffusivity`. """
-function add_closure_specific_boundary_conditions(closure::FlavorOfTD,
-                                                  user_bcs,
-                                                  grid,
-                                                  tracer_names,
-                                                  buoyancy)
+function TurbulenceClosures.add_closure_specific_boundary_conditions(closure::FlavorOfTD,
+                                                                     user_bcs,
+                                                                     grid,
+                                                                     tracer_names,
+                                                                     buoyancy)
 
     top_tracer_bcs = top_tracer_boundary_conditions(grid, tracer_names, user_bcs)
     top_velocity_bcs = top_velocity_boundary_conditions(grid, user_bcs)

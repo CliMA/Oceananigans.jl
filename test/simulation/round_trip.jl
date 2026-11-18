@@ -1,6 +1,7 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Oceananigans.Grids: topology
+using Oceananigans.Utils: unparameterized_type
 using Oceananigans.OrthogonalSphericalShellGrids: TripolarGrid, ConformalCubedSpherePanelGrid
 
 # Load only the writer extension packages needed for the selected writers, so a
@@ -85,9 +86,9 @@ end
 function grids_match(reconstructed, original)
     size(reconstructed) == size(original) || return false
     topology(reconstructed) == topology(original) || return false
-    typeof(reconstructed).name === typeof(original).name || return false
+    unparameterized_type(typeof(reconstructed)) === unparameterized_type(typeof(original)) || return false
     if original isa ImmersedBoundaryGrid
-        typeof(reconstructed.underlying_grid).name === typeof(original.underlying_grid).name || return false
+        unparameterized_type(typeof(reconstructed.underlying_grid)) === unparameterized_type(typeof(original.underlying_grid)) || return false
     end
     return true
 end

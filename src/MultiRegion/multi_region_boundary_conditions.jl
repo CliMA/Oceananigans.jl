@@ -1,9 +1,5 @@
 using Oceananigans: instantiated_location
 using Oceananigans.Architectures: on_architecture, device_copy_to!
-using Oceananigans.Operators: assumed_field_location
-using Oceananigans.Fields: reduced_dimensions
-using Oceananigans.DistributedComputations: fill_send_buffers!
-
 using Oceananigans.BoundaryConditions:
     BoundaryCondition,
     ContinuousBoundaryFunction,
@@ -11,13 +7,17 @@ using Oceananigans.BoundaryConditions:
     fill_halo_event!,
     needs_implicit_solver,
     MultiRegionFillHalo,
-    MultiRegionCommunicationBoundaryCondition
+    MultiRegionCommunicationBoundaryCondition,
+    XZReducedCondition
+using Oceananigans.DistributedComputations: fill_send_buffers!
+using Oceananigans.Fields: reduced_dimensions
+using Oceananigans.Operators: assumed_field_location
 
 @inline bc_str(::MultiRegionObject) = "MultiRegion Boundary Conditions"
 
 BoundaryConditions.needs_implicit_solver(bcs::MultiRegionObject) = any(needs_implicit_solver, bcs.regional_objects)
 
-BoundaryConditions.fill_halo_regions!(field::MultiRegionField, args...; kwargs...) =
+BoundaryConditions.fill_halo_regions!(field::MultiRegionField, args::Vararg{Any, N}; kwargs...) where N =
     fill_halo_regions!(field.data,
                        field.boundary_conditions,
                        field.indices,
@@ -38,7 +38,10 @@ BoundaryConditions.fill_halo_regions!(c::MultiRegionObject, ::Nothing, indices, 
 # TODO: Optimize this some way (needs infra-regional-function synchronization between regions).
 # The complication here is the possibility of different regions having different number of tasks,
 # Which might happen, for example, for a grid that partitioned in a Bounded direction.
-function BoundaryConditions.fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiRegionGrid, buffers, args...; fill_normal_flow_bcs=true, kwargs...)
+#
+# `Vararg{Any, N}` makes the compiler specialize on the `args` that are only passed on.
+function BoundaryConditions.fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiRegionGrid, buffers, args::Vararg{Any, N};
+                                               fill_normal_flow_bcs=true, kwargs...) where N
     buff_ref = Reference(buffers.regional_objects)
 
     apply_regionally!(fill_send_buffers!, c, buffers, mrg)
@@ -182,6 +185,8 @@ end
 
 @inline Utils.getregion(bc::BoundaryCondition, i) = BoundaryCondition(bc.classification, _getregion(bc.condition, i))
 
+@inline Utils.getregion(c::XZReducedCondition{D}, i) where D = XZReducedCondition{D}(_getregion(c.condition, i))
+
 @inline Utils.getregion(cf::ContinuousBoundaryFunction{X, Y, Z, I}, i) where {X, Y, Z, I} =
             ContinuousBoundaryFunction{X, Y, Z, I}(cf.func,
                                                 _getregion(cf.parameters, i),
@@ -204,6 +209,8 @@ end
                                     getregion(fc.ordered_bcs, i))
 
 @inline Utils._getregion(bc::BoundaryCondition, i) = BoundaryCondition(bc.classification, getregion(bc.condition, i))
+
+@inline Utils._getregion(c::XZReducedCondition{D}, i) where D = XZReducedCondition{D}(getregion(c.condition, i))
 
 @inline Utils._getregion(cf::ContinuousBoundaryFunction{X, Y, Z, I}, i) where {X, Y, Z, I} =
             ContinuousBoundaryFunction{X, Y, Z, I}(cf.func,
