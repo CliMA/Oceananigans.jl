@@ -66,6 +66,8 @@ Base.@nospecializeinfer function construct_output(@nospecialize(user_output::Uni
     return Field(user_output; indices, additional_kw...)
 end
 
+construct_output(user_output::ConstantFields, user_indices, with_halos) = user_output
+
 #####
 ##### Time-averaging
 #####

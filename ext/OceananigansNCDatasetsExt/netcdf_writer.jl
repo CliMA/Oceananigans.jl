@@ -8,24 +8,24 @@
 # grid metrics.
 #
 
-using Oceananigans.OutputWriters: add_schedule_metadata!, default_output_attributes
+using Oceananigans.OutputWriters: add_schedule_metadata!, default_output_attributes, ConstantFields
 
 #####
 ##### Extend defVar to be able to write fields to NetCDF directly
 #####
 
-defVar(ds::AbstractDataset, name, op::AbstractOperation; kwargs...) = defVar(ds, name, Field(op); kwargs...)
-defVar(ds::AbstractDataset, name, op::Reduction; kwargs...) = defVar(ds, name, Field(op); kwargs...)
+CommonDataModel.defVar(ds::AbstractDataset, name, op::AbstractOperation; kwargs...) = defVar(ds, name, Field(op); kwargs...)
+CommonDataModel.defVar(ds::AbstractDataset, name, op::Reduction; kwargs...) = defVar(ds, name, Field(op); kwargs...)
 
-Base.@nospecializeinfer function defVar(ds::AbstractDataset, field_name, @nospecialize(fd::AbstractField);
-                array_type=Array{eltype(fd)},
-                time_dependent=false,
-                with_halos=false,
-                dimension_name_generator = trilocation_dim_name,
-                dimension_type=Float64,
-                grid_index=nothing,
-                write_data=true,
-                kwargs...)
+Base.@nospecializeinfer function CommonDataModel.defVar(ds::AbstractDataset, field_name, @nospecialize(fd::AbstractField);
+                                                        array_type=Array{eltype(fd)},
+                                                        time_dependent=false,
+                                                        with_halos=false,
+                                                        dimension_name_generator = trilocation_dim_name,
+                                                        dimension_type=Float64,
+                                                        grid_index=nothing,
+                                                        write_data=true,
+                                                        kwargs...)
 
     # effective_dim_names are the dimensions that will be used to write the field data (excludes reduced and dimensions where location is Nothing)
     effective_dim_names = create_field_dimensions!(ds, fd, dimension_name_generator; time_dependent, with_halos, array_type, dimension_type, grid_index)
@@ -58,7 +58,21 @@ Base.@nospecializeinfer function defVar(ds::AbstractDataset, field_name, @nospec
     end
 end
 
-defVar(ds::AbstractDataset, field_name::Union{AbstractString, Symbol}, data::Array{Bool}, dim_names; kwargs...) = defVar(ds, field_name, Int8.(data), dim_names; kwargs...)
+# Constant fields are written as scalars, with their type stored as an attribute
+function CommonDataModel.defVar(ds::AbstractDataset, field_name, fd::ConstantFields;
+                                array_type = Array{eltype(fd)},
+                                attrib = Dict(),
+                                kwargs...)
+
+    attrib = merge(attrib, Dict("type" => string(nameof(typeof(fd))),
+                                "location" => "(Nothing, Nothing, Nothing)"))
+
+    return defVar(ds, field_name, eltype(array_type)(fd[1, 1, 1]), (); attrib)
+end
+
+CommonDataModel.defVar(ds::AbstractDataset, field_name::Union{AbstractString, Symbol},
+                       data::Array{Bool}, dim_names; kwargs...) =
+    defVar(ds, field_name, Int8.(data), dim_names; kwargs...)
 
 Base.@nospecializeinfer function add_location_attribute!(attrib, @nospecialize(fd::AbstractField))
     loc = location(fd) |> convert_for_netcdf
@@ -76,25 +90,25 @@ end
 ##### NetCDFWriter constructor
 #####
 
-function NetCDFWriter(model::AbstractModel, outputs;
-                      filename,
-                      schedule,
-                      dir = ".",
-                      array_type = Array{Float32},
-                      indices = (:, :, :),
-                      global_attributes = Dict(),
-                      output_attributes = Dict(),
-                      dimensions = Dict(),
-                      with_halos = false,
-                      include_grid_metrics = true,
-                      overwrite_files = nothing,
-                      overwrite_snapshots = true,
-                      verbose = false,
-                      deflatelevel = 0,
-                      part = 1,
-                      file_splitting = NoFileSplitting(),
-                      dimension_name_generator = trilocation_dim_name,
-                      dimension_type = Float64)
+function OutputWriters.NetCDFWriter(model::AbstractModel, outputs;
+                                    filename,
+                                    schedule,
+                                    dir = ".",
+                                    array_type = Array{Float32},
+                                    indices = (:, :, :),
+                                    global_attributes = Dict(),
+                                    output_attributes = Dict(),
+                                    dimensions = Dict(),
+                                    with_halos = false,
+                                    include_grid_metrics = true,
+                                    overwrite_files = nothing,
+                                    overwrite_snapshots = true,
+                                    verbose = false,
+                                    deflatelevel = 0,
+                                    part = 1,
+                                    file_splitting = NoFileSplitting(),
+                                    dimension_name_generator = trilocation_dim_name,
+                                    dimension_type = Float64)
 
     if with_halos && indices != (:, :, :)
         throw(ArgumentError("If with_halos=true then you cannot pass indices: $indices"))
@@ -112,7 +126,7 @@ function NetCDFWriter(model::AbstractModel, outputs;
     outputs = OrderedDict(string(name) => construct_output(outputs[name], indices, with_halos) for name in output_names(outputs))
 
     # Extract grids from outputs, falling back to model grid for non-field outputs
-    output_grids = OrderedDict(name => (try grid(output) catch; grid(model) end) for (name, output) in outputs)
+    output_grids = OrderedDict(name => something((try grid(output) catch; nothing end), grid(model)) for (name, output) in outputs)
     unique_grids = Tuple(unique(objectid, collect(values(output_grids))))
     output_grid_map = Dict(name => findfirst(gr -> gr === output_grids[name], unique_grids) for name in keys(outputs))
 
@@ -158,7 +172,7 @@ end
 Initialize a `NetCDFWriter` by creating its file and writing the dimensions, grid
 reconstruction data, and variable definitions to it.
 """
-function initialize!(writer::NetCDFWriter, model)
+function Oceananigans.initialize!(writer::NetCDFWriter, model)
     writer.initialized && return nothing
 
     filepath = writer.filepath
@@ -372,17 +386,13 @@ end
 
 """ Defines empty field variable. """
 Base.@nospecializeinfer function define_output_variable!(@nospecialize(model), dataset, @nospecialize(output::AbstractField), output_name; array_type,
-                                 deflatelevel, attrib, dimension_name_generator,
-                                 time_dependent, with_halos, grid_index=nothing,
-                                 dimensions, filepath, dimension_type=Float64)
+                                                         deflatelevel, attrib, dimension_name_generator,
+                                                         time_dependent, with_halos, grid_index=nothing,
+                                                         dimensions, filepath, dimension_type=Float64)
 
-    # If the output is the free surface, we need to handle it differently since it will be writen as a 3D array with a singleton dimension for the z-coordinate
-    if output_name == "displacement" && hasfield(typeof(model), :free_surface)
-        if output == view(model.free_surface.displacement, output.indices...)
-            local default_dimension_name_generator = dimension_name_generator
-            dimension_name_generator = (var_name, grid, LX, LY, LZ, dim) -> dimension_name_generator_free_surface(default_dimension_name_generator, var_name, grid, LX, LY, LZ, dim)
-        end
-    end
+    # Windowed fields (e.g. the free-surface displacement) are handled generically: their
+    # windowed axes get a distinct dimension in `create_field_dimensions!` (see
+    # `resolve_windowed_dim_name`), so no special-casing is needed here.
     defVar(dataset, output_name, output; array_type, time_dependent, with_halos, dimension_name_generator, deflatelevel, attrib, dimension_type, grid_index, write_data=false)
     return nothing
 end
@@ -446,6 +456,8 @@ function write_time_dependent_output!(ds, output::LagrangianParticles, data, tim
     return nothing
 end
 
+write_time_dependent_output!(ds, ::ConstantFields, data, time_index, output_name) = nothing
+
 # Convert to a base Julia type (a float or DateTime).
 float_or_date_time(t) = t
 float_or_date_time(t::AbstractTime) = DateTime(t)
@@ -484,7 +496,7 @@ end
 Write output to netcdf file `output_writer.filepath` at specified intervals. Increments the `time` dimension
 every time an output is written to the file.
 """
-function write_output!(ow::NetCDFWriter, model::AbstractModel)
+function Oceananigans.write_output!(ow::NetCDFWriter, model::AbstractModel)
     model.clock.iteration == 0 && !has_initial_output(ow.schedule) && return nothing
 
     # Ensure the writer is initialized before writing

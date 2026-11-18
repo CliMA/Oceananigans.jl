@@ -1,9 +1,11 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Oceananigans.Units: Time
-using Oceananigans.Fields: indices, interpolate!
+using Oceananigans.BoundaryConditions: fill_halo_regions!
+using Oceananigans.Fields: indices, interpolate, interpolate!
 using Oceananigans.OutputReaders: Cyclical, Clamp, Linear, SplitFilePath, cpu_interpolating_time_indices,
-                                  extract_field_time_series, has_field_time_series
+                                  extract_field_time_series, has_field_time_series,
+                                  update_field_time_series!, time_indices
 
 using Random
 using NCDatasets
@@ -437,7 +439,7 @@ function test_field_time_series_array_boundary_conditions(arch)
 end
 
 function test_field_time_series_function_boundary_conditions(arch)
-    grid = RectilinearGrid(arch; topology=(Bounded, Periodic, Bounded), size=(1, 1, 1), x=(0, 1), y=(0, 1), z=(0, 1))
+    grid = RectilinearGrid(arch; topology=(Open, Periodic, Bounded), size=(1, 1, 1), x=(0, 1), y=(0, 1), z=(0, 1))
 
     u_west(x, y, t) = 0
     u_east(x, y, t) = 0
@@ -854,8 +856,55 @@ function test_precomputed_time_interpolator(arch)
     return nothing
 end
 
+# `Float32` data with `Float64` times: an exact hit and an interpolated read have one type
+function test_type_stable_time_interpolation()
+    grid = RectilinearGrid(Float32; size = (2, 2, 2), extent = (1, 1, 1))
+    fts = FieldTimeSeries{Center, Center, Center}(grid, [0.0, 1.0])
+    set!(fts[1], 1)
+    set!(fts[2], 3)
+    fill_halo_regions!(fts)
+
+    for t in (0.0, 0.5)
+        @test @inferred(getindex(fts, 1, 1, 1, Time(t))) == 1 + 2t
+        @test @inferred(interpolate((0.25, 0.25, 0.25), Time(t), fts, (Center(), Center(), Center()), grid)) == 1 + 2t
+    end
+
+    return nothing
+end
+
 netcdf_reader_log = (:warn, "Reading boundary conditions from NetCDF files is not supported for FieldTimeSeries. " *
                             "Using default FieldBoundaryConditions for `grid` and `location`.")
+
+function test_in_memory_window_covers_time_span(arch)
+    grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 1, 1))
+    times = collect(0:1.0:6)
+    filename = "fts_window_span_test.jld2"
+    f_tmp = Field{Center, Center, Center}(grid)
+    f = FieldTimeSeries{Center, Center, Center}(grid, times; backend=OnDisk(), path=filename, name="f")
+
+    for n in eachindex(times)
+        set!(f_tmp, n)
+        set!(f, f_tmp, n)
+    end
+
+    fts = FieldTimeSeries(filename, "f"; architecture=arch, backend=InMemory(3))
+
+    # A window loaded for t = 1.9 holds times 1, 2, 3 and so cannot serve t = 2.1
+    update_field_time_series!(fts, Time(0.0))
+    update_field_time_series!(fts, Time(1.9))
+    @test time_indices(fts) == (1, 2, 3)
+
+    update_field_time_series!(fts, Time(1.9), Time(2.1))
+    @test time_indices(fts) == (2, 3, 4)
+    @test all(on_architecture(CPU(), interior(fts[2])) .== 2)
+    @test all(on_architecture(CPU(), interior(fts[4])) .== 4)
+
+    @test_throws ArgumentError update_field_time_series!(fts, Time(1.9), Time(4.1))
+
+    rm(filename, force=true)
+
+    return nothing
+end
 
 @testset "OutputReaders" begin
     Nt = 5
@@ -998,6 +1047,10 @@ netcdf_reader_log = (:warn, "Reading boundary conditions from NetCDF files is no
         test_time_interpolation()
     end
 
+    @testset "Type-stable time interpolation" begin
+        test_type_stable_time_interpolation()
+    end
+
     for arch in archs
         @testset "Precomputed TimeInterpolator [$(typeof(arch))]" begin
             test_precomputed_time_interpolator(arch)
@@ -1052,6 +1105,12 @@ netcdf_reader_log = (:warn, "Reading boundary conditions from NetCDF files is no
         @test extract_field_time_series(CenterField(grid)) == ()
         @test Base.return_types(extract_field_time_series, (typeof(CenterField(grid)),))[1] === Tuple{}
     end
+    end
+
+    for arch in archs
+        @testset "Partly-in-memory window covers a time span [$(typeof(arch))]" begin
+            test_in_memory_window_covers_time_span(arch)
+        end
     end
 
 end

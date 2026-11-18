@@ -34,7 +34,7 @@ are most likely affected. Use this mapping:
 | `src/Coriolis/` | `coriolis/coriolis` |
 | `src/Forcings/` | `time_stepping/forcings` |
 | `src/Oceananigans.jl` (exports) | `unit/quality_assurance` |
-| Docstrings | `unit/quality_assurance` (doctests checked via docs build) |
+| Docstrings, `docs/src` pages | `doctests/doctests` (GPU only), `unit/quality_assurance` |
 | `ext/` (extensions) | Corresponding `<extension>/<extension>` (e.g. `makie/makie`, `metal/metal`) |
 
 ## Step 2: Run the Most Likely Test First

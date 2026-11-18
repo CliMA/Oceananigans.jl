@@ -34,7 +34,7 @@ function _derivative(L::Tuple{LX, LY, LZ}, ∂, arg, L∂, abstract_∂, grid) w
     return Derivative{LX, LY, LZ}(∂, arg, ▶, abstract_∂, grid)
 end
 
-indices(d::Derivative) = indices(d.arg)
+Fields.indices(d::Derivative) = indices(d.arg)
 
 # Recompute location of derivative
 @inline at(loc, d::Derivative) = d.abstract_∂(loc, d.arg)
@@ -116,7 +116,7 @@ Return an abstract representation of a ``z``-derivative acting on field `arg`.
 ##### Nested computations
 #####
 
-compute_at!(∂::Derivative, time) = compute_at!(∂.arg, time)
+Fields.compute_at!(∂::Derivative, time) = compute_at!(∂.arg, time)
 
 #####
 

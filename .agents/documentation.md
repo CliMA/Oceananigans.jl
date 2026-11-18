@@ -10,14 +10,10 @@ julia --project=docs/ docs/make.jl
 
 When testing documentation changes locally (especially without a GPU), make these temporary changes to `docs/make.jl`:
 
-1. **Comment out Literate examples** - These take the longest to run:
-   ```julia
-   example_scripts = String[
-       # "spherical_baroclinic_instability.jl",
-       # ... all examples commented out
-   ]
-   ```
-   Also comment out the corresponding `example_pages` entries.
+1. **Skip Literate examples** - These take the longest to run. By default only examples with
+   `build_always = true` are built; expensive ones run only when `OCEANANIGANS_BUILD_ALL_EXAMPLES=true`
+   (set in CI on `main`, tags, and PRs labeled `build all examples`). To skip all examples locally,
+   temporarily change the filter in `docs/make.jl` to `examples = Example[]`.
 
 2. **Add error categories to `warnonly`** - Prevents build failures from GPU-dependent examples and network issues:
    ```julia
@@ -29,8 +25,8 @@ When testing documentation changes locally (especially without a GPU), make thes
    # "Simulation tips" => "simulation_tips.md",  # requires GPU
    ```
 
-4. **Optional speedups** in `makedocs`:
-   - `doctest = false` - Skip doctests entirely if not testing those
+4. **Optional speedups** in `makedocs` (doctests are not part of the docs build; they run in
+   `test/doctests/doctests.jl` in the GPU test job):
    - `linkcheck = false` - Skip link validation
    - `draft = true` - Skip many checks for fastest builds
 

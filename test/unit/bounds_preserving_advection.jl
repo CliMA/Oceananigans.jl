@@ -1,6 +1,7 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
-using Oceananigans.Advection: div_Uc, materialize_advection, update_advection!, bounds_preserving_limiter
+using Oceananigans.Advection: div_Uc, materialize_advection, update_advection!, bounds_preserving_limiter, update_bounds_preserving_limiter!
+using Oceananigans.TimeSteppers: AdaptiveVerticallyImplicitDiscretization
 using Oceananigans.Operators: Vᶜᶜᶜ
 using Random
 
@@ -115,6 +116,16 @@ end
         @test isfinite(bounds_preserving_limiter(8, 1, 1, grid, scheme, c))
     end
 
+    @testset "Halo covers the limiter's extended range" begin
+        @test Oceananigans.Grids.required_halo_size_x(WENO(order=5, bounds=(0, 1))) == 4
+        @test Oceananigans.Grids.required_halo_size_z(WENO(order=5, bounds=(0, 1))) == 3
+
+        grid = RectilinearGrid(CPU(), size=(4, 4, 4), extent=(1, 1, 1), halo=(3, 3, 3))
+        @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid; tracers=:c, tracer_advection=WENO(order=5, bounds=(0, 1)))
+        @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid; tracers=:c, tracer_advection=(; c=WENO(order=5, bounds=(0, 1))))
+        @test_throws ArgumentError NonhydrostaticModel(grid; advection=WENO(order=5, bounds=(0, 1)), tracers=:c)
+    end
+
     @testset "Model integration" begin
         for arch in archs
             underlying_grid = RectilinearGrid(arch, size=(N, N, N), x=(0, 1), y=(0, 1), z=(0, 1),
@@ -142,4 +153,43 @@ end
             end
         end
     end
+end
+
+# With adaptive-implicit vertical advection, the bounded divergence must advect only the explicit,
+# CFL-limited part of `w`: the implicit solve adds the rest. Far from its bounds (θ = 1) the bounded
+# scheme must then reproduce the unbounded one, including where the vertical Courant number exceeds `cfl`.
+@testset "Bounded WENO with adaptive-implicit vertical advection" begin
+    N = 16
+    grid = RectilinearGrid(CPU(), size=(8, 8, N), x=(0, 1), y=(0, 1), z=(-1, 0),
+                           topology=(Periodic, Periodic, Bounded), halo=(6, 6, 6))
+
+    Δt = 0.05
+    tds = map(1:2) do _
+        td = AdaptiveVerticallyImplicitDiscretization(cfl=0.5)
+        td.Δt[] = Δt
+        td
+    end
+
+    bounded   = materialize_advection(WENO(order=5, bounds=(0, 100), time_discretization=tds[1]), grid)
+    unbounded = materialize_advection(WENO(order=5, time_discretization=tds[2]), grid)
+
+    c = CenterField(grid)
+    set!(c, (x, y, z) -> 34 + 0.5 * sin(2π * x) + 0.3 * cos(3π * z))
+    fill_halo_regions!(c)
+
+    U = (u = XFaceField(grid), v = YFaceField(grid), w = ZFaceField(grid))
+    set!(U.u, (x, y, z) -> 0.2 * cos(2π * y))
+    set!(U.w, (x, y, z) -> -1.5 * sin(π * z)) # |w| Δt / Δz reaches 1.2, above cfl = 0.5
+    foreach(fill_halo_regions!, U)
+
+    update_bounds_preserving_limiter!(bounded, grid, c)
+
+    max_difference = 0.0
+    for k in 1:N, j in 1:8, i in 1:8
+        db = div_Uc(i, j, k, grid, bounded,   U, c)
+        du = div_Uc(i, j, k, grid, unbounded, U, c)
+        max_difference = max(max_difference, abs(db - du))
+    end
+
+    @test max_difference < 1e-10
 end

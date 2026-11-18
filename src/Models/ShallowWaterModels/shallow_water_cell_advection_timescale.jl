@@ -1,9 +1,7 @@
 "Returns the time-scale for advection on a regular grid across a single grid cell
  for ShallowWaterModel."
 
-import Oceananigans.Advection: cell_advection_timescale
-
-function cell_advection_timescale(model::ShallowWaterModel)
+function Advection.cell_advection_timescale(model::ShallowWaterModel)
     u, v, _ = shallow_water_velocities(model)
     τ = KernelFunctionOperation{Center, Center, Nothing}(shallow_water_cell_advection_timescaleᶜᶜᵃ, model.grid, u, v)
     return minimum(τ)

@@ -83,7 +83,7 @@ function run_cylinder_steadystate(; output_time_interval = 1, stop_time = 100, a
         return nothing
     end
 
-    @show experiment_name = "cylinder_tracer_Nh_$(Nh)_$(typeof(immersed_model.advection).name.wrapper)"
+    @show experiment_name = "cylinder_tracer_Nh_$(Nh)_$(nameof(typeof(immersed_model.advection)))"
 
     wizard = TimeStepWizard(cfl=0.07, Δt=0.07 * underlying_grid.Δxᶜᵃᵃ, max_change=1.1, max_Δt=10.0, min_Δt=0.0001)
 

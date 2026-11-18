@@ -176,7 +176,7 @@ function setup_simulation(params::SolitonParameters;
     z = MutableVerticalDiscretization(range(-params.H, 0, length = Nz + 1))
 
     grid = RectilinearGrid(CPU();
-                           topology = (Bounded, Bounded, Bounded),
+                           topology = (Open, Open, Bounded),
                            size = (Nx, Ny, Nz),
                            x = (params.x_min, params.x_max),
                            y = (params.y_min, params.y_max),

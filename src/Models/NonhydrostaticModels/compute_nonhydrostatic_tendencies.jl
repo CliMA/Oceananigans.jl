@@ -1,5 +1,5 @@
-using Oceananigans: fields, prognostic_fields, TendencyCallsite
-using Oceananigans.Biogeochemistry: update_tendencies!, add_biogeochemical_transitions!
+using Oceananigans: TendencyCallsite, fields, prognostic_fields
+using Oceananigans.Biogeochemistry: add_biogeochemical_transitions!, update_tendencies!
 using Oceananigans.Models: complete_communication_and_compute_buffer!, interior_tendency_kernel_parameters
 
 """

@@ -37,43 +37,22 @@ using Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_h
         end
     end
 
-    @testset "Adjustment of halos in NonhydrostaticModel constructor" begin
-        @info "  Testing adjustment of halos in NonhydrostaticModel constructor..."
+    @testset "Validation of halos in NonhydrostaticModel constructor" begin
+        @info "  Testing validation of halos in NonhydrostaticModel constructor..."
 
         minimal_grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 2, 3), halo=(1, 1, 1))
           funny_grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 2, 3), halo=(1, 3, 4))
 
-        # Model ensures that halos are at least of size 1
-        model = NonhydrostaticModel(minimal_grid)
-        @test model.grid.Hx == 1 && model.grid.Hy == 1 && model.grid.Hz == 1
+        @test NonhydrostaticModel(minimal_grid).grid === minimal_grid
+        @test NonhydrostaticModel(funny_grid).grid === funny_grid
 
-        model = NonhydrostaticModel(funny_grid)
-        @test model.grid.Hx == 1 && model.grid.Hy == 3 && model.grid.Hz == 4
-
-        # Model ensures that halos are at least of size 2
-        for scheme in (Centered(order=4), UpwindBiased(order=3))
-            model = NonhydrostaticModel(minimal_grid; advection=scheme)
-            @test model.grid.Hx == 2 && model.grid.Hy == 2 && model.grid.Hz == 2
-
-            model = NonhydrostaticModel(funny_grid; advection=scheme)
-            @test model.grid.Hx == 2 && model.grid.Hy == 3 && model.grid.Hz == 4
+        for scheme in (Centered(order=4), UpwindBiased(order=3), WENO(), UpwindBiased(order=5))
+            @test_throws ArgumentError NonhydrostaticModel(minimal_grid; advection=scheme)
+            @test_throws ArgumentError NonhydrostaticModel(funny_grid; advection=scheme)
         end
 
-        # Model ensures that halos are at least of size 3
-        for scheme in (WENO(), UpwindBiased(order=5))
-            model = NonhydrostaticModel(minimal_grid; advection=scheme)
-            @test model.grid.Hx == 3 && model.grid.Hy == 3 && model.grid.Hz == 3
-
-            model = NonhydrostaticModel(funny_grid; advection=scheme)
-            @test model.grid.Hx == 3 && model.grid.Hy == 3 && model.grid.Hz == 4
-        end
-
-        # Model ensures that halos are at least of size 2 with ScalarBiharmonicDiffusivity
-        model = NonhydrostaticModel(minimal_grid; closure=ScalarBiharmonicDiffusivity())
-        @test model.grid.Hx == 2 && model.grid.Hy == 2 && model.grid.Hz == 2
-
-        model = NonhydrostaticModel(funny_grid; closure=ScalarBiharmonicDiffusivity())
-        @test model.grid.Hx == 2 && model.grid.Hy == 3 && model.grid.Hz == 4
+        @test_throws ArgumentError NonhydrostaticModel(minimal_grid; closure=ScalarBiharmonicDiffusivity())
+        @test_throws ArgumentError NonhydrostaticModel(funny_grid; closure=ScalarBiharmonicDiffusivity())
 
         @info "  Testing adjustment of advection schemes in NonhydrostaticModel constructor..."
         small_grid = RectilinearGrid(size=(4, 2, 4), extent=(1, 2, 3), halo=(1, 1, 1))

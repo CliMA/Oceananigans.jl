@@ -32,7 +32,7 @@ num_prod(i, m, l, r, xr, xi, shift, op, order, ::SecondDerivative) = 2
 end
 
 """
-    stencil_coefficients(FT, i, r, xr, xi; shift = 0, op = Base.:(-), order = 3, der = nothing)
+$(SIGNATURES)
 
 Return coefficients for finite-volume polynomial reconstruction of order `order` at stencil `r`.
 
@@ -102,7 +102,7 @@ uniform_reconstruction_coefficients(FT, ::Val{:left}, buffer)      = buffer==1 ?
 uniform_reconstruction_coefficients(FT, ::Val{:right}, buffer)     = buffer==1 ? (one(FT),) : stencil_coefficients(FT, 50, buffer-1, collect(1:100), collect(1:100); order = 2buffer-1)
 
 """
-    calc_reconstruction_stencil(FT, buffer, shift, dir, func::Bool = false)
+$(SIGNATURES)
 
 Stencils for reconstruction calculations (note that WENO has its own reconstruction stencils)
 
@@ -236,7 +236,7 @@ end
 # Fallbacks for uniform or Flat directions
 for val in [1, 2, 3]
     @eval begin
-        @inline reconstruction_coefficients(FT, coord::OffsetArray{<:Any, <:Any, <:AbstractRange}, arch, N, ::Val{$val}; order) = nothing
+        @inline reconstruction_coefficients(FT, coord::StaticStridesOffsetArray{<:Any, <:Any, <:Any, <:Any, <:AbstractRange}, arch, N, ::Val{$val}; order) = nothing
         @inline reconstruction_coefficients(FT, coord::AbstractRange, arch, N, ::Val{$val}; order)                              = nothing
         @inline reconstruction_coefficients(FT, coord::Nothing, arch, N, ::Val{$val}; order)                                    = nothing
         @inline reconstruction_coefficients(FT, coord::Number, arch, N, ::Val{$val}; order)                                     = nothing
@@ -281,5 +281,5 @@ end
             push!(stencil, stencil_coefficients(FT, i, r, cpu_coord, cpu_coord; order))
         end
     end
-    return OffsetArray(on_architecture(arch, stencil), -1)
+    return StaticStridesOffsetArray(on_architecture(arch, stencil), -1)
 end

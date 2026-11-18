@@ -16,20 +16,19 @@ else
     const cuFFT = CUDA.CUFFT
 end
 using GPUArraysCore: allowscalar
-using Oceananigans.Utils: linear_expand, __linear_ndrange, MappedCompilerMetadata
+using MPI: MPI
+using Base.Libc.Libdl: dllist, dlopen, dlsym
+using KernelAbstractions: KernelAbstractions, __iterspace, __dynamic_checkbounds
+using SparseArrays: SparseMatrixCSC
 
-import Oceananigans.Architectures as AC
-import Oceananigans.BoundaryConditions as BC
-import Oceananigans.DistributedComputations as DC
-import Oceananigans.Fields as FD
-import Oceananigans.MultiRegion as MR
-import Oceananigans.Utils: apply_regionally!
-import Oceananigans.Grids as GD
-import Oceananigans.Solvers as SO
-import Oceananigans.Utils as UT
-import SparseArrays: SparseMatrixCSC
-import KernelAbstractions: __iterspace, __dynamic_checkbounds, __validindex
-import Oceananigans.DistributedComputations: Distributed
+using Oceananigans.Architectures: Architectures as AC
+using Oceananigans.BoundaryConditions: BoundaryConditions as BC
+using Oceananigans.DistributedComputations: DistributedComputations as DC, Distributed
+using Oceananigans.Fields: Fields as FD
+using Oceananigans.Grids: Grids as GD
+using Oceananigans.MultiRegion: MultiRegion as MR
+using Oceananigans.Solvers: Solvers as SO
+using Oceananigans.Utils: Utils as UT, apply_regionally!, linear_expand, __linear_ndrange, MappedCompilerMetadata
 
 const GPUVar = Union{CuArray, CuContext, CuPtr, Ptr}
 
@@ -67,12 +66,30 @@ end
 Base.summary(::CUDAGPU) = "CUDAGPU"
 AC.device!(::CUDAGPU, i) = CUDA.device!(i)
 
+function DC.gpu_configuration(::CUDAGPU)
+    device = CUDA.device()
+    domain = CUDA.attribute(device, CUDA.DEVICE_ATTRIBUTE_PCI_DOMAIN_ID)
+    bus = CUDA.attribute(device, CUDA.DEVICE_ATTRIBUTE_PCI_BUS_ID)
+    slot = CUDA.attribute(device, CUDA.DEVICE_ATTRIBUTE_PCI_DEVICE_ID)
+    pci_address = string(string(domain; base=16, pad=4), ':', string(bus; base=16, pad=2), ':', string(slot; base=16, pad=2), ".0")
+    # the vendor library also loads behind MPItrampoline, which does not forward MPIX extensions
+    libraries = filter(contains("libmpi"), dllist())
+    queries = filter(!isnothing, [dlsym(dlopen(library), :MPIX_Query_cuda_support; throw_error=false) for library in libraries])
+    cray_gpu_support = MPI.MPI_LIBRARY == "CrayMPICH" ? get(ENV, "MPICH_GPU_SUPPORT_ENABLED", "0") == "1" : nothing
+    gpu_aware_mpi = isempty(queries) ? cray_gpu_support : ccall(first(queries), Cint, ()) == 1
+    memory_pool = get(ENV, "JULIA_CUDA_MEMORY_POOL", "cuda") == "cuda"
+    return (; uuid = UInt128(CUDA.uuid(device)), pci_address, gpu_aware_mpi, memory_pool)
+end
+
 AC.architecture(::CuArray) = CUDAGPU()
 AC.architecture(::Type{CuArray}) = CUDAGPU()
 AC.architecture(::CuDeviceArray) = CUDAGPU()
 AC.architecture(::Type{CuDeviceArray}) = CUDAGPU()
 AC.architecture(::CuSparseMatrixCSC) = CUDAGPU()
 AC.array_type(::AC.GPU{CUDABackend}) = CuArray
+
+# Page-locked host memory whose device pointer is also a valid host pointer, for MPI without CUDA support
+DC.host_mapped_zeros(::CUDAGPU, FT, dims...) = fill!(CuArray{FT, length(dims), CUDA.HostMemory}(undef, dims...), zero(FT))
 
 AC.on_architecture(::CUDAGPU, a::Number) = a
 AC.on_architecture(::AC.CPU, a::CuArray) = Array(a)
@@ -114,7 +131,7 @@ BC.validate_boundary_condition_architecture(::CuArray, ::AC.GPU, bc, side) = not
 BC.validate_boundary_condition_architecture(::CuArray, ::AC.CPU, bc, side) =
     throw(ArgumentError("$side $bc must use `Array` rather than `CuArray` on CPU architectures!"))
 
-function SO.plan_forward_transform(A::CuArray, ::Union{GD.Bounded, GD.Periodic}, dims, planner_flag)
+function SO.plan_forward_transform(A::CuArray, ::Union{GD.BoundaryTopology, GD.Periodic}, dims, planner_flag)
     length(dims) == 0 && return nothing
     return cuFFT.plan_fft!(A, dims)
 end
@@ -123,14 +140,14 @@ FD.set!(v::FD.Field, a::CuArray) = FD.set_to_array!(v, a)
 FD.set!(v::DC.DistributedField, a::CuArray) = FD.set_to_array!(v, a)
 FD.set!(v::MR.MultiRegionField, a::CuArray) = apply_regionally!(FD.set!, v, a)
 
-function SO.plan_backward_transform(A::CuArray, ::Union{GD.Bounded, GD.Periodic}, dims, planner_flag)
+function SO.plan_backward_transform(A::CuArray, ::Union{GD.BoundaryTopology, GD.Periodic}, dims, planner_flag)
     length(dims) == 0 && return nothing
     return cuFFT.plan_ifft!(A, dims)
 end
 
 # CUDA version, the indices are passed implicitly
 # You must not use KA here as this code is executed in another scope
-CUDA.@device_override @inline function __validindex(ctx::MappedCompilerMetadata)
+CUDA.@device_override @inline function KernelAbstractions.__validindex(ctx::MappedCompilerMetadata)
     if __dynamic_checkbounds(ctx)
         index = @inbounds linear_expand(__iterspace(ctx), CUDA.blockIdx().x, CUDA.threadIdx().x)
         return index ≤ __linear_ndrange(ctx)
@@ -190,5 +207,8 @@ function fast_inv_cuda(a::Float32)
     inv_a = ccall("llvm.nvvm.rcp.approx.ftz.f", llvmcall, Float32, (Float32,), a)
     return inv_a
 end
+
+# Other number types (e.g. BFloat16) have no approximate reciprocal instruction
+fast_inv_cuda(a) = inv(a)
 
 end # module OceananigansCUDAExt

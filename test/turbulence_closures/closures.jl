@@ -452,6 +452,9 @@ end
         @test required_halo_size_y(closure) == 1
         @test required_halo_size_z(closure) == 1
 
+        # The time discretization and formulation type parameters of a `ScalarDiffusivity`
+        discretization_and_formulation(::ScalarDiffusivity{TD, F}) where {TD, F} = (TD, F)
+
         @testset "ScalarDiffusivity architecture conversion preserves halo size" begin
             time_discretization = VerticallyImplicitTimeDiscretization()
             diffusivity_formulation = VerticalFormulation()
@@ -469,7 +472,7 @@ end
                     @test required_halo_size_z(converted) == 3
                     @test converted.ν == closure.ν
                     @test converted.κ == closure.κ
-                    @test typeof(converted).parameters[1:2] == typeof(closure).parameters[1:2]
+                    @test discretization_and_formulation(converted) == discretization_and_formulation(closure)
                 end
             end
         end
@@ -563,6 +566,22 @@ end
             set!(model, u = (x, y, z) -> randn())
             νₑ = Array(interior(model.closure_fields.νₑ))
             @test any(νₑ .> 0)
+        end
+    end
+
+    @testset "Dynamic Smagorinsky strain-rate magnitude" begin
+        for arch in archs
+            # For u = γz, ΣᵢⱼΣᵢⱼ = γ²/2, so that the strain-rate magnitude |S| equals γ.
+            γ = 2.0
+            grid = RectilinearGrid(arch, size=(4, 4, 8), extent=(1, 1, 1), topology=(Periodic, Periodic, Bounded))
+            model = NonhydrostaticModel(grid, closure=DynamicSmagorinsky(averaging=LagrangianAveraging()))
+            set!(model, u = (x, y, z) -> γ * z)
+
+            Σ = interior(model.closure_fields.Σ, :, :, 3:6)
+            Σ̄ = interior(model.closure_fields.Σ̄, :, :, 3:6)
+
+            @test all(Σ .≈ γ)
+            @test all(Σ̄ .≈ γ)
         end
     end
 
@@ -700,11 +719,13 @@ end
             clock = Clock(time=0.0)
             Δt = 1
 
+            # The trailing arguments are advection, w, density, the top, bottom and immersed boundary
+            # conditions, and the field being stepped; none of them contribute here.
             coefficient(marker, k) =
                 get_coefficient(1, 1, k, grid, marker, nothing, ZDirection(),
                                 closure, nothing, nothing, LX(), Center(), LZ(),
                                 Δt, clock, NamedTuple(),
-                                nothing, nothing, nothing, nothing, nothing, nothing)
+                                nothing, nothing, nothing, nothing, nothing, nothing, nothing)
 
             # Assembling the rows on the host reads grid metrics one level at a time, which on a
             # stretched GPU grid are device arrays. `runtests.jl` happens to wrap the whole suite in

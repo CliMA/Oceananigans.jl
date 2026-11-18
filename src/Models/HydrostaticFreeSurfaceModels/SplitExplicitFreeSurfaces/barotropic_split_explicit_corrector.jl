@@ -1,5 +1,5 @@
-using Oceananigans.ImmersedBoundaries: immersed_peripheral_node, immersed_inactive_node
 using Oceananigans.Grids: surface_kernel_parameters, volume_kernel_parameters
+using Oceananigans.ImmersedBoundaries: immersed_inactive_node, immersed_peripheral_node
 
 # Kernels to compute the vertical integral of the velocities
 @kernel function _compute_barotropic_mode!(U̅, V̅, grid, u, v)
@@ -108,7 +108,7 @@ free surface evolution.
 After computing horizontal transport velocities, vertical transport velocity `w̃` is computed
 from continuity and halo regions are filled.
 """
-function compute_transport_velocities!(model, free_surface::SplitExplicitFreeSurface)
+function HydrostaticFreeSurfaceModels.compute_transport_velocities!(model, free_surface::SplitExplicitFreeSurface)
     grid = model.grid
     # `transport_velocities` holds the pre-step velocities and is also the destination; the kernel adds a
     # depth-uniform correction, so source and destination may alias.

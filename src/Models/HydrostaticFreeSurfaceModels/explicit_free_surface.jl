@@ -1,10 +1,10 @@
 using Adapt: Adapt
-using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
-using Oceananigans.Grids: AbstractGrid
-using Oceananigans.Operators: Az⁻¹ᶜᶜᶜ, Δx_qᶜᶠᶜ, Δy_qᶠᶜᶜ, δxᶜᶜᶜ, δyᶜᶜᶜ, ∂xᵣᶠᶜᶜ, ∂yᵣᶜᶠᶜ
 
-import Oceananigans.DistributedComputations: synchronize_communication!
-import Oceananigans: prognostic_state, restore_prognostic_state!
+using Oceananigans: prognostic_state, restore_prognostic_state!
+using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
+using Oceananigans.DistributedComputations: synchronize_communication!
+using Oceananigans.Grids: AbstractGrid
+using Oceananigans.Operators: Az⁻¹ᶜᶜᶜ, Δx_qᶜᶠᶜ, Δy_qᶠᶜᶜ, δxᶜᶜᶜ, δyᶜᶜᶜ, ∂xᵣᶠᶜᶠ, ∂yᵣᶜᶠᶠ
 
 """
     struct ExplicitFreeSurface{E, T}
@@ -26,12 +26,12 @@ ExplicitFreeSurface(; gravitational_acceleration=Oceananigans.defaults.gravitati
 Adapt.adapt_structure(to, free_surface::ExplicitFreeSurface) =
     ExplicitFreeSurface(Adapt.adapt(to, free_surface.displacement), free_surface.gravitational_acceleration)
 
-on_architecture(to, free_surface::ExplicitFreeSurface) =
+Architectures.on_architecture(to, free_surface::ExplicitFreeSurface) =
     ExplicitFreeSurface(on_architecture(to, free_surface.displacement),
                         on_architecture(to, free_surface.gravitational_acceleration))
 
 # Internal function for HydrostaticFreeSurfaceModel
-function materialize_free_surface(free_surface::ExplicitFreeSurface{Nothing}, velocities, grid, bcs)
+function Models.materialize_free_surface(free_surface::ExplicitFreeSurface{Nothing}, velocities, grid, bcs)
     η = free_surface_displacement_field(velocities, free_surface, grid)
     g = convert(eltype(grid), free_surface.gravitational_acceleration)
     return ExplicitFreeSurface(η, g)
@@ -54,17 +54,17 @@ end
 #####
 
 @inline explicit_barotropic_pressure_x_gradient(i, j, k, grid, free_surface::ExplicitFreeSurface) =
-    free_surface.gravitational_acceleration * ∂xᵣᶠᶜᶜ(i, j, grid.Nz+1, grid, free_surface.displacement)
+    free_surface.gravitational_acceleration * ∂xᵣᶠᶜᶠ(i, j, grid.Nz+1, grid, free_surface.displacement)
 
 @inline explicit_barotropic_pressure_y_gradient(i, j, k, grid, free_surface::ExplicitFreeSurface) =
-    free_surface.gravitational_acceleration * ∂yᵣᶜᶠᶜ(i, j, grid.Nz+1, grid, free_surface.displacement)
+    free_surface.gravitational_acceleration * ∂yᵣᶜᶠᶠ(i, j, grid.Nz+1, grid, free_surface.displacement)
 
 #####
 ##### Time stepping
 #####
 
 # Only the free surface needs to be synchronized
-synchronize_communication!(free_surface::ExplicitFreeSurface) =
+DistributedComputations.synchronize_communication!(free_surface::ExplicitFreeSurface) =
     synchronize_communication!(free_surface.displacement)
 
 function step_free_surface!(free_surface::ExplicitFreeSurface, model, timestepper::QuasiAdamsBashforth2TimeStepper, Δt)
@@ -189,13 +189,13 @@ end
 ##### Checkpointing
 #####
 
-function prognostic_state(fs::ExplicitFreeSurface)
+function Oceananigans.prognostic_state(fs::ExplicitFreeSurface)
     return (; η = prognostic_state(fs.displacement))
 end
 
-function restore_prognostic_state!(restored::ExplicitFreeSurface, from)
+function Oceananigans.restore_prognostic_state!(restored::ExplicitFreeSurface, from)
     restore_prognostic_state!(restored.η, from.η)
     return restored
 end
 
-restore_prognostic_state!(::ExplicitFreeSurface, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::ExplicitFreeSurface, ::Nothing) = nothing

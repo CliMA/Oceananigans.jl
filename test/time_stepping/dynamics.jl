@@ -29,6 +29,21 @@ function test_diffusion_simple(arch, fieldname, timestepper, time_discretization
     return !any(@. !isapprox(value, field_data))
 end
 
+function test_implicit_diffusion_through_open_side(arch, side)
+    c_bcs = FieldBoundaryConditions(; side => ValueBoundaryCondition(1))
+    open_topology = side == :bottom ? (Open, Closed) : (Closed, Open)
+
+    function tracer_profile(z_topology)
+        grid = RectilinearGrid(arch, size=16, z=(-1, 0), topology=(Flat, Flat, z_topology))
+        closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), κ=1)
+        model = HydrostaticFreeSurfaceModel(grid; closure, tracers=:c, buoyancy=nothing, boundary_conditions=(; c=c_bcs))
+        [time_step!(model, 1e-3) for n = 1:10]
+        return Array(interior(model.tracers.c))
+    end
+
+    return tracer_profile(open_topology) == tracer_profile(Bounded)
+end
+
 function test_diffusion_budget(field, model, κ, Δ, order=2)
     init_mean = mean(field)
     update_state!(model)
@@ -385,6 +400,12 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
         end
     end
 
+    @testset "Vertically implicit diffusion through an Open side" begin
+        for arch in archs, side in (:bottom, :top)
+            @test test_implicit_diffusion_through_open_side(arch, side)
+        end
+    end
+
     @testset "Budgets in isotropic diffusion" begin
         for arch in archs, timestepper in timesteppers
             for topology in ((Periodic, Periodic, Periodic),
@@ -416,7 +437,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
                         model = NonhydrostaticModel(grid; timestepper, closure, tracers = :c)
 
-                        td = typeof(time_discretization).name.wrapper
+                        td = nameof(typeof(time_discretization))
 
                         @testset "$fieldname budget in a $topology domain [$timestepper, $td, $closurename]" for fieldname in fieldnames
                             test_ScalarDiffusivity_budget(fieldname, model)
@@ -628,7 +649,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
         @testset "Internal wave with HydrostaticFreeSurfaceModel" begin
             for arch in archs, grid in internal_wave_test_grids(arch)
                 for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta2, :SplitRungeKutta3, :SplitRungeKutta5) #timesteppers
-                    grid_name = typeof(grid).name.wrapper
+                    grid_name = nameof(typeof(grid))
                     topo = topology(grid)
 
                     # Choose gravitational acceleration so that σ_surface = sqrt(g * Lx) = 10σ

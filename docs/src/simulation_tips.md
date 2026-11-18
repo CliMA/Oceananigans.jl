@@ -237,9 +237,9 @@ If we try to view the `CuArray` that stores values for `u` we hit a wall:
 
 ```julia
 julia> model.velocities.u.data
-3×3×3 OffsetArray(::CuArray{Float64, 3, CUDA.DeviceMemory}, 0:2, 0:2, 0:2) with eltype Float64 with indices 0:2×0:2×0:2:
+3×3×3 StaticStridesOffsetArray(::CuArray{Float64, 3, CUDA.DeviceMemory}, 0:2, 0:2, 0:2) with eltype Float64 with indices 0:2×0:2×0:2:
 [:, :, 0] =
-Error showing value of type OffsetArrays.OffsetArray{Float64, 3, CuArray{Float64, 3, CUDA.DeviceMemory}}:
+Error showing value of type Oceananigans.Utils.StaticStridesOffsetArray{Float64, 3, (3, 3, 3), (-1, -1, -1), CuArray{Float64, 3, CUDA.DeviceMemory}}:
 ERROR: Scalar indexing is disallowed.
 Invocation of getindex resulted in scalar indexing of a GPU array.
 This is typically caused by calling an iterating implementation of a method.

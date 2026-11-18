@@ -1,6 +1,6 @@
 using Oceananigans.Grids: topology, Flat, StaticVerticalDiscretization, MutableVerticalDiscretization, AbstractVerticalCoordinate
-using Oceananigans.OrthogonalSphericalShellGrids: OrthogonalSphericalShellGrid
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+using Oceananigans.OrthogonalSphericalShellGrids: OrthogonalSphericalShellGrid
 
 # Short aliases for compact dispatch in name-generator method tables.
 const OSSG = OrthogonalSphericalShellGrid
@@ -84,9 +84,6 @@ trilocation_dim_name(var_name, grid, LX, LY, LZ, dim) =
     suffixed_dim_name_generator(var_name, grid, LX, LY, LZ, dim, connector="_", location_letters=trilocation_location_string(grid, LX, LY, LZ, dim))
 
 trilocation_dim_name(var_name, grid::ImmersedBoundaryGrid, args...) = trilocation_dim_name(var_name, grid.underlying_grid, args...)
-
-dimension_name_generator_free_surface(dimension_name_generator, var_name, grid, LX, LY, LZ, dim) = dimension_name_generator(var_name, grid, LX, LY, LZ, dim)
-dimension_name_generator_free_surface(dimension_name_generator, var_name, grid, LX, LY, LZ, dim::Val{:z}) = dimension_name_generator(var_name, grid, LX, LY, LZ, dim) * "_displacement"
 
 add_grid_suffix(name, grid_index) = isempty(name) ? name : name * "_grid$(grid_index)"
 add_grid_suffix(name, ::Nothing) = name

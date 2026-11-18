@@ -1,25 +1,25 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
-using Oceananigans.OrthogonalSphericalShellGrids: LambertConformalConicGrid, lcc_forward,
-    lcc_fractional_indices
+using Oceananigans.OrthogonalSphericalShellGrids: ConformalConicGrid, geographic_to_conformal_conic,
+    conformal_conic_fractional_indices
 using Oceananigans.Fields: interpolate!, interior
 using Oceananigans.Grids: Center, Face, λnodes, φnodes
 
 # Bilinear interpolation of a field that is linear in the projected (x, y)
 # coordinates is exact, so the interpolant must reproduce a·x + b·y to round-off.
 linear_in_projection(map, a, b) = (λ, φ, z) -> begin
-    x, y = lcc_forward(map, λ, φ)
+    x, y = geographic_to_conformal_conic(map, λ, φ)
     a * x + b * y
 end
 
-@testset "LambertConformalConic source interpolation [$(typeof(arch)), $FT]" for arch in archs, FT in float_types
-    source_grid = LambertConformalConicGrid(arch, FT;
-                                            size = (40, 30, 2),
-                                            center = (-95, 38),
-                                            spacing = 20000,
-                                            standard_parallels = (25, 25),
-                                            z = (-1, 0),
-                                            warn = false)
+@testset "ConformalConic source interpolation [$(typeof(arch)), $FT]" for arch in archs, FT in float_types
+    source_grid = ConformalConicGrid(arch, FT;
+                                     size = (40, 30, 2),
+                                     center = (-95, 38),
+                                     spacing = 20000,
+                                     standard_parallels = (25, 25),
+                                     z = (-1, 0),
+                                     warn = false)
 
     map = source_grid.conformal_mapping
 
@@ -52,8 +52,8 @@ end
         λt = Array(λnodes(target_grid, ℓx, ℓy, Center()))
         φt = Array(φnodes(target_grid, ℓx, ℓy, Center()))
         Nx, Ny = length(λt), length(φt)
-        expected = [a * lcc_forward(map, λt[i], φt[j])[1] +
-            b * lcc_forward(map, λt[i], φt[j])[2]
+        expected = [a * geographic_to_conformal_conic(map, λt[i], φt[j])[1] +
+            b * geographic_to_conformal_conic(map, λt[i], φt[j])[2]
                     for i in 1:Nx, j in 1:Ny, k in 1:2]
 
         @test maximum(abs.(Array(interior(target_field)) .- expected)) < tolerance
@@ -61,10 +61,10 @@ end
 
     # Type stability and (on CPU) allocation-freedom of the fractional-index helper.
     λ₀, φ₀ = FT(-95), FT(38)
-    @test @inferred(lcc_fractional_indices(λ₀, φ₀, source_grid, Center(), Center())) isa Tuple{FT, FT}
+    @test @inferred(conformal_conic_fractional_indices(λ₀, φ₀, source_grid, Center(), Center())) isa Tuple{FT, FT}
 
     if arch isa CPU
-        lcc_fractional_indices(λ₀, φ₀, source_grid, Center(), Center())
-        @test (@allocated lcc_fractional_indices(λ₀, φ₀, source_grid, Center(), Center())) == 0
+        conformal_conic_fractional_indices(λ₀, φ₀, source_grid, Center(), Center())
+        @test (@allocated conformal_conic_fractional_indices(λ₀, φ₀, source_grid, Center(), Center())) == 0
     end
 end

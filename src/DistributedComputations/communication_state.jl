@@ -10,7 +10,7 @@ end
 
 # CommunicationState only lives on host, so never needs to be converted
 Adapt.adapt_structure(to, cs::CommunicationState) = nothing
-on_architecture(arch, cs::CommunicationState) = cs
+Architectures.on_architecture(arch, cs::CommunicationState) = cs
 
 communication_state(arch, sides...) = nothing
 

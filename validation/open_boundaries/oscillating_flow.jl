@@ -34,8 +34,8 @@ Nx = Ny = 40
 x_faces(i) = L/2 * (β * ((2 * (i - 1)) / Nx - 1)^3 + (2 * (i - 1)) / Nx - 1) / (β + 1)
 y = (-L/2, +L/2) .* D
 
-xygrid = RectilinearGrid(architecture; topology = (Bounded, Bounded, Flat), size = (Nx, Ny), x = x_faces, y)
-xzgrid = RectilinearGrid(architecture; topology = (Bounded, Flat, Bounded), size = (Nx, Ny), x = x_faces, z = y)
+xygrid = RectilinearGrid(architecture; topology = (Open, Open, Flat), size = (Nx, Ny), x = x_faces, y)
+xzgrid = RectilinearGrid(architecture; topology = (Open, Flat, Open), size = (Nx, Ny), x = x_faces, z = y)
 
 Δt = .5 * minimum_xspacing(xygrid) / abs(U)
 

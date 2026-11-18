@@ -1,12 +1,11 @@
 using Adapt: Adapt
-using Dates: AbstractTime, Nanosecond, Millisecond
-using DocStringExtensions: TYPEDEF, TYPEDSIGNATURES
-using Oceananigans.Grids: AbstractGrid
-using Oceananigans.Utils: prettytime, seconds_to_nanosecond
+using Dates: AbstractTime, Millisecond, Nanosecond
+using DocStringExtensions: TYPEDEF
 
-import Oceananigans: restore_prognostic_state!
-import Oceananigans.Units: Time
-import Oceananigans.Fields: set!
+using Oceananigans: restore_prognostic_state!
+using Oceananigans.Grids: AbstractGrid
+using Oceananigans.Units: Time
+using Oceananigans.Utils: prettytime, seconds_to_nanosecond, time_difference_in_seconds, TYPEDSIGNATURES
 
 """
 $(TYPEDEF)
@@ -28,7 +27,7 @@ Clock{TT, DT, IT, S}(time, last_Δt, last_stage_Δt, iteration, stage) where {TT
     Clock{TT, TT, DT, IT, S}(time, last_Δt, last_stage_Δt, iteration, stage)
 
 """
-    Clock(; time, last_Δt=Inf, last_stage_Δt=Inf, iteration=0, stage=1)
+$(SIGNATURES)
 
 Return a `Clock` object. By default, `Clock` is initialized to the zeroth `iteration`
 and first time step `stage` with `last_Δt=last_stage_Δt=Inf`.
@@ -49,8 +48,15 @@ end
 
 materialize_clock!(clock::Clock, timestepper) = nothing
 
-function reset!(clock::Clock{TT, KT, DT, IT, S}) where {TT, KT, DT, IT, S}
-    clock.time = zero(TT)
+"""
+$(TYPEDSIGNATURES)
+
+Reset `clock` to `t_init` at iteration 0 and stage 1, with no previous time step. Without
+`t_init` a numeric clock returns to zero; a calendar clock has no zero and must be given its
+initial time.
+"""
+function reset!(clock::Clock{TT, KT, DT, IT, S}, t_init::Union{Number, AbstractTime} = zero(TT)) where {TT, KT, DT, IT, S}
+    clock.time = t_init
     clock.iteration = zero(IT)
     clock.stage = 1
     clock.last_Δt = Inf
@@ -58,12 +64,20 @@ function reset!(clock::Clock{TT, KT, DT, IT, S}) where {TT, KT, DT, IT, S}
     return nothing
 end
 
+reset!(clock::Clock, ::Nothing) = reset!(clock)
+
+# `zero(DateTime)` is year 0, so a calendar clock has no zero to return to.
+function reset!(clock::Clock{<:AbstractTime})
+    return throw(ArgumentError("Cannot reset! a clock keeping $(typeof(clock.time)) time: there is no zero " *
+                               "calendar instant. Pass the initial time, `reset!(clock, t_init)`."))
+end
+
 """
 $(TYPEDSIGNATURES)
 
 Set `clock` to the `new_clock`.
 """
-function set!(clock::Clock, new_clock::Clock)
+function Fields.set!(clock::Clock, new_clock::Clock)
     clock.time = new_clock.time
     clock.iteration = new_clock.iteration
     clock.last_Δt = new_clock.last_Δt
@@ -81,8 +95,13 @@ function Base.:(==)(clock1::Clock, clock2::Clock)
            clock1.stage == clock2.stage
 end
 
+approximately_equal_times(a, b; kw...) = isapprox(a, b; kw...)
+
+# Calendar instants have no magnitude for a relative tolerance, so only `atol` (seconds) applies.
+approximately_equal_times(a::AbstractTime, b::AbstractTime; atol=0, kw...) = abs(time_difference_in_seconds(a, b)) <= atol
+
 function Base.isapprox(a::Clock, b::Clock; kw...)
-    return isapprox(a.time, b.time; kw...) &&
+    return approximately_equal_times(a.time, b.time; kw...) &&
            isapprox(a.last_Δt, b.last_Δt; kw...) &&
            isapprox(a.last_stage_Δt, b.last_stage_Δt; kw...) &&
            a.iteration == b.iteration &&
@@ -138,7 +157,7 @@ next_time(clock::Clock{<:AbstractTime}, Δt) = clock.time + seconds_to_nanosecon
 tick_time!(clock, Δt) = clock.time += Δt
 tick_time!(clock::Clock{<:AbstractTime}, Δt) = clock.time += seconds_to_nanosecond(Δt)
 
-Time(clock::Clock) = Time(clock.time)
+Units.Time(clock::Clock) = Time(clock.time)
 
 # Convert the time to units of clock.time (assumed to be seconds if using DateTime or TimeDate).
 unit_time(t) = t
@@ -213,7 +232,7 @@ end
 
 
 """Restore the clock from a checkpointed state."""
-function restore_prognostic_state!(restored::Clock, from)
+function Oceananigans.restore_prognostic_state!(restored::Clock, from)
     restored.time = from.time
     restored.iteration = from.iteration
     restored.last_Δt = from.last_Δt
@@ -222,4 +241,4 @@ function restore_prognostic_state!(restored::Clock, from)
     return restored
 end
 
-restore_prognostic_state!(::Clock, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::Clock, ::Nothing) = nothing

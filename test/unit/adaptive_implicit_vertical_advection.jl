@@ -26,6 +26,29 @@ using Oceananigans.TurbulenceClosures: implicit_diffusion_solver, VerticallyImpl
     @test td_f32.cfl == 0.4f0
 end
 
+# An adaptor that converts Float64 to Float32, to check that adapting
+# AdaptiveVerticallyImplicitDiscretization passes its fields through `adapt`
+# (as is needed, for example, to convert a traced Δt for a Reactant kernel).
+struct Float32Adaptor end
+Adapt.adapt_storage(::Float32Adaptor, x::Float64) = Float32(x)
+
+@testset "Adapting AdaptiveVerticallyImplicitDiscretization" begin
+    td = AdaptiveVerticallyImplicitDiscretization(Float64; cfl=0.3)
+    td.Δt[] = 2.0
+
+    adapted = Adapt.adapt(Float32Adaptor(), td)
+    @test adapted isa AdaptiveVerticallyImplicitDiscretization
+    @test adapted.cfl isa Float32
+    @test adapted.Δt isa Float32
+    @test adapted.cfl == 0.3f0
+    @test adapted.Δt == 2.0f0
+
+    # Adapting for the CPU leaves the fields unchanged, but unwraps the Ref.
+    adapted = Adapt.adapt(Array, td)
+    @test adapted.cfl === 0.3
+    @test adapted.Δt === 2.0
+end
+
 @testset "AIVA scheme dispatch" begin
     for scheme in (WENO, Centered, UpwindBiased)
         extra_kw = scheme == WENO ? (; weight_computation = Oceananigans.Utils.NormalDivision) : (; )
