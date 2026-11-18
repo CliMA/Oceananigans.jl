@@ -170,7 +170,7 @@ function solve_for_pressure!(pressure, solver::ConjugateGradientPoissonSolver, f
     launch!(arch, grid, :xyz, _cg_source_term!, rhs, grid, Ũ)
     add_inhomogeneous_boundary_terms!(rhs, free_surface, grid, Ũ, Δt; area_weighted=true)
 
-    return solve!(pressure, solver.conjugate_gradient_solver, rhs, free_surface, Δt)
+    return solve!(pressure, solver.conjugate_gradient_solver, rhs, g * Δt^2)
 end
 
 function solve_for_pressure!(pressure, solver::ConjugateGradientPoissonSolver, ::Nothing, Ũ, Δt)

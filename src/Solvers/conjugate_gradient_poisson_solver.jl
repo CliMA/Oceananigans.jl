@@ -58,40 +58,31 @@ end
            δzᶜᶜᶜ(i, j, k, grid, Az_∂zᶜᶜᶠ, c)
 end
 
-@kernel function _symmetric_laplacian_operator!(∇²ϕ, grid, ϕ)
-    i, j, k = @index(Global, NTuple)
-    @inbounds ∇²ϕ[i, j, k] = V∇²ᶜᶜᶜ(i, j, k, grid, ϕ)
-end
+@inline symmetric_laplacian(i, j, k, grid, ϕ, ::Nothing) = V∇²ᶜᶜᶜ(i, j, k, grid, ϕ)
 
-function compute_symmetric_laplacian!(∇²ϕ, ϕ)
-    grid = ϕ.grid
-    arch = architecture(grid)
-    fill_halo_regions!(ϕ)
-    launch!(arch, grid, :xyz, _symmetric_laplacian_operator!, ∇²ϕ, grid, ϕ)
-    return nothing
-end
-
-@kernel function _apply_mixed_top_bc!(∇²ϕ, grid, ϕ, Δt, g)
-    i, j = @index(Global, NTuple)
+# With a free surface, the top flux is the homogeneous Robin flux -Az ϕ / (g Δt² + Δzᶠ / 2)
+@inline function symmetric_laplacian(i, j, k, grid, ϕ, gΔt²)
     Nz = grid.Nz
-    active = !inactive_cell(i, j, Nz, grid)
     Δzᶠ = Δzᵃᵃᶠ(i, j, Nz+1, grid)
     Az = Azᶜᶜᶠ(i, j, Nz+1, grid)
-    den = g * Δt^2 + Δzᶠ / 2
     @inbounds begin
-        top_flux_current = Az * (ϕ[i, j, Nz+1] - ϕ[i, j, Nz]) / Δzᶠ
-        top_flux_correct = -Az * ϕ[i, j, Nz] / den
-        @inbounds ∇²ϕ[i, j, Nz] += active * (top_flux_correct - top_flux_current)
+        halo_flux = Az * (ϕ[i, j, Nz+1] - ϕ[i, j, Nz]) / Δzᶠ
+        robin_flux = - Az * ϕ[i, j, Nz] / (gΔt² + Δzᶠ / 2)
     end
+    top = (k == Nz) & !inactive_cell(i, j, Nz, grid)
+    return V∇²ᶜᶜᶜ(i, j, k, grid, ϕ) + ifelse(top, robin_flux - halo_flux, zero(grid))
 end
 
-function compute_symmetric_laplacian_with_free_surface!(∇²ϕ, ϕ, free_surface, Δt)
+@kernel function _symmetric_laplacian_operator!(∇²ϕ, grid, ϕ, gΔt²)
+    i, j, k = @index(Global, NTuple)
+    @inbounds ∇²ϕ[i, j, k] = symmetric_laplacian(i, j, k, grid, ϕ, gΔt²)
+end
+
+function compute_symmetric_laplacian!(∇²ϕ, ϕ, gΔt² = nothing)
     grid = ϕ.grid
     arch = architecture(grid)
     fill_halo_regions!(ϕ)
-    launch!(arch, grid, :xyz, _symmetric_laplacian_operator!, ∇²ϕ, grid, ϕ)
-    g = free_surface.gravitational_acceleration
-    launch!(arch, grid, :xy, _apply_mixed_top_bc!, ∇²ϕ, grid, ϕ, Δt, g)
+    launch!(arch, grid, :xyz, _symmetric_laplacian_operator!, ∇²ϕ, grid, ϕ, gΔt²)
     return nothing
 end
 
@@ -167,13 +158,37 @@ end
 end
 
 #####
+##### No gauge condition, for a Poisson equation whose solution is unique (e.g. with a free surface)
+#####
+
+struct NoGaugeCondition{P, V}
+    laplacian_partial_sums :: P
+    residual_partial_sums :: P
+    laplacian_sums :: V
+    residual_sums :: V
+end
+
+function NoGaugeCondition(grid)
+    workgroups = column_workgroups(grid)
+    return NoGaugeCondition(zeros(grid, workgroups, 3), zeros(grid, workgroups, 4), zeros(grid, 1, 3), zeros(grid, 1, 4))
+end
+
+(::NoGaugeCondition)(x, r) = nothing
+
+number_of_active_cells(gauge::ZeroMeanGaugeCondition) = gauge.number_of_active_cells
+number_of_active_cells(::NoGaugeCondition) = nothing
+
+@inline active_mean(Σ, number_of_active_cells) = Σ / number_of_active_cells
+@inline active_mean(Σ, ::Nothing) = zero(Σ)
+
+#####
 ##### Fused iteration: the Laplacian kernel accumulates p ⋅ q, Σp and Σq while it writes q, and
 ##### the update kernel applies the gauge and the mask while it writes x and r, accumulating
 ##### Σx, Σr, r ⋅ r and ‖V⁻¹r‖². One thread sums one segment of a column.
 #####
 
 const FusedPoissonSolver = ConjugateGradientSolver{<:Any, <:Any, typeof(compute_symmetric_laplacian!), <:Any, <:Any, <:Any, <:Any,
-                                                   <:ZeroMeanGaugeCondition, <:VolumeInverseNorm, <:Any}
+                                                   <:Union{ZeroMeanGaugeCondition, NoGaugeCondition}, <:VolumeInverseNorm, <:Any}
 
 const reduction_workgroup_size = 256
 
@@ -244,7 +259,7 @@ end
     add_workgroup_sums!(partial_sums, workgroup_sums, g, t)
 end
 
-@kernel function _symmetric_laplacian_with_sums!(partial_sums, q, grid, p)
+@kernel function _symmetric_laplacian_with_sums!(partial_sums, q, grid, p, gΔt²)
     n = @index(Global, Linear)
     t = @index(Local, Linear)
     g = @index(Group, Linear)
@@ -257,7 +272,7 @@ end
         @inbounds begin
             active = !inactive_cell(i, j, k, grid)
             pᵢ = p[i, j, k]
-            qᵢ = V∇²ᶜᶜᶜ(i, j, k, grid, p)
+            qᵢ = symmetric_laplacian(i, j, k, grid, p, gΔt²)
             q[i, j, k] = qᵢ
             pᵀq += pᵢ * qᵢ * active
             Σp  += pᵢ * active
@@ -295,8 +310,8 @@ end
 
     @inbounds begin
         a = ρ[1] / laplacian_sums[1]
-        x̄ = (residual_sums[1] + a * laplacian_sums[2]) / number_of_active_cells
-        r̄ = (residual_sums[2] - a * laplacian_sums[3]) / number_of_active_cells
+        x̄ = active_mean(residual_sums[1] + a * laplacian_sums[2], number_of_active_cells)
+        r̄ = active_mean(residual_sums[2] - a * laplacian_sums[3], number_of_active_cells)
 
         # Without a preconditioner ρ lives in the residual sums, which this kernel's reduction overwrites
         n == 1 && (ρⁱ⁻¹[1] = ρ[1])
@@ -369,21 +384,21 @@ function reduce_partial_sums!(sums, partial_sums, arch)
     return sums
 end
 
-function initialize_solution!(q, x, b, solver::FusedPoissonSolver)
+function initialize_solution!(q, x, b, solver::FusedPoissonSolver, gΔt² = nothing)
     r = solver.residual
     grid = r.grid
     arch = architecture(grid)
     gauge = solver.enforce_gauge_condition!
     partial_sums = gauge.residual_partial_sums
 
-    compute_symmetric_laplacian!(q, x)
+    compute_symmetric_laplacian!(q, x, gΔt²)
     launch_columns!(arch, grid, _initialize_residual!, partial_sums, r, grid, x, b, q)
     reduce_partial_sums!(gauge.residual_sums, partial_sums, arch)
 
     return nothing
 end
 
-function iterate!(x, solver::FusedPoissonSolver, b)
+function iterate!(x, solver::FusedPoissonSolver, b, gΔt² = nothing)
     r = solver.residual
     p = solver.search_direction
     q = solver.linear_operator_product
@@ -406,12 +421,12 @@ function iterate!(x, solver::FusedPoissonSolver, b)
     fill_halo_regions!(p)
 
     partial_sums = gauge.laplacian_partial_sums
-    launch_columns!(arch, grid, _symmetric_laplacian_with_sums!, partial_sums, q, grid, p)
+    launch_columns!(arch, grid, _symmetric_laplacian_with_sums!, partial_sums, q, grid, p, gΔt²)
     reduce_partial_sums!(gauge.laplacian_sums, partial_sums, arch)
 
     partial_sums = gauge.residual_partial_sums
     launch_columns!(arch, grid, _update_solution_and_residual!,
-                    partial_sums, x, r, grid, p, q, ρ, solver.ρⁱ⁻¹, gauge.laplacian_sums, gauge.residual_sums, gauge.number_of_active_cells)
+                    partial_sums, x, r, grid, p, q, ρ, solver.ρⁱ⁻¹, gauge.laplacian_sums, gauge.residual_sums, number_of_active_cells(gauge))
     reduce_partial_sums!(gauge.residual_sums, partial_sums, arch)
 
     solver.iteration += 1
@@ -461,16 +476,9 @@ function ConjugateGradientPoissonSolver(grid;
                                         preconditioner = DefaultPreconditioner(),
                                         reltol = sqrt(eps(grid)),
                                         abstol = sqrt(eps(grid)),
-                                        enforce_gauge_condition! = nothing,   # CHANGE
-                                        top_bc = nothing,                     # ADD
+                                        top_bc = nothing,
+                                        enforce_gauge_condition! = isnothing(top_bc) ? ZeroMeanGaugeCondition(grid) : NoGaugeCondition(grid),
                                         kw...)
-    if isnothing(enforce_gauge_condition!)
-        if isnothing(top_bc)
-            enforce_gauge_condition! = ZeroMeanGaugeCondition(grid)
-        else
-            enforce_gauge_condition! = no_gauge_enforcement!
-        end
-    end
 
     if preconditioner isa DefaultPreconditioner # try to make a useful default
         if grid isa ImmersedBoundaryGrid && grid.underlying_grid isa GridWithFFTSolver
@@ -482,17 +490,14 @@ function ConjugateGradientPoissonSolver(grid;
 
     if isnothing(top_bc)
         rhs = CenterField(grid)
-        linear_operation! = compute_symmetric_laplacian!
     else
         pressure_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()), top=top_bc)
         rhs = CenterField(grid; boundary_conditions=pressure_bcs)
-        linear_operation! = compute_symmetric_laplacian_with_free_surface!
     end
-    # rhs = CenterField(grid)
 
     volume_inverse_norm = VolumeInverseNorm(grid)
 
-    conjugate_gradient_solver = ConjugateGradientSolver(linear_operation!;
+    conjugate_gradient_solver = ConjugateGradientSolver(compute_symmetric_laplacian!;
                                                         reltol,
                                                         abstol,
                                                         preconditioner,
