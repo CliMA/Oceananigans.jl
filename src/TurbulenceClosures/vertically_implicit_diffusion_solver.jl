@@ -298,7 +298,7 @@ function TimeSteppers.implicit_step!(field::Field,
                                      implicit_solver::BatchedTridiagonalSolver,
                                      closure, closure_fields, tracer_index,
                                      clock, fields, Δt,
-                                     advection=nothing, velocities=nothing, density=nothing; forcing=nothing)
+                                     advection=nothing, velocities=nothing, density=nothing, forcing=nothing)
 
     vi_closure, vi_closure_fields = vertically_implicit_closures(closure, closure_fields)
 

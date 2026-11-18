@@ -68,7 +68,7 @@ function time_step_catke_equation!(model, ::QuasiAdamsBashforth2TimeStepper, Δt
                        closure_fields, Val(tracer_index),
                        model.clock,
                        fields(model),
-                       Δτ; forcing = model.forcing.e)
+                       Δτ, nothing, nothing, nothing, model.forcing.e)
     end
 
     return nothing
@@ -139,7 +139,7 @@ function time_step_catke_equation!(model, ::SplitRungeKuttaTimeStepper, Δt)
                        closure_fields, Val(tracer_index),
                        model.clock,
                        fields(model),
-                       Δτ; forcing = model.forcing.e)
+                       Δτ, nothing, nothing, nothing, model.forcing.e)
     end
 
     return nothing
