@@ -84,7 +84,6 @@ using Reactant: Reactant
 
 # Checks that fail today; fixing an extension makes its check pass unexpectedly and must remove it here
 broken_extension_checks = Dict(:OceananigansMakieExt    => (:implicit, :owners),
-                               :OceananigansNCCLExt     => (:implicit, :stale, :qualified),
                                :OceananigansReactantExt => (:implicit, :owners, :stale, :qualified))
 
 extension_names = Pkg.TOML.parsefile(joinpath(pkgdir(Oceananigans), "Project.toml"))["extensions"] |> keys |> collect |> sort
