@@ -129,7 +129,7 @@ end
 
 update_fourier_tridiagonal_solver!(::FourierTridiagonalPoissonSolver, ::Nothing, Ũ, Δt) = nothing
 
-function update_fourier_tridiagonal_solver!(solver::FourierTridiagonalPoissonSolver, free_surface, Ũ, Δt)         
+function update_fourier_tridiagonal_solver!(solver::FourierTridiagonalPoissonSolver, free_surface, Ũ, Δt)
     g = free_surface.gravitational_acceleration
     η = free_surface.displacement
     λx, λy = solver.poisson_eigenvalues

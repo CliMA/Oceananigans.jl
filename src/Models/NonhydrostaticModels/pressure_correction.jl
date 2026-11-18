@@ -106,7 +106,7 @@ function make_pressure_correction!(model::NonhydrostaticModel, Δt)
     Δt⁺ = max(ϵ, Δt)
     pNHS = model.pressures.pNHS
     launch!(arch, grid, KernelParameters(size(pNHS), (0, 0, 0)), _divide_by!, pNHS, Δt⁺)
-    
+
     return nothing
 end
 
