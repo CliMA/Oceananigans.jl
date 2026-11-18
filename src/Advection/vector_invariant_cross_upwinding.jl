@@ -35,8 +35,8 @@ using Oceananigans.Operators: Δrᶜᶜᶜ
 # If the grid is stationary, ∂t_σ evaluates to zero, so this term disappears from the divergence flux.
 @inline Az_Δr_∂t_σ(i, j, k, grid) = Azᶜᶜᶜ(i, j, k, grid) * Δrᶜᶜᶜ(i, j, k, grid) * ∂t_σ(i, j, k, grid)
 
+# δx(Ax u) = ℑx(Ax) δx(u) + ℑx(u) δx(Ax) exactly: the velocity difference is upwinded, the area difference is not
 @inline δᴿᵁⱽ(i, j, k, grid, u, v) = δᴿᵁ(i, j, k, grid, u, v) + δᴿⱽ(i, j, k, grid, u, v)
-
 @inline δˢᵁⱽ(i, j, k, grid, u, v) = ℑxᶜᵃᵃ(i, j, k, grid, u) * δxᶜᵃᵃ(i, j, k, grid, Axᶠᶜᶜ) +
                                     ℑyᵃᶜᵃ(i, j, k, grid, v) * δyᵃᶜᵃ(i, j, k, grid, Ayᶜᶠᶜ) + Az_Δr_∂t_σ(i, j, k, grid)
 
