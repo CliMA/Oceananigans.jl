@@ -5,47 +5,46 @@
 ##### and ConstantField. Arbitrary AbstractOperations may not work.
 #####
 
-import Base: +, -, *, /, ==
 using Oceananigans.Fields: ZeroField, ConstantField
 
 # Binary operations
-==(::ZeroField, ::ZeroField) = true
+Base.:(==)(::ZeroField, ::ZeroField) = true
 
-==(zf::ZeroField, cf::ConstantField) = 0 == cf.constant
-==(cf::ConstantField, zf::ZeroField) = 0 == cf.constant
-==(c1::ConstantField, c2::ConstantField) = c1.constant == c2.constant
+Base.:(==)(zf::ZeroField, cf::ConstantField) = 0 == cf.constant
+Base.:(==)(cf::ConstantField, zf::ZeroField) = 0 == cf.constant
+Base.:(==)(c1::ConstantField, c2::ConstantField) = c1.constant == c2.constant
 
-+(a::ZeroField, b::AbstractField) = b
-+(a::AbstractField, b::ZeroField) = a
-+(a::ZeroField, b::Number) = ConstantField(b)
-+(a::Number, b::ZeroField) = ConstantField(a)
+Base.:+(a::ZeroField, b::AbstractField) = b
+Base.:+(a::AbstractField, b::ZeroField) = a
+Base.:+(a::ZeroField, b::Number) = ConstantField(b)
+Base.:+(a::Number, b::ZeroField) = ConstantField(a)
 
--(a::ZeroField, b::AbstractField) = -b
--(a::AbstractField, b::ZeroField) = a
--(a::ZeroField, b::Number) = ConstantField(-b)
--(a::Number, b::ZeroField) = ConstantField(a)
+Base.:-(a::ZeroField, b::AbstractField) = -b
+Base.:-(a::AbstractField, b::ZeroField) = a
+Base.:-(a::ZeroField, b::Number) = ConstantField(-b)
+Base.:-(a::Number, b::ZeroField) = ConstantField(a)
 
-*(a::ZeroField, b::AbstractField) = a
-*(a::AbstractField, b::ZeroField) = b
-*(a::ZeroField, b::Number) = a
-*(a::Number, b::ZeroField) = b
+Base.:*(a::ZeroField, b::AbstractField) = a
+Base.:*(a::AbstractField, b::ZeroField) = b
+Base.:*(a::ZeroField, b::Number) = a
+Base.:*(a::Number, b::ZeroField) = b
 
-/(a::ZeroField, b::AbstractField) = a
-/(a::AbstractField, b::ZeroField) = ConstantField(convert(eltype(a), Inf))
-/(a::ZeroField, b::Number) = a
-/(a::Number, b::ZeroField) = ConstantField(a / convert(eltype(a), 0))
+Base.:/(a::ZeroField, b::AbstractField) = a
+Base.:/(a::AbstractField, b::ZeroField) = ConstantField(convert(eltype(a), Inf))
+Base.:/(a::ZeroField, b::Number) = a
+Base.:/(a::Number, b::ZeroField) = ConstantField(a / convert(eltype(a), 0))
 
 # ZeroField as the constant zero next to a ConstantField
-+(a::ZeroField, b::ConstantField) = b
-+(a::ConstantField, b::ZeroField) = a
--(a::ZeroField, b::ConstantField) = ConstantField(-b.constant)
--(a::ConstantField, b::ZeroField) = a
-*(a::ZeroField, b::ConstantField) = a
-*(a::ConstantField, b::ZeroField) = b
-/(a::ZeroField, b::ConstantField) = a
-/(a::ConstantField, b::ZeroField) = ConstantField(a.constant / zero(eltype(b)))
+Base.:+(a::ZeroField, b::ConstantField) = b
+Base.:+(a::ConstantField, b::ZeroField) = a
+Base.:-(a::ZeroField, b::ConstantField) = ConstantField(-b.constant)
+Base.:-(a::ConstantField, b::ZeroField) = a
+Base.:*(a::ZeroField, b::ConstantField) = a
+Base.:*(a::ConstantField, b::ZeroField) = b
+Base.:/(a::ZeroField, b::ConstantField) = a
+Base.:/(a::ConstantField, b::ZeroField) = ConstantField(a.constant / zero(eltype(b)))
 
-function /(z1::ZeroField{T1, N1}, z2::ZeroField{T2, N2}) where {T1, T2, N1, N2}
+function Base.:/(z1::ZeroField{T1, N1}, z2::ZeroField{T2, N2}) where {T1, T2, N1, N2}
     T = Base.promote_type(T1, T2)
     return ConstantField{max(N1, N2)}(zero(T) / zero(T))
 end
@@ -53,7 +52,7 @@ end
 # for two ZeroField
 for op in (:-, :+, :*)
     @eval begin
-        function $op(z1::ZeroField{T1, N1}, z2::ZeroField{T2, N2}) where {T1, T2, N1, N2}
+        function Base.$op(z1::ZeroField{T1, N1}, z2::ZeroField{T2, N2}) where {T1, T2, N1, N2}
             T = Base.promote_type(T1, T2)
             N = max(N1, N2)
             return ZeroField{T, N}()
@@ -62,4 +61,4 @@ for op in (:-, :+, :*)
 end
 
 # Unary operations
--(a::ZeroField) = a
+Base.:-(a::ZeroField) = a

@@ -3,7 +3,6 @@ module SplitExplicitFreeSurfaces
 export SplitExplicitFreeSurface, ForwardBackwardScheme, CoriolisForwardBackwardScheme
 export FixedSubstepNumber, FixedTimeStepSize
 
-using DocStringExtensions: MethodSignatures, TYPEDSIGNATURES
 using KernelAbstractions: @index, @kernel, @localmem, @synchronize, StaticSize
 
 using Oceananigans: Oceananigans
@@ -26,7 +25,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceMo
 using Oceananigans.Operators: Az⁻¹ᶜᶜᶠ, Δx_qᶜᶠᶠ, Δxᶜᶠᵃ, Δy_qᶠᶜᶠ, Δyᶠᶜᵃ, Δzᶜᶠᶜ, Δzᶠᶜᶜ, δxTᶜᵃᵃ, δxᶜᶜᶜ, δyTᵃᶜᵃ, δyᶜᶜᶜ,
                               ∂xᵣTᶠᶜᶠ, ∂xᵣᶠᶜᶠ, ∂yᵣTᶜᶠᶠ, ∂yᵣᶜᶠᶠ
 using Oceananigans.Units: Time
-using Oceananigans.Utils: Utils, @apply_regionally, KernelParameters, add_time_interval, configure_kernel, launch!
+using Oceananigans.Utils: Utils, @apply_regionally, KernelParameters, add_time_interval, configure_kernel, launch!, SIGNATURES, TYPEDSIGNATURES
 
 include("split_explicit_timesteppers.jl")
 include("split_explicit_free_surface.jl")
