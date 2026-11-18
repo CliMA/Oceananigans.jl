@@ -169,10 +169,11 @@ Adapt.adapt_structure(to, z::StructuredVerticalDiscretization) =
         @test architecture(constant_ibg) isa ReactantState
         @test architecture(constant_ibg.immersed_boundary.bottom_height) isa CPU
 
-        top_ibg = ImmersedBoundaryGrid(llg, GridFittedVerticalBoundaries(bottom_height=ridge, top_height=0.9))
+        top_ibg = ImmersedBoundaryGrid(llg, GridFittedVerticalBoundaries(bottom_height=ridge, top_height=0.9, top_load=1))
         top_ib′ = OceananigansReactantExt.deconcretize(top_ibg.immersed_boundary)
         @test parent(top_ib′.bottom_height) isa Array
         @test parent(top_ib′.top_height) isa Array
+        @test parent(top_ib′.top_load) isa Array
 
         @info "  Testing constantified OrthogonalSphericalShellGrid construction [$FT]..."
         rllg = RotatedLatitudeLongitudeGrid(arch, FT; size = (4, 4, 4),

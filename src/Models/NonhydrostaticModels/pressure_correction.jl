@@ -15,11 +15,13 @@ function compute_pressure_correction!(model::NonhydrostaticModel, Δt)
     p_Δt = model.pressures.pNHS
     solve_for_pressure!(p_Δt, model.pressure_solver, model.free_surface, model.velocities, Δt)
 
-    set_top_pressure_boundary_condition!(p_Δt, model.free_surface, model.velocities.w, Δt)
+    set_top_pressure_boundary_condition!(p_Δt, model.pressure_solver, model.free_surface, model.velocities.w, Δt)
     fill_halo_regions!(p_Δt)
 
     return nothing
 end
+
+set_top_pressure_boundary_condition!(p_Δt, solver, free_surface, w̃, Δt) = set_top_pressure_boundary_condition!(p_Δt, free_surface, w̃, Δt)
 
 # TODO: make these fallbacks
 # Routines for rigid lid
@@ -80,6 +82,12 @@ end
     @inbounds w[i, j, k] -= ∂zᶜᶜᶠ(i, j, k, grid, pNHSΔt)
 end
 
+function correct_surface_vertical_velocity!(solver, w, pNHSΔt)
+    grid = w.grid
+    launch!(architecture(grid), grid, :xy, _compute_surface_vertical_velocity!, w, grid, pNHSΔt)
+    return nothing
+end
+
 "Update the solution variables (velocities and tracers)."
 function make_pressure_correction!(model::NonhydrostaticModel, Δt)
 
@@ -93,11 +101,7 @@ function make_pressure_correction!(model::NonhydrostaticModel, Δt)
             model.pressures.pNHS)
 
     if !isnothing(model.free_surface)
-        launch!(arch, grid, :xy,
-                _compute_surface_vertical_velocity!,
-                model.velocities.w,
-                model.grid,
-                model.pressures.pNHS)
+        correct_surface_vertical_velocity!(model.pressure_solver, model.velocities.w, model.pressures.pNHS)
     end
 
     ϵ = eps(eltype(model.pressures.pNHS))
