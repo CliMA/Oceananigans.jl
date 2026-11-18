@@ -248,10 +248,13 @@ state: the place for a terminal quantity such as a loss or an end-of-run error n
 needs neither a schedule nor a traced branch. Like everything inside the program it must do only
 device work; printing and IO belong after the compiled call returns.
 
+With binomial checkpointing (`automatic_differentiation = (; checkpointing = Reactant.Binomial(budget))`),
 `stop_iteration` is a device number on the `Simulation`, so under `@compile` it is an input of
 the program, read at each call: set `sim.stop_iteration = n` to run `n` steps with the same
-compiled `run!`. It counts steps from wherever the model is: each call steps `stop_iteration`
-more times.
+compiled `run!`, forward or differentiated. Otherwise it is an `Int`, a constant of the program,
+since without binomial checkpointing a reverse pass compiles only for a loop of fixed length: a
+new `stop_iteration` takes effect in the next `@compile`. Either way it counts steps from
+wherever the model is: each call steps `stop_iteration` more times.
 """
 function Oceananigans.Simulations.run!(sim::ReactantSimulation)
     check_stop_iteration(sim)

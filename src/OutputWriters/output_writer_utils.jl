@@ -1,11 +1,11 @@
 using StructArrays: StructArray, replace_storage
-using Oceananigans.Grids: on_architecture, architecture
+using Oceananigans.BoundaryConditions: bc_str, FieldBoundaryConditions, ContinuousBoundaryFunction, DiscreteBoundaryFunction
 using Oceananigans.DistributedComputations: DistributedComputations, Distributed, DistributedGrid, Partition
 using Oceananigans.Fields: AbstractField, indices, instantiated_location, ConstantField, ZeroField, OneField
-using Oceananigans.BoundaryConditions: bc_str, FieldBoundaryConditions, ContinuousBoundaryFunction, DiscreteBoundaryFunction
+using Oceananigans.Grids: on_architecture, architecture
+using Oceananigans.OutputReaders: auto_extension
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper
 using Oceananigans.Utils: AbstractSchedule
-using Oceananigans.OutputReaders: auto_extension
 
 #####
 ##### Output writer utilities

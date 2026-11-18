@@ -39,7 +39,7 @@ struct AdaptiveVerticallyImplicitDiscretization{FT, R} <: AbstractTimeDiscretiza
 end
 
 """
-$(MethodSignatures(; defaults = true))
+$(SIGNATURES)
 
 An adaptively implicit vertical discretization scheme following [Shchepetkin (2015)](@cite Shchepetkin2015),
 as implemented in the [Coastal and Regional Ocean COmmunity model (CROCO)](https://www.croco-ocean.org).
