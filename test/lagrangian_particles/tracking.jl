@@ -6,7 +6,6 @@ using Oceananigans.Architectures: architecture, on_architecture
 
 using Oceananigans.Models.LagrangianParticleTracking: no_dynamics
 using Oceananigans.OutputWriters: fetch_output
-using Oceananigans.TimeSteppers: step_lagrangian_particles!
 
 struct TestParticle{T}
     x::T
@@ -61,13 +60,22 @@ end
     @test saved.previous_concentration ≈ FT[310]
     @test saved.dynamics_calls == [2]
 
-    set!(model, u = 1100, w = 800)
+    # Particles are advanced with the scheme of the model. Quasi-Adams-Bashforth extrapolates
+    # from the particle velocity at the previous time step, Uⁿ⁺¹ᐟ² = (3/2 + χ) Uⁿ - (1/2 + χ) Uⁿ⁻¹,
+    # while the stages of RungeKutta3 all see the new, spatially uniform velocity.
+    # The particle lands away from the periodic seam in x for both schemes.
+    set!(model, u = 1250, w = 800)
     time_step!(model, FT(1))
     saved = on_architecture(CPU(), fetch_output(particles, model))
-    @test saved.x ≈ FT[420]
-    @test saved.z ≈ FT[340]
-    @test saved.concentration ≈ FT[1420]
-    @test saved.altitude ≈ FT[340]
+    χ = timestepper == :QuasiAdamsBashforth2 ? model.timestepper.χ : nothing
+    extrapolate(Uⁿ, Uⁿ⁻¹, ::Nothing) = Uⁿ
+    extrapolate(Uⁿ, Uⁿ⁻¹, χ) = (3/2 + χ) * Uⁿ - (1/2 + χ) * Uⁿ⁻¹
+    x₃ = mod(320 + extrapolate(1250, 10, χ), 1000)
+    z₃ = mod(540 + extrapolate(800, 20, χ), 1000)
+    @test saved.x ≈ FT[x₃]
+    @test saved.z ≈ FT[z₃]
+    @test saved.concentration ≈ FT[x₃ + 1000]
+    @test saved.altitude ≈ FT[z₃]
 
     set!(model; u=10, w=0)
     time_step!(model, FT(1))

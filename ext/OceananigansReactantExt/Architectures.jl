@@ -1,11 +1,10 @@
 module Architectures
 
 using Adapt: Adapt
-using Reactant
-using Reactant: AnyConcreteRArray
+using Reactant: Reactant, ConcreteRArray, Sharding
 
-using Oceananigans
-using Oceananigans.Architectures: ReactantState, ReshapedHostArray, child_architecture, on_architecture
+using Oceananigans: Oceananigans
+using Oceananigans.Architectures: CPU, ReactantState, ReshapedHostArray, child_architecture, on_architecture
 using Oceananigans.DistributedComputations: Distributed
 using Oceananigans.Grids: LatitudeLongitudeGrid, topology
 
@@ -28,7 +27,7 @@ Oceananigans.Architectures.array_type(::ReactantState) = ConcreteRArray
 Oceananigans.Architectures.on_architecture(::ReactantState, a::Reactant.AnyTracedRArray) = a
 Oceananigans.Architectures.on_architecture(::CPU, a::AnyConcreteReactantArray) = Array(a)
 
-using OffsetArrays: OffsetArrays, AbstractOffsetArray
+using OffsetArrays: OffsetArrays
 using Oceananigans.Utils: StaticStridesOffsetArray
 const ConcreteReactantOffsetArray = StaticStridesOffsetArray{<:Any, <:Any, <:Any, <:Any, <:AnyConcreteReactantArray}
 Oceananigans.Architectures.on_architecture(::CPU, a::ConcreteReactantOffsetArray) = StaticStridesOffsetArray(Array(parent(a)), OffsetArrays.offsets(a)...)
@@ -57,7 +56,7 @@ Oceananigans.Architectures.unified_array(::ReactantState, a) = a
 
 # Distributed computations
 function Oceananigans.Distributed(arch::ReactantState; devices=nothing,
-    partition=nothing, kw...)
+                                  partition=nothing, kw...)
     if devices === nothing
         devices = Reactant.devices()
 
@@ -123,10 +122,10 @@ end
 function Oceananigans.Architectures.on_architecture(arch::ReactantState, grid::LatitudeLongitudeGrid)
     TX, TY, TZ = topology(grid)
     props = Tuple(_to_reactant(getfield(grid, n)) for n in fieldnames(typeof(grid))
-                  if n ∉ (:architecture, :Nx, :Ny, :Nz, :Hx, :Hy, :Hz, :Lx, :Ly, :Lz, :radius))
+                  if n ∉ (:architecture, :Nx, :Ny, :Nz, :Hx, :Hy, :Hz, :Lx, :Ly, :Lz, :radius, :south_pole, :north_pole))
     return LatitudeLongitudeGrid{TX, TY, TZ}(arch,
         grid.Nx, grid.Ny, grid.Nz, grid.Hx, grid.Hy, grid.Hz,
-        grid.Lx, grid.Ly, grid.Lz, props..., grid.radius)
+        grid.Lx, grid.Ly, grid.Lz, props..., grid.radius, grid.south_pole, grid.north_pole)
 end
 
 function Oceananigans.Architectures.on_architecture(new_arch::Distributed{<:ReactantState}, old_grid::LatitudeLongitudeGrid)
@@ -151,7 +150,7 @@ function Oceananigans.Architectures.on_architecture(new_arch::Distributed{<:Reac
                                              old_grid.Hx, old_grid.Hy, old_grid.Hz,
                                              old_grid.Lx, old_grid.Ly, old_grid.Lz,
                                              new_properties...,
-                                             old_grid.radius)
+                                             old_grid.radius, old_grid.south_pole, old_grid.north_pole)
 end
 
 end # module

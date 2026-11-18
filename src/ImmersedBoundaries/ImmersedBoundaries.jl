@@ -6,7 +6,13 @@ export ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom, PartialCellBo
 
 using Printf: @sprintf
 
+using Adapt: Adapt, adapt
+
+using Oceananigans.AbstractOperations: AbstractOperations
 using Oceananigans.Architectures: Architectures, on_architecture
+using Oceananigans.BoundaryConditions: BoundaryConditions
+using Oceananigans.Fields: Fields, AbstractField, ConstantField, fractional_x_index, fractional_y_index,
+                           fractional_z_index
 using Oceananigans.Grids: Grids, AbstractGrid, Center, Face, Flat, architecture, cpu_face_constructor_x,
                           cpu_face_constructor_y, cpu_face_constructor_z, immersed_inactive_node,
                           immersed_peripheral_node, inactive_cell, inactive_node, node, node_names, nodes,
@@ -14,16 +20,8 @@ using Oceananigans.Grids: Grids, AbstractGrid, Center, Face, Flat, architecture,
                           static_column_depthᶜᶠᵃ, static_column_depthᶠᶜᵃ, static_column_depthᶠᶠᵃ, with_halo, x_domain,
                           xnode, xnodes, y_domain, ynode, ynodes, z_domain, znode, znodes, ηname, ηnode, ηnodes, λnode,
                           λnodes, ξname, ξnode, ξnodes, φnode, φnodes
-using Oceananigans.Utils: @apply_regionally, launch!
-
-using Adapt: Adapt, adapt
-
-using DocStringExtensions: TYPEDSIGNATURES
-using Oceananigans.AbstractOperations: AbstractOperations
-using Oceananigans.BoundaryConditions: BoundaryConditions
-using Oceananigans.Fields: Fields, AbstractField, ConstantField, fractional_x_index, fractional_y_index,
-                           fractional_z_index
 using Oceananigans.Operators: Operators
+using Oceananigans.Utils: @apply_regionally, launch!, SIGNATURES, TYPEDSIGNATURES
 
 include("immersed_boundary_grid.jl")
 include("immersed_boundary_interface.jl")

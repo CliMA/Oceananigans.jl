@@ -5,7 +5,7 @@ using Oceananigans: AbstractModel, defaults, initialize!, instantiated_location,
                     restore_prognostic_state!
 using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Fields: Fields, AbstractField, Scan, indices, interior
-using Oceananigans.Utils: time_difference_seconds
+using Oceananigans.Utils: time_difference_in_seconds
 
 """
     mutable struct TimeDerivative <: AbstractField
@@ -28,7 +28,7 @@ materialize_operand(operand) = operand
 materialize_operand(operand::Union{AbstractOperation, Scan}) = Field(operand)
 
 """
-    TimeDerivative(operand, model=nothing; expected_max_time_step_growth=1.2)
+$(SIGNATURES)
 
 Return an object that computes the time derivative of `operand` while a simulation runs,
 
@@ -164,7 +164,7 @@ Difference `derivative.operand` against its value at `derivative.previous_time` 
 the result in `derivative.result`.
 """
 function update_time_derivative!(derivative::TimeDerivative, model)
-    Δt = time_difference_seconds(model.clock.time, derivative.previous_time)
+    Δt = time_difference_in_seconds(model.clock.time, derivative.previous_time)
     Δt == 0 && return nothing
 
     # Difference over parents so that halo regions are included

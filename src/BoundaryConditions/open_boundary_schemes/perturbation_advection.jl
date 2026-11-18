@@ -10,11 +10,7 @@ struct PerturbationAdvection{FT, D, TF, S} <: AbstractRadiationScheme{FT}
 end
 
 """
-    PerturbationAdvection(FT = defaults.FloatType;
-                          outflow_timescale = Inf,
-                          inflow_timescale = 0,
-                          gravity_wave_speed = 0,
-                          density = nothing)
+$(SIGNATURES)
 
 Create a `PerturbationAdvection` scheme, passed as the `scheme` keyword to an
 `NormalFlowBoundaryCondition` (for boundary-normal velocities, `Face`-located) or to a
