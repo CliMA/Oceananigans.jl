@@ -1,6 +1,6 @@
 using Oceananigans.Grids: peripheral_node
 using Oceananigans.ImmersedBoundaries: PCBIBG
-using Oceananigans.Operators: div_xyᶜᶜᶜ
+using Oceananigans.Operators: div_xyᶜᶜᶜ, free_slip_vorticityᶠᶠᶜ, horizontal_divergenceᶜᶜᶜ, thinnest_face_thicknessᶜᶜᶜ
 
 """
     abstract type AbstractScalarBiharmonicDiffusivity <: AbstractTurbulenceClosure end
@@ -142,10 +142,11 @@ end
 ##### Horizontal biharmonic viscosity on partial cells
 #####
 
-# ∇⁴u = L(L(u)), with L the thickness-weighted vector Laplacian of the horizontal Laplacian viscosity on partial cells,
-# L(u) = V⁻¹ [ ∇(Az Δzᵐⁱⁿ δ) - ẑ × ∇(Az Δzᶠᶠᶜ ζ) ]; see `abstract_scalar_diffusivity_closure.jl`
-@inline ∇²★uᶠᶜᶜ(i, j, k, grid, u, v) = V⁻¹ᶠᶜᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, Δy_qᶜᶜᶜ, Δzᵐⁱⁿδᶜᶜᶜ, u, v) - δyᵃᶜᵃ(i, j, k, grid, Ay_qᶠᶠᶜ, free_slip_vorticityᶠᶠᶜ, u, v))
-@inline ∇²★vᶜᶠᶜ(i, j, k, grid, u, v) = V⁻¹ᶜᶠᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_qᶠᶠᶜ, free_slip_vorticityᶠᶠᶜ, u, v) + δyᵃᶠᵃ(i, j, k, grid, Δx_qᶜᶜᶜ, Δzᵐⁱⁿδᶜᶜᶜ, u, v))
+# ∇⁴u = L(L(u)), with L(u) = V⁻¹ [ ∇(Az h δ) - ẑ × ∇(Az Δzᶠᶠᶜ ζ) ] and h the thickness of the cell's thinnest face
+@inline thinnest_face_thickness_times_divergenceᶜᶜᶜ(i, j, k, grid, u, v) = thinnest_face_thicknessᶜᶜᶜ(i, j, k, grid) * horizontal_divergenceᶜᶜᶜ(i, j, k, grid, u, v)
+
+@inline ∇²★uᶠᶜᶜ(i, j, k, grid, u, v) = V⁻¹ᶠᶜᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, Δy_qᶜᶜᶜ, thinnest_face_thickness_times_divergenceᶜᶜᶜ, u, v) - δyᵃᶜᵃ(i, j, k, grid, Ay_qᶠᶠᶜ, free_slip_vorticityᶠᶠᶜ, u, v))
+@inline ∇²★vᶜᶠᶜ(i, j, k, grid, u, v) = V⁻¹ᶜᶠᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_qᶠᶠᶜ, free_slip_vorticityᶠᶠᶜ, u, v) + δyᵃᶠᵃ(i, j, k, grid, Δx_qᶜᶜᶜ, thinnest_face_thickness_times_divergenceᶜᶜᶜ, u, v))
 
 @inline Δy_∇²u(i, j, k, grid::PCBIBG, u, v) = Δy_qᶠᶜᶜ(i, j, k, grid, biharmonic_mask_x, ∇²★uᶠᶜᶜ, u, v)
 @inline Δx_∇²v(i, j, k, grid::PCBIBG, u, v) = Δx_qᶜᶠᶜ(i, j, k, grid, biharmonic_mask_y, ∇²★vᶜᶠᶜ, u, v)
@@ -154,7 +155,7 @@ end
 
 @inline function δ★ᶜᶜᶜ(i, j, k, grid::PCBIBG, u, v)
     δ★ = Az⁻¹ᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Δy_∇²u, u, v) + δyᵃᶜᵃ(i, j, k, grid, Δx_∇²v, u, v))
-    return Δzᵐⁱⁿᶜᶜᶜ(i, j, k, grid) * Δz⁻¹ᶜᶜᶜ(i, j, k, grid) * δ★
+    return thinnest_face_thicknessᶜᶜᶜ(i, j, k, grid) * Δz⁻¹ᶜᶜᶜ(i, j, k, grid) * δ★
 end
 
 @inline function ζ★ᶠᶠᶜ(i, j, k, grid::PCBIBG, u, v)
