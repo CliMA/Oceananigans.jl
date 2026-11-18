@@ -11,6 +11,27 @@ arch = ReactantState()
 
 ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
 
+# A vertical discretization that holds a struct beside its coordinate arrays, as Breeze's
+# terrain-following discretization holds its decay formulation
+struct DecayFormulation{FT}
+    scale :: FT
+end
+
+struct StructuredVerticalDiscretization{C, D, E, F, FM} <: Oceananigans.Grids.AbstractVerticalCoordinate
+    cᵃᵃᶠ :: C
+    cᵃᵃᶜ :: D
+    Δᵃᵃᶠ :: E
+    Δᵃᵃᶜ :: F
+    formulation :: FM
+end
+
+Adapt.adapt_structure(to, z::StructuredVerticalDiscretization) =
+    StructuredVerticalDiscretization(Adapt.adapt(to, z.cᵃᵃᶠ),
+                                     Adapt.adapt(to, z.cᵃᵃᶜ),
+                                     Adapt.adapt(to, z.Δᵃᵃᶠ),
+                                     Adapt.adapt(to, z.Δᵃᵃᶜ),
+                                     Adapt.adapt(to, z.formulation))
+
 @testset "Reactant unit tests" begin
     @testset "Checkbounds = auto" begin
         @test Base.JLOptions().check_bounds == 0
@@ -371,6 +392,32 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
 
         cd = Field(c * d)
         @test all(≈(value_c * value_d), Array(interior(cd)))
+
+        Δz = Field(zspacings(grid, Center(), Center(), Center()))
+        @test all(≈(1 / Nz), Array(interior(Δz)))
+    end
+
+    @testset "Tracing a RectilinearGrid whose vertical discretization holds a struct" begin
+        Nz = 4
+        z = collect(range(-1, 0, length = Nz + 1))
+        static = RectilinearGrid(arch; size = (2, 2, Nz), x = (0, 1), y = (0, 1), z,
+                                 topology = (Periodic, Periodic, Bounded))
+
+        zˢ = StructuredVerticalDiscretization(static.z.cᵃᵃᶠ, static.z.cᵃᵃᶜ, static.z.Δᵃᵃᶠ, static.z.Δᵃᵃᶜ,
+                                              DecayFormulation(0.5))
+
+        grid = RectilinearGrid{Periodic, Periodic, Bounded}(arch,
+                                                            static.Nx, static.Ny, static.Nz,
+                                                            static.Hx, static.Hy, static.Hz,
+                                                            static.Lx, static.Ly, static.Lz,
+                                                            static.Δxᶠᵃᵃ, static.Δxᶜᵃᵃ, static.xᶠᵃᵃ, static.xᶜᵃᵃ,
+                                                            static.Δyᵃᶠᵃ, static.Δyᵃᶜᵃ, static.yᵃᶠᵃ, static.yᵃᶜᵃ,
+                                                            zˢ,
+                                                            static.Δx⁻¹ᶠᵃᵃ, static.Δx⁻¹ᶜᵃᵃ, static.Δy⁻¹ᵃᶠᵃ, static.Δy⁻¹ᵃᶜᵃ)
+
+        # Any kernel launch traces the grid's type, which promoted the grid's float type over `eltype`
+        # of the formulation, `Any`
+        @test minimum_zspacing(grid) ≈ 1 / Nz
 
         Δz = Field(zspacings(grid, Center(), Center(), Center()))
         @test all(≈(1 / Nz), Array(interior(Δz)))

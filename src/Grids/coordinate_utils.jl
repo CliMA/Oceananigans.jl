@@ -113,9 +113,9 @@ x = ExponentialDiscretization(N, l, r, bias=:left)
 ```
 """
 function ExponentialDiscretization(size::Int, left, right;
-                          scale = (right - left) / 5,
-                          bias = :right,
-                          mutable = false)
+                                   scale = (right - left) / 5,
+                                   bias = :right,
+                                   mutable = false)
 
     discretization = ExponentialDiscretization(size, left, right, scale, bias)
 
