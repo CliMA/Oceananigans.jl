@@ -594,8 +594,8 @@ for (interp, dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, :y, 
 
     @eval begin
         @inline function $interpolate_func(i, j, k, grid,
-                                            scheme::WENO{N, FT}, bias,
-                                            ψ, args...) where {N, FT}
+                                           scheme::WENO{N, FT}, bias,
+                                           ψ, args...) where {N, FT}
 
             S  = $stencil(i, j, k, grid, scheme, bias, ψ, args...)
             ψ₀ = weno_anchor(scheme, S)
@@ -605,8 +605,8 @@ for (interp, dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, :y, 
         end
 
         @inline function $interpolate_func(i, j, k, grid,
-                                            scheme::WENO{N, FT}, bias,
-                                            ψ, VI::AbstractSmoothnessStencil, args...) where {N, FT}
+                                           scheme::WENO{N, FT}, bias,
+                                           ψ, VI::AbstractSmoothnessStencil, args...) where {N, FT}
 
             S  = $stencil(i, j, k, grid, scheme, bias, ψ, args...)
             ψ₀ = weno_anchor(scheme, S)
@@ -616,8 +616,8 @@ for (interp, dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, :y, 
         end
 
         @inline function $interpolate_func(i, j, k, grid,
-                                            scheme::WENO{N, FT}, bias,
-                                            ψ, VI::VelocityStencil, u, v, args...) where {N, FT}
+                                           scheme::WENO{N, FT}, bias,
+                                           ψ, VI::VelocityStencil, u, v, args...) where {N, FT}
 
             S  = $stencil(i, j, k, grid, scheme, bias, ψ, u, v, args...)
             ψ₀ = weno_anchor(scheme, S)
@@ -627,8 +627,8 @@ for (interp, dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, :y, 
         end
 
         @inline function $interpolate_func(i, j, k, grid,
-                                            scheme::WENO{N, FT}, bias,
-                                            ψ, VI::FunctionStencil, args...) where {N, FT}
+                                           scheme::WENO{N, FT}, bias,
+                                           ψ, VI::FunctionStencil, args...) where {N, FT}
 
             S  = $stencil(i, j, k, grid, scheme, bias, ψ, args...)
             ψ₀ = weno_anchor(scheme, S)

@@ -7,7 +7,7 @@ using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Architectures: CPU, on_architecture
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields: Field, ReducedAbstractField, copyable_fields, interior, interpolate!, set!
-using Reactant
+using Reactant: Reactant
 
 const ReactantField{LX, LY, LZ, O} = Field{LX, LY, LZ, O, <:ReactantGrid}
 const ShardedDistributedField{LX, LY, LZ, O} = Field{LX, LY, LZ, O, <:ShardedGrid}
@@ -63,8 +63,8 @@ function Oceananigans.Fields.set_to_function!(u::ReactantField, f)
     # Supports serial and distributed
     arch = Oceananigans.Architectures.architecture(u)
     cpu_grid = on_architecture(CPU(), u.grid)
-    cpu_u = Field(Oceananigans.Fields.instantiated_location(u), cpu_grid; indices=Oceananigans.Fields.indices(u))
-    f_field = Oceananigans.Fields.field(Oceananigans.Fields.instantiated_location(u), f, cpu_grid)
+    cpu_u = Field(Oceananigans.instantiated_location(u), cpu_grid; indices=Oceananigans.Fields.indices(u))
+    f_field = Oceananigans.Fields.field(Oceananigans.instantiated_location(u), f, cpu_grid)
     set!(cpu_u, f_field)
     interior(u) .= interior(cpu_u)
     return u
@@ -88,9 +88,9 @@ function Oceananigans.Fields.set_to_field!(u::ReactantField, v::ReactantField)
         fill_halo_regions!(v)
         cpu_grid_u = on_architecture(CPU(), u.grid)
         cpu_grid_v = on_architecture(CPU(), v.grid)
-        cpu_u = Field(Oceananigans.Fields.instantiated_location(u), cpu_grid_u;
+        cpu_u = Field(Oceananigans.instantiated_location(u), cpu_grid_u;
                       indices=Oceananigans.Fields.indices(u))
-        cpu_v = Field(Oceananigans.Fields.instantiated_location(v), cpu_grid_v;
+        cpu_v = Field(Oceananigans.instantiated_location(v), cpu_grid_v;
                       indices=Oceananigans.Fields.indices(v))
         # The whole parent, halos included: copying a view of a device array into a host array fails
         copyto!(parent(cpu_v), Array(parent(v)))
