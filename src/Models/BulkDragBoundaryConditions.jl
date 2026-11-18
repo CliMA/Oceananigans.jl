@@ -29,7 +29,7 @@ using Adapt: Adapt
 
 using Oceananigans.Architectures: Architectures, on_architecture
 using Oceananigans.BoundaryConditions: BoundaryConditions, Bottom, BoundaryCondition, ExplicitTimeDiscretization, Flux,
-                                       IMEXFluxTimeDiscretization, ImmersedFacet, LeftBoundary, RightBoundary, Top
+                                       IMEXTimeDiscretization, ImmersedFacet, LeftBoundary, RightBoundary, Top
 using Oceananigans.Grids: AbstractGrid, Face, XDirection, YDirection, ZDirection
 using Oceananigans.Operators: ℑxyᶜᶠᵃ, ℑxyᶠᶜᵃ, ℑxzᶜᵃᶠ, ℑxzᶠᵃᶜ, ℑyzᵃᶜᶠ, ℑyzᵃᶠᶜ
 
@@ -279,9 +279,9 @@ See [`BulkDragFunction`](@ref) for details.
                the field location during boundary condition regularization.
 - `background_velocities`: Background velocities as a tuple `(U∞, V∞, W∞)` (default: `(0, 0, 0)`).
   These are added to the prognostic velocities when computing both the speed and the drag.
-- `time_discretization`: `ExplicitTimeDiscretization()` (default) or `IMEXFluxTimeDiscretization()`.
+- `time_discretization`: `ExplicitTimeDiscretization()` (default) or `IMEXTimeDiscretization()`.
 
-With `time_discretization = IMEXFluxTimeDiscretization()`, the part of the drag linear in the tangential
+With `time_discretization = IMEXTimeDiscretization()`, the part of the drag linear in the tangential
 velocity is integrated implicitly by the vertical tridiagonal solver, with the speed in the quadratic
 drag lagged. This is supported only on `bottom` and `top` boundaries and `bottom` and `top` immersed facets.
 
@@ -396,8 +396,8 @@ end
 
 validate_drag_time_discretization(td) = nothing
 
-validate_drag_time_discretization(td::IMEXFluxTimeDiscretization) =
+validate_drag_time_discretization(td::IMEXTimeDiscretization) =
     isnothing(td.implicit_coefficient) ||
-        throw(ArgumentError("BulkDrag computes its own implicit coefficient; pass IMEXFluxTimeDiscretization() without one"))
+        throw(ArgumentError("BulkDrag computes its own implicit coefficient; pass IMEXTimeDiscretization() without one"))
 
 end # module

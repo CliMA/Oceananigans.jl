@@ -132,7 +132,7 @@ $(SIGNATURES)
 
 Return a `Flux` `BoundaryCondition` with `flux`.
 
-With an [`IMEXFluxTimeDiscretization`](@ref), the part of the flux linear in the boundary-cell value
+With an [`IMEXTimeDiscretization`](@ref), the part of the flux linear in the boundary-cell value
 is integrated by the vertical tridiagonal solver. This is supported only on `top` and `bottom` boundaries.
 `kwargs` (`parameters`, `discrete_form`, `field_dependencies`) apply to both `flux` and the implicit coefficient.
 """

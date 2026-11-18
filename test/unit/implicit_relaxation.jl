@@ -32,6 +32,7 @@ end
 
 @testset "Implicit Relaxation" begin
     @test_throws TypeError Relaxation(rate=1, time_discretization=VerticallyImplicitTimeDiscretization())
+    @test_throws TypeError Relaxation(rate=1, time_discretization=IMEXTimeDiscretization(1))
 
     for arch in archs
         @testset "Ideal age reset in the top layer, rate Δt = 1000 [$(typeof(arch)), $timestepper]" for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
@@ -39,7 +40,7 @@ end
             explicit_age, _ = ideal_age_column(arch, timestepper, ExplicitTimeDiscretization(); rate)
             @test !all(isfinite, explicit_age)
 
-            age, time = ideal_age_column(arch, timestepper, ImplicitTimeDiscretization(); rate)
+            age, time = ideal_age_column(arch, timestepper, IMEXTimeDiscretization(); rate)
             @test all(age[1:end-1] .≈ time)
             @test age[end] ≈ 1 / rate
         end
@@ -50,10 +51,10 @@ end
             immersed_column = ImmersedBoundaryGrid(column, GridFittedBottom(-2))
             c★ = (c₀ + Δt * rate * target) / (1 + Δt * rate)
 
-            c = relaxed_column(arch, column, ImplicitTimeDiscretization(); Δt, rate, target, c₀)
+            c = relaxed_column(arch, column, IMEXTimeDiscretization(); Δt, rate, target, c₀)
             @test all(c .≈ c★)
 
-            c = relaxed_column(arch, immersed_column, ImplicitTimeDiscretization(); Δt, rate, target, c₀)
+            c = relaxed_column(arch, immersed_column, IMEXTimeDiscretization(); Δt, rate, target, c₀)
             @test all(c[3:4] .≈ c★)
 
             c = relaxed_column(arch, column, ExplicitTimeDiscretization(); Δt, rate, target, c₀)
@@ -62,7 +63,7 @@ end
 
         @testset "Implicit velocity sponge in NonhydrostaticModel [$(typeof(arch))]" begin
             grid = RectilinearGrid(arch; size=(4, 4, 4), extent=(1, 1, 1))
-            sponge = Relaxation(rate=1000, time_discretization=ImplicitTimeDiscretization())
+            sponge = Relaxation(rate=1000, time_discretization=IMEXTimeDiscretization())
             model = NonhydrostaticModel(grid; forcing=(; u=sponge))
             set!(model, u=1)
             time_step!(model, 1)
@@ -74,7 +75,7 @@ end
                 ((CATKEVerticalDiffusivity(), (:e,)), (TKEDissipationVerticalDiffusivity(), (:e, :ϵ)))
             grid = RectilinearGrid(arch; size=8, z=(-8, 0), topology=(Flat, Flat, Bounded))
             target = 1e-3
-            relaxation = Relaxation(; rate=1000, target, time_discretization=ImplicitTimeDiscretization())
+            relaxation = Relaxation(; rate=1000, target, time_discretization=IMEXTimeDiscretization())
             model = HydrostaticFreeSurfaceModel(grid; closure, buoyancy=BuoyancyTracer(), tracers=:b,
                                                 forcing=NamedTuple{names}(ntuple(Returns(relaxation), length(names))))
             set!(model, b = z -> 1e-5 * z)

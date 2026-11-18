@@ -3,7 +3,7 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 using Oceananigans.Grids: XDirection, YDirection, ZDirection
 using Oceananigans.Models: BulkDrag, BulkDragFunction, BulkDragBoundaryCondition,
                            QuadraticFormulation, LinearFormulation
-using Oceananigans.BoundaryConditions: FluxBoundaryCondition, FieldBoundaryConditions, IMEXFluxTimeDiscretization
+using Oceananigans.BoundaryConditions: FluxBoundaryCondition, FieldBoundaryConditions, IMEXTimeDiscretization
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, ImmersedBoundaryCondition
 
 @testset "BulkDrag" begin
@@ -350,9 +350,9 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, I
     #####
 
     @testset "IMEX BulkDrag" begin
-        imex = IMEXFluxTimeDiscretization()
+        imex = IMEXTimeDiscretization()
 
-        @test_throws ArgumentError BulkDrag(coefficient=1e-3, time_discretization=IMEXFluxTimeDiscretization(1.0))
+        @test_throws ArgumentError BulkDrag(coefficient=1e-3, time_discretization=IMEXTimeDiscretization(1.0))
 
         drag = BulkDrag(coefficient=1e-3; time_discretization=imex)
         @test drag isa BulkDragBoundaryCondition
@@ -373,7 +373,7 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, I
                     model = NonhydrostaticModel(grid; boundary_conditions=(u=u_bcs,), kw...)
                     bc = getproperty(model.velocities.u.boundary_conditions, side)
                     @test bc isa BulkDragBoundaryCondition
-                    @test bc.classification.time_discretization isa IMEXFluxTimeDiscretization
+                    @test bc.classification.time_discretization isa IMEXTimeDiscretization
                     @test bc.condition.direction isa XDirection
 
                     set!(model, u=U₀)

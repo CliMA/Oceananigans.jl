@@ -388,7 +388,7 @@ to confine the relaxation to a sponge layer at the bottom of the domain.
 ### Implicit relaxation
 
 An explicitly integrated `Relaxation` limits the time step to roughly `1 / rate`. With
-`time_discretization = ImplicitTimeDiscretization()` the decay `- rate * mask * field` is instead
+`time_discretization = IMEXTimeDiscretization()` the decay `- rate * mask * field` is instead
 integrated with backward Euler by the vertical tridiagonal solver, which the model builds automatically,
 while `rate * mask * target` stays explicit. Over one step without other tendencies, and with
 ``r`` the `rate` and ``\mu`` the `mask`,
@@ -398,7 +398,7 @@ while `rate * mask * target` stays explicit. Over one step without other tendenc
 ```
 
 which is stable for any ``r \Delta t`` and tends to the target ``\phi_\star`` as ``r \Delta t \to \infty``.
-This is the pointwise analogue of [`IMEXFluxTimeDiscretization`](@ref) for boundary fluxes.
+The same [`IMEXTimeDiscretization`](@ref) splits a flux boundary condition.
 For example, an ideal age tracer that is reset to zero in the top layer of the grid,
 on a time scale much shorter than the time step:
 
@@ -411,7 +411,7 @@ top_layer = CenterField(grid)
 interior(top_layer, :, :, grid.Nz) .= 1
 
 aging(x, y, z, t) = 1
-reset = Relaxation(rate=1e3, mask=top_layer, time_discretization=ImplicitTimeDiscretization())
+reset = Relaxation(rate=1e3, mask=top_layer, time_discretization=IMEXTimeDiscretization())
 
 model = HydrostaticFreeSurfaceModel(grid; tracers=:age, buoyancy=nothing, forcing=(; age=(aging, reset)))
 
@@ -423,7 +423,7 @@ Relaxation{Float64} at (Center, Center, Center)
 ├──             relaxed: 1×1×8 Field{Center, Center, Center} on RectilinearGrid on CPU
 ├──                mask: 1×1×8 Field{Center, Center, Center} on RectilinearGrid on CPU
 ├──              target: 0
-└── time_discretization: ImplicitTimeDiscretization
+└── time_discretization: IMEXTimeDiscretization
 ```
 
 An implicit `Relaxation` requires a grid that is `Bounded` in `z`, a constant `rate` and no `transform`.

@@ -70,7 +70,7 @@ supported `Symbol` is `:horizontal_average`, equivalent to
 `f -> Field(Average(f, dims=(1, 2)))`. Transformed quantities are recomputed each
 step via `compute_forcing!`. `transform` is not supported with a `FieldTimeSeries` target.
 
-With `time_discretization = ImplicitTimeDiscretization()` the decay `- rate * mask * field` is integrated
+With `time_discretization = IMEXTimeDiscretization()` the decay `- rate * mask * field` is integrated
 by the vertical tridiagonal solver, with backward Euler over each time step or substep, while
 `rate * mask * target` stays explicit. The relaxation is then stable for any `rate * Δt`.
 This requires a grid that is `Bounded` in `z`, a constant `rate` and no `transform`.
@@ -118,25 +118,25 @@ Relaxation{Float64}
 * Reset a field to zero much faster than the time step can resolve.
 
 ```jldoctest relaxation
-reset = Relaxation(rate = 1e3, time_discretization = ImplicitTimeDiscretization())
+reset = Relaxation(rate = 1e3, time_discretization = IMEXTimeDiscretization())
 
 # output
 Relaxation{Float64}
 ├──                rate: 1000.0
 ├──                mask: 1
 ├──              target: 0
-└── time_discretization: ImplicitTimeDiscretization
+└── time_discretization: IMEXTimeDiscretization
 ```
 """
 function Relaxation(; rate, mask=onefunction, target=zerofunction, transform=nothing,
-                      time_discretization::Union{ExplicitTimeDiscretization, ImplicitTimeDiscretization}=ExplicitTimeDiscretization())
-    if time_discretization isa ImplicitTimeDiscretization && !(rate isa Number && isnothing(transform))
-        throw(ArgumentError("an implicit Relaxation requires a constant rate and no transform"))
+                      time_discretization::Union{ExplicitTimeDiscretization, IMEXTimeDiscretization{Nothing}}=ExplicitTimeDiscretization())
+    if time_discretization isa IMEXTimeDiscretization && !(rate isa Number && isnothing(transform))
+        throw(ArgumentError("an IMEX Relaxation requires a constant rate and no transform"))
     end
     return Relaxation(rate, nothing, mask, target, nothing, transform, time_discretization)
 end
 
-const ImplicitRelaxation = Relaxation{<:Number, <:Any, <:Any, <:Any, <:Any, <:Any, <:ImplicitTimeDiscretization}
+const IMEXRelaxation = Relaxation{<:Number, <:Any, <:Any, <:Any, <:Any, <:Any, <:IMEXTimeDiscretization}
 
 apply_transform(t,          field) = t(field)
 apply_transform(s::Symbol,  field) = apply_transform(Val(s), field)
@@ -154,16 +154,16 @@ apply_transform(::Val{S}, field) where S =
     return r.rate * μ * (ϕᵣ - ϕ)
 end
 
-@inline function (r::Relaxation{<:Number, F, <:Any, <:Any, <:Any, <:Any, <:ImplicitTimeDiscretization})(i, j, k, grid, clock, model_fields) where F<:AbstractArray
+@inline function (r::Relaxation{<:Number, F, <:Any, <:Any, <:Any, <:Any, <:IMEXTimeDiscretization})(i, j, k, grid, clock, model_fields) where F<:AbstractArray
     ϕᵣ = evaluate_target(i, j, k, grid, r.target, r.location, clock.time)
     μ  = evaluate_mask(i, j, k, grid, r.mask, r.location)
     return r.rate * μ * ϕᵣ
 end
 
 # A sink has a negative coefficient
-@inline implicit_forcing_coefficient(i, j, k, grid, r::ImplicitRelaxation, clock, model_fields) = -r.rate * evaluate_mask(i, j, k, grid, r.mask, r.location)
+@inline implicit_forcing_coefficient(i, j, k, grid, r::IMEXRelaxation, clock, model_fields) = -r.rate * evaluate_mask(i, j, k, grid, r.mask, r.location)
 
-BoundaryConditions.needs_implicit_solver(::ImplicitRelaxation) = true
+BoundaryConditions.needs_implicit_solver(::IMEXRelaxation) = true
 
 """
     InterpolatedFieldTarget(field, loc, grid)
@@ -317,7 +317,7 @@ function Base.show(io::IO, relaxation::Relaxation)
     push!(rows, "mask"   => summary(relaxation.mask))
     push!(rows, "target" => summary(relaxation.target))
     isnothing(relaxation.transform) || push!(rows, "transform" => string(relaxation.transform))
-    relaxation isa ImplicitRelaxation && push!(rows, "time_discretization" => summary(relaxation.time_discretization))
+    relaxation isa IMEXRelaxation && push!(rows, "time_discretization" => summary(relaxation.time_discretization))
     width = maximum(length(first(r)) for r in rows)
     for (i, (key, value)) in enumerate(rows)
         prefix = i == length(rows) ? "└── " : "├── "
@@ -330,7 +330,7 @@ function Base.summary(relaxation::Relaxation)
              "mask=$(summary(relaxation.mask))",
              "target=$(summary(relaxation.target))"]
     isnothing(relaxation.transform) || push!(parts, "transform=$(relaxation.transform)")
-    relaxation isa ImplicitRelaxation && push!(parts, "time_discretization=$(summary(relaxation.time_discretization))")
+    relaxation isa IMEXRelaxation && push!(parts, "time_discretization=$(summary(relaxation.time_discretization))")
     return "Relaxation(" * join(parts, ", ") * ")"
 end
 
