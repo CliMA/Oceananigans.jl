@@ -1,4 +1,4 @@
-using Oceananigans.Operators: Operators, δxTᶜᵃᵃ, δyTᵃᶜᵃ, ℑxyᶠᶠᵃ, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ, ∂xTᶠᶜᶠ, ∂yTᶜᶠᶠ, ∂xᵣTᶠᶜᶠ, ∂yᵣTᶜᶠᶠ
+using Oceananigans.Operators: Operators, δxTᶠᵃᵃ, δyTᵃᶠᵃ, Δx⁻¹ᶠᶜᶠ, Δy⁻¹ᶜᶠᶠ, ℑxyᶠᶠᵃ, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
 
 # Conditional differences that are "immersed boundary aware".
 # Here we return `zero(ibg)` rather than `δx` (for example) when _one_ of the
@@ -75,24 +75,17 @@ for (d, ξ) in enumerate((:x, :y, :z))
     end
 end
 
-# Topology-aware immersed boundary operators
-#   * Velocities are `0` on `peripheral_node`s and
-#   * Tracers should ensure no-flux on `inactive_node`s
-@inline conditional_uᶠᶜᶜ(i, j, k, grid, ϕ, args...) = ϕ(i, j, k, grid, args...) * !peripheral_node(i, j, k, grid, f, c, c)
-@inline conditional_vᶜᶠᶜ(i, j, k, grid, ϕ, args...) = ϕ(i, j, k, grid, args...) * !peripheral_node(i, j, k, grid, c, f, c)
-
-@inline conditional_uᶠᶜᶜ(i, j, k, grid, u::AbstractArray) = @inbounds u[i, j, k] * !peripheral_node(i, j, k, grid, f, c, c)
-@inline conditional_vᶜᶠᶜ(i, j, k, grid, v::AbstractArray) = @inbounds v[i, j, k] * !peripheral_node(i, j, k, grid, c, f, c)
-
-@inline conditional_∂xTᶠᶜᶠ(i, j, k, ibg::IBG, args...) = ifelse(inactive_node(i, j, k, ibg, c, c, f) | inactive_node(i-1, j, k, ibg, c, c, f), zero(ibg), ∂xTᶠᶜᶠ(i, j, k, ibg.underlying_grid, args...))
-@inline conditional_∂yTᶜᶠᶠ(i, j, k, ibg::IBG, args...) = ifelse(inactive_node(i, j, k, ibg, c, c, f) | inactive_node(i, j-1, k, ibg, c, c, f), zero(ibg), ∂yTᶜᶠᶠ(i, j, k, ibg.underlying_grid, args...))
+# Topology-aware immersed boundary derivatives: tracers ensure no-flux on `inactive_node`s, so the derivative
+# vanishes when either node is inactive. Otherwise it is the topology-aware derivative evaluated on the immersed
+# grid itself, so `f` receives the immersed grid rather than its underlying grid. The topology-aware differences
+# `δxTᶠᵃᵃ`, `δxTᶜᵃᵃ` (and their y-counterparts) need no immersed-boundary treatment and dispatch on the
+# immersed grid's topology directly.
+@inline conditional_∂xTᶠᶜᶠ(i, j, k, ibg::IBG, args...) = ifelse(inactive_node(i, j, k, ibg, c, c, f) | inactive_node(i-1, j, k, ibg, c, c, f), zero(ibg), δxTᶠᵃᵃ(i, j, k, ibg, args...) * Δx⁻¹ᶠᶜᶠ(i, j, k, ibg))
+@inline conditional_∂yTᶜᶠᶠ(i, j, k, ibg::IBG, args...) = ifelse(inactive_node(i, j, k, ibg, c, c, f) | inactive_node(i, j-1, k, ibg, c, c, f), zero(ibg), δyTᵃᶠᵃ(i, j, k, ibg, args...) * Δy⁻¹ᶜᶠᶠ(i, j, k, ibg))
 
 # Constant-r versions for free surface derivatives
-@inline conditional_∂xᵣTᶠᶜᶠ(i, j, k, ibg::IBG, args...) = ifelse(inactive_node(i, j, k, ibg, c, c, f) | inactive_node(i-1, j, k, ibg, c, c, f), zero(ibg), ∂xᵣTᶠᶜᶠ(i, j, k, ibg.underlying_grid, args...))
-@inline conditional_∂yᵣTᶜᶠᶠ(i, j, k, ibg::IBG, args...) = ifelse(inactive_node(i, j, k, ibg, c, c, f) | inactive_node(i, j-1, k, ibg, c, c, f), zero(ibg), ∂yᵣTᶜᶠᶠ(i, j, k, ibg.underlying_grid, args...))
-
-@inline Operators.δxTᶜᵃᵃ(i, j, k, ibg::IBG, f, args...) = δxTᶜᵃᵃ(i, j, k, ibg.underlying_grid, conditional_uᶠᶜᶜ, f, args...)
-@inline Operators.δyTᵃᶜᵃ(i, j, k, ibg::IBG, f, args...) = δyTᵃᶜᵃ(i, j, k, ibg.underlying_grid, conditional_vᶜᶠᶜ, f, args...)
+@inline conditional_∂xᵣTᶠᶜᶠ(i, j, k, ibg::IBG, args...) = ifelse(inactive_node(i, j, k, ibg, c, c, f) | inactive_node(i-1, j, k, ibg, c, c, f), zero(ibg), δxTᶠᵃᵃ(i, j, k, ibg, args...) * Δx⁻¹ᶠᶜᶠ(i, j, k, ibg))
+@inline conditional_∂yᵣTᶜᶠᶠ(i, j, k, ibg::IBG, args...) = ifelse(inactive_node(i, j, k, ibg, c, c, f) | inactive_node(i, j-1, k, ibg, c, c, f), zero(ibg), δyTᵃᶠᵃ(i, j, k, ibg, args...) * Δy⁻¹ᶜᶠᶠ(i, j, k, ibg))
 
 @inline Operators.∂xTᶠᶜᶠ(i, j, k, ibg::IBG, f, args...) = conditional_∂xTᶠᶜᶠ(i, j, k, ibg, f, args...)
 @inline Operators.∂yTᶜᶠᶠ(i, j, k, ibg::IBG, f, args...) = conditional_∂yTᶜᶠᶠ(i, j, k, ibg, f, args...)

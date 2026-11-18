@@ -47,6 +47,7 @@ export active_weighted_ℑxyᶜᶜᶜ, active_weighted_ℑxzᶜᶜᶜ, active_we
 
 # Topology-aware operators
 export δxTᶠᵃᵃ, δyTᵃᶠᵃ, δxTᶜᵃᵃ, δyTᵃᶜᵃ
+export ℑxTᶠᵃᵃ, ℑyTᵃᶠᵃ, ℑxTᶜᵃᵃ, ℑyTᵃᶜᵃ
 export ∂xTᶠᶜᶠ, ∂yTᶜᶠᶠ
 export ∂xᵣTᶠᶜᶠ, ∂yᵣTᶜᶠᶠ
 
