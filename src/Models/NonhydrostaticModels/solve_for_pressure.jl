@@ -157,23 +157,32 @@ function solve_for_pressure!(pressure, solver::ConjugateGradientPoissonSolver, f
     Δt★ = Δt⁺ * isfinite(Δt)
     pressure .*= Δt★
 
-    # set coefficient of MixedBoundaryCondition
-    if !isnothing(free_surface)
-        g = free_surface.gravitational_acceleration
-        top_bc = pressure.boundary_conditions.top
-        top_bc.condition.coefficient[] = 1 / (g * Δt^2)
+    g = free_surface.gravitational_acceleration
+    top_bc = pressure.boundary_conditions.top
+    top_bc.condition.coefficient[] = 1 / (g * Δt^2)
 
-        preconditioner = solver.conjugate_gradient_solver.preconditioner
-        update_fourier_tridiagonal_solver!(preconditioner, free_surface, Ũ, Δt)
-    end
+    preconditioner = solver.conjugate_gradient_solver.preconditioner
+    update_fourier_tridiagonal_solver!(preconditioner, free_surface, Ũ, Δt)
+
+    rhs = solver.right_hand_side
+    grid = solver.grid
+    arch = architecture(grid)
+    launch!(arch, grid, :xyz, _cg_source_term!, rhs, grid, Ũ)
+    add_inhomogeneous_boundary_terms!(rhs, free_surface, grid, Ũ, Δt; area_weighted=true)
+
+    return solve!(pressure, solver.conjugate_gradient_solver, rhs, free_surface, Δt)
+end
+
+function solve_for_pressure!(pressure, solver::ConjugateGradientPoissonSolver, ::Nothing, Ũ, Δt)
+    ϵ = eps(eltype(pressure))
+    Δt⁺ = max(ϵ, Δt)
+    Δt★ = Δt⁺ * isfinite(Δt)
+    pressure .*= Δt★
 
     rhs = solver.right_hand_side
     grid = solver.grid
     arch = architecture(grid)
     launch!(arch, grid, :xyz, _cg_source_term!, rhs, grid, Ũ)
 
-    add_inhomogeneous_boundary_terms!(rhs, free_surface, grid, Ũ, Δt; area_weighted=true)
-
-    result = solve!(pressure, solver.conjugate_gradient_solver, rhs, free_surface, Δt)
-    return result
+    return solve!(pressure, solver.conjugate_gradient_solver, rhs)
 end

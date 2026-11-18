@@ -71,9 +71,6 @@ function compute_symmetric_laplacian!(∇²ϕ, ϕ)
     return nothing
 end
 
-# accept and ignore free_surface/Δt so both linear_operation! choices share a call signature
-compute_symmetric_laplacian!(∇²ϕ, ϕ, free_surface, Δt) = compute_symmetric_laplacian!(∇²ϕ, ϕ)
-
 @kernel function _apply_mixed_top_bc!(∇²ϕ, grid, ϕ, Δt, g)
     i, j = @index(Global, NTuple)
     Nz = grid.Nz
