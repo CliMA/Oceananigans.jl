@@ -141,6 +141,7 @@ function test_mpi_hydrostatic_free_surface_model(partition, topology; Nx=16, Ny=
     r_run!(reactant_simulation, r_time_step!, r_first_time_step!)
 
     @test iteration(reactant_simulation) == iteration(vanilla_simulation)
+    @test time(reactant_simulation) ≈ time(vanilla_simulation)
     @test compare_interior("u", vanilla_model.velocities.u, reactant_model.velocities.u)
     @test compare_interior("v", vanilla_model.velocities.v, reactant_model.velocities.v)
     @test compare_interior("T", vanilla_model.tracers.T, reactant_model.tracers.T)

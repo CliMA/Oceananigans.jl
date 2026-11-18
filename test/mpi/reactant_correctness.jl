@@ -30,7 +30,7 @@ using CUDA
 
     # 32×32 gives 16×16 local grids, so the split-explicit extended halos fit without capping.
     # 16×16 gives 8×8 local grids, which caps the extended halos and adds extra barotropic halo fills.
-    hydrostatic_cases = (((Periodic, Periodic, Bounded), 32, "uncapped extended halos"),
+    hydrostatic_cases = (((Periodic, Bounded, Bounded), 32, "uncapped extended halos"),
                          ((Bounded, Bounded, Bounded), 16, "capped extended halos"))
 
     @testset "HydrostaticFreeSurfaceModel time stepping with Partition(2, 2), topology=$topology, $description" for (topology, N, description) in hydrostatic_cases
