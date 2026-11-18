@@ -19,6 +19,11 @@ using CUDA
         test_mpi_fill_halo_regions(make_grid, partition, topology)
     end
 
+    @testset "fill_halo_regions! on TripolarGrid with $partition, fold=$fold" for partition in (Partition(1, 4), Partition(2, 2)),
+                                                                                  fold in ((CenterFolded, UPivot), (CenterFolded, TPivot), (FaceFolded, FPivot))
+        test_mpi_fill_halo_regions(tripolar_grid, partition, fold)
+    end
+
     @testset "untraced fill_halo_regions!" begin
         test_mpi_fill_halo_regions(rectilinear_grid, Partition(2, 2), (Periodic, Periodic, Bounded); traced=false)
     end

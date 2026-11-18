@@ -2,6 +2,7 @@ using Oceananigans.BoundaryConditions: DCBC, DefaultBoundaryCondition, Distribut
 using Oceananigans.DistributedComputations:
     DistributedComputations,
     Distributed,
+    MPIReactantDistributed,
     all_reduce,
     child_architecture,
     communication_buffers,
@@ -19,7 +20,8 @@ using Oceananigans.Utils: Utils, StaticStridesOffsetArray
 const DistributedTripolarGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} =
     OrthogonalSphericalShellGrid{FT, TX, TY, TZ, CZ, <:Tripolar, CC, FC, CF, FF, <:Distributed{<:Union{CPU, GPU}}}
 
-const MPITripolarGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} = OrthogonalSphericalShellGrid{FT, TX, TY, TZ, CZ, <:Tripolar, CC, FC, CF, FF, <:Distributed{<:Union{CPU, GPU}}}
+const MPITripolarGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} =
+    OrthogonalSphericalShellGrid{FT, TX, TY, TZ, CZ, <:Tripolar, CC, FC, CF, FF, <:Union{Distributed{<:Union{CPU, GPU}}, MPIReactantDistributed}}
 const MPITripolarGridOfSomeKind{TY} = Union{MPITripolarGrid{<:Any, <:Any, TY},
     ImmersedBoundaryGrid{<:Any, <:Any, TY, <:Any, <:MPITripolarGrid}}
 

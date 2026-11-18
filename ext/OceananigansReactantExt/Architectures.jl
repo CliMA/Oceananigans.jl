@@ -9,6 +9,7 @@ using Oceananigans.Architectures: ReactantState, ReshapedHostArray, child_archit
 using Oceananigans.DistributedComputations: DistributedComputations, Distributed, OneDBuffer, TwoDBuffer, CornerBuffer, MPI
 using Oceananigans.Utils: Utils
 using Oceananigans.Grids: LatitudeLongitudeGrid, topology
+using Oceananigans.OrthogonalSphericalShellGrids: TripolarXBuffer, TwoDZipperBuffer, ZipperCornerBuffer
 
 const ReactantKernelAbstractionsExt = Base.get_extension(
     Reactant, :ReactantKernelAbstractionsExt
@@ -62,7 +63,10 @@ Utils.sync_device!(::ReactantState) = nothing
 
 const ConcreteReactantBuffer = Union{OneDBuffer{<:AnyConcreteReactantArray},
                                      TwoDBuffer{<:AnyConcreteReactantArray},
-                                     CornerBuffer{<:AnyConcreteReactantArray}}
+                                     CornerBuffer{<:AnyConcreteReactantArray},
+                                     TripolarXBuffer{<:Any, <:AnyConcreteReactantArray},
+                                     TwoDZipperBuffer{<:Any, <:Any, <:Any, <:AnyConcreteReactantArray},
+                                     ZipperCornerBuffer{<:Any, <:Any, <:Any, <:AnyConcreteReactantArray}}
 
 struct ReactantRequests
     requests :: Vector{Any}

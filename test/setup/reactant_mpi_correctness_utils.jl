@@ -2,7 +2,7 @@ using MPI
 using Random
 using Test
 using Oceananigans
-using Oceananigans.BoundaryConditions: fill_halo_regions!
+using Oceananigans.BoundaryConditions: fill_halo_regions!, UPivot, TPivot, FPivot
 
 rectilinear_grid(arch, topology) = RectilinearGrid(arch; size = (16, 16, 4), extent = (1, 1, 1), halo = (3, 3, 3), topology)
 
@@ -10,6 +10,8 @@ function latitude_longitude_grid(arch, topology)
     longitude = topology[1] == Periodic ? (0, 360) : (0, 90)
     return LatitudeLongitudeGrid(arch; size = (16, 16, 4), halo = (3, 3, 3), longitude, latitude = (0, 10), z = (0, 1), topology)
 end
+
+tripolar_grid(arch, (fold_topology, pivot)) = TripolarGrid(arch; size = (16, 20, 4), halo = (3, 3, 3), z = (0, 1), fold_topology, pivot)
 
 mpi_reactant_architecture(partition) = Distributed(ReactantState(); partition, communicator = MPI.COMM_WORLD)
 
