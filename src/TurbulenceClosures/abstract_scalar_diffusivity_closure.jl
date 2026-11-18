@@ -1,5 +1,4 @@
 using Oceananigans.Grids: node
-using Oceananigans.ImmersedBoundaries: PCBIBG
 using Oceananigans.Operators: ℑxyᶠᶠᵃ, ℑxzᶠᵃᶠ, ℑyzᵃᶠᶠ, horizontal_divergenceᶜᶜᶜ, thinnest_face_thicknessᶜᶜᶜ
 
 """
@@ -225,7 +224,11 @@ const C = Center
 @inline viscous_flux_wz(i, j, k, grid, clo::AID, K, clk, fields, b) = - ν_σᶜᶜᶜ(i, j, k, grid, clo, K, clk, fields, stress_wz, stencil_order(clo), fields.u, fields.v, fields.w)
 
 # Horizontal viscous fluxes for horizontal diffusivities
-@inline νh_δᶜᶜᶜ(i, j, k, grid, closure, K, clock, fields, u, v) = νhᶜᶜᶜ(i, j, k, grid, closure, K, clock, fields) * div_xyᶜᶜᶜ(i, j, k, grid, u, v)
+# The divergence stress carries the thickness of the cell's thinnest face, which keeps the viscous operator negative
+# semi-definite in the volume-weighted inner product where Δz varies laterally (partial cells, z-star)
+@inline νh_δᶜᶜᶜ(i, j, k, grid, closure, K, clock, fields, u, v) =
+    νhᶜᶜᶜ(i, j, k, grid, closure, K, clock, fields) * thinnest_face_thicknessᶜᶜᶜ(i, j, k, grid) * Δz⁻¹ᶜᶜᶜ(i, j, k, grid) * horizontal_divergenceᶜᶜᶜ(i, j, k, grid, u, v)
+
 @inline νh_ζᶠᶠᶜ(i, j, k, grid, closure, K, clock, fields, u, v) = νhᶠᶠᶜ(i, j, k, grid, closure, K, clock, fields) * ζ₃ᶠᶠᶜ(i, j, k, grid, u, v)
 @inline νh_σᶠᶜᶠ(i, j, k, grid, closure, K, clock, fields, σᶠᶜᶠ, args...) = νhᶠᶜᶠ(i, j, k, grid, closure, K, clock, fields) * σᶠᶜᶠ(i, j, k, grid, args...)
 @inline νh_σᶜᶠᶠ(i, j, k, grid, closure, K, clock, fields, σᶜᶠᶠ, args...) = νhᶜᶠᶠ(i, j, k, grid, closure, K, clock, fields) * σᶜᶠᶠ(i, j, k, grid, args...)
@@ -240,15 +243,6 @@ const C = Center
 # "Divergence damping"
 @inline viscous_flux_ux(i, j, k, grid, clo::ADD, K, clk, fields, b) = - νh_δᶜᶜᶜ(i, j, k, grid, clo, K, clk, fields, fields.u, fields.v)
 @inline viscous_flux_vy(i, j, k, grid, clo::ADD, K, clk, fields, b) = - νh_δᶜᶜᶜ(i, j, k, grid, clo, K, clk, fields, fields.u, fields.v)
-
-#####
-##### Horizontal viscosity on partial cells
-#####
-
-# With partial cells, the stress of the divergence carries the thickness of the cell's thinnest face rather than Δzᶜᶜᶜ,
-# which makes the viscous operator negative semi-definite in the volume-weighted inner product
-@inline νh_δᶜᶜᶜ(i, j, k, grid::PCBIBG, closure, K, clock, fields, u, v) =
-    νhᶜᶜᶜ(i, j, k, grid, closure, K, clock, fields) * thinnest_face_thicknessᶜᶜᶜ(i, j, k, grid) * Δz⁻¹ᶜᶜᶜ(i, j, k, grid) * horizontal_divergenceᶜᶜᶜ(i, j, k, grid, u, v)
 
 # Vertical viscous fluxes for vertical diffusivities
 @inline νz_σᶜᶜᶜ(i, j, k, grid, closure, K, clock, fields, σᶜᶜᶜ, args...) = νzᶜᶜᶜ(i, j, k, grid, closure, K, clock, fields) * σᶜᶜᶜ(i, j, k, grid, args...)

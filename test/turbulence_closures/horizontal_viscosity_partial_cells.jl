@@ -4,6 +4,7 @@ using LinearAlgebra: Diagonal, Symmetric, eigmax, eigvals
 using Random: Random
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Grids: peripheral_node
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: update_zstar_scaling!
 using Oceananigans.Operators: Vᶠᶜᶜ, Vᶜᶠᶜ
 using Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, HorizontalDivergenceScalarDiffusivity
 
@@ -155,6 +156,21 @@ horizontal_viscosities = (("Laplacian",           HorizontalScalarDiffusivity,  
                 growth_rate, spectral_radius = viscous_growth_rate_and_spectral_radius(grid, closure)
                 @test growth_rate ≤ 1e-12 * spectral_radius
                 @test spectral_radius ≤ flat_spectral_radius * (1 + 1e-12)
+            end
+        end
+
+        @testset "Horizontal $name viscosity: dissipation with z-star over a random free surface" begin
+            for topology in ((Periodic, Periodic, Bounded), (Bounded, Bounded, Bounded))
+                grid = RectilinearGrid(CPU(); size=(Nx, Ny, 2), x=(0, Nx*Δ), y=(0, Ny*Δ), halo=(4, 4, 4), topology,
+                                       z=MutableVerticalDiscretization([-H, -H/2, 0]))
+                Random.seed!(3)
+                η = Field{Center, Center, Face}(grid; indices=(:, :, size(grid, 3)+1))
+                set!(η, 0.6H .* (rand(Nx, Ny, 1) .- 0.5))
+                fill_halo_regions!(η)
+                update_zstar_scaling!(grid, η)
+
+                growth_rate, spectral_radius = viscous_growth_rate_and_spectral_radius(grid, closure)
+                @test growth_rate ≤ 1e-12 * spectral_radius
             end
         end
 

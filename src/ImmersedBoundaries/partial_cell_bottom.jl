@@ -1,7 +1,7 @@
 using Oceananigans.Fields: Field, fill_halo_regions!, set!
 using Oceananigans.Grids: Grids, AbstractStaticGrid, constructor_arguments
 using Oceananigans.Operators: Δrᶜᶜᶜ, Δrᶜᶜᶠ, Δrᶜᶠᶜ, Δrᶜᶠᶠ, Δrᶠᶜᶜ, Δrᶠᶜᶠ, Δrᶠᶠᶜ, Δrᶠᶠᶠ, Δr⁻¹ᶜᶜᶜ, Δr⁻¹ᶜᶜᶠ, Δr⁻¹ᶜᶠᶜ,
-                              Δr⁻¹ᶜᶠᶠ, Δr⁻¹ᶠᶜᶜ, Δr⁻¹ᶠᶜᶠ, Δr⁻¹ᶠᶠᶜ, Δr⁻¹ᶠᶠᶠ, Δzᶜᶜᶜ, Δzᶜᶠᶜ, Δzᶠᶜᶜ
+                              Δr⁻¹ᶜᶠᶠ, Δr⁻¹ᶠᶜᶜ, Δr⁻¹ᶠᶜᶠ, Δr⁻¹ᶠᶠᶜ, Δr⁻¹ᶠᶠᶠ
 using Oceananigans.Utils: KernelParameters, prettysummary
 
 #####
@@ -370,10 +370,6 @@ const XYFlatPCBIBG = ImmersedBoundaryGrid{<:Any, <:Flat, <:Flat, <:Any, <:Any, <
 @inline Operators.Δrᶠᶠᶜ(i, j, k, ibg::XFlatPCBIBG) = Δrᶜᶠᶜ(i, j, k, ibg)
 @inline Operators.Δrᶠᶠᶜ(i, j, k, ibg::YFlatPCBIBG) = Δrᶠᶜᶜ(i, j, k, ibg)
 @inline Operators.Δrᶠᶠᶜ(i, j, k, ibg::XYFlatPCBIBG) = Δrᶜᶜᶜ(i, j, k, ibg)
-
-@inline Operators.thinnest_face_thicknessᶜᶜᶜ(i, j, k, ibg::XFlatPCBIBG) = min(Δzᶜᶠᶜ(i, j, k, ibg), Δzᶜᶠᶜ(i, j+1, k, ibg))
-@inline Operators.thinnest_face_thicknessᶜᶜᶜ(i, j, k, ibg::YFlatPCBIBG) = min(Δzᶠᶜᶜ(i, j, k, ibg), Δzᶠᶜᶜ(i+1, j, k, ibg))
-@inline Operators.thinnest_face_thicknessᶜᶜᶜ(i, j, k, ibg::XYFlatPCBIBG) = Δzᶜᶜᶜ(i, j, k, ibg)
 
 # Vertically-static, partial cell bottom, immersed boundary grid
 VSPCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:AbstractStaticGrid, <:PartialCellVerticalBoundaries}
