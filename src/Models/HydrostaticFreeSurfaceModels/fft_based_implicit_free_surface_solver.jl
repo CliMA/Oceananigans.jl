@@ -1,6 +1,6 @@
 using Oceananigans.Grids: XYZRegularRG, x_domain, y_domain
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Operators: Azᶜᶜᶠ, Az⁻¹ᶜᶜᶠ, Δx_qᶜᶠᶜ, Δy_qᶠᶜᶜ
+using Oceananigans.Operators: Azᶜᶜᶠ, Az⁻¹ᶜᶜᶠ, Δx_qᶜᶠᶜ, Δy_qᶠᶜᶜ, δxᶜᵃᵃ, δyᵃᶜᵃ
 using Oceananigans.Solvers: Solvers, FFTBasedPoissonSolver, solve!
 
 struct FFTImplicitFreeSurfaceSolver{S, G3, G2, R}
@@ -105,8 +105,8 @@ end
     kᴺ   = grid.Nz
     Az   = Azᶜᶜᶠ(i, j, kᴺ, grid)
     Az⁻¹ = Az⁻¹ᶜᶜᶠ(i, j, kᴺ, grid)
-    δU = δx_U(i, j, kᴺ, grid, Δy_qᶠᶜᶜ, barotropic_U, nothing, U.u)
-    δV = δy_V(i, j, kᴺ, grid, Δx_qᶜᶠᶜ, barotropic_V, nothing, U.v)
+    δU = δxᶜᵃᵃ(i, j, kᴺ, grid, Δy_qᶠᶜᶜ, barotropic_U, nothing, U.u)
+    δV = δyᵃᶜᵃ(i, j, kᴺ, grid, Δx_qᶜᶠᶜ, barotropic_V, nothing, U.v)
     fη   = Fη(i, j, kᴺ+1, grid, clock, fields)
 
     @inbounds rhs[i, j, 1] = (δU + δV - Az * fη - Az * η[i, j, kᴺ+1] / Δt) * Az⁻¹ / (g * Lz * Δt)

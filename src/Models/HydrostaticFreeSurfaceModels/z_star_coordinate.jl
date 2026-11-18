@@ -149,8 +149,8 @@ end
     hᶜᶜ = static_column_depthᶜᶜᵃ(i, j, grid)
 
     # ∂(η / H)/∂t = - ∇ ⋅ ∫udz / H
-    δU = δx_U(i, j, kᴺ, grid, Δy_qᶠᶜᶜ, barotropic_U, U, u)
-    δV = δy_V(i, j, kᴺ, grid, Δx_qᶜᶠᶜ, barotropic_V, V, v)
+    δU = δxᶜᵃᵃ(i, j, kᴺ, grid, Δy_qᶠᶜᶜ, barotropic_U, U, u)
+    δV = δyᵃᶜᵃ(i, j, kᴺ, grid, Δx_qᶜᶠᶜ, barotropic_V, V, v)
 
     δh_U = (δU + δV) * Az⁻¹ᶜᶜᶜ(i, j, kᴺ, grid)
     fη   = Fη(i, j, kᴺ+1, grid, clock, fields)

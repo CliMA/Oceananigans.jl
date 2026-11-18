@@ -4,7 +4,7 @@ using Oceananigans: prognostic_state, restore_prognostic_state!
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.DistributedComputations: synchronize_communication!
 using Oceananigans.Grids: AbstractGrid
-using Oceananigans.Operators: Az⁻¹ᶜᶜᶜ, Δx_qᶜᶠᶜ, Δy_qᶠᶜᶜ, ∂xᵣᶠᶜᶠ, ∂yᵣᶜᶠᶠ
+using Oceananigans.Operators: Az⁻¹ᶜᶜᶜ, Δx_qᶜᶠᶜ, Δy_qᶠᶜᶜ, δxᶜᵃᵃ, δyᵃᶜᵃ, ∂xᵣᶠᶜᶠ, ∂yᵣᶜᶠᶠ
 
 """
     struct ExplicitFreeSurface{E, T}
@@ -151,8 +151,8 @@ end
 
 @inline function free_surface_vertical_velocity(i, j, k_top, grid, ::ZStarCoordinate, velocities)
     u, v, _ = velocities
-    δU = δx_U(i, j, k_top-1, grid, Δy_qᶠᶜᶜ, barotropic_U, u)
-    δV = δy_V(i, j, k_top-1, grid, Δx_qᶜᶠᶜ, barotropic_V, v)
+    δU = δxᶜᵃᵃ(i, j, k_top-1, grid, Δy_qᶠᶜᶜ, barotropic_U, u)
+    δV = δyᵃᶜᵃ(i, j, k_top-1, grid, Δx_qᶜᶠᶜ, barotropic_V, v)
     δh_U = (δU + δV) * Az⁻¹ᶜᶜᶜ(i, j, k_top-1, grid)
     return - δh_U
 end
