@@ -2,18 +2,21 @@ module OceananigansMakieExt
 
 export geo_surface!, geo_surface, spherical_coordinates
 
-using Oceananigans
+using Oceananigans: Oceananigans, quadmesh!
 using Oceananigans.AbstractOperations: AbstractOperation
-using Oceananigans.Architectures: on_architecture, architecture
-using Oceananigans.Fields: AbstractField, location, interior
-using Oceananigans.Grids: AbstractGrid, OrthogonalSphericalShellGrid, LatitudeLongitudeGrid,
-                          topology, xnode, ynode, znode, λnode, φnode, λnodes, φnodes
-using Oceananigans.ImmersedBoundaries: mask_immersed_field!
+using Oceananigans.Architectures: CPU, on_architecture, architecture
+using Oceananigans.Fields: AbstractField, Field, compute!, location, interior
+using Oceananigans.Grids: AbstractGrid, OrthogonalSphericalShellGrid, LatitudeLongitudeGrid, RectilinearGrid,
+                          Center, Face, Flat, Periodic,
+                          topology, nodes, xnode, ynode, znode, λnode, φnode, λnodes, φnodes
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, mask_immersed_field!
 using Oceananigans.MultiRegion: YinYangField, owned_weights
+using Oceananigans.OutputReaders: FieldTimeSeries
 using Oceananigans.Utils: SIGNATURES
 
 using Makie: Makie, Observable, AbstractPlot, Axis, Axis3, Figure, NoShading, @lift,
-             Point, GLTriangleFace, mesh!, lines!, convert_arguments, _create_plot, surface!
+             Point, mesh!, lines!, convert_arguments, _create_plot, surface!
+using Makie.GeometryBasics: GLTriangleFace
 
 # Extending args_preferred_axis here ensures that Field
 # do not overstate a preference for being plotted in a 3D LScene.
