@@ -82,21 +82,14 @@ using NCCL: NCCL
 using oneAPI: oneAPI
 using Reactant: Reactant
 
-# Checks that fail today; fixing an extension makes its check pass unexpectedly and must remove it here
-broken_extension_checks = Dict(:OceananigansMakieExt    => (:implicit, :owners),
-                               :OceananigansNCCLExt     => (:implicit, :stale, :qualified),
-                               :OceananigansReactantExt => (:implicit, :owners, :stale, :qualified))
-
 extension_names = Pkg.TOML.parsefile(joinpath(pkgdir(Oceananigans), "Project.toml"))["extensions"] |> keys |> collect |> sort
 
 @testset "ExplicitImports in $name" for name in Symbol.(extension_names)
     extension = Base.get_extension(Oceananigans, name)
-    broken = get(broken_extension_checks, name, ())
-
-    @test ExplicitImports.check_no_implicit_imports(extension) === nothing broken=(:implicit in broken)
-    @test ExplicitImports.check_all_explicit_imports_via_owners(extension) === nothing broken=(:owners in broken)
-    @test ExplicitImports.check_no_stale_explicit_imports(extension) === nothing broken=(:stale in broken)
-    @test ExplicitImports.check_all_qualified_accesses_via_owners(extension) === nothing broken=(:qualified in broken)
+    @test ExplicitImports.check_no_implicit_imports(extension) === nothing
+    @test ExplicitImports.check_all_explicit_imports_via_owners(extension) === nothing
+    @test ExplicitImports.check_no_stale_explicit_imports(extension) === nothing
+    @test ExplicitImports.check_all_qualified_accesses_via_owners(extension) === nothing
     @test ExplicitImports.check_no_self_qualified_accesses(extension) === nothing
 end
 
