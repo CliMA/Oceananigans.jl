@@ -7,11 +7,7 @@ using Oceananigans.Operators: δxᶜᶜᶜ, δxᶠᶠᶜ, δyᶜᶜᶜ, δyᶠ�
 @inline δx_U(i, j, k, grid, u, v) = δxᶜᶜᶜ(i, j, k, grid, Ax_qᶠᶜᶜ, u)
 @inline δy_V(i, j, k, grid, u, v) = δyᶜᶜᶜ(i, j, k, grid, Ay_qᶜᶠᶜ, v)
 
-# The transport divergence splits exactly as δx(Ax u) = ℑx(Ax) δx(u) + ℑx(u) δx(Ax). Only the velocity difference is
-# self-advection and is upwinded (δᴿ). The change of the face area is geometry: it is interpolated symmetrically (δˢ)
-# together with the cross divergence and the moving-grid term, as the vertical transport W̃ is, so that a uniform
-# velocity has no vertical advection on any grid, partial cells included. If the grid is stationary,
-# `Az_Δr_∂t_σ` evaluates to zero.
+# Interpolate symmetrically the transport velocity, and upwind the transported divergence
 @inline δᴿᵁ(i, j, k, grid, u, v) = ℑxᶜᵃᵃ(i, j, k, grid, Axᶠᶜᶜ) * δxᶜᵃᵃ(i, j, k, grid, u)
 @inline δᴿⱽ(i, j, k, grid, u, v) = ℑyᵃᶜᵃ(i, j, k, grid, Ayᶜᶠᶜ) * δyᵃᶜᵃ(i, j, k, grid, v)
 
