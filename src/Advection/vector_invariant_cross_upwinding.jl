@@ -35,8 +35,6 @@ using Oceananigans.Operators: Δrᶜᶜᶜ
 # If the grid is stationary, ∂t_σ evaluates to zero, so this term disappears from the divergence flux.
 @inline Az_Δr_∂t_σ(i, j, k, grid) = Azᶜᶜᶜ(i, j, k, grid) * Δrᶜᶜᶜ(i, j, k, grid) * ∂t_σ(i, j, k, grid)
 
-# As for self upwinding, only the velocity differences of δx(Ax u) + δy(Ay v) are upwinded; the change of the face areas
-# is interpolated symmetrically with the moving-grid term (see `vector_invariant_self_upwinding.jl`)
 @inline δᴿᵁⱽ(i, j, k, grid, u, v) = δᴿᵁ(i, j, k, grid, u, v) + δᴿⱽ(i, j, k, grid, u, v)
 
 @inline δˢᵁⱽ(i, j, k, grid, u, v) = ℑxᶜᵃᵃ(i, j, k, grid, u) * δxᶜᵃᵃ(i, j, k, grid, Axᶠᶜᶜ) +
