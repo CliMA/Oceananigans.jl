@@ -1,11 +1,11 @@
 module OceananigansNCCLExt
 
-using NCCL
-using CUDA
-using MPI
-using Oceananigans
+using CUDA: CUDA
+using MPI: MPI
+using NCCL: NCCL
+using Oceananigans: Oceananigans
+using Oceananigans.Architectures: Architectures as AC, GPU
 using Oceananigans.DistributedComputations: DistributedComputations as DC, Distributed
-using Oceananigans.Utils: launch!
 
 include("nccl_communicator.jl")
 include("nccl_distributed.jl")

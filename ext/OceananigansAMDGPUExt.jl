@@ -1,17 +1,15 @@
 module OceananigansAMDGPUExt
 
-using Oceananigans
-using AMDGPU, AMDGPU.rocSPARSE
+using AMDGPU: AMDGPU, ROCArray, ROCBackend
+using AMDGPU.rocSPARSE: ROCSparseMatrixCSC
 using AbstractFFTs: plan_fft!, plan_ifft!
-using InteractiveUtils
-using KernelAbstractions: __dynamic_checkbounds, __iterspace
-using KernelAbstractions
-using SparseArrays
+using KernelAbstractions: KernelAbstractions, __dynamic_checkbounds, __iterspace
+using SparseArrays: SparseMatrixCSC
 
 using Oceananigans.Architectures: Architectures as AC
 using Oceananigans.BoundaryConditions: BoundaryConditions as BC
 using Oceananigans.DistributedComputations: DistributedComputations as DC, Distributed
-using Oceananigans.Fields: Fields as FD
+using Oceananigans.Fields: Fields as FD, Field
 using Oceananigans.Grids: Grids as GD
 using Oceananigans.MultiRegion: MultiRegion as MR
 using Oceananigans.Solvers: Solvers as SO
@@ -23,7 +21,7 @@ function __init__()
     if AMDGPU.functional()
         @debug "ROCm-enabled GPU(s) detected:"
         for (gpu, dev) in enumerate(AMDGPU.devices())
-            @debug "$dev: $(AMDGPU.name(dev))"
+            @debug "$dev: $(AMDGPU.HIP.name(dev))"
         end
     end
 end
@@ -84,7 +82,7 @@ function SO.plan_forward_transform(A::ROCArray, ::Union{GD.BoundaryTopology, GD.
 end
 
 FD.set!(v::Field, a::ROCArray) = FD.set_to_array!(v, a)
-DC.set!(v::DC.DistributedField, a::ROCArray) = DC.set_to_array!(v, a)
+FD.set!(v::DC.DistributedField, a::ROCArray) = FD.set_to_array!(v, a)
 FD.set!(v::MR.MultiRegionField, a::ROCArray) = apply_regionally!(FD.set!, v, a)
 
 function SO.plan_backward_transform(A::ROCArray, ::Union{GD.BoundaryTopology, GD.Periodic}, dims, planner_flag)
