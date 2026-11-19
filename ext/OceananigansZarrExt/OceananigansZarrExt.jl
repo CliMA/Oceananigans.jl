@@ -14,7 +14,7 @@ using OrderedCollections: OrderedDict
 
 using Dates: Dates, AbstractTime, UTC, now, DateTime
 using Oceananigans: Oceananigans, AbstractModel, initialize!
-using Oceananigans.Architectures: Architectures, CPU, GPU, architecture
+using Oceananigans.Architectures: Architectures, CPU, GPU, architecture, child_architecture
 using Oceananigans.DistributedComputations:
     Distributed, DistributedGrid, global_barrier, mpi_rank, mpi_initialized,
     global_communicator, concatenate_local_sizes
