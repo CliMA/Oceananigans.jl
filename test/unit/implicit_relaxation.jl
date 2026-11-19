@@ -86,5 +86,29 @@ end
                 @test all(isapprox.(Array(interior(model.tracers[name])), target, rtol=1e-2))
             end
         end
+
+        # Uniform turbulent tracers stay uniform only if the implicit part of the vertical advection is included.
+        # The top cells are left out because the implicit part does not flux through the free surface.
+        @testset "Implicit vertical advection of turbulent tracers [$(typeof(arch)), $(nameof(typeof(closure)))]" for (closure, names) in
+                ((CATKEVerticalDiffusivity(), (:e,)), (TKEDissipationVerticalDiffusivity(), (:e, :ϵ)))
+            grid = RectilinearGrid(arch; size=(8, 8), x=(0, 8), z=(-8, 0), topology=(Bounded, Flat, Bounded))
+            Δt = 1
+            uniform_values = (e=1e-6, ϵ=1e-10)
+
+            stepped_tracers = map((1e-6, 1e6)) do cfl
+                time_discretization = AdaptiveVerticallyImplicitDiscretization(; cfl)
+                tracer_advection = UpwindBiased(; order=1, time_discretization)
+                model = HydrostaticFreeSurfaceModel(grid; closure, tracer_advection, momentum_advection=nothing,
+                                                    buoyancy=BuoyancyTracer(), tracers=:b)
+                set!(model; u = (x, z) -> 0.1 * sinpi(x / 8), uniform_values[names]...)
+                time_step!(model, Δt)
+                return map(name -> Array(interior(model.tracers[name]))[:, :, 1:size(grid, 3)-2], names)
+            end
+
+            mostly_implicit, fully_explicit = stepped_tracers
+            for n in eachindex(names)
+                @test isapprox(mostly_implicit[n], fully_explicit[n], rtol=1e-4)
+            end
+        end
     end
 end
