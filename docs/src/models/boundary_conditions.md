@@ -514,6 +514,33 @@ The correction, `Oceananigans.Models.enforce_net_zero_transport!`, acts only
 on the faces off an immersed boundary, and works on momentum components `(; ρu, ρv, ρw)` as well
 as on velocities: the shift is then uniform in mass flux, and the velocity increment scales as `1/ρ`.
 
+### 14. Turbulent inflow by recycling
+
+A [`TurbulenceRecycling`](@ref) scheme feeds turbulence that has developed inside the domain back through
+an inflow boundary. Each stage it samples the plane `recycling_distance` away from the boundary, removes
+the mean of that plane over the `averaging` dimensions, and adds the result to the boundary value. For a
+west boundary with a mean inflow velocity of ``1`` and a mean taken along ``y``:
+
+```jldoctest
+julia> using Oceananigans
+
+julia> recycling = TurbulenceRecycling(recycling_distance=100, averaging=2, target_transport=50)
+TurbulenceRecycling{Float64}
+├── recycling_distance: 100.0
+├── averaging: 2
+├── damping: 1
+└── target_transport: 50.0
+```
+
+The boundary-normal velocity takes the scheme through `NormalFlowBoundaryCondition(1; scheme = recycling)`.
+The other velocity components and the tracers take it through a `ValueBoundaryCondition`, for
+example `ValueBoundaryCondition(0; scheme = TurbulenceRecycling(recycling_distance=100, averaging=2))`.
+`averaging` has no default: on a west or east boundary it can be `2`, `3`, `(2, 3)`, or `nothing` to
+recycle the plane together with its mean. A `target_transport` keeps the transport through the inflow
+at a prescribed value, and the side where the flow leaves needs a scheme such as `PerturbationAdvection`.
+The flow has to be turbulent to begin with, for example from an initial condition taken from a simulation
+with periodic boundaries.
+
 ## Building boundary conditions on a field
 
 To create a set of [`FieldBoundaryConditions`](@ref) for a temperature field,

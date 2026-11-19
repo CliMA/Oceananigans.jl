@@ -58,7 +58,7 @@ const AFA = Tuple{Any, Face, Any}
 #####
 
 # Each scheme is rebuilt with the buffers it needs, each allocated by `buffer()`
-function materialize_radiation_storage(scheme::AbstractRadiationScheme, grid, loc, dim)
+function materialize_radiation_storage(scheme::AbstractRadiationScheme, grid, loc, dim, args...)
     FT = eltype(grid)
     Sx, Sy, Sz = size(grid, loc) # loc-aware: Face on Bounded gives N+1, matching the kernel range
     Hx, Hy, _ = halo_size(grid)
@@ -77,7 +77,7 @@ rebuild_classification(::NormalFlow, scheme) = NormalFlow(scheme)
 
 function regularize_boundary_condition(bc::RBC, grid, loc, dim, args...)
     regularized_condition = regularize_boundary_condition(bc.condition, grid, loc, dim, args...)
-    scheme = materialize_radiation_storage(bc.classification.scheme, grid, loc, dim)
+    scheme = materialize_radiation_storage(bc.classification.scheme, grid, loc, dim, args...)
     return BoundaryCondition(rebuild_classification(bc.classification, scheme), regularized_condition)
 end
 
