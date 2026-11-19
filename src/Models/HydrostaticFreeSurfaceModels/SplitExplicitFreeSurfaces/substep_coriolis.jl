@@ -128,7 +128,7 @@ end
 ##### Evolution kernels: U first with the old V, then V with the new U
 #####
 
-@kernel function _split_explicit_barotropic_x_velocity!(transport_weight, grid, filled_halos, Δτ, η, U, V, Gᵁ, g, Ũ, Vʳ, coriolis, timestepper)
+@kernel function _split_explicit_barotropic_x_velocity!(grid, filled_halos, Δτ, η, U, V, Gᵁ, g, Vʳ, coriolis, timestepper)
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
 
@@ -136,13 +136,10 @@ end
     ∂xᵣ = x_derivative_operator(filled_halos)
     Cᵁ = barotropic_x_coriolis(i, j, k_top, grid, coriolis, V, Vʳ, Hᶠᶜ)
 
-    @inbounds begin
-        U[i, j, 1] += Δτ * (- g * Hᶠᶜ * ∂xᵣ(i, j, k_top, grid, η★, timestepper, η) + Gᵁ[i, j, 1] - Cᵁ)
-        Ũ[i, j, 1] += transport_weight * U[i, j, 1]
-    end
+    @inbounds U[i, j, 1] += Δτ * (- g * Hᶠᶜ * ∂xᵣ(i, j, k_top, grid, η★, timestepper, η) + Gᵁ[i, j, 1] - Cᵁ)
 end
 
-@kernel function _split_explicit_barotropic_y_velocity!(transport_weight, grid, filled_halos, Δτ, η, U, V, Gⱽ, g, Ṽ, Uʳ, coriolis, timestepper)
+@kernel function _split_explicit_barotropic_y_velocity!(grid, filled_halos, Δτ, η, U, V, Gⱽ, g, Uʳ, coriolis, timestepper)
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
 
@@ -150,10 +147,7 @@ end
     ∂yᵣ = y_derivative_operator(filled_halos)
     Cⱽ = barotropic_y_coriolis(i, j, k_top, grid, coriolis, U, Uʳ, Hᶜᶠ)
 
-    @inbounds begin
-        V[i, j, 1] += Δτ * (- g * Hᶜᶠ * ∂yᵣ(i, j, k_top, grid, η★, timestepper, η) + Gⱽ[i, j, 1] - Cⱽ)
-        Ṽ[i, j, 1] += transport_weight * V[i, j, 1]
-    end
+    @inbounds V[i, j, 1] += Δτ * (- g * Hᶜᶠ * ∂yᵣ(i, j, k_top, grid, η★, timestepper, η) + Gⱽ[i, j, 1] - Cⱽ)
 end
 
 #####
@@ -198,9 +192,9 @@ function iterate_split_explicit_with_coriolis!(free_surface, GUⁿ, GVⁿ, Δτ�
     y_velocity_kernel!, _   = configure_kernel(arch, grid, workspec, _split_explicit_barotropic_y_velocity!)
     free_surface_kernel!, _ = configure_kernel(arch, grid, workspec, _split_explicit_free_surface!)
 
-    U_args = (grid, filled, Δτᴮ, η, U, V, GUⁿ, g, Ũ, Vʳ, coriolis, timestepper)
-    V_args = (grid, filled, Δτᴮ, η, U, V, GVⁿ, g, Ṽ, Uʳ, coriolis, timestepper)
-    η_args = (grid, filled, Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)
+    U_args = (grid, filled, Δτᴮ, η, U, V, GUⁿ, g, Vʳ, coriolis, timestepper)
+    V_args = (grid, filled, Δτᴮ, η, U, V, GVⁿ, g, Uʳ, coriolis, timestepper)
+    η_args = (grid, filled, Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, Ũ, Ṽ, timestepper)
 
     barotropic_model_fields = (; U, V, η)
     Uh, Vh, ηh = map(field -> build_halo_fill_args(arch, field, grid, barotropic_model_fields), (U, V, η))
@@ -222,12 +216,12 @@ function iterate_split_explicit_with_coriolis!(free_surface, GUⁿ, GVⁿ, Δτ�
 
             substep_exchange_halos!(filled, (U, V, η), exchange)
             substep_fill_halos!(filled, arch, ηh, substep_clock, only_local_halos)
-            x_velocity_kernel!(transport_weight, converted_U_args...)
+            x_velocity_kernel!(converted_U_args...)
             substep_fill_halos!(filled, arch, Uh, substep_clock, only_local_halos)
-            y_velocity_kernel!(transport_weight, converted_V_args...)
+            y_velocity_kernel!(converted_V_args...)
             substep_fill_halos!(filled, arch, Vh, substep_clock, only_local_halos)
             pin_barotropic_faces!(face_pins)
-            free_surface_kernel!(averaging_weight, converted_η_args...)
+            free_surface_kernel!(averaging_weight, transport_weight, converted_η_args...)
         end
     end
 
