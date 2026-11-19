@@ -5,7 +5,7 @@ export
     BoundaryCondition, getbc,
     PeriodicBoundaryCondition, NormalFlowBoundaryCondition, NoFluxBoundaryCondition, MultiRegionCommunicationBoundaryCondition,
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, DistributedCommunicationBoundaryCondition,
-    IMEXFluxTimeDiscretization, IMEXFluxBoundaryCondition,
+    IMEXTimeDiscretization, IMEXFluxBoundaryCondition,
     implicit_flux_coefficient, explicit_flux,
     needs_implicit_solver, validate_implicit_explicit_flux_locations, total_boundary_flux,
     PerturbationAdvection, has_target_transport, get_target_transport,

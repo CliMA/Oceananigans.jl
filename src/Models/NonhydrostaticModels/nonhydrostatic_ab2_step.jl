@@ -91,7 +91,9 @@ end
                    fields(model),
                    implicit_Δt,
                    model.advection.momentum,
-                   advecting_velocities(model))
+                   advecting_velocities(model),
+                   nothing,
+                   model.forcing[name])
 
     return nothing
 end
@@ -111,7 +113,9 @@ end
                    fields(model),
                    implicit_Δt,
                    model.advection[name],
-                   advecting_velocities(model))
+                   advecting_velocities(model),
+                   nothing,
+                   model.forcing[name])
 
     return nothing
 end

@@ -239,7 +239,7 @@ that can be used, for example, to specify cooling, heating, evaporation, or wind
 
 A flux that depends on the boundary-cell value of its field, like a bottom drag or a surface relaxation, limits
 the time step when integrated explicitly: with ``J = \lambda \phi_b`` the explicit step is unstable for
-``\lambda \Delta t / \Delta z > 2`` in the boundary-adjacent cell. Passing [`IMEXFluxTimeDiscretization`](@ref)
+``\lambda \Delta t / \Delta z > 2`` in the boundary-adjacent cell. Passing [`IMEXTimeDiscretization`](@ref)
 to [`FluxBoundaryCondition`](@ref) integrates the part of the flux that is linear in ``\phi_b`` with the vertical
 tridiagonal solver instead, which the model builds automatically:
 
@@ -251,7 +251,7 @@ IMEXFluxBoundaryCondition: DiscreteBoundaryFunction linear_drag with parameters 
 ```
 
 [`IMEXFluxBoundaryCondition`](@ref)`(flux; kwargs...)` is shorthand for
-`FluxBoundaryCondition(flux; time_discretization=IMEXFluxTimeDiscretization(), kwargs...)`.
+`FluxBoundaryCondition(flux; time_discretization=IMEXTimeDiscretization(), kwargs...)`.
 
 Any flux condition, whether a number, an array, a `Field`, or a function, may be integrated this way. The flux is
 split at the boundary cell into ``J \approx F_e + \lambda \phi_b`` by the Patankar rule, ``\lambda = J / \phi_b``,
@@ -886,12 +886,12 @@ An explicit drag flux limits the time step to ``C^D |\boldsymbol{U}| \Delta t / 
 boundary-adjacent cell, which can be restrictive with thin bottom cells or strong near-bottom flow.
 Since the drag ``\tau = \lambda (u + U_\infty)`` with ``\lambda = -C^D |\boldsymbol{U}|`` is affine in the
 tangential velocity, its linear part can be integrated by the vertical tridiagonal solver instead.
-Pass `time_discretization=IMEXFluxTimeDiscretization()` to [`BulkDrag`](@ref):
+Pass `time_discretization=IMEXTimeDiscretization()` to [`BulkDrag`](@ref):
 
 ```jldoctest
 using Oceananigans
 
-drag = BulkDrag(coefficient=2e-3, time_discretization=IMEXFluxTimeDiscretization())
+drag = BulkDrag(coefficient=2e-3, time_discretization=IMEXTimeDiscretization())
 u_bcs = FieldBoundaryConditions(bottom=drag)
 v_bcs = FieldBoundaryConditions(bottom=drag)
 
@@ -908,6 +908,6 @@ The explicit part ``\lambda U_\infty`` is integrated through the tendency, and t
 ``\lambda u`` is embedded in the boundary-cell diagonal of the implicit vertical solver, which the model
 builds automatically. For the quadratic formulation the speed ``|\boldsymbol{U}|`` is evaluated from the
 current velocities when the implicit solve is built, so the drag is linearized about the current speed.
-Like every [`IMEXFluxTimeDiscretization`](@ref), this is supported only on the `bottom` and `top` domain
+[`IMEXTimeDiscretization`](@ref) for a `BulkDrag` is supported only on the `bottom` and `top` domain
 boundaries and on the `bottom` and `top` facets of an [`ImmersedBoundaryCondition`](@ref); lateral facets
 must keep the explicit drag.

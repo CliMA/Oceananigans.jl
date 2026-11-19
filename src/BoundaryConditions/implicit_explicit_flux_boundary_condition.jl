@@ -1,21 +1,23 @@
 """
-    IMEXFluxTimeDiscretization(implicit_coefficient=nothing)
+    IMEXTimeDiscretization(implicit_coefficient=nothing)
 
-Time discretization of a `Flux` boundary condition split at the boundary cell as `J ≈ Fₑ + λ φᵦ`,
-where `φᵦ` is the boundary-cell value. `Fₑ` is integrated explicitly and `λ φᵦ` by the vertical
-tridiagonal solver. Without `implicit_coefficient`, the condition chooses the split; otherwise
-the flux is `Fₑ` and `λ = implicit_coefficient`.
+Time discretization of a term split as `Fₑ + λ φ`, where `Fₑ` is integrated explicitly and `λ φ`
+by the vertical tridiagonal solver.
+
+For a `Flux` boundary condition the split is `J ≈ Fₑ + λ φᵦ`, where `φᵦ` is the boundary-cell value.
+Without `implicit_coefficient`, the condition chooses the split; otherwise the flux is `Fₑ` and
+`λ = implicit_coefficient`. A [`Relaxation`](@ref) always chooses its own split.
 """
-struct IMEXFluxTimeDiscretization{C} <: AbstractTimeDiscretization
+struct IMEXTimeDiscretization{C} <: AbstractTimeDiscretization
     implicit_coefficient :: C
 end
 
-IMEXFluxTimeDiscretization() = IMEXFluxTimeDiscretization(nothing)
+IMEXTimeDiscretization() = IMEXTimeDiscretization(nothing)
 
-Base.summary(::IMEXFluxTimeDiscretization) = "IMEXFluxTimeDiscretization"
+Base.summary(::IMEXTimeDiscretization) = "IMEXTimeDiscretization"
 
-Adapt.adapt_structure(to, td::IMEXFluxTimeDiscretization) =
-    IMEXFluxTimeDiscretization(Adapt.adapt(to, td.implicit_coefficient))
+Adapt.adapt_structure(to, td::IMEXTimeDiscretization) =
+    IMEXTimeDiscretization(Adapt.adapt(to, td.implicit_coefficient))
 
 # A user-supplied split J = explicit_flux + implicit_coefficient * φᵦ
 struct IMEXFlux{E, C}
@@ -23,29 +25,29 @@ struct IMEXFlux{E, C}
     implicit_coefficient :: C
 end
 
-const IEFBC = BoundaryCondition{<:Flux{<:IMEXFluxTimeDiscretization}}
+const IEFBC = BoundaryCondition{<:Flux{<:IMEXTimeDiscretization}}
 
-function materialize_flux_boundary_condition(flux, time_discretization::IMEXFluxTimeDiscretization;
+function materialize_flux_boundary_condition(flux, time_discretization::IMEXTimeDiscretization;
                                              parameters, discrete_form, field_dependencies)
 
     condition = materialize_condition(flux, parameters, discrete_form, field_dependencies)
     λ = time_discretization.implicit_coefficient
     isnothing(λ) || (condition = IMEXFlux(condition, materialize_condition(λ, parameters, discrete_form, field_dependencies)))
 
-    return BoundaryCondition(Flux(IMEXFluxTimeDiscretization()), condition)
+    return BoundaryCondition(Flux(IMEXTimeDiscretization()), condition)
 end
 
 """
     IMEXFluxBoundaryCondition(flux; kwargs...)
     IMEXFluxBoundaryCondition(explicit_flux, implicit_coefficient; kwargs...)
 
-Shorthand for `FluxBoundaryCondition` with an [`IMEXFluxTimeDiscretization`](@ref).
+Shorthand for `FluxBoundaryCondition` with an [`IMEXTimeDiscretization`](@ref).
 """
 IMEXFluxBoundaryCondition(J; kwargs...) =
-    FluxBoundaryCondition(J; time_discretization = IMEXFluxTimeDiscretization(), kwargs...)
+    FluxBoundaryCondition(J; time_discretization = IMEXTimeDiscretization(), kwargs...)
 
 IMEXFluxBoundaryCondition(Fₑ, λ; kwargs...) =
-    FluxBoundaryCondition(Fₑ; time_discretization = IMEXFluxTimeDiscretization(λ), kwargs...)
+    FluxBoundaryCondition(Fₑ; time_discretization = IMEXTimeDiscretization(λ), kwargs...)
 
 @inline getbc(condition::IMEXFlux, args...) = getbc(condition.explicit_flux, args...)
 
@@ -99,7 +101,7 @@ needs_implicit_solver(bc::IEFBC) = true
 
 function validate_implicit_explicit_flux_locations(bcs)
     for side in (bcs.west, bcs.east, bcs.south, bcs.north)
-        side isa IEFBC && error("IMEXFluxTimeDiscretization is supported only on top and bottom boundaries")
+        side isa IEFBC && error("IMEXTimeDiscretization is supported only on top and bottom boundaries")
     end
     validate_immersed_implicit_explicit_flux(bcs.immersed)
     return nothing
@@ -108,7 +110,7 @@ end
 validate_immersed_implicit_explicit_flux(immersed_bc) = nothing
 
 validate_immersed_implicit_explicit_flux(immersed_bc::IEFBC) =
-    error("An immersed IMEXFluxTimeDiscretization must be wrapped in an ImmersedBoundaryCondition")
+    error("An immersed IMEXTimeDiscretization must be wrapped in an ImmersedBoundaryCondition")
 
 Adapt.adapt_structure(to, c::IMEXFlux) = IMEXFlux(Adapt.adapt(to, c.explicit_flux), Adapt.adapt(to, c.implicit_coefficient))
 
