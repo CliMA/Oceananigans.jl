@@ -1,5 +1,5 @@
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: ZStarCoordinate
 using Oceananigans.Fields: Fields, compute_at!, set!
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: ZStarCoordinate
 using Oceananigans.OutputWriters: OutputWriters, WindowedTimeAverage, _saveproperty!, serializeproperty!,
                                   accumulate_average!, set_average!
 
