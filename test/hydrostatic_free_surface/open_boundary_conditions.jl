@@ -772,6 +772,59 @@ function test_gravity_wave_target_transport()
     return pinned && flat && drift && inert && wet_only && rejected
 end
 
+#####
+##### Radiating a steady baroclinic flow
+#####
+
+# A depth-uniform body force balanced by the free-surface slope keeps a two-layer, x-uniform flow steady.
+# The split-explicit predictor carries the force without the balancing pressure gradient, so a radiating
+# boundary that sees the predictor instead of the corrected velocity drifts on its outflow levels only.
+function test_radiating_steady_baroclinic_flow(timestepper)
+    Nx, Ny, Nz = 16, 1, 4
+    Lx, Ly, H = 1000.0, 100.0, 100.0
+    F = 1e-4
+    g = Oceananigans.defaults.gravitational_acceleration
+
+    grid = RectilinearGrid(size = (Nx, Ny, Nz), x = (0, Lx), y = (0, Ly), z = (-H, 0),
+                           topology = (Open, Periodic, Bounded))
+
+    Δx = Lx / Nx
+    ηᵇ(x) = F / g * (x - Lx / 2)
+    uᵇ(z) = ifelse(z > -H / 2, 0.1, -0.1)
+    uᵉˣᵗ(y, z, t) = uᵇ(z)
+
+    u_bcs = FieldBoundaryConditions(west = NormalFlowBoundaryCondition(uᵉˣᵗ; scheme = NormalRadiation()),
+                                    east = NormalFlowBoundaryCondition(uᵉˣᵗ; scheme = NormalRadiation()))
+
+    U_bcs = FieldBoundaryConditions(grid, (Face(), Center(), nothing);
+                                    west = GravityWaveRadiationBoundaryCondition((0.0, ηᵇ(Δx / 2))),
+                                    east = GravityWaveRadiationBoundaryCondition((0.0, ηᵇ(Lx - Δx / 2))))
+
+    model = HydrostaticFreeSurfaceModel(grid; timestepper,
+                                        free_surface = SplitExplicitFreeSurface(grid; substeps = 10),
+                                        boundary_conditions = (u = u_bcs, U = U_bcs),
+                                        forcing = (; u = (x, y, z, t) -> F),
+                                        momentum_advection = nothing,
+                                        buoyancy = nothing,
+                                        tracers = ())
+
+    set!(model, u = (x, y, z) -> uᵇ(z), η = (x, y, z) -> ηᵇ(x))
+
+    # Mirror the boundary-adjacent η into the halo, the state its radiating companion keeps
+    η = model.free_surface.displacement.data
+    view(η, 0:0, :, :)       .= view(η, 1:1, :, :)
+    view(η, Nx+1:Nx+1, :, :) .= view(η, Nx:Nx, :, :)
+
+    uᵢ = XFaceField(grid)
+    set!(uᵢ, (x, y, z) -> uᵇ(z))
+
+    for _ in 1:10
+        time_step!(model, 1.0)
+    end
+
+    return maximum(abs, interior(model.velocities.u) .- interior(uᵢ))
+end
+
 @testset "Open Boundary Conditions for HydrostaticFreeSurfaceModel" begin
     @testset "GravityWaveRadiation with target_transport" begin
         @test test_gravity_wave_target_transport()
@@ -831,5 +884,11 @@ end
 
     @testset "TracerReservoir recovers exported water" begin
         @test test_tracer_reservoir_recovers_exported_water()
+    end
+
+    @testset "Radiating a steady baroclinic flow [$timestepper]" for timestepper in (:SplitRungeKutta3, :QuasiAdamsBashforth2)
+        δu = test_radiating_steady_baroclinic_flow(timestepper)
+        @info "  max|u - uᵢ| of a radiated steady baroclinic flow [$timestepper]: $δu"
+        @test δu < 1e-12
     end
 end
