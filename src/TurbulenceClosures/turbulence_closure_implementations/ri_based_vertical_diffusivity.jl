@@ -1,11 +1,10 @@
+using Oceananigans: prognostic_state, restore_prognostic_state!
 using Oceananigans.Architectures: architecture
 using Oceananigans.BuoyancyFormulations: top_buoyancy_flux, ∂z_b
 using Oceananigans.Grids: inactive_node
 using Oceananigans.Operators
 using Oceananigans.Operators: ℑzᵃᵃᶜ
 using Oceananigans.Utils: time_difference_in_seconds
-
-using Oceananigans: prognostic_state, restore_prognostic_state!
 
 struct RiBasedVerticalDiffusivity{TD, FT, R, HR} <: AbstractScalarDiffusivity{TD, VerticalFormulation, 1}
     ν₀  :: FT
@@ -59,7 +58,7 @@ struct FivePointHorizontalFilter end
 @inline filter_horizontally(i, j, k, grid, ::FivePointHorizontalFilter, ϕ) = ℑxyᶜᶜᵃ(i, j, k, grid, ℑxyᶠᶠᵃ, ϕ)
 
 """
-$(MethodSignatures(; defaults = true))
+$(SIGNATURES)
 
 Return a closure that estimates the vertical viscosity and diffusivity
 from "convective adjustment" coefficients `ν₀` and `κ₀` multiplied by
@@ -265,7 +264,7 @@ end
 end
 
 @kernel function compute_ri_based_diffusivities!(closure_fields, grid, closure::FlavorOfRBVD,
-                                                velocities, tracers, buoyancy, tracer_bcs, clock)
+                                                 velocities, tracers, buoyancy, tracer_bcs, clock)
     i, j, k = @index(Global, NTuple)
     _compute_ri_based_diffusivities!(i, j, k, closure_fields, grid, closure,
                                      velocities, tracers, buoyancy, tracer_bcs, clock)

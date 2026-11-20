@@ -1,5 +1,5 @@
-using Oceananigans.Operators: Vᶜᶜᶜ
 using Oceananigans.Fields: ZeroField
+using Oceananigans.Operators: Vᶜᶜᶜ
 
 struct FluxFormAdvection{N, FT, TD, A, B, C} <: AbstractAdvectionScheme{N, FT, TD}
     x :: A
