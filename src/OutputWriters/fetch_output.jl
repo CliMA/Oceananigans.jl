@@ -23,7 +23,7 @@ function convert_output(output::AbstractArray, array_type)
         output_array = array_type(undef, size(output)...)
         copyto!(output_array, output)
     else
-        output_array = convert(array_type, output)
+        output_array = array_type(output)
     end
 
     return output_array

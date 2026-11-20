@@ -4144,6 +4144,10 @@ end
             test_netcdf_rectilinear_mvd_output(arch)
             test_netcdf_abstract_vertical_coordinate_name(arch)
         end
+
+        @testset "Asynchronous output [$A]" begin
+            test_asynchronous_output(NetCDFWriter, arch)
+        end
     end
 
     @testset "Materialize grid-reconstruction strings from NetCDF with qualified and bare type names" begin

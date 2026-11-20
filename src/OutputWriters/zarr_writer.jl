@@ -28,6 +28,8 @@ mutable struct ZarrWriter{O, T, S, A, FS, C, CH, G, DN, DT} <: AbstractOutputWri
     dimension_name_generator :: DN
     dimension_type :: DT
     initialized :: Bool
+    asynchronous :: Bool
+    task :: Union{Nothing, Task}
 end
 
 # method in OceananigansZarrExt
@@ -49,7 +51,8 @@ end
                part = 1,
                store = nothing,
                chunks = nothing,
-               compressor = nothing)
+               compressor = nothing,
+               asynchronous = false)
 
 Construct a `ZarrWriter` for an Oceananigans `model` that writes `label, output` pairs in
 `outputs` to a Zarr store.
@@ -136,6 +139,9 @@ Keyword arguments
                           `include_grid_metrics = false`, core grid coordinates are still saved.
 
 - `dimension_type`: Element type for coordinate and time arrays. Default: `Float64`.
+
+- `asynchronous`: Write to disk on a background task while the simulation continues. Not supported on
+                  distributed architectures. Default: `false`.
 
 - `dimension_name_generator`: A function with signature `(var_name, grid, LX, LY, LZ, dim)` where `dim` is
                               either `Val(:x)`, `Val(:y)`, or `Val(:z)` that returns a string corresponding

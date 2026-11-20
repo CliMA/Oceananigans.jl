@@ -31,6 +31,43 @@ output); a schedule whose output only exists once it has accumulated some data, 
 """
 has_initial_output(schedule) = true
 
+"""
+    write_to_disk!(write_data, writer)
+
+Call `write_data()`, on a background task if `writer.asynchronous`.
+The task runs on the interactive threadpool when Julia is started with interactive threads
+(for example `julia -t 4,1`), so disk writes don't compete with threads doing computation.
+Otherwise it runs on the default threadpool.
+"""
+function write_to_disk!(write_data, writer)
+    if writer.asynchronous
+        writer.task = spawn_write(write_data)
+    else
+        write_data()
+    end
+    return nothing
+end
+
+function spawn_write(write_data)
+    if Threads.nthreads(:interactive) > 0
+        return Threads.@spawn :interactive write_data()
+    else
+        return Threads.@spawn write_data()
+    end
+end
+
+"""
+    wait(writer::AbstractOutputWriter)
+
+Wait for the last write of `writer` to finish, rethrowing its error if it failed.
+"""
+function Base.wait(writer::AbstractOutputWriter)
+    task = writer.task
+    writer.task = nothing
+    isnothing(task) || wait(task)
+    return nothing
+end
+
 # Names of the requested outputs; unordered dictionaries have no fixed iteration order, so their keys are sorted
 output_names(outputs) = keys(outputs)
 output_names(outputs::AbstractDict) = sort!(collect(keys(outputs)); by = string)

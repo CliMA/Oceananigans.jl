@@ -182,6 +182,8 @@ function cleanup_checkpoints(checkpointer)
     return nothing
 end
 
+Base.wait(::Checkpointer) = nothing
+
 function Oceananigans.write_output!(c::Checkpointer, simulation)
     iter = iteration(simulation)
     filepath = checkpoint_path(iter, c)

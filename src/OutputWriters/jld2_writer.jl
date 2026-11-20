@@ -21,6 +21,8 @@ mutable struct JLD2Writer{O, T, D, IF, IN, FS, KW} <: AbstractOutputWriter
     verbose :: Bool
     jld2_kw :: KW
     initialized :: Bool
+    asynchronous :: Bool
+    task :: Union{Nothing, Task}
 end
 
 noinit(args...) = nothing
@@ -106,6 +108,8 @@ Keyword arguments
 - `jld2_kw`: Dict of kwargs to be passed to `JLD2.jldopen` when data is written.
              A `:compress` entry here takes precedence over the `compress` keyword argument.
 
+- `asynchronous`: Write to disk on a background task while the simulation continues. Default: `false`.
+
 Example
 =======
 
@@ -176,7 +180,8 @@ function JLD2Writer(model, outputs; filename, schedule,
                     verbose = false,
                     part = 1,
                     compress = [Shuffle(), ZstdFilter(1)],
-                    jld2_kw = Dict{Symbol, Any}())
+                    jld2_kw = Dict{Symbol, Any}(),
+                    asynchronous = false)
 
     jld2_kw = Dict{Symbol, Any}(pairs(jld2_kw))
     get!(jld2_kw, :compress, compress)
@@ -200,7 +205,7 @@ function JLD2Writer(model, outputs; filename, schedule,
     # Note: file initialization is deferred until `initialize!(writer, model)` is called
     # (typically when `run!` is invoked on a Simulation containing this writer)
     return JLD2Writer(filepath, d_outputs, schedule, array_type, init,
-                      including, part, file_splitting, overwrite_files, verbose, jld2_kw, false)
+                      including, part, file_splitting, overwrite_files, verbose, jld2_kw, false, asynchronous, nothing)
 end
 
 # Inferring this for a concrete model type means inferring `serializeproperty!` for the
@@ -361,6 +366,7 @@ function iteration_exists(filepath, iter=0)
 end
 
 function Oceananigans.write_output!(writer::JLD2Writer, model)
+    wait(writer)
     model.clock.iteration == 0 && !has_initial_output(writer.schedule) && return nothing
 
     # Ensure the writer is initialized before writing
@@ -400,14 +406,18 @@ function Oceananigans.write_output!(writer::JLD2Writer, model)
         # Write output from `data`
         verbose && @info "Writing JLD2 output $(keys(writer.outputs)) to $(writer.filepath)..."
 
-        start_time, old_filesize = time_ns(), filesize(writer.filepath)
-        jld2output!(writer.filepath, model.clock.iteration, output_time(model.clock, writer.schedule), data, writer.jld2_kw)
-        end_time, new_filesize = time_ns(), filesize(writer.filepath)
+        t = output_time(model.clock, writer.schedule)
 
-        verbose && @info @sprintf("Writing done: time=%s, size=%s, Δsize=%s",
-                                  prettytime((end_time - start_time) / 1e9),
-                                  pretty_filesize(new_filesize),
-                                  pretty_filesize(new_filesize - old_filesize))
+        write_to_disk!(writer) do
+            start_time, old_filesize = time_ns(), filesize(writer.filepath)
+            jld2output!(writer.filepath, current_iteration, t, data, writer.jld2_kw)
+            end_time, new_filesize = time_ns(), filesize(writer.filepath)
+
+            verbose && @info @sprintf("Writing done: time=%s, size=%s, Δsize=%s",
+                                      prettytime((end_time - start_time) / 1e9),
+                                      pretty_filesize(new_filesize),
+                                      pretty_filesize(new_filesize - old_filesize))
+        end
     end
 
     return nothing

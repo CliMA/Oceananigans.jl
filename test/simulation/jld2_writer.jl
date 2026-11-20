@@ -636,6 +636,8 @@ for arch in archs
         test_jld2_compress_keyword_precedence(arch)
         test_jld2_size_file_splitting(arch, true)
 
+        test_asynchronous_output(JLD2Writer, arch)
+
         #####
         ##### Time-averaging
         #####

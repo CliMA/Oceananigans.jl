@@ -21,7 +21,8 @@ function OutputWriters.ZarrWriter(model::AbstractModel, outputs;
                                   dimensions = Dict{String, Any}(),
                                   include_grid_metrics = true,
                                   dimension_name_generator = trilocation_dim_name,
-                                  dimension_type = Float64)
+                                  dimension_type = Float64,
+                                  asynchronous = false)
 
     # Reject ZipStore explicitly — it's read-only in Zarr.jl by design.
     if store isa Zarr.ZipStore
@@ -36,6 +37,10 @@ function OutputWriters.ZarrWriter(model::AbstractModel, outputs;
                     Zarr.writezip(io, writer.store)
                 end
             """))
+    end
+
+    if asynchronous && is_distributed_arch(model)
+        throw(ArgumentError("ZarrWriter does not support asynchronous output on distributed architectures"))
     end
 
     # Resolve filepath + store.
@@ -114,7 +119,9 @@ function OutputWriters.ZarrWriter(model::AbstractModel, outputs;
                       chunks,
                       dimension_name_generator,
                       dimension_type,
-                      false)
+                      false,
+                      asynchronous,
+                      nothing)
 end
 
 zarr_attribute_dict(attributes) =
@@ -511,6 +518,7 @@ end
 #####
 
 function Oceananigans.write_output!(writer::ZarrWriter, model::AbstractModel)
+    wait(writer)
     model.clock.iteration == 0 && !has_initial_output(writer.schedule) && return nothing
 
     distributed = is_distributed_arch(model)
@@ -539,25 +547,28 @@ function Oceananigans.write_output!(writer::ZarrWriter, model::AbstractModel)
 end
 
 function write_output_serial!(writer::ZarrWriter, model)
-    g = Zarr.zopen(writer.store, "w")
-
     # Fetch every output before computing the output time: for a schedule like `FilteredTimeInterval`,
     # `output_time` advances internal state that fetching still depends on (which frame's
     # accumulated sum is "current").
     fetched = [(name, output, fetch_and_convert_output(output, model, writer)) for (name, output) in pairs(writer.outputs)]
 
     time = zarr_time_value(output_time(model.clock, writer.schedule), writer.dimension_type)
-    append!(g["time"], [time]; dims=1)
-    for (name, output, data) in fetched
-        data = squeeze_reduced_dimensions(output, data)
-        arr = g[string(name)]
-        data_arr = data isa AbstractArray ? data : fill(data)
-        if eltype(data_arr) === Bool
-            data_arr = Int8.(data_arr)
+
+    write_to_disk!(writer) do
+        g = Zarr.zopen(writer.store, "w")
+        append!(g["time"], [time]; dims=1)
+        for (name, output, data) in fetched
+            data = squeeze_reduced_dimensions(output, data)
+            arr = g[string(name)]
+            data_arr = data isa AbstractArray ? data : fill(data)
+            if eltype(data_arr) === Bool
+                data_arr = Int8.(data_arr)
+            end
+            append!(arr, data_arr; dims=ndims(arr))
         end
-        append!(arr, data_arr; dims=ndims(arr))
+        Zarr.consolidate_metadata(g)
     end
-    Zarr.consolidate_metadata(g)
+
     return nothing
 end
 
