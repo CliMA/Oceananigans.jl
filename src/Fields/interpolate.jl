@@ -19,26 +19,28 @@ Return indices `low, high` of `vec`tor for which
 vec[low] ≤ val && vec[high] ≥ val
 ```
 
-using a binary search. The input array `vec` has to be monotonically increasing.
+using a binary search. The input array `vec` has to be monotonically increasing. When `val` equals a
+node that the search visits, both indices are that node's.
+
 
 Code credit: https://gist.github.com/cuongld2/8e4fed9ba44ea2b4598f90e7d5b6c612/155f9cb595314c8db3a266c3316889443b068017
 """
 @inline function index_binary_search(vec, val::Number, N)
     low = 0
     high = N - 1
+    hit = 0
 
-    while low + 1 < high
+    for _ in 1:(8 * sizeof(N) - leading_zeros(N))
+        searching = (low + 1 < high) & (hit == 0)
         mid = middle_point(low, high)
-        if @inbounds vec[mid + 1] == val
-            return (mid + 1, mid + 1)
-        elseif @inbounds vec[mid + 1] < val
-            low = mid
-        else
-            high = mid
-        end
+        x = @inbounds vec[mid + 1]
+        found = searching & (x == val)
+        hit = ifelse(found, mid + 1, hit)
+        low = ifelse(searching & (x < val), mid, low)
+        high = ifelse(searching & !found & !(x < val), mid, high)
     end
 
-    return (low + 1, high + 1)
+    return ifelse(hit == 0, (low + 1, high + 1), (hit, hit))
 end
 
 @inline function fractional_index(val, vec, N)

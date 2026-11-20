@@ -1,5 +1,4 @@
-using Oceananigans.Architectures: CPU, AbstractArchitecture
-using Oceananigans.Architectures: device, AbstractArchitecture
+using Oceananigans.Architectures: AbstractArchitecture, CPU, device
 
 using KernelAbstractions: KernelAbstractions
 

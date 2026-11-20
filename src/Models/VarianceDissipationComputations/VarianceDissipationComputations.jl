@@ -2,7 +2,6 @@ module VarianceDissipationComputations
 
 export VarianceDissipation, flatten_dissipation_fields
 
-using DocStringExtensions: TYPEDSIGNATURES
 using KernelAbstractions: @index, @kernel
 using OffsetArrays: OffsetArrays
 
@@ -20,7 +19,7 @@ using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper,
 using Oceananigans.TurbulenceClosures: _diffusive_flux_x,
                                        _diffusive_flux_y,
                                        _diffusive_flux_z
-using Oceananigans.Utils: ConsecutiveIterations, IterationInterval, KernelParameters, launch!
+using Oceananigans.Utils: ConsecutiveIterations, IterationInterval, KernelParameters, launch!, SIGNATURES, TYPEDSIGNATURES
 
 struct VarianceDissipation{P, K, A, D, S}
     advective_production :: P
@@ -41,9 +40,7 @@ function c_grid_vector(grid)
 end
 
 """
-    VarianceDissipation(tracer_name, grid;
-                        Uⁿ⁻¹ = VelocityFields(grid),
-                        Uⁿ   = VelocityFields(grid))
+$(SIGNATURES)
 
 Construct a `VarianceDissipation` object for a tracer called `tracer_name` that lives on `grid`.
 This function computes the variance dissipation diagnostics for the specified tracer in the model.

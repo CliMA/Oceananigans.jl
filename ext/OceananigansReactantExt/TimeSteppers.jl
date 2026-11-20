@@ -1,20 +1,18 @@
 module TimeSteppers
 
 using ..Architectures: ReactantState
-using ..Grids: ShardedGrid, ReactantGrid
+using ..Grids: ReactantGrid
 
-using Reactant
-using Oceananigans
-
+using Reactant: Reactant, ConcreteRNumber, Sharding
+using Oceananigans: Oceananigans
 using Oceananigans: AbstractModel, Distributed, initialize!
-using Oceananigans.Grids: architecture
 using Oceananigans.BoundaryConditions: cache_boundary_conditions!, initialize_boundary_conditions!
+using Oceananigans.Architectures: architecture
 using Oceananigans.TimeSteppers:
     TimeSteppers as OceananigansTimeSteppers,
     update_state!,
     tick!,
-    tick_stage!,
-    step_lagrangian_particles!,
+    substep_lagrangian_particles!,
     step_closure_prognostics!,
     QuasiAdamsBashforth2TimeStepper,
     RungeKutta3TimeStepper,
@@ -132,6 +130,7 @@ function Oceananigans.TimeSteppers.time_step!(model::ReactantModel{<:QAB2TS{FT}}
     ab2_timestepper.χ = χ
 
     cache_boundary_conditions!(model)
+    substep_lagrangian_particles!(model, Δt, 1)
     ab2_step!(model, Δt, callbacks)
     cache_previous_tendencies!(model)
 
@@ -139,7 +138,6 @@ function Oceananigans.TimeSteppers.time_step!(model::ReactantModel{<:QAB2TS{FT}}
 
     step_closure_prognostics!(model, Δt)
     update_state!(model, callbacks)
-    step_lagrangian_particles!(model, Δt)
 
     # Return χ to initial value
     ab2_timestepper.χ = χ₀

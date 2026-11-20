@@ -569,6 +569,22 @@ end
         end
     end
 
+    @testset "Dynamic Smagorinsky strain-rate magnitude" begin
+        for arch in archs
+            # For u = γz, ΣᵢⱼΣᵢⱼ = γ²/2, so that the strain-rate magnitude |S| equals γ.
+            γ = 2.0
+            grid = RectilinearGrid(arch, size=(4, 4, 8), extent=(1, 1, 1), topology=(Periodic, Periodic, Bounded))
+            model = NonhydrostaticModel(grid, closure=DynamicSmagorinsky(averaging=LagrangianAveraging()))
+            set!(model, u = (x, y, z) -> γ * z)
+
+            Σ = interior(model.closure_fields.Σ, :, :, 3:6)
+            Σ̄ = interior(model.closure_fields.Σ̄, :, :, 3:6)
+
+            @test all(Σ .≈ γ)
+            @test all(Σ̄ .≈ γ)
+        end
+    end
+
     @testset "Time-stepping with CATKE closure" begin
         for arch in archs
             catke = CATKEVerticalDiffusivity()
