@@ -1,6 +1,5 @@
-using Oceananigans.Fields: Field
-
 using Oceananigans.Architectures: on_architecture
+using Oceananigans.Fields: Field
 
 #####
 ##### Host-staged communication, for MPI libraries that are not GPU-aware

@@ -4,16 +4,16 @@ using Oceananigans.Grids: halo_size,
                           grid_name,
                           nodes,
                           validate_topology
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: SplitExplicitFreeSurfaces,
+                                                                                  FixedSubstepNumber, ConnectedTopology
+using Oceananigans.MultiRegion: MultiRegionGrids, multiregion_split_explicit_halos, augmented_kernel_size,
+                                augmented_kernel_offsets
+using Oceananigans.OrthogonalSphericalShellGrids: ConformalCubedSpherePanelGrid, CubedSphereConformalMapping,
+                                                  non_uniform_conformal_mapping_coordinates
 
 using CubedSphere: GeometricSpacing, conformal_cubed_sphere_mapping
 using CubedSphere.SphericalGeometry: cartesian_to_lat_lon
-using Oceananigans.OrthogonalSphericalShellGrids: ConformalCubedSpherePanelGrid, CubedSphereConformalMapping,
-                                                  non_uniform_conformal_mapping_coordinates
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: SplitExplicitFreeSurfaces,
-    FixedSubstepNumber, ConnectedTopology
-using Oceananigans.MultiRegion: MultiRegionGrids, multiregion_split_explicit_halos, augmented_kernel_size,
-    augmented_kernel_offsets
 
 const ConformalCubedSphereGrid{FT, TX, TY, TZ, CZ} = MultiRegionGrid{FT, TX, TY, TZ, CZ, <:CubedSpherePartition}
 
@@ -24,7 +24,7 @@ const ConformalCubedSphereGridOfSomeKind{FT, TX, TY, TZ, CZ} =
     Union{ConformalCubedSphereGrid{FT, TX, TY, TZ, CZ}, ImmersedConformalCubedSphereGrid{FT, TX, TY, TZ, CZ}}
 
 """
-$(MethodSignatures(; defaults = true))
+$(SIGNATURES)
 
 Return a `ConformalCubedSphereGrid` that comprises of six [`ConformalCubedSpherePanelGrid`](@ref)s; we refer to each
 of these grids as a "panel". Each panel corresponds to a face of the cube.
@@ -363,7 +363,7 @@ function BoundaryConditions.fill_halo_regions!(grid::ConformalCubedSphereGridOfS
 end
 
 """
-$(MethodSignatures(; defaults = true))
+$(SIGNATURES)
 
 Load a `ConformalCubedSphereGrid` from `filepath`.
 """

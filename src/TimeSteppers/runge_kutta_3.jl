@@ -24,7 +24,7 @@ struct RungeKutta3TimeStepper{FT, TG, TI} <: AbstractTimeStepper
 end
 
 """
-$(MethodSignatures(; defaults = true))
+$(SIGNATURES)
 
 Return a 3rd-order Runge-Kutta timestepper (`RungeKutta3TimeStepper`) on `grid`
 and with `prognostic_fields`. The tendency fields `Gⁿ` and `G⁻`, typically equal
@@ -61,9 +61,9 @@ Le, H. and Moin, P. (1991). An improvement of fractional step methods for the in
     Navier–Stokes equations. Journal of Computational Physics, 92, 369–379.
 """
 function RungeKutta3TimeStepper(grid, prognostic_fields;
-                                                  implicit_solver::TI = nothing,
-                                                  Gⁿ::TG = map(similar, prognostic_fields),
-                                                  G⁻     = map(similar, prognostic_fields)) where {TI, TG}
+                                implicit_solver::TI = nothing,
+                                Gⁿ::TG = map(similar, prognostic_fields),
+                                G⁻     = map(similar, prognostic_fields)) where {TI, TG}
 
     γ¹ = 8 // 15
     γ² = 5 // 12
@@ -82,7 +82,7 @@ end
 #####
 
 """
-$(MethodSignatures(; defaults = true))
+$(SIGNATURES)
 
 Step forward `model` one time step `Δt` with a 3rd-order Runge-Kutta method.
 
