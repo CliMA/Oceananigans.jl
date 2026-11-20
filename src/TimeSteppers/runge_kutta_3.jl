@@ -61,9 +61,9 @@ Le, H. and Moin, P. (1991). An improvement of fractional step methods for the in
     Navier–Stokes equations. Journal of Computational Physics, 92, 369–379.
 """
 function RungeKutta3TimeStepper(grid, prognostic_fields;
-                                                  implicit_solver::TI = nothing,
-                                                  Gⁿ::TG = map(similar, prognostic_fields),
-                                                  G⁻     = map(similar, prognostic_fields)) where {TI, TG}
+                                implicit_solver::TI = nothing,
+                                Gⁿ::TG = map(similar, prognostic_fields),
+                                G⁻     = map(similar, prognostic_fields)) where {TI, TG}
 
     γ¹ = 8 // 15
     γ² = 5 // 12

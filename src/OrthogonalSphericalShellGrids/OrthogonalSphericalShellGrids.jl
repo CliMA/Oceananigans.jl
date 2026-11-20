@@ -5,7 +5,7 @@ export TripolarGrid, RotatedLatitudeLongitudeGrid, ConformalCubedSpherePanelGrid
        ConformalConicGrid, ConformalConic,
        geographic_to_conformal_conic, conformal_conic_to_geographic, conformal_conic_scale_factor, conformal_conic_rotation_angle
 
-import Oceananigans
+using Oceananigans: Oceananigans
 using Oceananigans.AbstractOperations: AbstractOperations
 using Oceananigans.Architectures: Architectures, AbstractArchitecture, CPU, GPU, on_architecture
 using Oceananigans.BoundaryConditions: BoundaryConditions, BoundaryCondition, fill_halo_regions!

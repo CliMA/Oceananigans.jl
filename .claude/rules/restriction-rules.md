@@ -221,6 +221,31 @@ columns, and then break at an argument boundary, never straight after the `=`.
 @inline interior_indices(i, j, grid) = wrap_index(i, grid.Nx, topology(grid, 1)), wrap_index(j, grid.Ny, topology(grid, 2))
 ```
 
+## Rule 14 — Before opening a PR, look for an open one with the same scope
+
+Two PRs that do the same thing — fix the same bug or add the same feature — split the review, and all but one of
+them are wasted work. Before opening a PR, or proposing one, search the open PRs for the same or a similar scope:
+by the keywords of your title (the error message for a fix, the new type, function or keyword for a feature), and
+by the files your diff touches.
+
+```bash
+gh pr list -R CliMA/Oceananigans.jl --state open --search "<keywords> in:title,body"
+gh pr list -R CliMA/Oceananigans.jl --state open --limit 400 --json number,title,files \
+    --jq '.[] | select(any(.files[].path; . == "<path in your diff>")) | "#\(.number) \(.title)"'
+```
+
+A match on keywords or files is a candidate, not a duplicate. Read its description and diff (`gh pr view <number>`,
+`gh pr diff <number>`) and check that it is after the same thing: the same bug fixed or the same feature added, by
+whatever means. A PR that touches the same files for another reason is not one; a PR that does the same thing
+through other files is.
+
+If it is the same scope, do not open a PR. Tell the user, link it, say what it covers and what your change adds,
+and propose a comment on it instead — the case it misses, a reproducer, a test. A new PR is opened only if the
+user decides so after seeing the existing one.
+
+❌ Two PRs opened on the same day, each adding the same one-line `regularize_boundary_condition(f::FTS0, ...) = f`.
+✅ One PR. Whoever gets there second comments on it with what it misses.
+
 ## Mandatory self-review
 
 **Claude: run the checklist below over every change you make, before you present it.** Not at PR time — at
