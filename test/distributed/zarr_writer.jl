@@ -10,9 +10,9 @@ using Zarr
 
 const ZARR_MPI_WORKER = joinpath(@__DIR__, "..", "setup", "distributed_zarr_writer_tests.jl")
 
-function run_zarr_mpi(nranks::Int, partition::String, out_path::String)
+function run_zarr_mpi(nranks::Int, partition::String, out_path::String; grid="rectilinear", fold="center")
     isdir(out_path) && rm(out_path; recursive=true, force=true)
-    log = read(`$(MPI.mpiexec()) -n $nranks $(Base.julia_cmd()) -O0 --project=$(Base.active_project()) $ZARR_MPI_WORKER --partition $partition --output $out_path`,
+    log = read(`$(MPI.mpiexec()) -n $nranks $(Base.julia_cmd()) -O0 --project=$(Base.active_project()) $ZARR_MPI_WORKER --partition $partition --output $out_path --grid $grid --fold $fold`,
                String)
     return log
 end
@@ -67,5 +67,23 @@ end
         @test size(g["u"]) == (8, 8, 4, 3)
         @test g.attrs["rank_topology"] == [2, 2, 1]
         rm(path; recursive=true, force=true)
+    end
+
+    # A TripolarGrid cannot be partitioned in x only
+    for fold in ("center", "face"), (partition, nranks, rank_topology) in (("y", 2, [1, 2, 1]), ("xy", 4, [2, 2, 1]))
+        @testset "TripolarGrid, $fold-folded, Partition($partition)" begin
+            path = abspath("test_dist_zarr_tripolar_$(fold)_$(partition).zarr")
+            log = run_zarr_mpi(nranks, partition, path; grid="tripolar", fold)
+            @test occursin("DISTRIBUTED_ZARR_OK", log)
+
+            g = Zarr.zopen(path)
+            @test g.attrs["rank_topology"] == rank_topology
+
+            c_fts = FieldTimeSeries(path, "c")
+            @test size(c_fts.grid) == (16, 12, 4)
+            @test length(c_fts.times) == 3
+
+            rm(path; recursive=true, force=true)
+        end
     end
 end

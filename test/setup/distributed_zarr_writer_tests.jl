@@ -1,7 +1,7 @@
 #####
 ##### MPI worker script — exercised by `test/distributed/zarr_writer.jl` via mpiexec.
 #####
-##### Args: --partition x|y|xy  --output <path.zarr>
+##### Args: --partition x|y|xy  --output <path.zarr>  [--grid rectilinear|tripolar]  [--fold center|face]
 #####
 
 using MPI
@@ -13,12 +13,18 @@ using Oceananigans.DistributedComputations: Distributed, Partition
 
 partition = "x"
 out_path  = "dist_zarr_out.zarr"
+grid_type = "rectilinear"
+fold      = "center"
 let args = ARGS
     for (i, a) in enumerate(args)
         if a == "--partition" && i < length(args)
             global partition = args[i+1]
         elseif a == "--output" && i < length(args)
             global out_path = args[i+1]
+        elseif a == "--grid" && i < length(args)
+            global grid_type = args[i+1]
+        elseif a == "--fold" && i < length(args)
+            global fold = args[i+1]
         end
     end
 end
@@ -38,12 +44,15 @@ else
     error("Unknown partition: $partition")
 end
 
-grid = RectilinearGrid(arch,
-                       size     = (8, 8, 4),
-                       extent   = (1, 1, 1),
-                       topology = (Periodic, Periodic, Periodic))
+tripolar_kw = (size = (16, 12, 4), z = (-1, 0), fold_topology = fold == "face" ? FaceFolded : CenterFolded)
 
-model = NonhydrostaticModel(grid; tracers=:c)
+grid = grid_type == "tripolar" ? TripolarGrid(arch; tripolar_kw...) :
+                                 RectilinearGrid(arch,
+                                                 size     = (8, 8, 4),
+                                                 extent   = (1, 1, 1),
+                                                 topology = (Periodic, Periodic, Periodic))
+
+model = grid_type == "tripolar" ? HydrostaticFreeSurfaceModel(grid; tracers=:c) : NonhydrostaticModel(grid; tracers=:c)
 # Seed every grid point with x-coordinate to make per-rank slabs distinguishable.
 set!(model, u=(x, y, z) -> 10*x + y,
             c=(x, y, z) -> 100*x + y + z)
@@ -76,8 +85,19 @@ if rank == 0
 
     u_arr = g["u"]
     c_arr = g["c"]
-    @assert size(u_arr) == (8, 8, 4, 3) "u global shape wrong: $(size(u_arr))"
-    @assert size(c_arr) == (8, 8, 4, 3) "c global shape wrong: $(size(c_arr))"
+
+    if grid_type == "tripolar"
+        # Every rank's slab must land where the serial grid puts it, including the fold rows
+        serial = HydrostaticFreeSurfaceModel(TripolarGrid(CPU(); tripolar_kw...); tracers=:c)
+        set!(serial, u=(x, y, z) -> 10*x + y, c=(x, y, z) -> 100*x + y + z)
+        for (name, arr, field) in (("u", u_arr, serial.velocities.u), ("c", c_arr, serial.tracers.c))
+            @assert size(arr) == (size(field)..., 3) "$name global shape wrong: $(size(arr)) vs $(size(field))"
+            @assert arr[:, :, :, 3] == Float32.(interior(field)) "$name differs from the serial field"
+        end
+    else
+        @assert size(u_arr) == (8, 8, 4, 3) "u global shape wrong: $(size(u_arr))"
+        @assert size(c_arr) == (8, 8, 4, 3) "c global shape wrong: $(size(c_arr))"
+    end
 
     # Spot-check expected pattern from the seed function. u at (Face, Center, Center)
     # so x-nodes are at face positions.
@@ -88,7 +108,7 @@ if rank == 0
     rt = g.attrs["rank_topology"]
     @assert length(rt) == 3 "rank_topology not 3-vector"
 
-    println("DISTRIBUTED_ZARR_OK rank_topology=$(rt) partition=$partition nranks=$nranks")
+    println("DISTRIBUTED_ZARR_OK rank_topology=$(rt) partition=$partition nranks=$nranks grid=$grid_type fold=$fold")
 end
 
 MPI.Finalize()
