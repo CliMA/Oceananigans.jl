@@ -1,5 +1,5 @@
 using Base: Callable
-using MuladdMacro: @muladd
+using Oceananigans.Utils: @fused_muladd
 using Oceananigans.Grids: Flat, Open, Periodic, RegularVerticalCoordinate, TwoSided, inactive_node
 
 #####
@@ -21,7 +21,7 @@ for (ξ, RegularGrid) in ((:x, :(RG{<:Any, <:NonFlat, <:Any, <:Any, <:Any, <:Num
 
         @generated function $ℑ(i, j, k, grid::AG, ::Val{O}, ::Type{FT}, ψ, args...) where {O, FT}
             stencil = calc_reconstruction_stencil(FT, O ÷ 2, :symmetric, $(QuoteNode(ξ)), ψ <: Callable)
-            return :($(Expr(:meta, :inline)); @inbounds @muladd $stencil)
+            return :($(Expr(:meta, :inline)); @inbounds @fused_muladd $stencil)
         end
     end
 
@@ -34,7 +34,7 @@ for (ξ, RegularGrid) in ((:x, :(RG{<:Any, <:NonFlat, <:Any, <:Any, <:Any, <:Num
 
             @generated function $δ(i, j, k, grid, ::Val{O}, ::Type{FT}, ψ) where {O, FT}
                 stencil = calc_reconstruction_stencil(FT, O ÷ 2, Val(:first_derivative), $(QuoteNode(ξ)), $(QuoteNode(location)))
-                return :($(Expr(:meta, :inline)); @inbounds @muladd $stencil)
+                return :($(Expr(:meta, :inline)); @inbounds @fused_muladd $stencil)
             end
         end
     end
