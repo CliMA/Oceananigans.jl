@@ -29,7 +29,7 @@ The order of operations for explicit free surfaces is:
 5. Advance grid scaling (for z-star coordinates)
 6. Advance velocities using AB2
 7. Correct barotropic mode
-8. Step open boundary conditions of the corrected velocities
+8. Step open boundary conditions of the corrected velocities and correct the barotropic mode again
 9. Advance tracers using AB2
 """
 function hydrostatic_ab2_step!(model, free_surface, grid, Δt, callbacks)
@@ -67,6 +67,9 @@ function hydrostatic_ab2_step!(model, free_surface, grid, Δt, callbacks)
 
         # Open boundaries see the corrected velocity, which the interior keeps
         step_boundary_conditions!((u, v), model.clock, fields(model), Δt)
+
+        # Bring the radiated boundary columns back onto the barotropic transport
+        correct_barotropic_mode!(model, Δt)
         ab2_step_tracers!(model.tracers, model, Δt, χ)
     end
 

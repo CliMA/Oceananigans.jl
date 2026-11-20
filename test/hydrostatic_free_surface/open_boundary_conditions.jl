@@ -825,6 +825,43 @@ function test_radiating_steady_baroclinic_flow(timestepper)
     return maximum(abs, interior(model.velocities.u) .- interior(uᵢ))
 end
 
+# Radiating boundaries extrapolate each level on its own; the boundary columns must still integrate to U
+function test_radiating_boundary_transport_consistency(timestepper)
+    Nx, Ny, Nz = 16, 1, 4
+    Lx, Ly, H = 1000.0, 100.0, 100.0
+
+    grid = RectilinearGrid(size = (Nx, Ny, Nz), x = (0, Lx), y = (0, Ly), z = (-H, 0),
+                           topology = (Open, Periodic, Bounded))
+
+    u_bcs = FieldBoundaryConditions(west = NormalFlowBoundaryCondition(0; scheme = NormalRadiation()),
+                                    east = NormalFlowBoundaryCondition(0; scheme = NormalRadiation()))
+
+    U_bcs = FieldBoundaryConditions(grid, (Face(), Center(), nothing);
+                                    west = GravityWaveRadiationBoundaryCondition((0.0, 0.0)),
+                                    east = GravityWaveRadiationBoundaryCondition((0.0, 0.0)))
+
+    model = HydrostaticFreeSurfaceModel(grid; timestepper,
+                                        free_surface = SplitExplicitFreeSurface(grid; substeps = 10),
+                                        boundary_conditions = (u = u_bcs, U = U_bcs),
+                                        momentum_advection = nothing,
+                                        buoyancy = nothing,
+                                        tracers = ())
+
+    uᵢ(x, y, z) = 0.1 * sin(π * x / Lx) * ifelse(z > -H / 2, 1, -0.5)
+    ηᵢ(x, y, z) = 0.1 * exp(-(x - Lx / 2)^2 / (Lx / 8)^2)
+    set!(model, u = uᵢ, η = ηᵢ)
+
+    for _ in 1:10
+        time_step!(model, 1.0)
+    end
+
+    u = Array(interior(model.velocities.u))
+    U = Array(interior(model.free_surface.barotropic_velocities.U))
+    Δz = H / Nz
+
+    return maximum(abs(sum(u[i, 1, :]) * Δz - U[i, 1, 1]) for i in (1, Nx + 1))
+end
+
 @testset "Open Boundary Conditions for HydrostaticFreeSurfaceModel" begin
     @testset "GravityWaveRadiation with target_transport" begin
         @test test_gravity_wave_target_transport()
@@ -890,5 +927,11 @@ end
         δu = test_radiating_steady_baroclinic_flow(timestepper)
         @info "  max|u - uᵢ| of a radiated steady baroclinic flow [$timestepper]: $δu"
         @test δu < 1e-12
+    end
+
+    @testset "Radiating boundary columns integrate to the barotropic transport [$timestepper]" for timestepper in (:SplitRungeKutta3, :QuasiAdamsBashforth2)
+        δU = test_radiating_boundary_transport_consistency(timestepper)
+        @info "  max|∫u dz - U| on radiating boundaries [$timestepper]: $δU"
+        @test δU < 1e-12
     end
 end
