@@ -436,6 +436,13 @@ example `averaging = 2` on the west boundary of a channel that is periodic in ``
 `averaging = nothing` the plane is recycled together with its mean. The region between the boundary and the
 recycling plane then evolves like a periodic domain, and ``\phi^{\mathrm{ext}}`` is usually zero.
 
+The recycled signal returns to the boundary at every pass through the region between the boundary and the
+recycling plane, so the scheme assumes that the flow there is statistically homogeneous along the
+boundary-normal direction, as in a channel. Where the mean flow slows down on the way to the recycling
+plane, perturbations of the normal velocity grow on the way and return amplified. The fluctuations then
+grow from pass to pass, and so does whatever part of the mean flow the average leaves in the recycled
+signal, such as the variation of the mean inflow along the direction of a line average.
+
 The factor ``d`` confines the recycled signal to part of the boundary. A profile that is one inside a
 turbulent layer and falls to zero outside it keeps recycled fluctuations from thickening the layer
 [maronga.ea2015](@citep).

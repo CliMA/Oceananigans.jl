@@ -28,6 +28,9 @@ boundary condition:
 
     φᵇ = φᵉˣᵗ + damping * (φʳ - ⟨φʳ⟩)
 
+The flow between the boundary and the recycling plane is assumed to be statistically homogeneous along the
+boundary-normal direction.
+
 `TurbulenceRecycling` is used as the `scheme` of a [`NormalFlowBoundaryCondition`](@ref) for boundary-normal
 velocities, where it sets the boundary face, or of a [`ValueBoundaryCondition`](@ref) for fields that are
 `Center`-located in the boundary-normal direction, where it sets the halo cell adjacent to the boundary.

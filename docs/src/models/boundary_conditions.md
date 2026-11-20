@@ -539,7 +539,9 @@ example `ValueBoundaryCondition(0; scheme = TurbulenceRecycling(recycling_distan
 recycle the plane together with its mean. A `target_transport` keeps the transport through the inflow
 at a prescribed value, and the side where the flow leaves needs a scheme such as `PerturbationAdvection`.
 The flow has to be turbulent to begin with, for example from an initial condition taken from a simulation
-with periodic boundaries.
+with periodic boundaries. The scheme assumes that the flow between the boundary and the recycling plane is
+statistically homogeneous along the boundary-normal direction, so the plane has to lie upstream of whatever
+slows down or disturbs the flow.
 
 ## Building boundary conditions on a field
 
