@@ -1,10 +1,12 @@
-# A turbulent open channel with a recycled inflow, compared with the periodic channel it is initialized from.
+# A turbulent open channel with a recycled inflow and a small hill, compared with the periodic channel it is
+# initialized from.
 #
 # The flow is a half channel: a pressure-gradient force u★² / H drives it over a rough bottom with quadratic drag.
 # A periodic precursor is run until it is turbulent. The open channel starts from three copies of its final state
 # laid along x, with the recycling plane one copy in from the west boundary and a radiating outflow on the east.
-# The reference is the periodic channel continued from the same state over the same time. Three open channels are
-# run:
+# A Gaussian hill with the same drag sits on its bottom at x = 12 H, between the recycling plane and the outflow.
+# The reference is the periodic channel, which has no hill, continued from the same state over the same time. Three
+# open channels are run:
 #
 #   * `fluctuations`: the precursor's mean profile as the boundary value plus recycled fluctuations about the
 #     `y`-mean, with the transport pinned by `target_transport`. The pressure-gradient force then only changes
@@ -14,9 +16,11 @@
 #   * `laminar`: the same mean profile imposed without recycling, for reference.
 #
 # The script writes a figure of statistics and an animation of the first part of the four runs, in which a dashed
-# line marks the recycling plane.
+# line marks the recycling plane and the hill is gray.
 
 using Oceananigans
+using Oceananigans.ImmersedBoundaries: mask_immersed_field!
+using Oceananigans.Solvers: ConjugateGradientPoissonSolver
 using CairoMakie
 using JLD2
 using Printf
@@ -31,6 +35,9 @@ z₀ = 1e-4 * H            # roughness length
 N = 64                   # cells along x and y in one periodic box, and twice the number over the depth
 box_length = 2π * H
 boxes = 3                # periodic boxes along the open channel
+hill_height = 0.2 * H
+hill_width = 0.4 * H     # standard deviation of the Gaussian
+hill_position = 12 * H
 precursor_stop_time = 40 * H / u★
 stop_time = 20 * H / u★
 averaging_start_time = 8 * H / u★
@@ -47,10 +54,13 @@ cᴰ = (κ / log(Δz / 2z₀))^2
 bottom_drag = BulkDrag(coefficient = cᴰ)
 periodic_boundary_conditions = (u = FieldBoundaryConditions(bottom = bottom_drag), v = FieldBoundaryConditions(bottom = bottom_drag))
 
-channel_grid(topology, Nx) = RectilinearGrid(; size = (Nx, N, Nz), x = (0, Nx * box_length / N), y = (0, box_length), z = (0, H), topology)
+# An immersed boundary needs one more halo point than the advection scheme does
+channel_grid(topology, Nx) = RectilinearGrid(; size = (Nx, N, Nz), halo = (4, 4, 4), x = (0, Nx * box_length / N), y = (0, box_length), z = (0, H), topology)
 
-function channel_simulation(grid, boundary_conditions; stop_time)
-    model = NonhydrostaticModel(grid; timestepper = :RungeKutta3, advection = WENO(order = 5), closure = SmagorinskyLilly(), boundary_conditions,
+hill(x, y) = hill_height * exp(-((x - hill_position)^2 + (y - box_length / 2)^2) / 2hill_width^2)
+
+function channel_simulation(grid, boundary_conditions; stop_time, pressure_solver = nothing)
+    model = NonhydrostaticModel(grid; timestepper = :RungeKutta3, advection = WENO(order = 5), closure = SmagorinskyLilly(), boundary_conditions, pressure_solver,
                                 forcing = (; u = Forcing(pressure_gradient_force, parameters = (; u★, H))))
 
     simulation = Simulation(model; Δt = 1e-3 * H / u★, stop_time)
@@ -68,10 +78,16 @@ function sample_statistics!(simulation)
     spanwise_mean(a) = dropdims(mean(a, dims = 2), dims = 2)
     samples = (; times = Float64[], transport = Float64[], u = [], uu = [], vv = [], ww = [], uw = [], stress = [], pressure = [], variance = [], covariance = [])
 
+    # Index of the lowest fluid cell of each column, which is above 1 on the hill
+    fluid = CenterField(model.grid)
+    set!(fluid, 1)
+    mask_immersed_field!(fluid)
+    lowest = Nz + 1 .- round.(Int, sum(Array(interior(fluid)), dims = 3))
+
     function sample(simulation)
         foreach(compute!, centered)
         uᶜ, vᶜ, wᶜ = map(q -> Array(interior(q)), centered)
-        u₁, v₁ = uᶜ[:, :, 1], vᶜ[:, :, 1]
+        u₁, v₁ = map(q -> [q[i, j, lowest[i, j]] for i in 1:Nx, j in 1:N], (uᶜ, vᶜ))
         u′ = uᶜ[:, :, Nz ÷ 2] .- mean(uᶜ[:, :, Nz ÷ 2], dims = 2)
 
         push!(samples.times, time(simulation))
@@ -133,10 +149,11 @@ function tiled(a, Nx)
     return Nx == size(copies, 1) ? copies : cat(copies, a[1:1, :, :], dims = 1)
 end
 
-# A channel `Nx` cells long that starts from copies of the precursor's final state
-function run_channel(filename, topology, Nx, boundary_conditions, precursor_velocities)
-    simulation = channel_simulation(channel_grid(topology, Nx), boundary_conditions; stop_time)
+# A channel that starts from copies of the precursor's final state
+function run_channel(filename, grid, boundary_conditions, precursor_velocities; pressure_solver = nothing)
+    simulation = channel_simulation(grid, boundary_conditions; stop_time, pressure_solver)
     model = simulation.model
+    Nx = size(grid, 1)
     set!(model; map((q, a) -> tiled(a, size(q, 1)), model.velocities, precursor_velocities)...)
 
     δ = Field(∂x(model.velocities.u) + ∂y(model.velocities.v) + ∂z(model.velocities.w))
@@ -193,17 +210,20 @@ west_conditions = (fluctuations = (u = NormalFlowBoundaryCondition(exterior_velo
                    laminar = (u = NormalFlowBoundaryCondition(exterior_velocity), v = ValueBoundaryCondition(0), w = ValueBoundaryCondition(0)))
 
 periodic_file = "recycled_channel_periodic.jld2"
-isfile(periodic_file) || run_channel(periodic_file, (Periodic, Periodic, Bounded), N, periodic_boundary_conditions, precursor["velocities"])
+isfile(periodic_file) || run_channel(periodic_file, channel_grid((Periodic, Periodic, Bounded), N), periodic_boundary_conditions, precursor["velocities"])
 periodic = load(periodic_file)
+
+open_grid = ImmersedBoundaryGrid(channel_grid((Open, Periodic, Bounded), boxes * N), GridFittedBottom(hill))
+hill_drag = ImmersedBoundaryCondition(bottom = bottom_drag)
 
 for name in keys(west_conditions)
     west = west_conditions[name]
-    boundary_conditions = (u = FieldBoundaryConditions(bottom = bottom_drag, west = west.u, east = outflow),
-                           v = FieldBoundaryConditions(bottom = bottom_drag, west = west.v),
+    boundary_conditions = (u = FieldBoundaryConditions(bottom = bottom_drag, immersed = hill_drag, west = west.u, east = outflow),
+                           v = FieldBoundaryConditions(bottom = bottom_drag, immersed = hill_drag, west = west.v),
                            w = FieldBoundaryConditions(west = west.w))
 
     filename = "recycled_channel_$name.jld2"
-    isfile(filename) || run_channel(filename, (Open, Periodic, Bounded), boxes * N, boundary_conditions, precursor["velocities"])
+    isfile(filename) || run_channel(filename, open_grid, boundary_conditions, precursor["velocities"]; pressure_solver = ConjugateGradientPoissonSolver(open_grid; maxiter = 20))
 end
 
 runs = map(name -> load("recycled_channel_$name.jld2"), (; fluctuations = :fluctuations, absolute = :absolute, laminar = :laminar))
@@ -239,16 +259,16 @@ descriptions = (fluctuations = "Open channel, inflow: mean profile + recycled fl
                 absolute = "Open channel, inflow: recycled plane as is\n(averaging = nothing, no target_transport)",
                 laminar = "Open channel, inflow: mean profile only\n(no recycling)")
 mark_recycling_plane!(axis) = vlines!(axis, box_length; color = :limegreen, linestyle = :dash, linewidth = 2.5, label = "Recycling plane")
-last_box = (boxes - 1) * N .+ (1:N)
-box_mean(a) = vec(mean(a[last_box, :], dims = 1))
+upstream = N+1:3N÷2    # cells between the recycling plane and the hill, 2π < x / H < 3π
+upstream_mean(a) = vec(mean(a[upstream, :], dims = 1))
 
 fig = Figure(size = (1500, 1300))
 stress_axis = Axis(fig[1, 1]; title = "Bottom stress", xlabel = "x / H", ylabel = "τ / u★²")
 energy_axis = Axis(fig[1, 2]; title = "Depth-integrated resolved kinetic energy of fluctuations", xlabel = "x / H", ylabel = "∫ k dz / (u★² H)")
 correlation_axis = Axis(fig[1, 3]; title = "Correlation of u(x) with u(x + 2π H) at mid-depth", xlabel = "x / H", ylabel = "correlation")
-velocity_axis = Axis(fig[2, 1]; title = "Mean velocity, last third of the channel", xlabel = "z / H", ylabel = "U / u★", xscale = log10)
-variance_axis = Axis(fig[2, 2]; title = "Variances, last third of the channel (solid: u, dashed: w)", xlabel = "variance / u★²", ylabel = "z / H")
-flux_axis = Axis(fig[2, 3]; title = "Resolved momentum flux, last third of the channel", xlabel = "-⟨u′w′⟩ / u★²", ylabel = "z / H")
+velocity_axis = Axis(fig[2, 1]; title = "Mean velocity, 2π < x / H < 3π", xlabel = "z / H", ylabel = "U / u★", xscale = log10)
+variance_axis = Axis(fig[2, 2]; title = "Variances, 2π < x / H < 3π (solid: u, dashed: w)", xlabel = "variance / u★²", ylabel = "z / H")
+flux_axis = Axis(fig[2, 3]; title = "Resolved momentum flux, 2π < x / H < 3π", xlabel = "-⟨u′w′⟩ / u★²", ylabel = "z / H")
 transport_axis = Axis(fig[3, 1]; title = "Bulk velocity through the plane x = 0", xlabel = "t u★ / H", ylabel = "transport / (area u★)")
 pressure_axis = Axis(fig[3, 2]; title = "Mean nonhydrostatic pressure, relative to the east end", xlabel = "x / H", ylabel = "p / u★²")
 
@@ -264,24 +284,28 @@ for name in keys(runs)
     lines!(stress_axis, x, result.stress; color, label = descriptions[name])
     lines!(energy_axis, x, result.kinetic_energy; color)
     name == :laminar || lines!(correlation_axis, x[1:end-N], result.correlation; color)
-    lines!(velocity_axis, z, box_mean(result.U); color)
-    lines!(variance_axis, box_mean(result.uu), z; color)
-    lines!(variance_axis, box_mean(result.ww), z; color, linestyle = :dash)
-    lines!(flux_axis, -box_mean(result.uw), z; color)
+    lines!(velocity_axis, z, upstream_mean(result.U); color)
+    lines!(variance_axis, upstream_mean(result.uu), z; color)
+    lines!(variance_axis, upstream_mean(result.ww), z; color, linestyle = :dash)
+    lines!(flux_axis, -upstream_mean(result.uw), z; color)
     lines!(transport_axis, samples.times, samples.transport ./ (box_length * H); color)
     lines!(pressure_axis, x, result.pressure .- result.pressure[end]; color)
 
     late = samples.times .≥ averaging_start_time
     pressure_gradient = (result.pressure[end] - result.pressure[N+1]) / (x[end] - x[N+1])
-    @printf("%-13s transport / target between %.6f and %.6f, maximum divergence %.1e, mean ∂x p downstream of the plane %+.2f u★² / H, stress in the last box %.3f u★²\n",
-            name, extrema(samples.transport[late] ./ target_transport)..., runs[name]["maximum_divergence"], pressure_gradient * H / u★^2, mean(result.stress[last_box]))
+    @printf("%-13s transport / target between %.6f and %.6f, maximum divergence %.1e, mean ∂x p downstream of the plane %+.2f u★² / H, stress upstream of the hill %.3f u★²\n",
+            name, extrema(samples.transport[late] ./ target_transport)..., runs[name]["maximum_divergence"], pressure_gradient * H / u★^2, mean(result.stress[upstream]))
 end
 
 lines!(transport_axis, periodic["samples"].times, periodic["samples"].transport ./ (box_length * H); color = :black, linewidth = 3)
 @printf("periodic      stress %.3f u★², bulk velocity at the end %.3f u★, of the inflow profile %.3f u★\n", mean(reference.stress),
         periodic["samples"].transport[end] / (box_length * H), target_transport / (box_length * H))
 
-foreach(mark_recycling_plane!, (stress_axis, energy_axis, correlation_axis, pressure_axis))
+for axis in (stress_axis, energy_axis, correlation_axis, pressure_axis)
+    mark_recycling_plane!(axis)
+    vspan!(axis, hill_position - 2hill_width, hill_position + 2hill_width; color = (:gray50, 0.3), label = "Hill")
+end
+
 Legend(fig[3, 3], stress_axis; tellwidth = false)
 save("recycled_channel_inflow.png", fig)
 
@@ -294,21 +318,24 @@ frame_times = periodic["frames"].times
 xᶠ = x .- box_length / 2N
 animation = Figure(size = (1700, 1450))
 Label(animation[0, 1:2], @lift "Streamwise velocity minus the mean profile of the periodic channel, (u - U(z)) / u★, " * @sprintf("at t = %.2f H / u★\n", frame_times[$frame]) *
-                               "The flow goes from left to right. Dashed lines mark the recycling plane, which is sampled and fed back at the inflow (x = 0)."; fontsize = 20)
+                               "The flow goes from left to right. Dashed lines mark the recycling plane, which is sampled and fed back at the inflow (x = 0). The hill is gray.";
+      fontsize = 20)
 
 for (row, name) in enumerate((:periodic, keys(runs)...))
     frames = name == :periodic ? periodic["frames"] : runs[name]["frames"]
     copies = name == :periodic ? boxes : 1
     description = name == :periodic ? "Periodic channel (reference), shown $boxes times side by side" : descriptions[name]
-    horizontal = @lift repeat(frames.horizontal[$frame], copies, 1) .- mean_profile[animation_level]
-    vertical = @lift repeat(frames.vertical[$frame], copies, 1) .- reshape(mean_profile, 1, Nz)
+
+    # u is exactly zero inside the hill, where it is replaced by NaN to be drawn in gray
+    horizontal = @lift repeat(replace(frames.horizontal[$frame], 0 => NaN), copies, 1) .- mean_profile[animation_level]
+    vertical = @lift repeat(replace(frames.vertical[$frame], 0 => NaN), copies, 1) .- reshape(mean_profile, 1, Nz)
 
     Label(animation[2row - 1, 1:2], description; font = :bold, fontsize = 17)
     horizontal_axis = Axis(animation[2row, 1]; title = "Horizontal plane at z = $(round(z[animation_level], digits = 2)) H", titlefont = :regular,
                            xlabel = "x / H", ylabel = "y / H", aspect = DataAspect())
-    heatmap!(horizontal_axis, xᶠ, y, horizontal; colormap = :balance, colorrange = (-6, 6))
+    heatmap!(horizontal_axis, xᶠ, y, horizontal; colormap = :balance, colorrange = (-6, 6), nan_color = :gray50)
     vertical_axis = Axis(animation[2row, 2]; title = "Vertical plane at y = π H", titlefont = :regular, xlabel = "x / H", ylabel = "z / H")
-    heatmap!(vertical_axis, xᶠ, z, vertical; colormap = :balance, colorrange = (-6, 6))
+    heatmap!(vertical_axis, xᶠ, z, vertical; colormap = :balance, colorrange = (-6, 6), nan_color = :gray50)
     name in (:fluctuations, :absolute) && foreach(mark_recycling_plane!, (horizontal_axis, vertical_axis))
 end
 
