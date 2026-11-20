@@ -1,20 +1,18 @@
-# Turbulent boundary layers enter a square domain through its west and east boundaries, meet, and leave through the
-# south and north boundaries. Nothing forces the flow: `target_transport` on the two inflows sets how much comes in,
-# and the radiating outflows share what has to leave.
+# Turbulent boundary layers enter a domain twice as long as it is wide through its west and east boundaries, meet,
+# and leave through the south and north boundaries. Nothing forces the flow: `target_transport` on the two inflows
+# sets how much comes in, and the radiating outflows share what has to leave.
 #
 # The turbulence comes from the periodic channel of `recycled_channel_inflow.jl`, which has to be run first in the
-# same directory: the initial state is four copies of that channel with the mean flow turned into u = -a x,
-# v = a y. Recycling is used here outside its assumptions: the mean flow slows down from the boundary on, and at
-# the recycling plane, half-way to the centre, it is half as fast as at the boundary. Four runs are compared:
+# same directory: the initial state is eight copies of that channel with the mean flow turned into u = -a x,
+# v = a y. Recycling is used here outside its assumptions: the initial mean flow slows down from the boundary to
+# the centre, and at the recycling plane, a quarter of the way in, it is three quarters as fast as at the boundary.
+# Four runs are compared:
 #
 #   * `absolute`: the recycling plane imposed as is and shifted to the target transport.
 #   * `fluctuations`: the channel's mean profile as the boundary value plus recycled fluctuations about the `y`-mean.
 #   * `scaled`: the same, with the fluctuations scaled by the ratio of the mean velocity at the plane to that at
 #     the boundary.
 #   * `laminar`: the mean profile imposed without recycling, for reference.
-#
-# The targets hold in all four. In the first two the recycled fluctuations grow from pass to pass and the mean inflow
-# tilts along y. Scaling stops the growth and leaves the turbulence at the inflow intermittent.
 #
 # The script writes a figure of statistics and an animation of the four runs. Dashed lines mark the recycling planes.
 
@@ -31,26 +29,27 @@ u★ = 1                   # friction velocity of the periodic channel
 z₀ = 1e-4 * H            # roughness length
 N = 64                   # cells along x and y in the periodic channel, and twice the number over the depth
 box_length = 2π * H
+half_length = 2box_length                               # distance from the west and east boundaries to the centre
 recycling_distance = box_length / 2
-velocity_ratio = 1 - recycling_distance / box_length    # mean velocity at the recycling plane over that at the boundary
+velocity_ratio = 1 - recycling_distance / half_length   # mean velocity at the recycling plane over that at the boundary
 stop_time = 4 * H / u★
 averaging_start_time = 1.5 * H / u★
 sampling_interval = 0.05 * H / u★
 animation_times = (0:0.02:4) .* (H / u★)
 
-Nz = N ÷ 2
+Nx, Ny, Nz = 4N, 2N, N ÷ 2
 Δ, Δz = box_length / N, H / Nz
 cᴰ = (κ / log(Δz / 2z₀))^2
 bottom_drag = BulkDrag(coefficient = cᴰ)
 
-grid = RectilinearGrid(size = (2N, 2N, Nz), x = (-box_length, box_length), y = (-box_length, box_length), z = (0, H), topology = (Open, Open, Bounded))
+grid = RectilinearGrid(size = (Nx, Ny, Nz), x = (-half_length, half_length), y = (-box_length, box_length), z = (0, H), topology = (Open, Open, Bounded))
 
 precursor = load("recycled_channel_precursor.jld2")
 late = precursor["samples"].times .≥ precursor["samples"].times[end] - (stop_time - averaging_start_time)
 mean_profile = vec(mean(mean(precursor["samples"].u[late]), dims = 1))
 bulk_velocity = mean(mean_profile)
 target_transport = bulk_velocity * 2 * box_length * H
-exterior_velocity = repeat(reshape(mean_profile, 1, Nz), 2N, 1)
+exterior_velocity = repeat(reshape(mean_profile, 1, Nz), Ny, 1)
 
 # Boundary conditions of a recycled inflow; `direction` is +1 on the west boundary and -1 on the east boundary
 function recycled_inflow(direction, exterior_velocity, averaging; kwargs...)
@@ -65,16 +64,16 @@ inflows = (absolute = direction -> recycled_inflow(direction, 0, nothing),
            scaled = direction -> recycled_inflow(direction, exterior_velocity, 2; damping = velocity_ratio),
            laminar = direction -> (u = NormalFlowBoundaryCondition(direction * exterior_velocity), v = ValueBoundaryCondition(0), w = ValueBoundaryCondition(0)))
 
-# Four copies of the periodic state. A field at faces along an open direction has one more face than the copies hold.
+# Copies of the periodic state. A field at faces along an open direction has one more face than the copies hold.
 function tiled(a, field_size)
-    copies = repeat(a, 2, 2, 1)
+    copies = repeat(a, Nx ÷ N, Ny ÷ N, 1)
     copies = field_size[1] == size(copies, 1) ? copies : cat(copies, copies[1:1, :, :], dims = 1)
     return field_size[2] == size(copies, 2) ? copies : cat(copies, copies[:, 1:1, :], dims = 2)
 end
 
 function run_converging_inflow(filename, inflow)
     west, east = inflow(1), inflow(-1)
-    outflow(direction) = NormalFlowBoundaryCondition(direction * bulk_velocity; scheme = PerturbationAdvection())
+    outflow(direction) = NormalFlowBoundaryCondition(direction * bulk_velocity * box_length / half_length; scheme = PerturbationAdvection())
 
     boundary_conditions = (u = FieldBoundaryConditions(west = west.u, east = east.u, bottom = bottom_drag),
                            v = FieldBoundaryConditions(west = west.v, east = east.v, south = outflow(-1), north = outflow(1), bottom = bottom_drag),
@@ -84,8 +83,8 @@ function run_converging_inflow(filename, inflow)
 
     u, v, w = model.velocities
     xᶠ, yᶠ = xnodes(grid, Face()), reshape(ynodes(grid, Face()), 1, :)
-    uᵢ = - xᶠ ./ box_length .* tiled(precursor["velocities"].u, size(u))
-    vᵢ = tiled(precursor["velocities"].v, size(v)) .+ yᶠ ./ box_length .* reshape(mean_profile, 1, 1, Nz)
+    uᵢ = - xᶠ ./ half_length .* tiled(precursor["velocities"].u, size(u))
+    vᵢ = tiled(precursor["velocities"].v, size(v)) .+ yᶠ ./ half_length .* reshape(mean_profile, 1, 1, Nz)
     set!(model, u = uᵢ, v = vᵢ, w = tiled(precursor["velocities"].w, size(w)))
 
     simulation = Simulation(model; Δt = 1e-3 * H / u★, stop_time)
@@ -101,9 +100,9 @@ function run_converging_inflow(filename, inflow)
     function sample(simulation)
         push!(transports.times, time(simulation))
         push!(transports.west, sum(interior(u, 1, :, :)) * Δ * Δz)
-        push!(transports.east, sum(interior(u, 2N + 1, :, :)) * Δ * Δz)
+        push!(transports.east, sum(interior(u, Nx + 1, :, :)) * Δ * Δz)
         push!(transports.south, sum(interior(v, :, 1, :)) * Δ * Δz)
-        push!(transports.north, sum(interior(v, :, 2N + 1, :)) * Δ * Δz)
+        push!(transports.north, sum(interior(v, :, Ny + 1, :)) * Δ * Δz)
         maximum_divergence[] = max(maximum_divergence[], maximum(abs, compute!(δ)))
 
         time(simulation) < averaging_start_time && return nothing
@@ -170,11 +169,11 @@ descriptions = (absolute = "Inflow: recycled plane as is\n(averaging = nothing)"
                 fluctuations = "Inflow: mean profile + recycled fluctuations\n(averaging = 2)",
                 scaled = "Inflow: mean profile + $velocity_ratio × recycled fluctuations\n(averaging = 2, damping = $velocity_ratio)",
                 laminar = "Inflow: mean profile only\n(no recycling)")
-limits = (-box_length, box_length, -box_length, box_length)
+limits = (-half_length, half_length, -box_length, box_length)
 stride = 8
-mark_recycling_planes!(axis) = vlines!(axis, [-1, 1] .* (box_length - recycling_distance); color = :limegreen, linestyle = :dash, linewidth = 2.5)
+mark_recycling_planes!(axis) = vlines!(axis, [-1, 1] .* (half_length - recycling_distance); color = :limegreen, linestyle = :dash, linewidth = 2.5)
 
-fig = Figure(size = (2000, 1750))
+fig = Figure(size = (2000, 1300))
 Label(fig[1, 1:4], "Velocity along x at mid-depth at the end of the run, u / u★. Dashed lines mark the recycling planes."; font = :bold, fontsize = 18)
 Label(fig[3, 1:4], "Depth-integrated kinetic energy of the fluctuations about the time mean, ∫ k dz / (u★² H), with the depth-averaged mean flow as arrows";
       font = :bold, fontsize = 18)
@@ -223,7 +222,7 @@ save("recycled_converging_inflow.png", fig)
 
 frame = Observable(1)
 frame_times = first(runs)["frames"].times
-animation = Figure(size = (2000, 1250))
+animation = Figure(size = (2000, 820))
 Label(animation[0, 1:length(runs)], @lift "The flow enters through the west and east boundaries (left and right edges) and leaves through the south and north boundaries. " *
                                           @sprintf("t = %.2f H / u★\n", frame_times[$frame]) *
                                           "Dashed lines mark the recycling planes. Each is sampled and fed back at the inflow boundary on its side."; fontsize = 20)
