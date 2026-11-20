@@ -42,13 +42,10 @@ animation_level = Nz ÷ 8     # vertical index of the horizontal plane in the an
 Δy, Δz = box_length / N, H / Nz
 cᴰ = (κ / log(Δz / 2z₀))^2
 
-@inline drag_u(x, y, t, u, v, p) = - p.cᴰ * sqrt(u^2 + v^2) * u
-@inline drag_v(x, y, t, u, v, p) = - p.cᴰ * sqrt(u^2 + v^2) * v
 @inline pressure_gradient_force(x, y, z, t, p) = p.u★^2 / p.H
 
-bottom_drag_u = FluxBoundaryCondition(drag_u, field_dependencies = (:u, :v), parameters = (; cᴰ))
-bottom_drag_v = FluxBoundaryCondition(drag_v, field_dependencies = (:u, :v), parameters = (; cᴰ))
-periodic_boundary_conditions = (u = FieldBoundaryConditions(bottom = bottom_drag_u), v = FieldBoundaryConditions(bottom = bottom_drag_v))
+bottom_drag = BulkDrag(coefficient = cᴰ)
+periodic_boundary_conditions = (u = FieldBoundaryConditions(bottom = bottom_drag), v = FieldBoundaryConditions(bottom = bottom_drag))
 
 channel_grid(topology, Nx) = RectilinearGrid(; size = (Nx, N, Nz), x = (0, Nx * box_length / N), y = (0, box_length), z = (0, H), topology)
 
@@ -201,8 +198,8 @@ periodic = load(periodic_file)
 
 for name in keys(west_conditions)
     west = west_conditions[name]
-    boundary_conditions = (u = FieldBoundaryConditions(bottom = bottom_drag_u, west = west.u, east = outflow),
-                           v = FieldBoundaryConditions(bottom = bottom_drag_v, west = west.v),
+    boundary_conditions = (u = FieldBoundaryConditions(bottom = bottom_drag, west = west.u, east = outflow),
+                           v = FieldBoundaryConditions(bottom = bottom_drag, west = west.v),
                            w = FieldBoundaryConditions(west = west.w))
 
     filename = "recycled_channel_$name.jld2"

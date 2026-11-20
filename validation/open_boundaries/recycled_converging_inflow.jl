@@ -41,9 +41,7 @@ animation_times = (0:0.02:4) .* (H / u★)
 Nz = N ÷ 2
 Δ, Δz = box_length / N, H / Nz
 cᴰ = (κ / log(Δz / 2z₀))^2
-
-@inline drag_u(x, y, t, u, v, p) = - p.cᴰ * sqrt(u^2 + v^2) * u
-@inline drag_v(x, y, t, u, v, p) = - p.cᴰ * sqrt(u^2 + v^2) * v
+bottom_drag = BulkDrag(coefficient = cᴰ)
 
 grid = RectilinearGrid(size = (2N, 2N, Nz), x = (-box_length, box_length), y = (-box_length, box_length), z = (0, H), topology = (Open, Open, Bounded))
 
@@ -78,10 +76,8 @@ function run_converging_inflow(filename, inflow)
     west, east = inflow(1), inflow(-1)
     outflow(direction) = NormalFlowBoundaryCondition(direction * bulk_velocity; scheme = PerturbationAdvection())
 
-    bottom_drag(drag) = FluxBoundaryCondition(drag, field_dependencies = (:u, :v), parameters = (; cᴰ))
-
-    boundary_conditions = (u = FieldBoundaryConditions(west = west.u, east = east.u, bottom = bottom_drag(drag_u)),
-                           v = FieldBoundaryConditions(west = west.v, east = east.v, south = outflow(-1), north = outflow(1), bottom = bottom_drag(drag_v)),
+    boundary_conditions = (u = FieldBoundaryConditions(west = west.u, east = east.u, bottom = bottom_drag),
+                           v = FieldBoundaryConditions(west = west.v, east = east.v, south = outflow(-1), north = outflow(1), bottom = bottom_drag),
                            w = FieldBoundaryConditions(west = west.w, east = east.w))
 
     model = NonhydrostaticModel(grid; timestepper = :RungeKutta3, advection = WENO(order = 5), closure = SmagorinskyLilly(), boundary_conditions)
