@@ -49,6 +49,7 @@ Reactant = "0.2.300"
 Rotations = "1"
 SeawaterPolynomials = "0.3.11"
 StructArrays = "0.7.4"
+Zarr = "0.11.2"
 
 [preferences.Reactant]
 xla_runtime = "IFRT"
