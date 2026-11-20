@@ -22,6 +22,7 @@ OffsetArrays = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"
 Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+Reactant = "3c362404-f566-11ee-1572-e11a4b42c853"
 SafeTestsets = "1bc83da4-3b8d-516f-aca4-4fe02f6d838f"
 SeawaterPolynomials = "d496a93d-167e-4197-9f49-d3af4ff8fe40"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
@@ -54,6 +55,11 @@ Pkg = "<0.0.1, 1"
 ParallelTestRunner = "2.10"
 Printf = "<0.0.1, 1"
 Random = "1.9"
+# TODO: figure out if this is ok
+# Reactant 0.2.309 requires CUDA 5.11.3, ~6.2 or 6.4.1. Within the CUDA bounds above that means
+# CUDA >= 5.11.3 for every distributed group, not just distributed_reactant, which conflicts
+# with the =5.8.5 pin if that pin is intentional.
+Reactant = "0.2.300"
 SafeTestsets = "0.1"
 SeawaterPolynomials = "0.3.9"
 SparseArrays = "<0.0.1, 1"

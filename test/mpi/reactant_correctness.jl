@@ -1,3 +1,12 @@
+using MPI
+using Reactant
+
+# Assigns one GPU per rank and sets up NCCL; must run before reactant_test_utils.jl creates the GPU client with Reactant.set_default_backend("gpu")
+if get(ENV, "TEST_ARCHITECTURE", "CPU") == "GPU"
+    MPI.Initialized() || MPI.Init(threadlevel=:multiple)
+    Reactant.initialize_nccl_comm!(MPI.COMM_WORLD)
+end
+
 include(joinpath(@__DIR__, "..", "setup", "reactant_test_utils.jl"))
 include(joinpath(@__DIR__, "..", "setup", "reactant_correctness_utils.jl"))
 include(joinpath(@__DIR__, "..", "setup", "reactant_mpi_correctness_utils.jl"))

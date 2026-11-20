@@ -54,14 +54,13 @@ function test_mpi_fill_halo_regions(make_grid, partition, topology; traced=true)
 end
 
 """
-    test_mpi_compute_simple_Gu(make_grid, topology, coriolis)
+    test_mpi_compute_simple_Gu(make_grid, topology, coriolis; partition=Partition(2, 2))
 
 Test that `compute_simple_Gu!` with WENO, which reads every halo cell in both horizontal directions,
-matches `Distributed(child_arch)` on each rank of a `Partition(2, 2)`.
+matches `Distributed(child_arch)` on each rank of `partition`.
 """
-function test_mpi_compute_simple_Gu(make_grid, topology, coriolis)
+function test_mpi_compute_simple_Gu(make_grid, topology, coriolis; partition=Partition(2, 2))
     rank = MPI.Comm_rank(MPI.COMM_WORLD)
-    partition = Partition(2, 2)
     vanilla_grid = make_grid(Distributed(child_arch; partition), topology)
     reactant_grid = make_grid(mpi_reactant_architecture(partition), topology)
 
