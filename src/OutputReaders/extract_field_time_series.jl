@@ -58,8 +58,11 @@ extract_field_time_series(t::Union{Tuple, NamedTuple}) =
     has_field_time_series(typeof(t)) ?
         concatenate_extracted(map(extract_field_time_series, values(t))) : ()
 
-# A field's boundary conditions may hold a series inside a condition of any type
-extract_field_time_series(f::Field) = extract_field_time_series(f.boundary_conditions)
+# A field's boundary conditions may hold a series inside a condition of any type, and a
+# computed field's operand (eg a `KernelFunctionOperation`) may capture one as an argument
+extract_field_time_series(f::Field) =
+    concatenate_extracted((extract_field_time_series(f.boundary_conditions),
+                           extract_field_time_series(f.operand)))
 
 extract_field_time_series(bcs::FieldBoundaryConditions) =
     has_field_time_series(typeof(bcs)) ?
