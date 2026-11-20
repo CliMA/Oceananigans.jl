@@ -8,7 +8,11 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     FFTImplicitFreeSurfaceSolver,
     PCGImplicitFreeSurfaceSolver,
     step_free_surface!,
-    implicit_free_surface_linear_operation!
+    implicit_free_surface_linear_operation!,
+    integrated_x_area,
+    integrated_y_area
+
+using Oceananigans.Solvers: solve!
 
 
 function set_simple_divergent_velocity!(model)
@@ -165,5 +169,51 @@ end
         @info "    maximum(abs, η_fft): $(maximum(abs, fft_η_cpu))"
 
         @test all(isapprox.(Δη_pcg, 0, atol=1e-15))
+    end
+end
+
+@testset "Stored vertically integrated lateral areas" begin
+    for arch in archs
+        A = typeof(arch)
+        @info "Testing stored vertically integrated lateral areas [$A]..."
+
+        lazy_areas(grid) = (Field(KernelFunctionOperation{Face, Center, Nothing}(integrated_x_area, grid)),
+                            Field(KernelFunctionOperation{Center, Face, Nothing}(integrated_y_area, grid)))
+
+        function areas_match(∫ᶻA, grid)
+            ax, ay = lazy_areas(grid)
+            return Array(interior(∫ᶻA.xᶠᶜᶜ)) == Array(interior(ax)) &&
+                   Array(interior(∫ᶻA.yᶜᶠᶜ)) == Array(interior(ay))
+        end
+
+        bottom(x, y) = -1000 + 600 * exp(-(x^2 + y^2) / 2e5^2)
+
+        static_grid = ImmersedBoundaryGrid(RectilinearGrid(arch, size = (16, 12, 4), x = (-5e5, 5e5), y = (-5e5, 5e5),
+                                                           z = (-1000, 0), topology = (Bounded, Periodic, Bounded)),
+                                           GridFittedBottom(bottom))
+
+        free_surface = ImplicitFreeSurface(solver_method = :PreconditionedConjugateGradient)
+        model = HydrostaticFreeSurfaceModel(static_grid; free_surface)
+        @test areas_match(model.free_surface.implicit_step_solver.vertically_integrated_lateral_areas, static_grid)
+
+        # With z-star the column depth follows the free surface, so the areas are refreshed before each solve
+        zstar_grid = ImmersedBoundaryGrid(RectilinearGrid(arch, size = (16, 12, 4), x = (-5e5, 5e5), y = (-5e5, 5e5),
+                                                          z = MutableVerticalDiscretization(collect(range(-1000, 0, length = 5))),
+                                                          topology = (Bounded, Bounded, Bounded)),
+                                          GridFittedBottom(bottom))
+
+        free_surface = ImplicitFreeSurface(solver_method = :PreconditionedConjugateGradient)
+        model = HydrostaticFreeSurfaceModel(zstar_grid; free_surface, vertical_coordinate = ZStarCoordinate())
+        set!(model, η = (x, y, z) -> exp(-(x^2 + y^2) / 2e5^2))
+        time_step!(model, 600)
+
+        solver = model.free_surface.implicit_step_solver
+        ∫ᶻA = solver.vertically_integrated_lateral_areas
+        @test !areas_match(∫ᶻA, zstar_grid) # the grid has moved since the last solve
+
+        η = model.free_surface.displacement
+        rhs = solver.right_hand_side
+        solve!(η, solver, rhs, model.free_surface.gravitational_acceleration, 600)
+        @test areas_match(∫ᶻA, zstar_grid)
     end
 end
