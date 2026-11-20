@@ -378,3 +378,68 @@ end
     rel_error = abs(dedν[1][1] - ΔeΔν) / abs(ΔeΔν)
     @test rel_error < tol
 end
+
+@testset "Enzyme rule for the implicit free-surface PCG solve" begin
+    using Oceananigans.BoundaryConditions: fill_halo_regions!
+    using Oceananigans.Solvers: solve!
+    using Oceananigans.Models.HydrostaticFreeSurfaceModels: implicit_free_surface_linear_operation!
+    using LinearAlgebra: I, dot, norm
+
+    Nx, Ny = 12, 8
+    underlying = LatitudeLongitudeGrid(size=(Nx, Ny, 3), halo=(4, 4, 4), longitude=(0, 360),
+                                       latitude=(-60, 60), z=(-3000, 0))
+    depth = -1000 .* [1 + mod(i + 2j, 3) for i in 1:Nx, j in 1:Ny]
+    depth[3:4, 2:5] .= 0 # a continent
+    depth[9, 6] = 0      # an island
+    grid = ImmersedBoundaryGrid(underlying, GridFittedBottom(depth))
+    model = HydrostaticFreeSurfaceModel(grid; free_surface=ImplicitFreeSurface(), buoyancy=nothing, tracers=())
+
+    solver = model.free_surface.implicit_step_solver
+    g, Δt = model.free_surface.gravitational_acceleration, 600.0
+    η = model.free_surface.displacement
+    rhs = solver.right_hand_side
+    ∫ᶻA = solver.vertically_integrated_lateral_areas
+    wet = vec(depth .< 0)
+    N = Nx * Ny
+
+    set_interior!(f, x) = (fill!(parent(f), 0); interior(f) .= reshape(x, Nx, Ny, 1); fill_halo_regions!(f); f)
+    interior_vector(f) = vec(Array(interior(f)))
+
+    # Dense matrix of the linear operation, restricted to the wet columns
+    function apply_A(x)
+        p = set_interior!(similar(η), x)
+        q = similar(η)
+        fill!(parent(q), 0)
+        implicit_free_surface_linear_operation!(q, p, ∫ᶻA.xᶠᶜᶜ, ∫ᶻA.yᶜᶠᶜ, g, Δt)
+        return interior_vector(q)
+    end
+    A = reduce(hcat, apply_A(Matrix(1.0I, N, N)[:, n]) for n in 1:N)
+    @test A ≈ A' # the rules rely on the symmetry of A
+    Aʷ = A[wet, wet]
+
+    b = [sin(n) for n in 1:N] .* wet # primal right-hand side
+    y = [cos(n) for n in 1:N] .* wet # adjoint seed η̄ and tangent rhṡ
+
+    # Reverse: rhs̄ = A⁻¹ η̄
+    set_interior!(rhs, b)
+    set_interior!(η, zeros(N))
+    dη = set_interior!(similar(η), y)
+    drhs = set_interior!(similar(rhs), zeros(N))
+    autodiff(Enzyme.Reverse, solve!, Const, Duplicated(η, dη), Const(solver), Duplicated(rhs, drhs), Const(g), Const(Δt))
+    r̄ = interior_vector(drhs)
+    @test norm(r̄[wet] - Aʷ \ y[wet]) < 1e-9 * norm(Aʷ \ y[wet])
+    @test all(iszero, r̄[.!wet])
+    @test all(iszero, parent(dη))
+    # Dot test
+    @test dot(Aʷ \ b[wet], y[wet]) ≈ dot(b, r̄) rtol=1e-9
+
+    # Forward: η̇ = A⁻¹ rhṡ
+    set_interior!(rhs, b)
+    set_interior!(η, zeros(N))
+    dη = set_interior!(similar(η), zeros(N))
+    drhs = set_interior!(similar(rhs), y)
+    autodiff(Enzyme.Forward, solve!, Const, Duplicated(η, dη), Const(solver), Duplicated(rhs, drhs), Const(g), Const(Δt))
+    η̇ = interior_vector(dη)
+    @test norm(η̇[wet] - Aʷ \ y[wet]) < 1e-9 * norm(Aʷ \ y[wet])
+    @test all(iszero, η̇[.!wet])
+end
