@@ -220,15 +220,16 @@ end
     # Compute fast TKE RHS
     u⁺ = next_velocities.u
     v⁺ = next_velocities.v
-    uⁿ = previous_velocities.u
-    vⁿ = previous_velocities.v
+    u⁻ = previous_velocities.u
+    v⁻ = previous_velocities.v
     κu = closure_fields.κu
 
     # TODO: correctly handle closure / diffusivity tuples
-    # TODO: the shear_production is actually a slow term so we _could_ precompute.
-    P = shear_production(i, j, k, grid, κu, uⁿ, u⁺, vⁿ, v⁺)
+    P = shear_production(i, j, k, grid, κu, u⁻, u⁺, v⁻, v⁺)
     ϵ = dissipation(i, j, k, grid, closure_ij, next_velocities, tracers, buoyancy, closure_fields)
-    return P + wb⁺ - ϵ
+
+    # Conversions from mean kinetic and potential energy, and the rest of the fast tendency
+    return P + wb⁺, - ϵ
 end
 
 @kernel function _ab2_substep_turbulent_kinetic_energy!(Le, grid, closure,
@@ -238,9 +239,9 @@ end
 
     i, j, k = @index(Global, NTuple)
 
-    fast_Gⁿe = fast_tke_tendency(i, j, k, grid, Le, closure,
-                                 next_velocities, previous_velocities,
-                                 tracers, buoyancy, closure_fields)
+    conversion, fast_Gⁿe = fast_tke_tendency(i, j, k, grid, Le, closure,
+                                             next_velocities, previous_velocities,
+                                             tracers, buoyancy, closure_fields)
 
     # Advance TKE and store tendency
     FT = eltype(χ)
@@ -257,7 +258,8 @@ end
 
     @inbounds begin
         total_Gⁿe = slow_Gⁿe[i, j, k] + fast_Gⁿe * σᶜᶜⁿ
-        e[i, j, k] += Δτ * (α * total_Gⁿe - β * G⁻e[i, j, k]) * active * σ⁻¹ᶜᶜⁿ
+        # Forward-Euler weight for the conversions, which match the mean energy lost in this step
+        e[i, j, k] += Δτ * (α * total_Gⁿe - β * G⁻e[i, j, k] + conversion * σᶜᶜⁿ) * active * σ⁻¹ᶜᶜⁿ
         G⁻e[i, j, k] = total_Gⁿe * active
     end
 end
@@ -271,16 +273,16 @@ end
 
     e = tracers.e
 
-    fast_Gⁿe = fast_tke_tendency(i, j, k, grid, Le, closure,
-                                 next_velocities, previous_velocities,
-                                 tracers, buoyancy, closure_fields)
+    conversion, fast_Gⁿe = fast_tke_tendency(i, j, k, grid, Le, closure,
+                                             next_velocities, previous_velocities,
+                                             tracers, buoyancy, closure_fields)
 
     σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
     σ⁻¹ᶜᶜⁿ = σ⁻¹ⁿ(i, j, k, grid, Center(), Center(), Center())
     active = !inactive_cell(i, j, k, grid)
 
     @inbounds begin
-        total_Gⁿ = slow_Gⁿe[i, j, k] + fast_Gⁿe * σᶜᶜⁿ
+        total_Gⁿ = slow_Gⁿe[i, j, k] + (conversion + fast_Gⁿe) * σᶜᶜⁿ
         e[i, j, k] = (σe⁻[i, j, k] + Δt * total_Gⁿ * active) * σ⁻¹ᶜᶜⁿ
     end
 end
@@ -294,16 +296,16 @@ end
 
     e = tracers.e
 
-    fast_Gⁿe = fast_tke_tendency(i, j, k, grid, Le, closure,
-                                 next_velocities, previous_velocities,
-                                 tracers, buoyancy, closure_fields)
+    conversion, fast_Gⁿe = fast_tke_tendency(i, j, k, grid, Le, closure,
+                                             next_velocities, previous_velocities,
+                                             tracers, buoyancy, closure_fields)
 
     σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
     σ⁻¹ᶜᶜⁿ = σ⁻¹ⁿ(i, j, k, grid, Center(), Center(), Center())
     active = !inactive_cell(i, j, k, grid)
 
     @inbounds begin
-        total_Gⁿ = slow_Gⁿe[i, j, k] + fast_Gⁿe * σᶜᶜⁿ
+        total_Gⁿ = slow_Gⁿe[i, j, k] + (conversion + fast_Gⁿe) * σᶜᶜⁿ
         e[i, j, k] += Δτ * total_Gⁿ * active * σ⁻¹ᶜᶜⁿ
     end
 end

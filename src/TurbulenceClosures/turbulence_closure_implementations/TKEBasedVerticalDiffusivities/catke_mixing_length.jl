@@ -51,6 +51,7 @@ Base.@kwdef struct CATKEMixingLength{FT}
     Cᵘⁿe :: FT = 1.447  # Shear mixing length coefficient for TKE at negative Ri
     Cᶜe  :: FT = 3.642  # Convective mixing length coefficient for TKE
     Cᵉe  :: FT = 0.0    # Convective penetration mixing length coefficient for TKE
+    Cᵉʰ  :: FT = 0.0    # Inverse bound on the penetration length relative to the convective layer depth
 end
 
 #####
@@ -108,6 +109,21 @@ end
 @inline three_halves_tkeᶜᶜᶜ(i, j, k, grid, closure, e) = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, e)^3
 @inline squared_tkeᶜᶜᶜ(i, j, k, grid, closure, e) = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, e)^2
 
+# The penetration (entrainment) length ℓᵉ = Cᵉ Jᵉ / (w★ N² + Jᵇᵋ) diverges as N² → 0⁺, which
+# happens at the first stably stratified face above a convecting layer. Penetrative entrainment
+# cannot reach farther than a fraction of the depth h of the convection that drives it, so we
+# bound ℓᵉ smoothly by h / Cᵉʰ:
+#
+#   ℓᵉ / (1 + Cᵉʰ ℓᵉ / h)  →  ℓᵉ        for ℓᵉ ≪ h / Cᵉʰ,
+#                          →  h / Cᵉʰ   for ℓᵉ ≫ h / Cᵉʰ.
+#
+# h = w★³ / Jᵇ is the local Deardorff depth already used by the convective length ℓᶜ = Cᶜ h.
+# Cᵉʰ = 0 leaves ℓᵉ unchanged.
+@inline function bounded_penetration_length(ℓᵉ, h, Cᵉʰ)
+    ℓᵉ_bounded = ℓᵉ / (1 + Cᵉʰ * ℓᵉ / h)
+    return ifelse(Cᵉʰ == 0, ℓᵉ, ℓᵉ_bounded)
+end
+
 @inline function convective_length_scaleᶜᶜᶠ(i, j, k, grid, closure, Cᶜ::Number, Cᵉ::Number, Cˢᵖ::Number,
                                             velocities, tracers, buoyancy, closure_fields)
 
@@ -146,6 +162,7 @@ end
     # "Entrainment length"
     # Ensures that w′b′ ~ Jᵇ at entrainment depth
     ℓᵉ = Cᵉ * Jᵉ / (w★ * N² + Jᵇᵋ)
+    ℓᵉ = bounded_penetration_length(ℓᵉ, h, closure.mixing_length.Cᵉʰ)
 
     #=
     w★² = ℑzᵃᵃᶠ(i, j, k, grid, squared_tkeᶜᶜᶜ, closure, tracers.e)
@@ -204,6 +221,7 @@ end
     # "Entrainment length"
     # Ensures that w′b′ ~ Jᵇ at entrainment depth
     ℓᵉ = Cᵉ * Jᵉ / (w★ * N² + Jᵇᵋ)
+    ℓᵉ = bounded_penetration_length(ℓᵉ, h, closure.mixing_length.Cᵉʰ)
 
     # w★² = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, tracers.e)^2
     # Riᶠ = w★² / sqrt(N²) / (Jᵇ + Jᵇᵋ) # Riᶠ = Flux Ri number
@@ -323,6 +341,7 @@ Base.show(io::IO, ml::CATKEMixingLength) =
               " ├── Convective penetration mixing length coefficient for momentum: Cᵉu  = $(ml.Cᵉu)\n",
               " ├── Convective penetration mixing length coefficient for tracers:  Cᵉc  = $(ml.Cᵉc)\n",
               " ├── Convective penetration mixing length coefficient for TKE:      Cᵉe  = $(ml.Cᵉe)\n",
+              " ├── Inverse penetration length bound (relative to layer depth):    Cᵉʰ  = $(ml.Cᵉʰ)\n",
               " ├── Sheared convective plume coefficient:                          Cˢᵖ  = $(ml.Cˢᵖ)\n",
               " ├── Stability function width:                                      CRiᵟ = $(ml.CRiᵟ)\n",
               " └── Stability function lower Ri:                                   CRi⁰ = $(ml.CRi⁰)")

@@ -2,12 +2,16 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Random
 
+using Oceananigans.TurbulenceClosures: shear_production
+using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: explicit_buoyancy_flux
+
 using Oceananigans.Grids: znode
 using Oceananigans.Grids: ZDirection
 using Oceananigans.ImmersedBoundaries: immersed_cell
 using Oceananigans.Operators: Δz
 using Oceananigans.Solvers: get_coefficient
 using Oceananigans.TimeSteppers: implicit_step!
+using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: CATKEMixingLength
 using Oceananigans.TurbulenceClosures: VerticallyImplicitDiffusionLowerDiagonal,
                                        VerticallyImplicitDiffusionDiagonal,
                                        VerticallyImplicitDiffusionUpperDiagonal
@@ -217,6 +221,8 @@ function time_step_with_isopycnal_skew_symmetric_diffusivity(arch, FT, time_disc
     return !any(isnan, interior(model.tracers.b))
 end
 
+@inline positive_buoyancy_flux(i, j, k, grid, args...) = max(0, explicit_buoyancy_flux(i, j, k, grid, args...))
+
 function run_catke_tke_substepping_tests(arch, closure)
     # A large domain to make sure we do not have viscous CFL problems
     # with the explicit CATKE time-stepping necessary for this test
@@ -233,25 +239,45 @@ function run_catke_tke_substepping_tests(arch, closure)
     Random.seed!(1234)
     set!(model, u = (x, y, z) -> rand(), v = (x, y, z) -> rand())
 
-    # time step the model
-    time_step!(model, 1)
+    # Shear production and positive buoyancy flux, which enter the TKE with a forward-Euler weight,
+    # from the diffusivities of the coming step and the velocities and tracers after it
+    closures = model.closure isa Tuple ? model.closure : (model.closure,)
+    closure_fields = model.closure isa Tuple ? model.closure_fields : (model.closure_fields,)
+    catke_index = findfirst(c -> c isa CATKEVerticalDiffusivity, closures)
+    catke, catke_fields = closures[catke_index], closure_fields[catke_index]
+    κu = ZFaceField(grid)
+    κc = ZFaceField(grid)
+    u, v, w = model.velocities
+    P = KernelFunctionOperation{Center, Center, Center}(shear_production, grid, κu, u, u, v, v)
+    wb⁺ = KernelFunctionOperation{Center, Center, Center}(positive_buoyancy_flux, grid, catke, model.velocities,
+                                                          model.tracers, model.buoyancy, (; κc))
+    conversion = Field(P + wb⁺)
 
-    # Check that eⁿ⁺¹ == Δt * Gⁿ.e with Δt = 1 (euler step)
-    @test model.tracers.e ≈ model.timestepper.G⁻.e
+    function time_step_and_compute_conversion!(model)
+        parent(κu) .= parent(catke_fields.κu)
+        parent(κc) .= parent(catke_fields.κc)
+        time_step!(model, 1)
+        return compute!(conversion)
+    end
+
+    time_step_and_compute_conversion!(model)
+
+    # Check that eⁿ⁺¹ == Δt * (Gⁿ.e + conversion) with Δt = 1 (euler step)
+    @test model.tracers.e ≈ compute!(Field(model.timestepper.G⁻.e + conversion))
 
     eⁿ  = deepcopy(model.tracers.e)
     G⁻⁻ = deepcopy(model.timestepper.G⁻.e)
 
     # time step the model again
-    time_step!(model, 1)
+    time_step_and_compute_conversion!(model)
     G⁻ = model.timestepper.G⁻.e
 
     C₁ = 1.5 + model.timestepper.χ
     C₂ = 0.5 + model.timestepper.χ
 
-    eⁿ⁺¹ = compute!(Field(eⁿ + C₁ * G⁻ - C₂ * G⁻⁻))
+    eⁿ⁺¹ = compute!(Field(eⁿ + C₁ * G⁻ - C₂ * G⁻⁻ + conversion))
 
-    # Check that eⁿ⁺¹ == eⁿ + Δt * (C₁ Gⁿ.e - C₂ G⁻.e)
+    # Check that eⁿ⁺¹ == eⁿ + Δt * (C₁ Gⁿ.e - C₂ G⁻.e + conversion)
     @test model.tracers.e ≈ eⁿ⁺¹
 
     return model
@@ -394,6 +420,39 @@ function test_discrete_function_scalar_diffusivity()
     Δ = min_Δxyz(model.grid, formulation(model.closure))
     τκ = Δ^2 / max_diffusivity
     return cell_diffusion_timescale(model) == τκ
+end
+
+function catke_entrainment_face_diffusivity_ratio(arch, mixing_length)
+    # Surface cooling with wind over a uniformly stratified interior.
+    grid = RectilinearGrid(arch, size=128, z=(-256, 0), topology=(Flat, Flat, Bounded))
+    closure = CATKEVerticalDiffusivity(; mixing_length)
+    b_bcs = FieldBoundaryConditions(top=FluxBoundaryCondition(4e-8))
+    u_bcs = FieldBoundaryConditions(top=FluxBoundaryCondition(-1e-4))
+    model = HydrostaticFreeSurfaceModel(grid; closure, tracers=:b, buoyancy=BuoyancyTracer(),
+                                        coriolis=FPlane(f=1e-4), boundary_conditions=(b=b_bcs, u=u_bcs))
+    set!(model, b = z -> 1e-5 * z)
+
+    # Largest ratio of κc at a face to the larger of its two neighbours within the mixed layer,
+    # over the third day. A smooth profile gives ≈ 1; a one-face spike at the base of the
+    # convecting layer gives a ratio well above 1.
+    Nz = size(grid, 3)
+    max_ratio = Ref(0.0)
+
+    function record_ratio!(sim)
+        κc = Array(interior(sim.model.closure_fields.κc, 1, 1, :))
+        for k in 3:Nz
+            κc[k] > 1e-4 && (max_ratio[] = max(max_ratio[], κc[k] / max(κc[k-1], κc[k+1])))
+        end
+        return nothing
+    end
+
+    simulation = Simulation(model, Δt=600, stop_time=2 * 86400, verbose=false)
+    run!(simulation)
+    simulation.stop_time = 3 * 86400
+    add_callback!(simulation, record_ratio!)
+    run!(simulation)
+
+    return max_ratio[]
 end
 
 @testset "Turbulence closures" begin
@@ -620,6 +679,14 @@ end
                 @test first(model.closure) === closure[2]
                 closure = (HorizontalScalarDiffusivity(), explicit_catke, VerticalScalarDiffusivity())
                 run_catke_tke_substepping_tests(arch, closure)
+            end
+
+            @testset "CATKE penetration length bound removes the entrainment-face spike [$(typeof(arch))]" begin
+                @info "  Testing the bound on CATKE's penetration length [$(typeof(arch))]..."
+                unbounded = CATKEMixingLength()
+                bounded = CATKEMixingLength(Cᵉʰ=1.0)
+                @test catke_entrainment_face_diffusivity_ratio(arch, unbounded) > 1.5
+                @test catke_entrainment_face_diffusivity_ratio(arch, bounded) < 1.1
             end
 
             @testset "Surface TKE flux with CATKE in closure tuples of length 1 to 6 [$(typeof(arch))]" begin

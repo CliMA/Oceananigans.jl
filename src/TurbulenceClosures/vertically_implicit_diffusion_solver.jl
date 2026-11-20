@@ -273,6 +273,20 @@ end
     is_vertically_implicit(closure) ? ((closure,), (closure_fields,)) : ((), ())
 
 """
+    store_pre_solve_field!(field, closure, closure_fields, tracer_index)
+
+Store `field` before its vertically-implicit solve in `closure_fields`. Does nothing by default.
+"""
+@inline store_pre_solve_field!(field, closure, closure_fields, tracer_index) = nothing
+@inline store_pre_solve_field!(field, ::Tuple{}, ::Tuple{}, tracer_index) = nothing
+
+@inline function store_pre_solve_field!(field, closures::Tuple, closure_fields::Tuple, tracer_index)
+    store_pre_solve_field!(field, first(closures), first(closure_fields), tracer_index)
+    store_pre_solve_field!(field, Base.tail(closures), Base.tail(closure_fields), tracer_index)
+    return nothing
+end
+
+"""
 $(TYPEDSIGNATURES)
 
 Initialize the right hand side array `solver.batched_tridiagonal_solver.f`, and then solve the
@@ -289,6 +303,8 @@ function TimeSteppers.implicit_step!(field::Field,
                                      closure, closure_fields, tracer_index,
                                      clock, fields, Δt,
                                      advection=nothing, velocities=nothing, density=nothing)
+
+    store_pre_solve_field!(field, closure, closure_fields, tracer_index)
 
     vi_closure, vi_closure_fields = vertically_implicit_closures(closure, closure_fields)
 

@@ -229,8 +229,7 @@ Base.@constprop :aggressive function TurbulenceClosures.build_closure_fields(gri
     Jᵇ = Field{Center, Center, Nothing}(grid)
     Jʳ = Field{Center, Center, Nothing}(grid)
 
-    # Note: we may be able to avoid using the "previous velocities" in favor of a "fully implicit"
-    # discretization of shear production
+    # Horizontal velocities before the vertically-implicit solve
     u⁻ = XFaceField(grid)
     v⁻ = YFaceField(grid)
     previous_velocities = (; u=u⁻, v=v⁻)
@@ -275,20 +274,37 @@ function TurbulenceClosures.step_closure_prognostics!(closure_fields, closure::F
     clock = model.clock
     top_tracer_bcs = get_top_tracer_bcs(buoyancy, tracers)
 
+    store_current_velocities!(closure_fields.previous_velocities, closure, model.velocities)
+
     # Step TKE equation with the provided timestep
     time_step_catke_equation!(model, model.timestepper, Δt)
 
-    # Update previous velocities and surface buoyancy flux
-    u, v, w = model.velocities
-    u⁻, v⁻ = closure_fields.previous_velocities
-    parent(u⁻) .= parent(u)
-    parent(v⁻) .= parent(v)
-
-
+    # Update the surface buoyancy flux
     launch!(arch, grid, :xy,
             compute_average_surface_buoyancy_flux!,
             closure_fields, grid, closure, velocities, tracers, buoyancy, top_tracer_bcs, clock, Δt)
 
+    return nothing
+end
+
+store_current_velocities!(previous_velocities, ::FlavorOfCATKE{<:VITD}, velocities) = nothing
+
+function store_current_velocities!(previous_velocities, closure, velocities)
+    parent(previous_velocities.u) .= parent(velocities.u)
+    parent(previous_velocities.v) .= parent(velocities.v)
+    return nothing
+end
+
+const XFaceVelocity = Field{Face, Center, Center}
+const YFaceVelocity = Field{Center, Face, Center}
+
+function TurbulenceClosures.store_pre_solve_field!(u::XFaceVelocity, ::FlavorOfCATKE{<:VITD}, closure_fields, ::Nothing)
+    parent(closure_fields.previous_velocities.u) .= parent(u)
+    return nothing
+end
+
+function TurbulenceClosures.store_pre_solve_field!(v::YFaceVelocity, ::FlavorOfCATKE{<:VITD}, closure_fields, ::Nothing)
+    parent(closure_fields.previous_velocities.v) .= parent(v)
     return nothing
 end
 
@@ -427,6 +443,7 @@ function Base.show(io::IO, clo::CATKEVD)
               "│   ├── Cᶜe:  ", prettysummary(clo.mixing_length.Cᶜe), '\n',
               "│   ├── Cᵉc:  ", prettysummary(clo.mixing_length.Cᵉc), '\n',
               "│   ├── Cᵉe:  ", prettysummary(clo.mixing_length.Cᵉe), '\n',
+              "│   ├── Cᵉʰ:  ", prettysummary(clo.mixing_length.Cᵉʰ), '\n',
               "│   ├── Cˢᵖ:  ", prettysummary(clo.mixing_length.Cˢᵖ), '\n',
               "│   ├── CRiᵟ: ", prettysummary(clo.mixing_length.CRiᵟ), '\n',
               "│   └── CRi⁰: ", prettysummary(clo.mixing_length.CRi⁰), '\n',

@@ -13,7 +13,7 @@ using Oceananigans.BoundaryConditions: BoundaryConditions, DefaultBoundaryCondit
                                        fill_halo_regions!
 using Oceananigans.BuoyancyFormulations: BuoyancyForce, BuoyancyTracer, SalinitySeawaterBuoyancy, SeawaterBuoyancy,
                                          TemperatureSeawaterBuoyancy, top_buoyancy_flux, ∂z_b
-using Oceananigans.Fields: CenterField, XFaceField, YFaceField, ZFaceField, ZeroField
+using Oceananigans.Fields: Field, CenterField, XFaceField, YFaceField, ZFaceField, ZeroField
 using Oceananigans.Forcings: surface_radiative_buoyancy_flux, transmitted_fraction, transmitted_fraction_derivative,
                              transmitted_thickness
 using Oceananigans.Grids: Center, Face, inactive_cell, inactive_node, peripheral_node, static_column_depthᶜᶜᵃ
@@ -76,6 +76,20 @@ end
     return (f⁺ + f⁻) / 2
 end
 
+# Average to centers with zero at peripheral faces, so that Σᶜ Δzᶜ ℑ⁰zᵃᵃᶜ(f) = Σᶠ Δzᶠ f over interior faces
+@inline function ℑ⁰zᵃᵃᶜ(i, j, k, grid, fᵃᵃᶠ, args...)
+    f⁺ = fᵃᵃᶠ(i, j, k + 1, grid, args...)
+    f⁻ = fᵃᵃᶠ(i, j, k, grid, args...)
+
+    p⁺ = peripheral_node(i, j, k + 1, grid, c, c, f)
+    p⁻ = peripheral_node(i, j, k, grid, c, c, f)
+
+    f⁺ = ifelse(p⁺, zero(f⁺), f⁺)
+    f⁻ = ifelse(p⁻, zero(f⁻), f⁻)
+
+    return (f⁺ + f⁻) / 2
+end
+
 # To reconstruct buoyancy flux "conservatively" (ie approximately corresponding to production/destruction
 # of mean potential energy):
 @inline function buoyancy_fluxᶜᶜᶠ(i, j, k, grid, tracers, buoyancy, closure_fields)
@@ -85,7 +99,7 @@ end
 end
 
 @inline explicit_buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, closure_fields) =
-    ℑbzᵃᵃᶜ(i, j, k, grid, buoyancy_fluxᶜᶜᶠ, tracers, buoyancy, closure_fields)
+    ℑ⁰zᵃᵃᶜ(i, j, k, grid, buoyancy_fluxᶜᶜᶠ, tracers, buoyancy, closure_fields)
 
 # Note special attention paid to averaging the vertical grid spacing correctly
 @inline Δz_νₑ_az_bzᶠᶜᶠ(i, j, k, grid, νₑ, a, b) = ℑxᶠᵃᵃ(i, j, k, grid, νₑ) * ∂zᶠᶜᶠ(i, j, k, grid, a) *
@@ -94,27 +108,23 @@ end
 @inline Δz_νₑ_az_bzᶜᶠᶠ(i, j, k, grid, νₑ, a, b) = ℑyᵃᶠᵃ(i, j, k, grid, νₑ) * ∂zᶜᶠᶠ(i, j, k, grid, a) *
                                                   Δzᶜᶠᶠ(i, j, k, grid)     * ∂zᶜᶠᶠ(i, j, k, grid, b)
 
-@inline function shear_production_xᶠᶜᶜ(i, j, k, grid, νₑ, uⁿ, u⁺)
-    Δz_Pxⁿ = ℑbzᵃᵃᶜ(i, j, k, grid, Δz_νₑ_az_bzᶠᶜᶠ, νₑ, uⁿ, u⁺)
-    Δz_Px⁺ = ℑbzᵃᵃᶜ(i, j, k, grid, Δz_νₑ_az_bzᶠᶜᶠ, νₑ, u⁺, u⁺)
-    return (Δz_Pxⁿ + Δz_Px⁺) / 2 * Δz⁻¹ᶠᶜᶜ(i, j, k, grid)
+@inline function shear_production_xᶠᶜᶜ(i, j, k, grid, νₑ, u⁻, u⁺)
+    Δz_Px⁻ = ℑ⁰zᵃᵃᶜ(i, j, k, grid, Δz_νₑ_az_bzᶠᶜᶠ, νₑ, u⁻, u⁺)
+    Δz_Px⁺ = ℑ⁰zᵃᵃᶜ(i, j, k, grid, Δz_νₑ_az_bzᶠᶜᶠ, νₑ, u⁺, u⁺)
+    return (Δz_Px⁻ + Δz_Px⁺) / 2 * Δz⁻¹ᶠᶜᶜ(i, j, k, grid)
 end
 
-@inline function shear_production_yᶜᶠᶜ(i, j, k, grid, νₑ, vⁿ, v⁺)
-    Δz_Pyⁿ = ℑbzᵃᵃᶜ(i, j, k, grid, Δz_νₑ_az_bzᶜᶠᶠ, νₑ, vⁿ, v⁺)
-    Δz_Py⁺ = ℑbzᵃᵃᶜ(i, j, k, grid, Δz_νₑ_az_bzᶜᶠᶠ, νₑ, v⁺, v⁺)
-    return (Δz_Pyⁿ + Δz_Py⁺) / 2 * Δz⁻¹ᶜᶠᶜ(i, j, k, grid)
+@inline function shear_production_yᶜᶠᶜ(i, j, k, grid, νₑ, v⁻, v⁺)
+    Δz_Py⁻ = ℑ⁰zᵃᵃᶜ(i, j, k, grid, Δz_νₑ_az_bzᶜᶠᶠ, νₑ, v⁻, v⁺)
+    Δz_Py⁺ = ℑ⁰zᵃᵃᶜ(i, j, k, grid, Δz_νₑ_az_bzᶜᶠᶠ, νₑ, v⁺, v⁺)
+    return (Δz_Py⁻ + Δz_Py⁺) / 2 * Δz⁻¹ᶜᶠᶜ(i, j, k, grid)
 end
 
-@inline function TurbulenceClosures.shear_production(i, j, k, grid, νₑ, uⁿ, u⁺, vⁿ, v⁺)
-    # Reconstruct the shear production term in an "approximately conservative" manner
-    # (ie respecting the spatial discretization and using a stencil commensurate with the
-    # loss of mean kinetic energy due to shear production --- but _not_ respecting the
-    # the temporal discretization. Note that also respecting the temporal discretization, would
-    # require storing the velocity field at n and n+1):
-
-    return ℑxᶜᵃᵃ(i, j, k, grid, shear_production_xᶠᶜᶜ, νₑ, uⁿ, u⁺) +
-           ℑyᵃᶜᵃ(i, j, k, grid, shear_production_yᶜᶠᶜ, νₑ, vⁿ, v⁺)
+# u⁻ and u⁺ are the velocities before and after the vertically-implicit solve, so that Δt Σ Δzᶜ P equals
+# the mean kinetic energy lost in the solve, Σ Δzᶜ (u⁻² - u⁺²) / 2 (Burchard 2002)
+@inline function TurbulenceClosures.shear_production(i, j, k, grid, νₑ, u⁻, u⁺, v⁻, v⁺)
+    return ℑxᶜᵃᵃ(i, j, k, grid, shear_production_xᶠᶜᶜ, νₑ, u⁻, u⁺) +
+           ℑyᵃᶜᵃ(i, j, k, grid, shear_production_yᶜᶠᶜ, νₑ, v⁻, v⁺)
 end
 
 @inline function turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, e)
