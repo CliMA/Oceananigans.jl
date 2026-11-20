@@ -1111,6 +1111,13 @@ end
         @testset "Partly-in-memory window covers a time span [$(typeof(arch))]" begin
             test_in_memory_window_covers_time_span(arch)
         end
+
+        @testset "In-memory FieldDataset without boundary conditions [$(typeof(arch))]" begin
+            grid = RectilinearGrid(arch; topology = (Periodic, Periodic, Bounded), size = (4, 4, 4), extent = (1, 1, 1))
+            ds = FieldDataset(grid, 0:3, (:u, :c); location = (; u = (Face(), Center(), Center())), backend = InMemory())
+            @test ds isa FieldDataset
+            @test size(ds.u) == (4, 4, 4, 4)
+        end
     end
 
 end
