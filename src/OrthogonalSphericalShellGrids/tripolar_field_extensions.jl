@@ -5,9 +5,9 @@ using Oceananigans.BoundaryConditions: FieldBoundaryConditions,
                                        regularize_immersed_boundary_condition,
                                        LeftBoundary,
                                        RightBoundary,
-                                       pivot_shift
+                                       pivot_shift,
+                                       BoundaryConditions
 using Oceananigans.Grids: Grids, SerialFoldedTopology
-using Oceananigans.BoundaryConditions: BoundaryConditions
 using Oceananigans.Operators: Operators
 
 # A tripolar grid is always between 0 and 360 in longitude

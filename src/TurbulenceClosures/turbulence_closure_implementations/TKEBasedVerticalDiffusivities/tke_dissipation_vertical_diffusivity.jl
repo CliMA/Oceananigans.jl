@@ -64,7 +64,7 @@ function Adapt.adapt_structure(to, closure::TKEDissipationVerticalDiffusivity{TD
 end
 
 """
-$(MethodSignatures(; defaults = true))
+$(SIGNATURES)
 
 Return the `TKEDissipationVerticalDiffusivity` turbulence closure for vertical mixing by
 microscale ocean turbulence based on the prognostic evolution of two variables: the
@@ -292,7 +292,7 @@ function TurbulenceClosures.compute_closure_fields!(closure_fields, closure::Fla
 end
 
 @kernel function compute_TKEDissipation_closure_fields!(closure_fields, grid, closure::FlavorOfTD,
-                                                       velocities, tracers, buoyancy)
+                                                        velocities, tracers, buoyancy)
     i, j, k = @index(Global, NTuple)
 
     # Ensure this works with "ensembles" of closures, in addition to ordinary single closures

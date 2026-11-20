@@ -1,8 +1,5 @@
-using Oceananigans.Architectures: Architectures, CPU, on_architecture
-
 using Oceananigans: prognostic_state, restore_prognostic_state!
-
-import KernelAbstractions as KA
+using Oceananigans.Architectures: Architectures, CPU, on_architecture
 
 #####
 ##### Multi Region Object

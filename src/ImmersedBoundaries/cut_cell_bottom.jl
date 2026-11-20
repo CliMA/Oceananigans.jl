@@ -1,10 +1,7 @@
 using Oceananigans.Fields: Field, fill_halo_regions!
-using Oceananigans.Grids: Grids, AbstractStaticGrid, constructor_arguments, XFlatGrid, YFlatGrid
+using Oceananigans.Grids: Grids, AbstractStaticGrid, constructor_arguments, XFlatGrid, YFlatGrid, peripheral_node
+using Oceananigans.Operators: Δrᶜᶜᶜ, Δrᶜᶜᶠ, Δrᶜᶠᶜ, Δrᶜᶠᶠ, Δrᶠᶜᶜ, Δrᶠᶜᶠ, Δrᶠᶠᶜ, Δrᶠᶠᶠ
 using Oceananigans.Utils: prettysummary, KernelParameters
-
-import Oceananigans.Grids: peripheral_node
-import Oceananigans.Operators: Δrᶜᶜᶜ, Δrᶜᶜᶠ, Δrᶜᶠᶜ, Δrᶜᶠᶠ, Δrᶠᶜᶜ, Δrᶠᶜᶠ, Δrᶠᶠᶜ, Δrᶠᶠᶠ,
-                               Δzᶜᶜᶜ, Δzᶜᶜᶠ, Δzᶜᶠᶜ, Δzᶜᶠᶠ, Δzᶠᶜᶜ, Δzᶠᶜᶠ, Δzᶠᶠᶜ, Δzᶠᶠᶠ
 
 #####
 ##### CutCellBottom
@@ -344,14 +341,14 @@ end
 @inline bottom_cell(i, j, grid, ib::CutCellBottom) = @inbounds ib.bottom_cell_index[i, j, 1]
 
 # An active cell is as tall as the mean opening of its plane; immersed cells keep the full level height
-@inline function Δrᶜᶜᶜ(i, j, k, ibg::CCBIBG)
+@inline function Operators.Δrᶜᶜᶜ(i, j, k, ibg::CCBIBG)
     grid = ibg.underlying_grid
     Δr = Δrᶜᶜᶜ(i, j, k, grid)
     opening = mean_face_opening(i, j, k, grid, ibg.immersed_boundary, rnode(i, j, k + 1, grid, c, c, f), Δr)
     return ifelse(_immersed_cell(i, j, k, grid, ibg.immersed_boundary), Δr, opening)
 end
 
-@inline function Δrᶠᶜᶜ(i, j, k, ibg::CCBIBG)
+@inline function Operators.Δrᶠᶜᶜ(i, j, k, ibg::CCBIBG)
     underlying_grid = ibg.underlying_grid
     rᵇ = bottom_heightᶠᶜᵃ(i, j, underlying_grid, ibg.immersed_boundary)
     r⁺ = rnode(i, j, k+1, underlying_grid, c, c, f)
@@ -360,7 +357,7 @@ end
     return ifelse(r⁺ ≤ rᵇ, Δr, cut)
 end
 
-@inline function Δrᶜᶠᶜ(i, j, k, ibg::CCBIBG)
+@inline function Operators.Δrᶜᶠᶜ(i, j, k, ibg::CCBIBG)
     underlying_grid = ibg.underlying_grid
     rᵇ = bottom_heightᶜᶠᵃ(i, j, underlying_grid, ibg.immersed_boundary)
     r⁺ = rnode(i, j, k+1, underlying_grid, c, c, f)
@@ -369,7 +366,7 @@ end
     return ifelse(r⁺ ≤ rᵇ, Δr, cut)
 end
 
-@inline Δrᶠᶠᶜ(i, j, k, ibg::CCBIBG) = min(Δrᶠᶜᶜ(i, j-1, k, ibg), Δrᶠᶜᶜ(i, j, k, ibg))
+@inline Operators.Δrᶠᶠᶜ(i, j, k, ibg::CCBIBG) = min(Δrᶠᶜᶜ(i, j-1, k, ibg), Δrᶠᶜᶜ(i, j, k, ibg))
 
 # The center of a cut cell sits half its height below the interface above it.
 @inline function cut_center_spacing(i, j, k, underlying_grid, rᵇ, full_Δr)
@@ -379,43 +376,43 @@ end
     return ifelse(above_bottom, rᶜ - rᶠ + (rᶠ - rᵇ) / 2, full_Δr)
 end
 
-@inline Δrᶜᶜᶠ(i, j, k, ibg::CCBIBG) = (Δrᶜᶜᶜ(i, j, k-1, ibg) + Δrᶜᶜᶜ(i, j, k, ibg)) / 2
+@inline Operators.Δrᶜᶜᶠ(i, j, k, ibg::CCBIBG) = (Δrᶜᶜᶜ(i, j, k-1, ibg) + Δrᶜᶜᶜ(i, j, k, ibg)) / 2
 
-@inline function Δrᶠᶜᶠ(i, j, k, ibg::CCBIBG)
+@inline function Operators.Δrᶠᶜᶠ(i, j, k, ibg::CCBIBG)
     underlying_grid = ibg.underlying_grid
     rᵇ = bottom_heightᶠᶜᵃ(i, j, underlying_grid, ibg.immersed_boundary)
     return cut_center_spacing(i, j, k, underlying_grid, rᵇ, Δrᶠᶜᶠ(i, j, k, underlying_grid))
 end
 
-@inline function Δrᶜᶠᶠ(i, j, k, ibg::CCBIBG)
+@inline function Operators.Δrᶜᶠᶠ(i, j, k, ibg::CCBIBG)
     underlying_grid = ibg.underlying_grid
     rᵇ = bottom_heightᶜᶠᵃ(i, j, underlying_grid, ibg.immersed_boundary)
     return cut_center_spacing(i, j, k, underlying_grid, rᵇ, Δrᶜᶠᶠ(i, j, k, underlying_grid))
 end
 
-@inline Δrᶠᶠᶠ(i, j, k, ibg::CCBIBG) = min(Δrᶠᶜᶠ(i, j-1, k, ibg), Δrᶠᶜᶠ(i, j, k, ibg))
+@inline Operators.Δrᶠᶠᶠ(i, j, k, ibg::CCBIBG) = min(Δrᶠᶜᶠ(i, j-1, k, ibg), Δrᶠᶜᶠ(i, j, k, ibg))
 
 # Flat topologies collapse the staggered metrics onto the centered ones.
-@inline Δrᶠᶜᶜ(i, j, k, ibg::XFlatCCBIBG) = Δrᶜᶜᶜ(i, j, k, ibg)
-@inline Δrᶠᶜᶠ(i, j, k, ibg::XFlatCCBIBG) = Δrᶜᶜᶠ(i, j, k, ibg)
-@inline Δrᶜᶠᶜ(i, j, k, ibg::YFlatCCBIBG) = Δrᶜᶜᶜ(i, j, k, ibg)
-@inline Δrᶜᶠᶠ(i, j, k, ibg::YFlatCCBIBG) = Δrᶜᶜᶠ(i, j, k, ibg)
-@inline Δrᶠᶠᶜ(i, j, k, ibg::XFlatCCBIBG) = Δrᶜᶠᶜ(i, j, k, ibg)
-@inline Δrᶠᶠᶜ(i, j, k, ibg::YFlatCCBIBG) = Δrᶠᶜᶜ(i, j, k, ibg)
-@inline Δrᶠᶠᶠ(i, j, k, ibg::XFlatCCBIBG) = Δrᶜᶠᶠ(i, j, k, ibg)
-@inline Δrᶠᶠᶠ(i, j, k, ibg::YFlatCCBIBG) = Δrᶠᶜᶠ(i, j, k, ibg)
+@inline Operators.Δrᶠᶜᶜ(i, j, k, ibg::XFlatCCBIBG) = Δrᶜᶜᶜ(i, j, k, ibg)
+@inline Operators.Δrᶠᶜᶠ(i, j, k, ibg::XFlatCCBIBG) = Δrᶜᶜᶠ(i, j, k, ibg)
+@inline Operators.Δrᶜᶠᶜ(i, j, k, ibg::YFlatCCBIBG) = Δrᶜᶜᶜ(i, j, k, ibg)
+@inline Operators.Δrᶜᶠᶠ(i, j, k, ibg::YFlatCCBIBG) = Δrᶜᶜᶠ(i, j, k, ibg)
+@inline Operators.Δrᶠᶠᶜ(i, j, k, ibg::XFlatCCBIBG) = Δrᶜᶠᶜ(i, j, k, ibg)
+@inline Operators.Δrᶠᶠᶜ(i, j, k, ibg::YFlatCCBIBG) = Δrᶠᶜᶜ(i, j, k, ibg)
+@inline Operators.Δrᶠᶠᶠ(i, j, k, ibg::XFlatCCBIBG) = Δrᶜᶠᶠ(i, j, k, ibg)
+@inline Operators.Δrᶠᶠᶠ(i, j, k, ibg::YFlatCCBIBG) = Δrᶠᶜᶠ(i, j, k, ibg)
 
-@inline Δrᶠᶠᶜ(i, j, k, ibg::XYFlatCCBIBG) = Δrᶜᶜᶜ(i, j, k, ibg)
-@inline Δrᶠᶠᶠ(i, j, k, ibg::XYFlatCCBIBG) = Δrᶜᶜᶠ(i, j, k, ibg)
+@inline Operators.Δrᶠᶠᶜ(i, j, k, ibg::XYFlatCCBIBG) = Δrᶜᶜᶜ(i, j, k, ibg)
+@inline Operators.Δrᶠᶠᶠ(i, j, k, ibg::XYFlatCCBIBG) = Δrᶜᶜᶠ(i, j, k, ibg)
 
-@inline Δzᶜᶜᶜ(i, j, k, ibg::VSCCBIBG) = Δrᶜᶜᶜ(i, j, k, ibg)
-@inline Δzᶠᶜᶜ(i, j, k, ibg::VSCCBIBG) = Δrᶠᶜᶜ(i, j, k, ibg)
-@inline Δzᶜᶠᶜ(i, j, k, ibg::VSCCBIBG) = Δrᶜᶠᶜ(i, j, k, ibg)
-@inline Δzᶜᶜᶠ(i, j, k, ibg::VSCCBIBG) = Δrᶜᶜᶠ(i, j, k, ibg)
-@inline Δzᶠᶠᶜ(i, j, k, ibg::VSCCBIBG) = Δrᶠᶠᶜ(i, j, k, ibg)
-@inline Δzᶜᶠᶠ(i, j, k, ibg::VSCCBIBG) = Δrᶜᶠᶠ(i, j, k, ibg)
-@inline Δzᶠᶜᶠ(i, j, k, ibg::VSCCBIBG) = Δrᶠᶜᶠ(i, j, k, ibg)
-@inline Δzᶠᶠᶠ(i, j, k, ibg::VSCCBIBG) = Δrᶠᶠᶠ(i, j, k, ibg)
+@inline Operators.Δzᶜᶜᶜ(i, j, k, ibg::VSCCBIBG) = Δrᶜᶜᶜ(i, j, k, ibg)
+@inline Operators.Δzᶠᶜᶜ(i, j, k, ibg::VSCCBIBG) = Δrᶠᶜᶜ(i, j, k, ibg)
+@inline Operators.Δzᶜᶠᶜ(i, j, k, ibg::VSCCBIBG) = Δrᶜᶠᶜ(i, j, k, ibg)
+@inline Operators.Δzᶜᶜᶠ(i, j, k, ibg::VSCCBIBG) = Δrᶜᶜᶠ(i, j, k, ibg)
+@inline Operators.Δzᶠᶠᶜ(i, j, k, ibg::VSCCBIBG) = Δrᶠᶠᶜ(i, j, k, ibg)
+@inline Operators.Δzᶜᶠᶠ(i, j, k, ibg::VSCCBIBG) = Δrᶜᶠᶠ(i, j, k, ibg)
+@inline Operators.Δzᶠᶜᶠ(i, j, k, ibg::VSCCBIBG) = Δrᶠᶜᶠ(i, j, k, ibg)
+@inline Operators.Δzᶠᶠᶠ(i, j, k, ibg::VSCCBIBG) = Δrᶠᶠᶠ(i, j, k, ibg)
 
 @inline top_cell(i, j, grid, ::CutCellBottom) = size(grid, 3)
 @inline bottom_height(i, j, ibg::CCBIBG) = @inbounds ibg.immersed_boundary.bottom_height[i, j, 1]
@@ -448,23 +445,23 @@ end
 @inline Operators.Δz⁻¹ᶠᶠᶠ(i, j, k, ibg::VSCCBIBG) = Δr⁻¹ᶠᶠᶠ(i, j, k, ibg)
 
 # A face the bottom closes is peripheral even between two active cells, as on a crest, and carries no velocity
-@inline peripheral_node(i, j, k, ibg::CCBIBG, ::Face, ::Center, ::Center) = inactive_cell(i, j, k, ibg) | inactive_cell(i-1, j, k, ibg) |
+@inline Grids.peripheral_node(i, j, k, ibg::CCBIBG, ::Face, ::Center, ::Center) = inactive_cell(i, j, k, ibg) | inactive_cell(i-1, j, k, ibg) |
                                                                            (rnode(i, j, k+1, ibg.underlying_grid, c, c, f) ≤ bottom_heightᶠᶜᵃ(i, j, ibg.underlying_grid, ibg.immersed_boundary))
 
-@inline peripheral_node(i, j, k, ibg::CCBIBG, ::Center, ::Face, ::Center) = inactive_cell(i, j, k, ibg) | inactive_cell(i, j-1, k, ibg) |
+@inline Grids.peripheral_node(i, j, k, ibg::CCBIBG, ::Center, ::Face, ::Center) = inactive_cell(i, j, k, ibg) | inactive_cell(i, j-1, k, ibg) |
                                                                            (rnode(i, j, k+1, ibg.underlying_grid, c, c, f) ≤ bottom_heightᶜᶠᵃ(i, j, ibg.underlying_grid, ibg.immersed_boundary))
 
 # A Flat direction has a single phantom face, which never closes
-@inline peripheral_node(i, j, k, ibg::XFlatCCBIBG, ::Face, ::Center, ::Center) = inactive_cell(i, j, k, ibg) | inactive_cell(i-1, j, k, ibg)
-@inline peripheral_node(i, j, k, ibg::YFlatCCBIBG, ::Center, ::Face, ::Center) = inactive_cell(i, j, k, ibg) | inactive_cell(i, j-1, k, ibg)
+@inline Grids.peripheral_node(i, j, k, ibg::XFlatCCBIBG, ::Face, ::Center, ::Center) = inactive_cell(i, j, k, ibg) | inactive_cell(i-1, j, k, ibg)
+@inline Grids.peripheral_node(i, j, k, ibg::YFlatCCBIBG, ::Center, ::Face, ::Center) = inactive_cell(i, j, k, ibg) | inactive_cell(i, j-1, k, ibg)
 
 # Nodes on the edges of a closed face are peripheral, as they are on the edges of a face next to an immersed cell
-@inline peripheral_node(i, j, k, ibg::CCBIBG, ::Face, ::Center, ::Face) = peripheral_node(i, j, k, ibg, f, c, c) | peripheral_node(i, j, k-1, ibg, f, c, c)
+@inline Grids.peripheral_node(i, j, k, ibg::CCBIBG, ::Face, ::Center, ::Face) = peripheral_node(i, j, k, ibg, f, c, c) | peripheral_node(i, j, k-1, ibg, f, c, c)
 
-@inline peripheral_node(i, j, k, ibg::CCBIBG, ::Face, ::Face, ::Center) = peripheral_node(i, j, k, ibg, f, c, c) | peripheral_node(i, j-1, k, ibg, f, c, c) |
+@inline Grids.peripheral_node(i, j, k, ibg::CCBIBG, ::Face, ::Face, ::Center) = peripheral_node(i, j, k, ibg, f, c, c) | peripheral_node(i, j-1, k, ibg, f, c, c) |
                                                                           peripheral_node(i, j, k, ibg, c, f, c) | peripheral_node(i-1, j, k, ibg, c, f, c)
 
-@inline peripheral_node(i, j, k, ibg::CCBIBG, ::Face, ::Face, ::Face) = peripheral_node(i, j, k, ibg, f, f, c) | peripheral_node(i, j, k-1, ibg, f, f, c)
+@inline Grids.peripheral_node(i, j, k, ibg::CCBIBG, ::Face, ::Face, ::Face) = peripheral_node(i, j, k, ibg, f, f, c) | peripheral_node(i, j, k-1, ibg, f, f, c)
 
 # No difference reaches across a closed face, as none reaches into an immersed cell
 @inline conditional_δx_f(::Center, ::Center, i, j, k, ibg::CCBIBG, δx, args...) = ifelse(immersed_peripheral_node(i, j, k, ibg, f, c, c), zero(ibg), δx(i, j, k, ibg, args...))

@@ -1,4 +1,4 @@
-import FFTW
+using FFTW: FFTW
 
 using Oceananigans.Architectures: architecture
 using Oceananigans.Fields: interior
@@ -18,7 +18,7 @@ Architectures.architecture(solver::DistributedFFTBasedPoissonSolver) =
     architecture(solver.global_grid)
 
 """
-$(MethodSignatures(; defaults = true))
+$(SIGNATURES)
 
 Return an FFT-based solver for the Poisson equation,
 

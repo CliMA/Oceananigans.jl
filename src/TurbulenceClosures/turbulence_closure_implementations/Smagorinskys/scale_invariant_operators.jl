@@ -1,6 +1,6 @@
-using Oceananigans.TurbulenceClosures: Σ₁₁, Σ₂₂, Σ₃₃, Σ₁₂, Σ₁₃, Σ₂₃
-using Oceananigans.TurbulenceClosures: tr_Σ², Σ₁₂², Σ₁₃², Σ₂₃²
 using Oceananigans.Operators: volume, V⁻¹, ∂xᶜᶜᶜ, ∂xᶠᶜᶠ, ∂xᶠᶠᶜ, ∂yᶜᶜᶜ, ∂yᶜᶠᶠ, ∂yᶠᶠᶜ, ∂zᶜᶜᶜ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ
+using Oceananigans.TurbulenceClosures: Σ₁₁, Σ₂₂, Σ₃₃, Σ₁₂, Σ₁₃, Σ₂₃,
+                                       tr_Σ², Σ₁₂², Σ₁₃², Σ₂₃²
 
 #####
 ##### Double dot product of strain on cell edges (currently unused)

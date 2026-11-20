@@ -1,5 +1,5 @@
 using Oceananigans.Grids: Grids, AbstractMutableGrid, MutableVerticalDiscretization,
-    rnode
+                          rnode
 
 #####
 ##### MutableVerticalDiscretization-specific vertical spacing functions

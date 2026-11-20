@@ -1,3 +1,6 @@
+using Oceananigans.Grids: AbstractUnderlyingGrid, Bounded, Center, Closed, Face, FaceFolded,
+                          MutableVerticalDiscretization, Periodic, TwoSided, column_depthᶜᶜᵃ, column_depthᶜᶠᵃ,
+                          column_depthᶠᶜᵃ, column_depthᶠᶠᵃ, znode
 using Oceananigans.Operators
 using Oceananigans.Operators: MLLG, MOSG, MRG, north_fold_index, superscript_location, Δx⁻¹ᶜᶜᶜ, Δx⁻¹ᶜᶜᶠ, Δx⁻¹ᶜᶠᶜ,
                               Δx⁻¹ᶜᶠᶠ, Δx⁻¹ᶠᶜᶜ, Δx⁻¹ᶠᶜᶠ, Δx⁻¹ᶠᶠᶜ, Δy⁻¹ᶜᶜᶜ, Δy⁻¹ᶜᶜᶠ, Δy⁻¹ᶜᶠᶜ, Δy⁻¹ᶜᶠᶠ, Δy⁻¹ᶠᶜᶜ, Δy⁻¹ᶠᶜᶠ,
@@ -5,10 +8,6 @@ using Oceananigans.Operators: MLLG, MOSG, MRG, north_fold_index, superscript_loc
                               δyᶠᶜᶜ, δyᶠᶜᶠ, δyᶠᶠᶜ, σ⁻, σ⁻¹ⁿ, σⁿ, ℑxzᶜᵃᶜ, ℑxzᶠᵃᶜ, ℑxzᶠᵃᶠ, ℑyzᵃᶜᶜ, ℑyzᵃᶠᶜ, ℑyzᵃᶠᶠ, ∂t_σ,
                               ∂x_zᶜᶜᶜ, ∂x_zᶜᶠᶜ, ∂x_zᶠᶜᶜ, ∂x_zᶠᶜᶠ, ∂x_zᶠᶠᶜ, ∂y_zᶜᶜᶜ, ∂y_zᶜᶠᶜ, ∂y_zᶜᶠᶠ, ∂y_zᶠᶜᶜ, ∂y_zᶠᶠᶜ,
                               ∂zᶜᶜᶜ, ∂zᶜᶜᶠ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ, ∂zᶠᶠᶠ
-
-using Oceananigans.Grids: AbstractUnderlyingGrid, Bounded, Center, Closed, Face, FaceFolded,
-                          MutableVerticalDiscretization, Periodic, TwoSided, column_depthᶜᶜᵃ, column_depthᶜᶠᵃ,
-                          column_depthᶠᶜᵃ, column_depthᶠᶠᵃ, znode
 
 const UnderlyingMutableGrid{FT, TX, TY} = AbstractUnderlyingGrid{FT, TX, TY, <:Bounded, <:MutableVerticalDiscretization}
 const MutableImmersedGrid{FT, TX, TY}   = ImmersedBoundaryGrid{FT, TX, TY, <:Bounded, <:UnderlyingMutableGrid}
@@ -94,15 +93,14 @@ for LX in (:ᶠ, :ᶜ), LY in (:ᶠ, :ᶜ), LZ in (:ᶠ, :ᶜ)
 
     @eval begin
         using Oceananigans.Operators: $rspacing, $rcp_rspacing
-        import Oceananigans.Operators: $zspacing, $rcp_zspacing
 
-        @inline $zspacing(i, j, k, grid::IMRG)  = $rspacing(i, j, k, grid) * σⁿ(i, j, k, grid, $ℓx(), $ℓy(), $ℓz())
-        @inline $zspacing(i, j, k, grid::IMLLG) = $rspacing(i, j, k, grid) * σⁿ(i, j, k, grid, $ℓx(), $ℓy(), $ℓz())
-        @inline $zspacing(i, j, k, grid::IMOSG) = $rspacing(i, j, k, grid) * σⁿ(i, j, k, grid, $ℓx(), $ℓy(), $ℓz())
+        @inline Operators.$zspacing(i, j, k, grid::IMRG)  = $rspacing(i, j, k, grid) * σⁿ(i, j, k, grid, $ℓx(), $ℓy(), $ℓz())
+        @inline Operators.$zspacing(i, j, k, grid::IMLLG) = $rspacing(i, j, k, grid) * σⁿ(i, j, k, grid, $ℓx(), $ℓy(), $ℓz())
+        @inline Operators.$zspacing(i, j, k, grid::IMOSG) = $rspacing(i, j, k, grid) * σⁿ(i, j, k, grid, $ℓx(), $ℓy(), $ℓz())
 
-        @inline $rcp_zspacing(i, j, k, grid::IMRG)  = $rcp_rspacing(i, j, k, grid) * σ⁻¹ⁿ(i, j, k, grid, $ℓx(), $ℓy(), $ℓz())
-        @inline $rcp_zspacing(i, j, k, grid::IMLLG) = $rcp_rspacing(i, j, k, grid) * σ⁻¹ⁿ(i, j, k, grid, $ℓx(), $ℓy(), $ℓz())
-        @inline $rcp_zspacing(i, j, k, grid::IMOSG) = $rcp_rspacing(i, j, k, grid) * σ⁻¹ⁿ(i, j, k, grid, $ℓx(), $ℓy(), $ℓz())
+        @inline Operators.$rcp_zspacing(i, j, k, grid::IMRG)  = $rcp_rspacing(i, j, k, grid) * σ⁻¹ⁿ(i, j, k, grid, $ℓx(), $ℓy(), $ℓz())
+        @inline Operators.$rcp_zspacing(i, j, k, grid::IMLLG) = $rcp_rspacing(i, j, k, grid) * σ⁻¹ⁿ(i, j, k, grid, $ℓx(), $ℓy(), $ℓz())
+        @inline Operators.$rcp_zspacing(i, j, k, grid::IMOSG) = $rcp_rspacing(i, j, k, grid) * σ⁻¹ⁿ(i, j, k, grid, $ℓx(), $ℓy(), $ℓz())
     end
 end
 
