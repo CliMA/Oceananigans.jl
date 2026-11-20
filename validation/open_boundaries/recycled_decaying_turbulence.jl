@@ -9,7 +9,7 @@
 #   * `averaging = 2` on `u` and `v`, which removes the part of `v` that does not depend on `y`. The periodic box
 #     keeps that part, so this run departs from it.
 #
-# The script writes a figure and an animation of the vorticity.
+# The script writes a figure and an animation of the vorticity. A dashed line marks the recycling plane.
 
 using Oceananigans
 using CairoMakie
@@ -96,7 +96,7 @@ for (row, name) in enumerate(keys(experiments))
     reference = periodic[experiments[name].numerics].vorticity[end]
     snapshot_axis = Axis(fig[row + 1, 1:2]; title = "Recycled inflow, $(experiments[name].label)", xlabel = "x", ylabel = "y", aspect = DataAspect())
     heatmap!(snapshot_axis, x, y, recycled[name].vorticity[end][1:tiles*N, :]; colormap = :balance, colorrange = colorrange(reference))
-    vlines!(snapshot_axis, L; color = :black, linestyle = :dash)
+    vlines!(snapshot_axis, L; color = :limegreen, linestyle = :dash, linewidth = 2.5)
 end
 
 enstrophy_axis = Axis(fig[5, 1]; title = "Enstrophy by box (solid: first, dashed: second, dotted: third)", xlabel = "t U / L", ylabel = "⟨ζ²⟩ / 2", yscale = log10)
@@ -134,7 +134,8 @@ save("recycled_decaying_turbulence.png", fig)
 
 frame = Observable(1)
 animation = Figure(size = (1300, 1900))
-Label(animation[0, 1], @lift "Vorticity at t U / L = " * string(round(box_crossings(periodic.centered.times[$frame]), digits = 2)); fontsize = 22, tellwidth = false)
+Label(animation[0, 1], @lift "Vorticity at t U / L = " * string(round(box_crossings(periodic.centered.times[$frame]), digits = 2)) * " (dashed: recycling plane)";
+      fontsize = 22, tellwidth = false)
 
 periodic_axis = Axis(animation[1, 1]; title = "Periodic box, Centered(order = 2), repeated three times", ylabel = "y", aspect = DataAspect())
 heatmap!(periodic_axis, x, y, @lift(repeat(periodic.centered.vorticity[$frame], tiles, 1)); colormap = :balance,
@@ -144,7 +145,7 @@ for (row, name) in enumerate(keys(experiments))
     reference = periodic[experiments[name].numerics].vorticity
     recycled_axis = Axis(animation[row + 1, 1]; title = "Recycled inflow, $(experiments[name].label)", xlabel = "x", ylabel = "y", aspect = DataAspect())
     heatmap!(recycled_axis, x, y, @lift(recycled[name].vorticity[$frame][1:tiles*N, :]); colormap = :balance, colorrange = @lift(colorrange(reference[$frame])))
-    vlines!(recycled_axis, L; color = :black, linestyle = :dash)
+    vlines!(recycled_axis, L; color = :limegreen, linestyle = :dash, linewidth = 2.5)
 end
 
 record(animation, "recycled_decaying_turbulence.mp4", eachindex(periodic.centered.times); framerate = 16) do n

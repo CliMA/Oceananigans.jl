@@ -16,7 +16,7 @@
 # The targets hold in all four. In the first two the recycled fluctuations grow from pass to pass and the mean inflow
 # tilts along y. Scaling stops the growth and leaves the turbulence at the inflow intermittent.
 #
-# The script writes a figure of statistics and an animation of the four runs.
+# The script writes a figure of statistics and an animation of the four runs. Dashed lines mark the recycling planes.
 
 using Oceananigans
 using CairoMakie
@@ -172,6 +172,7 @@ y = ynodes(grid, Center())
 colors = (absolute = :firebrick, fluctuations = :royalblue, scaled = :seagreen, laminar = :gray50)
 limits = (-box_length, box_length, -box_length, box_length)
 stride = 8
+mark_recycling_planes!(axis) = vlines!(axis, [-1, 1] .* (box_length - recycling_distance); color = :limegreen, linestyle = :dash, linewidth = 2.5)
 
 fig = Figure(size = (2000, 1500))
 
@@ -179,11 +180,13 @@ for (column, name) in enumerate(keys(runs))
     result = results[name]
     axis = Axis(fig[1, column]; title = "$name: u at mid-depth at the end", xlabel = "x / H", ylabel = "y / H", aspect = DataAspect(), limits)
     heatmap!(axis, xnodes(grid, Face()), y, runs[name]["u"]; colormap = :balance, colorrange = (-1.3, 1.3) .* bulk_velocity)
+    name == :laminar || mark_recycling_planes!(axis)
 
     axis = Axis(fig[2, column]; title = "$name: ∫ k dz / (u★² H) from 0.1 to 1000, and mean flow", xlabel = "x / H", ylabel = "y / H", aspect = DataAspect(), limits)
     heatmap!(axis, x, y, max.(result.kinetic_energy, 1e-1); colormap = :magma, colorscale = log10, colorrange = (1e-1, 1e3))
     arrows2d!(axis, x[stride÷2:stride:end], y[stride÷2:stride:end], result.U[stride÷2:stride:end, stride÷2:stride:end], result.V[stride÷2:stride:end, stride÷2:stride:end];
               lengthscale = 0.6 * stride * Δ / bulk_velocity, color = :white)
+    name == :laminar || mark_recycling_planes!(axis)
 end
 
 inflow_axis = Axis(fig[3, 1]; title = "Mean inflow at the boundaries (solid: west, dashed: east)", xlabel = "y / H", ylabel = "depth-averaged inward u / bulk velocity")
@@ -215,14 +218,17 @@ save("recycled_converging_inflow.png", fig)
 frame = Observable(1)
 frame_times = first(runs)["frames"].times
 animation = Figure(size = (2000, 1050))
-Label(animation[0, 1:length(runs)], @lift "u (top) and w (bottom) at mid-depth at t = " * string(round(frame_times[$frame], digits = 2)) * " H / u★"; fontsize = 22)
+Label(animation[0, 1:length(runs)], @lift "u (top) and w (bottom) at mid-depth at t = " * string(round(frame_times[$frame], digits = 2)) * " H / u★ (dashed: recycling planes)";
+      fontsize = 22)
 
 for (column, name) in enumerate(keys(runs))
     frames = runs[name]["frames"]
     axis = Axis(animation[1, column]; title = string(name), xlabel = "x / H", ylabel = "y / H", aspect = DataAspect(), limits)
     heatmap!(axis, xnodes(grid, Face()), y, @lift(frames.u[$frame]); colormap = :balance, colorrange = (-1.3, 1.3) .* bulk_velocity)
+    name == :laminar || mark_recycling_planes!(axis)
     axis = Axis(animation[2, column]; xlabel = "x / H", ylabel = "y / H", aspect = DataAspect(), limits)
     heatmap!(axis, x, y, @lift(frames.w[$frame]); colormap = :balance, colorrange = (-5, 5) .* u★)
+    name == :laminar || mark_recycling_planes!(axis)
 end
 
 Colorbar(animation[1, length(runs) + 1]; colormap = :balance, limits = (-1.3, 1.3) .* bulk_velocity, label = "u / u★")

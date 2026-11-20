@@ -13,7 +13,8 @@
 #     sets the bulk flow as in the periodic channel.
 #   * `laminar`: the same mean profile imposed without recycling, for reference.
 #
-# The script writes a figure of statistics and an animation of the first part of the four runs.
+# The script writes a figure of statistics and an animation of the first part of the four runs, in which a dashed
+# line marks the recycling plane.
 
 using Oceananigans
 using CairoMakie
@@ -289,8 +290,9 @@ save("recycled_channel_inflow.png", fig)
 
 frame = Observable(1)
 frame_times = periodic["frames"].times
+xᶠ = x .- box_length / 2N
 animation = Figure(size = (1700, 1150))
-Label(animation[0, 1:2], @lift "u - U(z) in units of u★ at t = " * string(round(frame_times[$frame], digits = 2)) * " H / u★"; fontsize = 22)
+Label(animation[0, 1:2], @lift "u - U(z) in units of u★ at t = " * string(round(frame_times[$frame], digits = 2)) * " H / u★ (dashed: recycling plane)"; fontsize = 22)
 
 for (row, name) in enumerate((:periodic, keys(runs)...))
     frames = name == :periodic ? periodic["frames"] : runs[name]["frames"]
@@ -300,9 +302,10 @@ for (row, name) in enumerate((:periodic, keys(runs)...))
     vertical = @lift repeat(frames.vertical[$frame], copies, 1) .- reshape(mean_profile, 1, Nz)
 
     horizontal_axis = Axis(animation[row, 1]; title = "$label, z = $(round(z[animation_level], digits = 2)) H", xlabel = "x / H", ylabel = "y / H", aspect = DataAspect())
-    heatmap!(horizontal_axis, x, y, horizontal; colormap = :balance, colorrange = (-6, 6))
+    heatmap!(horizontal_axis, xᶠ, y, horizontal; colormap = :balance, colorrange = (-6, 6))
     vertical_axis = Axis(animation[row, 2]; title = "$label, y = π H", xlabel = "x / H", ylabel = "z / H")
-    heatmap!(vertical_axis, x, z, vertical; colormap = :balance, colorrange = (-6, 6))
+    heatmap!(vertical_axis, xᶠ, z, vertical; colormap = :balance, colorrange = (-6, 6))
+    name in (:fluctuations, :absolute) && foreach(axis -> vlines!(axis, box_length; color = :limegreen, linestyle = :dash, linewidth = 2.5), (horizontal_axis, vertical_axis))
 end
 
 Colorbar(animation[1:length(runs)+1, 3]; colormap = :balance, limits = (-6, 6), label = "(u - U) / u★")
