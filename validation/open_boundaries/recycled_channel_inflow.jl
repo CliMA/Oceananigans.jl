@@ -238,22 +238,25 @@ x = (1:boxes*N) .* (box_length / N) .- box_length / 2N
 y = (1:N) .* Δy .- Δy / 2
 z = (1:Nz) .* Δz .- Δz / 2
 colors = (fluctuations = :royalblue, absolute = :firebrick, laminar = :gray50)
+descriptions = (fluctuations = "Open channel, inflow: mean profile + recycled fluctuations\n(averaging = 2, target_transport)",
+                absolute = "Open channel, inflow: recycled plane as is\n(averaging = nothing, no target_transport)",
+                laminar = "Open channel, inflow: mean profile only\n(no recycling)")
+mark_recycling_plane!(axis) = vlines!(axis, box_length; color = :limegreen, linestyle = :dash, linewidth = 2.5, label = "Recycling plane")
 last_box = (boxes - 1) * N .+ (1:N)
 box_mean(a) = vec(mean(a[last_box, :], dims = 1))
 
 fig = Figure(size = (1500, 1300))
 stress_axis = Axis(fig[1, 1]; title = "Bottom stress", xlabel = "x / H", ylabel = "τ / u★²")
 energy_axis = Axis(fig[1, 2]; title = "Depth-integrated resolved kinetic energy of fluctuations", xlabel = "x / H", ylabel = "∫ k dz / (u★² H)")
-correlation_axis = Axis(fig[1, 3]; title = "Correlation of u at mid-depth with u one box downstream", xlabel = "x / H", ylabel = "correlation")
-velocity_axis = Axis(fig[2, 1]; title = "Mean velocity in the last box", xlabel = "z / H", ylabel = "U / u★", xscale = log10)
-variance_axis = Axis(fig[2, 2]; title = "Variances in the last box (solid: u, dashed: w)", xlabel = "variance / u★²", ylabel = "z / H")
-flux_axis = Axis(fig[2, 3]; title = "Resolved momentum flux in the last box", xlabel = "-⟨u′w′⟩ / u★²", ylabel = "z / H")
-transport_axis = Axis(fig[3, 1]; title = "Bulk velocity through the west boundary", xlabel = "t u★ / H", ylabel = "transport / (area u★)")
-pressure_axis = Axis(fig[3, 2]; title = "Mean nonhydrostatic pressure", xlabel = "x / H", ylabel = "p / u★²")
+correlation_axis = Axis(fig[1, 3]; title = "Correlation of u(x) with u(x + 2π H) at mid-depth", xlabel = "x / H", ylabel = "correlation")
+velocity_axis = Axis(fig[2, 1]; title = "Mean velocity, last third of the channel", xlabel = "z / H", ylabel = "U / u★", xscale = log10)
+variance_axis = Axis(fig[2, 2]; title = "Variances, last third of the channel (solid: u, dashed: w)", xlabel = "variance / u★²", ylabel = "z / H")
+flux_axis = Axis(fig[2, 3]; title = "Resolved momentum flux, last third of the channel", xlabel = "-⟨u′w′⟩ / u★²", ylabel = "z / H")
+transport_axis = Axis(fig[3, 1]; title = "Bulk velocity through the plane x = 0", xlabel = "t u★ / H", ylabel = "transport / (area u★)")
+pressure_axis = Axis(fig[3, 2]; title = "Mean nonhydrostatic pressure, relative to the east end", xlabel = "x / H", ylabel = "p / u★²")
 
-hlines!(stress_axis, mean(reference.stress); color = :black, linewidth = 3, label = "periodic")
+hlines!(stress_axis, mean(reference.stress); color = :black, linewidth = 3, label = "Periodic channel (reference)")
 hlines!(energy_axis, mean(reference.kinetic_energy); color = :black, linewidth = 3)
-vlines!(correlation_axis, box_length; color = :black, linestyle = :dash)
 lines!(velocity_axis, z, vec(mean(reference.U, dims = 1)); color = :black, linewidth = 3)
 lines!(variance_axis, vec(mean(reference.uu, dims = 1)), z; color = :black, linewidth = 3)
 lines!(variance_axis, vec(mean(reference.ww, dims = 1)), z; color = :black, linewidth = 3, linestyle = :dash)
@@ -261,7 +264,7 @@ lines!(flux_axis, -vec(mean(reference.uw, dims = 1)), z; color = :black, linewid
 
 for name in keys(runs)
     result, samples, color = results[name], runs[name]["samples"], colors[name]
-    lines!(stress_axis, x, result.stress; color, label = string(name))
+    lines!(stress_axis, x, result.stress; color, label = descriptions[name])
     lines!(energy_axis, x, result.kinetic_energy; color)
     name == :laminar || lines!(correlation_axis, x[1:end-N], result.correlation; color)
     lines!(velocity_axis, z, box_mean(result.U); color)
@@ -281,34 +284,38 @@ lines!(transport_axis, periodic["samples"].times, periodic["samples"].transport 
 @printf("periodic      stress %.3f u★², bulk velocity at the end %.3f u★, of the inflow profile %.3f u★\n", mean(reference.stress),
         periodic["samples"].transport[end] / (box_length * H), target_transport / (box_length * H))
 
-axislegend(stress_axis; position = :rb)
+foreach(mark_recycling_plane!, (stress_axis, energy_axis, correlation_axis, pressure_axis))
+Legend(fig[3, 3], stress_axis; tellwidth = false)
 save("recycled_channel_inflow.png", fig)
 
 #####
-##### Animation of u minus the inflow profile
+##### Animation of u minus the mean profile
 #####
 
 frame = Observable(1)
 frame_times = periodic["frames"].times
 xᶠ = x .- box_length / 2N
-animation = Figure(size = (1700, 1150))
-Label(animation[0, 1:2], @lift "u - U(z) in units of u★ at t = " * string(round(frame_times[$frame], digits = 2)) * " H / u★ (dashed: recycling plane)"; fontsize = 22)
+animation = Figure(size = (1700, 1450))
+Label(animation[0, 1:2], @lift "Streamwise velocity minus the mean profile of the periodic channel, (u - U(z)) / u★, " * @sprintf("at t = %.2f H / u★\n", frame_times[$frame]) *
+                               "The flow goes from left to right. Dashed lines mark the recycling plane, which is sampled and fed back at the inflow (x = 0)."; fontsize = 20)
 
 for (row, name) in enumerate((:periodic, keys(runs)...))
     frames = name == :periodic ? periodic["frames"] : runs[name]["frames"]
     copies = name == :periodic ? boxes : 1
-    label = name == :periodic ? "periodic, repeated $boxes times" : string(name)
+    description = name == :periodic ? "Periodic channel (reference), shown $boxes times side by side" : descriptions[name]
     horizontal = @lift repeat(frames.horizontal[$frame], copies, 1) .- mean_profile[animation_level]
     vertical = @lift repeat(frames.vertical[$frame], copies, 1) .- reshape(mean_profile, 1, Nz)
 
-    horizontal_axis = Axis(animation[row, 1]; title = "$label, z = $(round(z[animation_level], digits = 2)) H", xlabel = "x / H", ylabel = "y / H", aspect = DataAspect())
+    Label(animation[2row - 1, 1:2], description; font = :bold, fontsize = 17)
+    horizontal_axis = Axis(animation[2row, 1]; title = "Horizontal plane at z = $(round(z[animation_level], digits = 2)) H", titlefont = :regular,
+                           xlabel = "x / H", ylabel = "y / H", aspect = DataAspect())
     heatmap!(horizontal_axis, xᶠ, y, horizontal; colormap = :balance, colorrange = (-6, 6))
-    vertical_axis = Axis(animation[row, 2]; title = "$label, y = π H", xlabel = "x / H", ylabel = "z / H")
+    vertical_axis = Axis(animation[2row, 2]; title = "Vertical plane at y = π H", titlefont = :regular, xlabel = "x / H", ylabel = "z / H")
     heatmap!(vertical_axis, xᶠ, z, vertical; colormap = :balance, colorrange = (-6, 6))
-    name in (:fluctuations, :absolute) && foreach(axis -> vlines!(axis, box_length; color = :limegreen, linestyle = :dash, linewidth = 2.5), (horizontal_axis, vertical_axis))
+    name in (:fluctuations, :absolute) && foreach(mark_recycling_plane!, (horizontal_axis, vertical_axis))
 end
 
-Colorbar(animation[1:length(runs)+1, 3]; colormap = :balance, limits = (-6, 6), label = "(u - U) / u★")
+Colorbar(animation[1:2length(runs)+2, 3]; colormap = :balance, limits = (-6, 6), label = "(u - U) / u★")
 
 record(animation, "recycled_channel_inflow.mp4", eachindex(frame_times); framerate = 25) do n
     frame[] = n

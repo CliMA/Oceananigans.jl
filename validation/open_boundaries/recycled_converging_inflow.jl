@@ -170,34 +170,44 @@ results = map(statistics, runs)
 x = xnodes(grid, Center())
 y = ynodes(grid, Center())
 colors = (absolute = :firebrick, fluctuations = :royalblue, scaled = :seagreen, laminar = :gray50)
+descriptions = (absolute = "Inflow: recycled plane as is\n(averaging = nothing)",
+                fluctuations = "Inflow: mean profile + recycled fluctuations\n(averaging = 2)",
+                scaled = "Inflow: mean profile + $velocity_ratio × recycled fluctuations\n(averaging = 2, damping = $velocity_ratio)",
+                laminar = "Inflow: mean profile only\n(no recycling)")
 limits = (-box_length, box_length, -box_length, box_length)
 stride = 8
 mark_recycling_planes!(axis) = vlines!(axis, [-1, 1] .* (box_length - recycling_distance); color = :limegreen, linestyle = :dash, linewidth = 2.5)
 
-fig = Figure(size = (2000, 1500))
+fig = Figure(size = (2000, 1750))
+Label(fig[1, 1:4], "Velocity along x at mid-depth at the end of the run, u / u★. Dashed lines mark the recycling planes."; font = :bold, fontsize = 18)
+Label(fig[3, 1:4], "Depth-integrated kinetic energy of the fluctuations about the time mean, ∫ k dz / (u★² H), with the depth-averaged mean flow as arrows";
+      font = :bold, fontsize = 18)
 
 for (column, name) in enumerate(keys(runs))
     result = results[name]
-    axis = Axis(fig[1, column]; title = "$name: u at mid-depth at the end", xlabel = "x / H", ylabel = "y / H", aspect = DataAspect(), limits)
+    axis = Axis(fig[2, column]; title = descriptions[name], xlabel = "x / H", ylabel = "y / H", aspect = DataAspect(), limits)
     heatmap!(axis, xnodes(grid, Face()), y, runs[name]["u"]; colormap = :balance, colorrange = (-1.3, 1.3) .* bulk_velocity)
     name == :laminar || mark_recycling_planes!(axis)
 
-    axis = Axis(fig[2, column]; title = "$name: ∫ k dz / (u★² H) from 0.1 to 1000, and mean flow", xlabel = "x / H", ylabel = "y / H", aspect = DataAspect(), limits)
+    axis = Axis(fig[4, column]; title = descriptions[name], xlabel = "x / H", ylabel = "y / H", aspect = DataAspect(), limits)
     heatmap!(axis, x, y, max.(result.kinetic_energy, 1e-1); colormap = :magma, colorscale = log10, colorrange = (1e-1, 1e3))
     arrows2d!(axis, x[stride÷2:stride:end], y[stride÷2:stride:end], result.U[stride÷2:stride:end, stride÷2:stride:end], result.V[stride÷2:stride:end, stride÷2:stride:end];
               lengthscale = 0.6 * stride * Δ / bulk_velocity, color = :white)
     name == :laminar || mark_recycling_planes!(axis)
 end
 
-inflow_axis = Axis(fig[3, 1]; title = "Mean inflow at the boundaries (solid: west, dashed: east)", xlabel = "y / H", ylabel = "depth-averaged inward u / bulk velocity")
-energy_axis = Axis(fig[3, 2]; title = "Kinetic energy of fluctuations, |y| < π H", xlabel = "x / H", ylabel = "∫ k dz / (u★² H)", yscale = log10)
-variance_axis = Axis(fig[3, 3]; title = "Variance of u along y at mid-depth, next to the west boundary", xlabel = "t u★ / H", ylabel = "variance / u★²", yscale = log10)
-transport_axis = Axis(fig[3, 4]; title = "Outflow (solid: north, dashed: south)", xlabel = "t u★ / H", ylabel = "transport out / target")
+Colorbar(fig[2, 5]; colormap = :balance, limits = (-1.3, 1.3) .* bulk_velocity, label = "u / u★")
+Colorbar(fig[4, 5]; colormap = :magma, scale = log10, limits = (1e-1, 1e3), label = "∫ k dz / (u★² H)")
+
+inflow_axis = Axis(fig[5, 1]; title = "Mean inflow at the boundaries (solid: west, dashed: east)", xlabel = "y / H", ylabel = "depth-averaged inward u / bulk velocity")
+energy_axis = Axis(fig[5, 2]; title = "Kinetic energy of fluctuations, averaged over |y| < π H", xlabel = "x / H", ylabel = "∫ k dz / (u★² H)", yscale = log10)
+variance_axis = Axis(fig[5, 3]; title = "Variance of u along y at mid-depth, next to the west boundary", xlabel = "t u★ / H", ylabel = "variance / u★²", yscale = log10)
+transport_axis = Axis(fig[5, 4]; title = "Outflow (solid: north, dashed: south)", xlabel = "t u★ / H", ylabel = "transport out / target")
 
 for name in keys(runs)
     result, transports, frames, color = results[name], runs[name]["transports"], runs[name]["frames"], colors[name]
     central_energy = vec(mean(result.kinetic_energy[:, N÷2+1:3N÷2], dims = 2))
-    lines!(energy_axis, x, max.(central_energy, 1e-3); color, label = string(name))
+    lines!(energy_axis, x, max.(central_energy, 1e-3); color, label = descriptions[name])
     lines!(variance_axis, frames.times, [mean(var(u[i, :]) for i in 1:8) for u in frames.u]; color)
     lines!(transport_axis, transports.times, transports.north ./ target_transport; color)
     lines!(transport_axis, transports.times, -transports.south ./ target_transport; color, linestyle = :dash)
@@ -208,7 +218,7 @@ for name in keys(runs)
             extrema(transports.west ./ target_transport)..., extrema(transports.east ./ target_transport)..., runs[name]["maximum_divergence"])
 end
 
-axislegend(energy_axis; position = :cb)
+Legend(fig[6, 1:4], energy_axis; orientation = :horizontal)
 save("recycled_converging_inflow.png", fig)
 
 #####
@@ -217,22 +227,25 @@ save("recycled_converging_inflow.png", fig)
 
 frame = Observable(1)
 frame_times = first(runs)["frames"].times
-animation = Figure(size = (2000, 1050))
-Label(animation[0, 1:length(runs)], @lift "u (top) and w (bottom) at mid-depth at t = " * string(round(frame_times[$frame], digits = 2)) * " H / u★ (dashed: recycling planes)";
-      fontsize = 22)
+animation = Figure(size = (2000, 1250))
+Label(animation[0, 1:length(runs)], @lift "The flow enters through the west and east boundaries (left and right edges) and leaves through the south and north boundaries. " *
+                                          @sprintf("t = %.2f H / u★\n", frame_times[$frame]) *
+                                          "Dashed lines mark the recycling planes. Each is sampled and fed back at the inflow boundary on its side."; fontsize = 20)
+Label(animation[1, 1:length(runs)], "Velocity along x at mid-depth, u / u★"; font = :bold, fontsize = 18)
+Label(animation[3, 1:length(runs)], "Vertical velocity at mid-depth, w / u★"; font = :bold, fontsize = 18)
 
 for (column, name) in enumerate(keys(runs))
     frames = runs[name]["frames"]
-    axis = Axis(animation[1, column]; title = string(name), xlabel = "x / H", ylabel = "y / H", aspect = DataAspect(), limits)
+    axis = Axis(animation[2, column]; title = descriptions[name], xlabel = "x / H", ylabel = "y / H", aspect = DataAspect(), limits)
     heatmap!(axis, xnodes(grid, Face()), y, @lift(frames.u[$frame]); colormap = :balance, colorrange = (-1.3, 1.3) .* bulk_velocity)
     name == :laminar || mark_recycling_planes!(axis)
-    axis = Axis(animation[2, column]; xlabel = "x / H", ylabel = "y / H", aspect = DataAspect(), limits)
+    axis = Axis(animation[4, column]; title = descriptions[name], xlabel = "x / H", ylabel = "y / H", aspect = DataAspect(), limits)
     heatmap!(axis, x, y, @lift(frames.w[$frame]); colormap = :balance, colorrange = (-5, 5) .* u★)
     name == :laminar || mark_recycling_planes!(axis)
 end
 
-Colorbar(animation[1, length(runs) + 1]; colormap = :balance, limits = (-1.3, 1.3) .* bulk_velocity, label = "u / u★")
-Colorbar(animation[2, length(runs) + 1]; colormap = :balance, limits = (-5, 5) .* u★, label = "w / u★")
+Colorbar(animation[2, length(runs) + 1]; colormap = :balance, limits = (-1.3, 1.3) .* bulk_velocity, label = "u / u★")
+Colorbar(animation[4, length(runs) + 1]; colormap = :balance, limits = (-5, 5) .* u★, label = "w / u★")
 
 record(animation, "recycled_converging_inflow.mp4", eachindex(frame_times); framerate = 25) do n
     frame[] = n
