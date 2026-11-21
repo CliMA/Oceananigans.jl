@@ -32,3 +32,41 @@ using Oceananigans.Advection: vertical_advection_U, vertical_advection_V
         @test maximum(abs, Gv) < 1e-10 * ṽ * 16 / 1e6
     end
 end
+
+# For a uniform velocity, the transport divergence reduces to the change of the face areas. The divergence flux
+# interpolates that change symmetrically, as the vertical flux interpolates the transport, so the two cancel wherever
+# the area changes: here with partial bottom cells whose depth varies within the bottom level, and on the sphere,
+# where Ay changes with latitude. The top level is excluded, where the vertical flux vanishes at the free surface.
+@testset "WENOVectorInvariant vertical advection of a uniform velocity vanishes where face areas change" begin
+    underlying_grid = RectilinearGrid(CPU(), size=(16, 16, 8), x=(0, 1e6), y=(0, 1e6), z=(-1e4, 0),
+                                      halo=(7, 7, 7), topology=(Periodic, Periodic, Bounded))
+
+    prng = Random.Xoshiro(45)
+    bottom_height = -9000 .- 750 * rand(prng, 16, 16)
+    partial_cell_grid = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(bottom_height))
+
+    sphere = LatitudeLongitudeGrid(CPU(), size=(16, 16, 8), longitude=(0, 360), latitude=(-60, 60), z=(-1e4, 0),
+                                   halo=(6, 6, 6))
+
+    for momentum_advection in (WENOVectorInvariant(), WENOVectorInvariant(order=5))
+        model = HydrostaticFreeSurfaceModel(partial_cell_grid; momentum_advection, buoyancy=nothing, tracers=())
+        scheme = model.advection.momentum
+        U = model.velocities
+
+        set!(model, u=10, v=0)
+        Gu = [vertical_advection_U(i, j, k, partial_cell_grid, scheme, U) for i in 1:16, j in 1:16, k in 1:7]
+        @test maximum(abs, Gu) < 1e-10 * 10 * 16 / 1e6
+
+        set!(model, u=0, v=10)
+        Gv = [vertical_advection_V(i, j, k, partial_cell_grid, scheme, U) for i in 1:16, j in 1:16, k in 1:7]
+        @test maximum(abs, Gv) < 1e-10 * 10 * 16 / 1e6
+
+        model = HydrostaticFreeSurfaceModel(sphere; momentum_advection, buoyancy=nothing, tracers=())
+        scheme = model.advection.momentum
+        U = model.velocities
+
+        set!(model, u=0, v=10)
+        Gv = [vertical_advection_V(i, j, k, sphere, scheme, U) for i in 1:16, j in 5:12, k in 1:7]
+        @test maximum(abs, Gv) < 1e-10 * 10 * 16 / 1e6
+    end
+end
