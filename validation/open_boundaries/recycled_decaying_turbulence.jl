@@ -1,7 +1,7 @@
-# Decaying two-dimensional turbulence carried by a uniform flow through an open channel with a recycled inflow.
-# The channel is three periodic boxes long and starts from three copies of the box's initial state, so the
-# stretch upstream of the recycling plane should evolve like the periodic box. Two recycled inflows are compared
-# with it:
+# Decaying two-dimensional turbulence carried by a uniform flow through an open channel with a recycled inflow,
+# past a small no-slip cylinder. The channel is three periodic boxes long and starts from three copies of the box's
+# initial state. The cylinder is at x = 12, downstream of the recycling plane, and the stretch upstream of the plane
+# is compared with the periodic box, which has no cylinder. Two recycled inflows are compared with it:
 #
 #   * `averaging = nothing`, which imposes the recycling plane as is. With `averaging = 2` on `u` alone the result
 #     is the same, because the `y`-mean of `u` is the mean flow.
@@ -9,11 +9,14 @@
 #     keeps that part, so these runs depart from it.
 #
 # Each is run with second-order centered advection, which keeps its order next to the open side, and with WENO,
-# which drops to low order in the cells next to the open side.
+# which drops to low order in the cells next to the open side. The WENO runs have no viscosity, so there the
+# cylinder only blocks the flow.
 #
-# The script writes a figure and an animation of the vorticity. A dashed line marks the recycling plane.
+# The script writes a figure and an animation of the vorticity. A dashed line marks the recycling plane and the
+# cylinder is gray.
 
 using Oceananigans
+using Oceananigans.Solvers: ConjugateGradientPoissonSolver
 using CairoMakie
 using Printf
 using Random
@@ -25,9 +28,14 @@ U = 1                  # mean flow
 tiles = 3              # boxes in the open channel
 stop_time = 4L / U
 save_interval = L / 32U
+cylinder_center = (12, L / 2)
+cylinder_radius = 0.5
+
+inside_cylinder(x, y) = hypot(x - cylinder_center[1], y - cylinder_center[2]) ≤ cylinder_radius
 
 periodic_grid = RectilinearGrid(size = (N, N), x = (0, L), y = (0, L), topology = (Periodic, Periodic, Flat))
-open_grid = RectilinearGrid(size = (tiles * N, N), x = (0, tiles * L), y = (0, L), topology = (Open, Periodic, Flat))
+underlying_grid = RectilinearGrid(size = (tiles * N, N), halo = (4, 4), x = (0, tiles * L), y = (0, L), topology = (Open, Periodic, Flat))
+open_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(inside_cylinder))
 
 numerics = (centered = (advection = Centered(order = 2), closure = ScalarDiffusivity(ν = 5e-3), label = "Centered(order = 2)"),
             weno = (advection = WENO(order = 5), closure = nothing, label = "WENO(order = 5)"))
@@ -48,14 +56,14 @@ function recycled_boundary_conditions(averaging)
     exterior_velocity = isnothing(averaging) ? 0 : U
     recycling(; kwargs...) = TurbulenceRecycling(; recycling_distance = L, averaging, kwargs...)
     u = FieldBoundaryConditions(west = NormalFlowBoundaryCondition(exterior_velocity; scheme = recycling(target_transport = U * L)),
-                                east = NormalFlowBoundaryCondition(U; scheme = PerturbationAdvection()))
-    v = FieldBoundaryConditions(west = ValueBoundaryCondition(0; scheme = recycling()))
+                                east = NormalFlowBoundaryCondition(U; scheme = PerturbationAdvection()), immersed = ValueBoundaryCondition(0))
+    v = FieldBoundaryConditions(west = ValueBoundaryCondition(0; scheme = recycling()), immersed = ValueBoundaryCondition(0))
     return (; u, v)
 end
 
 # Returns the saved times, vorticity snapshots and west transports
-function run_decaying_turbulence(grid, numerics; boundary_conditions = NamedTuple())
-    model = NonhydrostaticModel(grid; numerics.advection, numerics.closure, boundary_conditions)
+function run_decaying_turbulence(grid, numerics; boundary_conditions = NamedTuple(), pressure_solver = nothing)
+    model = NonhydrostaticModel(grid; numerics.advection, numerics.closure, boundary_conditions, pressure_solver)
     set!(model, u = (x, y) -> U + a * u′(x, y), v = (x, y) -> a * v′(x, y))
 
     u, v, w = model.velocities
@@ -71,14 +79,17 @@ function run_decaying_turbulence(grid, numerics; boundary_conditions = NamedTupl
     end
 
     simulation = Simulation(model; Δt = 0.2 * L / N / 2U, stop_time, verbose = false)
-    add_callback!(simulation, save_state, TimeInterval(save_interval))
+
+    # Saving every so many steps keeps steps from being shortened to hit save times, which can make them tiny
+    add_callback!(simulation, save_state, IterationInterval(round(Int, save_interval / simulation.Δt)))
     run!(simulation)
 
     return (; times, vorticity, transport)
 end
 
 periodic = map(n -> run_decaying_turbulence(periodic_grid, n), numerics)
-recycled = map(n -> map(inflow -> run_decaying_turbulence(open_grid, n; boundary_conditions = recycled_boundary_conditions(inflow.averaging)), inflows), numerics)
+recycled = map(n -> map(inflow -> run_decaying_turbulence(open_grid, n; boundary_conditions = recycled_boundary_conditions(inflow.averaging),
+                                                          pressure_solver = ConjugateGradientPoissonSolver(open_grid)), inflows), numerics)
 
 # Vorticity is at faces in x, with one more point in the open channel than its three boxes hold
 box(ζ, n) = ζ[(n - 1) * N .+ (1:N), :]
@@ -106,6 +117,7 @@ function vorticity_panels!(figure, frame)
             axis = Axis(figure[row + 2, column]; title = inflows[inflow].description, xlabel = "x", ylabel = "y", aspect = DataAspect())
             heatmap!(axis, x, y, vorticity; colormap = :balance, colorrange)
             vlines!(axis, L; color = :limegreen, linestyle = :dash, linewidth = 2.5)
+            poly!(axis, Circle(Point2f(cylinder_center...), cylinder_radius); color = :gray50)
         end
     end
 
@@ -113,10 +125,10 @@ function vorticity_panels!(figure, frame)
 end
 
 fig = Figure(size = (1900, 1700))
-Label(fig[0, 1:2], "Vorticity at t U / L = $(stop_time * U / L). Dashed lines mark the recycling plane."; fontsize = 22)
+Label(fig[0, 1:2], "Vorticity at t U / L = $(stop_time * U / L). Dashed lines mark the recycling plane. The cylinder is gray."; fontsize = 22)
 vorticity_panels!(fig, Observable(lastindex(times)))
 
-enstrophy_axis = Axis(fig[5, 1]; title = "Enstrophy by box (solid: first, dashed: second, dotted: third)", xlabel = "t U / L", ylabel = "⟨ζ²⟩ / 2", yscale = log10)
+enstrophy_axis = Axis(fig[5, 1]; title = "Enstrophy by box (solid: first, dashed: second, which holds the cylinder, dotted: third)", xlabel = "t U / L", ylabel = "⟨ζ²⟩ / 2", yscale = log10)
 difference_axis = Axis(fig[5, 2]; title = "Vorticity difference from the periodic box, in the first box", xlabel = "t U / L", ylabel = "rms(ζ - ζ periodic) / rms(ζ periodic)", yscale = log10)
 
 for (advection, linewidth) in ((:centered, 5), (:weno, 2))
@@ -134,7 +146,7 @@ for advection in keys(numerics), inflow in keys(inflows)
     difference = relative_difference.(result.vorticity, reference.vorticity)
     lines!(difference_axis, box_crossings(result.times)[2:end], difference[2:end]; color, label)
 
-    after(crossings) = difference[findfirst(≥(crossings * L / U), result.times)]
+    after(crossings) = difference[argmin(abs.(result.times .- crossings * L / U))]
     @printf("%-42s west transport / (U L) between %.12f and %.12f, vorticity difference after 1/16, 1 and 4 box crossings: %.1e, %.1e, %.1e\n",
             label, minimum(result.transport) / (U * L), maximum(result.transport) / (U * L), after(1/16), after(1), difference[end])
 end
@@ -151,7 +163,7 @@ save("recycled_decaying_turbulence.png", fig)
 frame = Observable(1)
 animation = Figure(size = (1900, 1300))
 Label(animation[0, 1:2], @lift "Vorticity at t U / L = " * @sprintf("%.2f", box_crossings(times[$frame])) * ". The flow goes from left to right. " *
-                               "Dashed lines mark the recycling plane, which is sampled and fed back at the inflow (x = 0)."; fontsize = 22)
+                               "Dashed lines mark the recycling plane, which is sampled and fed back at the inflow (x = 0). The cylinder is gray."; fontsize = 22)
 vorticity_panels!(animation, frame)
 
 record(animation, "recycled_decaying_turbulence.mp4", eachindex(times); framerate = 16) do n
