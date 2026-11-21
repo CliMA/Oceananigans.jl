@@ -3,6 +3,7 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 using LinearAlgebra
 
 using Oceananigans.TimeSteppers: update_state!
+using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.TurbulenceClosures: IsopycnalSkewSymmetricDiffusivity
 using Oceananigans.TurbulenceClosures: diffusive_flux_x, diffusive_flux_y, diffusive_flux_z,
                                        ExplicitTimeDiscretization, VerticallyImplicitTimeDiscretization,
@@ -133,6 +134,29 @@ end
 
             # Each triad obeys ϵ S² ≤ Sₘ², so the eight meeting a vertical face average to ϵ κ R₃₃ ≤ 2 κ Sₘ².
             @test maximum(Array(interior(model.closure_fields.ϵκR₃₃))) <= 2κ * max_slope^2 * (1 + 1e-12)
+        end
+
+        @testset "Field-valued diffusivities reproduce constant diffusivities [$arch]" begin
+            @info "  Testing IsopycnalSkewSymmetricDiffusivity with Field-valued κ on $arch..."
+
+            # The triads read κ at cell centers through `κᶜᶜᶜ`, so a spatially varying κ given as a
+            # Field needs that accessor for an array. A constant Field must reproduce the operator
+            # built with the same constant as a Number.
+            grid = RectilinearGrid(arch, size=(8, 6), x=(0, Lx), z=(-Lz, 0), halo=(4, 4),
+                                   topology=(Bounded, Flat, Bounded))
+
+            κ_symmetric, κ_skew = 1000.0, 500.0
+            κˢ, κᴬ = CenterField(grid), CenterField(grid)
+            set!(κˢ, κ_symmetric)
+            set!(κᴬ, κ_skew)
+            fill_halo_regions!((κˢ, κᴬ))
+
+            Lⁿ = tracer_operator_matrix(triad_closure(ExplicitTimeDiscretization(); κ_skew), arch)
+            closure = IsopycnalSkewSymmetricDiffusivity(ExplicitTimeDiscretization(), Float64;
+                                                        κ_symmetric = κˢ, κ_skew = κᴬ)
+            Lᶠ = tracer_operator_matrix(closure, arch)
+
+            @test maximum(abs, Lᶠ .- Lⁿ) < 1e-12 * maximum(abs, Lⁿ)
         end
 
         @testset "Vertically implicit triads reproduce the explicit operator [$arch]" begin
