@@ -16,6 +16,7 @@
 # cylinder is gray.
 
 using Oceananigans
+using Oceananigans.BoundaryConditions: ObliqueRadiation
 using Oceananigans.Solvers: ConjugateGradientPoissonSolver
 using CairoMakie
 using Printf
@@ -56,7 +57,7 @@ function recycled_boundary_conditions(averaging)
     exterior_velocity = isnothing(averaging) ? 0 : U
     recycling(; kwargs...) = TurbulenceRecycling(; recycling_distance = L, averaging, kwargs...)
     u = FieldBoundaryConditions(west = NormalFlowBoundaryCondition(exterior_velocity; scheme = recycling(target_transport = U * L)),
-                                east = NormalFlowBoundaryCondition(U; scheme = PerturbationAdvection()), immersed = ValueBoundaryCondition(0))
+                                east = NormalFlowBoundaryCondition(U; scheme = ObliqueRadiation()), immersed = ValueBoundaryCondition(0))
     v = FieldBoundaryConditions(west = ValueBoundaryCondition(0; scheme = recycling()), immersed = ValueBoundaryCondition(0))
     return (; u, v)
 end

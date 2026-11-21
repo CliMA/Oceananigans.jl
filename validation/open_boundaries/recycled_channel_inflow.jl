@@ -19,6 +19,7 @@
 # line marks the recycling plane and the hill is gray.
 
 using Oceananigans
+using Oceananigans.BoundaryConditions: ObliqueRadiation
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 using Oceananigans.Solvers: ConjugateGradientPoissonSolver
 using CairoMakie
@@ -199,7 +200,7 @@ exterior_velocity = repeat(reshape(mean_profile, 1, Nz), N, 1)
 target_transport = sum(mean_profile) * Δz * box_length
 
 recycling(averaging; kwargs...) = TurbulenceRecycling(; recycling_distance = box_length, averaging, kwargs...)
-outflow = NormalFlowBoundaryCondition(exterior_velocity; scheme = PerturbationAdvection())
+outflow = NormalFlowBoundaryCondition(exterior_velocity; scheme = ObliqueRadiation())
 
 west_conditions = (fluctuations = (u = NormalFlowBoundaryCondition(exterior_velocity; scheme = recycling(2; target_transport)),
                                    v = ValueBoundaryCondition(0; scheme = recycling(2)),

@@ -17,6 +17,7 @@
 # The script writes a figure of statistics and an animation of the four runs. Dashed lines mark the recycling planes.
 
 using Oceananigans
+using Oceananigans.BoundaryConditions: ObliqueRadiation
 using CairoMakie
 using JLD2
 using Printf
@@ -73,7 +74,7 @@ end
 
 function run_converging_inflow(filename, inflow)
     west, east = inflow(1), inflow(-1)
-    outflow(direction) = NormalFlowBoundaryCondition(direction * bulk_velocity * box_length / half_length; scheme = PerturbationAdvection())
+    outflow(direction) = NormalFlowBoundaryCondition(direction * bulk_velocity * box_length / half_length; scheme = ObliqueRadiation())
 
     boundary_conditions = (u = FieldBoundaryConditions(west = west.u, east = east.u, bottom = bottom_drag),
                            v = FieldBoundaryConditions(west = west.v, east = east.v, south = outflow(-1), north = outflow(1), bottom = bottom_drag),
