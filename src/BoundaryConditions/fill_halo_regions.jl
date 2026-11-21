@@ -46,6 +46,9 @@ const NoBCs = Union{Nothing, Missing, Tuple{Vararg{Nothing}}}
 # Work done on `c` before the filling kernel is launched
 @inline prepare_halo_fill!(bc, c, grid, loc) = nothing
 
+# Work done on the host boundary conditions before they are converted to the device
+update_boundary_time_series!(boundary_conditions, args...) = nothing
+
 #####
 ##### Trailing arguments of the fill kernels
 #####
