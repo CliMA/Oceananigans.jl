@@ -232,3 +232,50 @@ Base.show(io::IO, operation::ConditionalOperation) =
               "├── func: ", summary(operation.func), '\n',
               "├── condition: ", summary(operation.condition), '\n',
               "└── mask: ", operation.mask)
+
+#####
+##### Dot products
+#####
+
+@inline field_product(i, j, k, grid, a, b) = @inbounds a[i, j, k] * b[i, j, k]
+
+# The condition of `condition_operand(a, condition, 0) * condition_operand(b, condition, 0)`:
+# `condition` is evaluated with each conditioned operand, as it is when `a` and `b` are conditioned separately
+struct OperandPairCondition{C, A, B} <: Function
+    condition :: C
+    a :: A
+    b :: B
+end
+
+@inline evaluate_condition(pc::OperandPairCondition, i, j, k, grid, args...) =
+    evaluate_condition(pc.condition, i, j, k, grid, pc.a) & evaluate_condition(pc.condition, i, j, k, grid, pc.b)
+
+Adapt.adapt_structure(to, pc::OperandPairCondition) =
+    OperandPairCondition(adapt(to, pc.condition), adapt(to, pc.a), adapt(to, pc.b))
+
+Architectures.on_architecture(to, pc::OperandPairCondition) =
+    OperandPairCondition(on_architecture(to, pc.condition), on_architecture(to, pc.a), on_architecture(to, pc.b))
+
+Base.summary(pc::OperandPairCondition) = string("OperandPairCondition(", summary(pc.condition), ")")
+
+# Conditions that do not depend on the operand need not be evaluated per operand
+product_condition(::Nothing, a, b) = nothing
+product_condition(condition::AbstractArray, a, b) = condition
+product_condition(condition, a, b) = OperandPairCondition(condition, condition_operand(a, condition, 0),
+                                                                      condition_operand(b, condition, 0))
+
+# For two fields at the same location, the masks of `a` and `b` (immersed and `condition`) hold at
+# the same points, so the product is conditioned once rather than each operand: `ifelse(c, a * b, 0)`
+# equals `ifelse(c, a, 0) * ifelse(c, b, 0)`. This also avoids building a `BinaryOperation`, whose
+# interpolation operators are not inferrable.
+function Fields.dot_operand(a::Field, b::Field, condition)
+    if instantiated_location(a) != instantiated_location(b) || a.grid !== b.grid
+        return condition_operand(a, condition, 0) * condition_operand(b, condition, 0)
+    end
+
+    LX, LY, LZ = location(a)
+    T = Base.promote_op(*, eltype(a), eltype(b))
+    ab = KernelFunctionOperation{LX, LY, LZ}(field_product, a.grid, (a, b), T)
+
+    return condition_operand(ab, product_condition(condition, a, b), zero(T))
+end
