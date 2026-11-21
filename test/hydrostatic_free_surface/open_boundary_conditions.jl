@@ -772,9 +772,96 @@ function test_gravity_wave_target_transport()
     return pinned && flat && drift && inert && wet_only && rejected
 end
 
+#####
+##### Test: GravityWaveRadiation sides sharing a NetInflow target
+#####
+# Flather alone lets the exterior transport Q in through the west side; sharing NetInflow(Q′) between the west and
+# east sides lets exactly Q′ in through the two together, so the mean free surface rises by Q′ Δt / A per step.
+
+function test_gravity_wave_net_inflow()
+    Nx, Ny, H = 8, 8, 10.0
+    Lx = Ly = 1e4
+    grid = RectilinearGrid(size = (Nx, Ny, 1), x = (0, Lx), y = (0, Ly), z = (-H, 0),
+                           topology = (Open, Bounded, Bounded))
+    Δy = Ly / Ny
+    Q = 200.0
+    Δt, steps = 30.0, 10
+
+    function run_model(target)
+        west = GravityWaveRadiationBoundaryCondition((Q / Ly, 0); target_transport = target)
+        east = GravityWaveRadiationBoundaryCondition((0, 0); target_transport = target)
+        boundary_conditions = (; U = FieldBoundaryConditions(; west, east), u = zero_normal_flow(:west, :east))
+        model = HydrostaticFreeSurfaceModel(grid; boundary_conditions, free_surface = SplitExplicitFreeSurface(grid; substeps = 4),
+                                            buoyancy = nothing, tracers = ())
+        for _ in 1:steps
+            time_step!(model, Δt)
+        end
+        return model
+    end
+
+    x_transport(F, i) = sum(Array(interior(F, i, :, 1))) * Δy
+    net_inflow(model) = x_transport(model.free_surface.barotropic_velocities.U, 1) - x_transport(model.free_surface.barotropic_velocities.U, Nx + 1)
+    mean_η(model) = sum(Array(interior(model.free_surface.displacement))) / (Nx * Ny)
+
+    closed = run_model(NetInflow(0))
+    U = closed.free_surface.barotropic_velocities.U
+    shared = abs(net_inflow(closed)) < 1e-12 * Q && x_transport(U, 1) > 0 && abs(mean_η(closed)) < 1e-12
+
+    filling = run_model(NetInflow(Q / 2))
+    η_before = mean_η(filling)
+    time_step!(filling, Δt)
+    rising = isapprox(net_inflow(filling), Q / 2; rtol = 1e-12) &&
+             isapprox(mean_η(filling) - η_before, Q / 2 * Δt / (Lx * Ly); rtol = 1e-8)
+
+    # A target held in a `Ref` is read at every step: changing it changes the inflow
+    target = Ref(0.0)
+    changing = run_model(NetInflow(target))
+    target[] = Q / 4
+    time_step!(changing, Δt)
+    following = isapprox(net_inflow(changing), Q / 4; rtol = 1e-12)
+
+    return shared && rising && following
+end
+
+# With the exterior free surface δ above the model's on both sides, Flather lets in √(gH) δ per unit length on every
+# column; a shift ∝ √H cancels it column by column, so a basin at rest stays at rest, while a shift uniform per unit
+# length moves water wherever the depth varies along the sides.
+function test_net_inflow_depth_exponent()
+    Nx, Ny, Nz, H = 8, 8, 4, 40.0
+    Lx = Ly = 1e4
+    underlying_grid = RectilinearGrid(size = (Nx, Ny, Nz), halo = (3, 3, 3), x = (0, Lx), y = (0, Ly), z = (-H, 0),
+                                      topology = (Open, Bounded, Bounded))
+    grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((x, y) -> -H * (1 + 3y / Ly) / 4))
+    δ = 0.03
+
+    function run_model(depth_exponent)
+        target = NetInflow(0; depth_exponent)
+        west = GravityWaveRadiationBoundaryCondition((0, δ); target_transport = target)
+        east = GravityWaveRadiationBoundaryCondition((0, δ); target_transport = target)
+        boundary_conditions = (; U = FieldBoundaryConditions(; west, east), u = zero_normal_flow(:west, :east))
+        model = HydrostaticFreeSurfaceModel(grid; boundary_conditions, free_surface = SplitExplicitFreeSurface(grid; substeps = 4),
+                                            buoyancy = nothing, tracers = ())
+        for _ in 1:5
+            time_step!(model, 30.0)
+        end
+        return maximum(abs, Array(interior(model.free_surface.barotropic_velocities.U)))
+    end
+
+    scale = sqrt(9.81 * H) * δ
+    return run_model(1/2) < 1e-10 * scale && run_model(0) > 1e-3 * scale
+end
+
 @testset "Open Boundary Conditions for HydrostaticFreeSurfaceModel" begin
     @testset "GravityWaveRadiation with target_transport" begin
         @test test_gravity_wave_target_transport()
+    end
+
+    @testset "GravityWaveRadiation sides sharing a NetInflow" begin
+        @test test_gravity_wave_net_inflow()
+    end
+
+    @testset "NetInflow shifted ∝ √H moves no water for a common exterior datum" begin
+        @test test_net_inflow_depth_exponent()
     end
 
     @testset "Barotropic gravity wave radiation" begin
