@@ -2,13 +2,12 @@ module OceananigansMetalExt
 
 using AbstractFFTs: plan_fft!, plan_ifft!
 using Base: TwicePrecision
-using KernelAbstractions: KernelAbstractions, __dynamic_checkbounds, __iterspace
-using Metal: Metal, MtlArray, threadgroup_position_in_grid, thread_position_in_threadgroup
+using Metal: Metal, MtlArray, thread_position_in_threadgroup_1d, threadgroup_position_in_grid_1d
 using Oceananigans: Oceananigans, CPU, GPU
 using Oceananigans.Architectures: Architectures
 using Oceananigans.Grids: BoundaryTopology, Periodic
 using Oceananigans.Solvers: Solvers
-using Oceananigans.Utils: Utils as UT, linear_expand, __linear_ndrange, MappedCompilerMetadata
+using Oceananigans.Utils: Utils as UT
 
 const MetalGPU = GPU{<:Metal.MetalBackend}
 MetalGPU() = GPU(Metal.MetalBackend())
@@ -48,14 +47,5 @@ end
 # `Base.cbrt(::Float32)` refines in Float64 and Metal has no `air.cbrt.f32`; `^` lowers to
 # `air.pow.f32`, which zeroes subnormals. Remove after JuliaGPU/Metal.jl#952.
 Metal.@device_override @inline UT.f32_safe_cbrt(x::Float32) = copysign(abs(x)^(1f0/3f0), x)
-
-Metal.@device_override @inline function KernelAbstractions.__validindex(ctx::MappedCompilerMetadata)
-    if __dynamic_checkbounds(ctx)
-        index = @inbounds linear_expand(__iterspace(ctx), threadgroup_position_in_grid().x, thread_position_in_threadgroup().x)
-        return index ≤ __linear_ndrange(ctx)
-    else
-        return true
-    end
-end
 
 end # module
