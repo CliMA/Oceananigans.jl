@@ -1,8 +1,8 @@
-# A turbulent open channel with a recycled inflow and a small hill, compared with the periodic channel it is
+# A turbulent open channel with a recycled inflow and a hill, compared with the periodic channel it is
 # initialized from.
 #
 # The flow is a half channel: a pressure-gradient force u★² / H drives it over a rough bottom with quadratic drag.
-# A periodic precursor is run until it is turbulent. The open channel starts from three copies of its final state
+# A periodic precursor is run until it is turbulent. The open channel starts from four copies of its final state
 # laid along x, with the recycling plane one copy in from the west boundary and a radiating outflow on the east.
 # A Gaussian hill with the same drag sits on its bottom at x = 12 H, between the recycling plane and the outflow.
 # The reference is the periodic channel, which has no hill, continued from the same state over the same time. Three
@@ -34,9 +34,9 @@ u★ = 1                   # friction velocity set by the pressure-gradient forc
 z₀ = 1e-4 * H            # roughness length
 N = 64                   # cells along x and y in one periodic box, and twice the number over the depth
 box_length = 2π * H
-boxes = 3                # periodic boxes along the open channel
-hill_height = 0.2 * H
-hill_width = 0.4 * H     # standard deviation of the Gaussian
+boxes = 4                # periodic boxes along the open channel
+hill_height = 0.4 * H
+hill_width = 0.8 * H     # standard deviation of the Gaussian
 hill_position = 12 * H
 precursor_stop_time = 40 * H / u★
 stop_time = 20 * H / u★
