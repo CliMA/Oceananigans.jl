@@ -623,3 +623,9 @@ end
 Δy(i, j, grid, ℓx, ℓy) = Δy(i, j, 1, grid, ℓx, ℓy, nothing)
 Δλ(i, j, grid, ℓx, ℓy) = Δλ(i, j, 1, grid, ℓx, ℓy, nothing)
 Δφ(i, j, grid, ℓx, ℓy) = Δφ(i, j, 1, grid, ℓx, ℓy, nothing)
+
+""" The thickness of the thinnest of the four horizontal-velocity faces of the cell `(i, j, k)`. """
+@inline thinnest_face_thicknessᶜᶜᶜ(i, j, k, grid) = min(Δzᶠᶜᶜ(i, j, k, grid), Δzᶠᶜᶜ(i+1, j, k, grid), Δzᶜᶠᶜ(i, j, k, grid), Δzᶜᶠᶜ(i, j+1, k, grid))
+@inline thinnest_face_thicknessᶜᶜᶜ(i, j, k, grid::XFlatGrid) = min(Δzᶜᶠᶜ(i, j, k, grid), Δzᶜᶠᶜ(i, j+1, k, grid))
+@inline thinnest_face_thicknessᶜᶜᶜ(i, j, k, grid::YFlatGrid) = min(Δzᶠᶜᶜ(i, j, k, grid), Δzᶠᶜᶜ(i+1, j, k, grid))
+@inline thinnest_face_thicknessᶜᶜᶜ(i, j, k, grid::XYFlatGrid) = Δzᶜᶜᶜ(i, j, k, grid)

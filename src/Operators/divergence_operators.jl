@@ -33,6 +33,9 @@ Unlike `div_xyᶜᶜᶜ`, this is _not_ divided by the cell volume.
 @inline div_xyᶜᶜᶜ(i, j, k, grid, u, v) =
     V⁻¹ᶜᶜᶜ(i, j, k, grid) * flux_div_xyᶜᶜᶜ(i, j, k, grid, u, v)
 
+""" Horizontal divergence of `(u, v)`, without weighting by the cell thickness. """
+@inline horizontal_divergenceᶜᶜᶜ(i, j, k, grid, u, v) = Az⁻¹ᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, u) + δyᵃᶜᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, v))
+
 @inline div_xyᶜᶜᶠ(i, j, k, grid, Qu, Qv) =
     V⁻¹ᶜᶜᶠ(i, j, k, grid) * (δxᶜᶜᶠ(i, j, k, grid, Ay_qᶠᶜᶠ, Qu) +
                              δyᶜᶜᶠ(i, j, k, grid, Ax_qᶜᶠᶠ, Qv))
