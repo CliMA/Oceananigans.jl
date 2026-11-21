@@ -230,8 +230,9 @@ a boundary normal velocity is unphysical and reflects energy leaving the domain 
 
 An open boundary condition is a `NormalFlowBoundaryCondition` or a `ValueBoundaryCondition` with a
 scheme, passed through the `scheme` keyword argument. The scheme computes the boundary value from the
-interior solution and is designed to let disturbances propagate out of the domain. In the literature,
-open boundary conditions of this kind are sometimes called radiation boundary conditions. In a
+interior solution. Most schemes are designed to let disturbances propagate out of the domain, and in the
+literature open boundary conditions of this kind are sometimes called radiation boundary conditions.
+`TurbulenceRecycling` is the exception: it brings developed turbulence into the domain. In a
 `NormalFlowBoundaryCondition` the scheme sets the boundary-normal velocity on the boundary face. In a
 `ValueBoundaryCondition` it sets the first halo cell of a field that is `Center`-located in the
 boundary-normal direction, such as a tracer or a boundary-tangential velocity component. The available
@@ -243,6 +244,7 @@ schemes are
 | [`NormalRadiation`](@ref)       | `NormalFlowBoundaryCondition`, `ValueBoundaryCondition` | velocities, tracers             |
 | [`ObliqueRadiation`](@ref)      | `NormalFlowBoundaryCondition`, `ValueBoundaryCondition` | velocities, tracers             |
 | [`TracerReservoir`](@ref)       | `ValueBoundaryCondition`                                | tracers                         |
+| [`TurbulenceRecycling`](@ref)   | `NormalFlowBoundaryCondition`, `ValueBoundaryCondition` | velocities, tracers             |
 | [`GravityWaveRadiation`](@ref)  | `NormalFlowBoundaryCondition`                           | barotropic transports `U`, `V`  |
 | [`SurfaceWaveRadiation`](@ref)  | `ValueBoundaryCondition`                                | free surface displacement `η`   |
 
@@ -404,6 +406,57 @@ step and an infinite one freezes the reservoir. With both length scales zero, th
 `TracerReservoir` reduces to a condition without memory: zero gradient on outflow and ``c^{\mathrm{ext}}``
 on inflow. The reservoir starts from ``c^{\mathrm{ext}}`` and is advanced over the stages of a time step in
 the same way as the stored values of normal radiation.
+
+### Turbulence recycling
+
+A turbulence-resolving simulation with an inflow boundary needs turbulence that is already developed when
+it enters the domain. [`TurbulenceRecycling`](@ref) takes it from the simulation itself, following
+[lund.ea1998](@citet) and [kataoka.mizuno2002](@citet). A plane parallel to the boundary, at a distance
+`recycling_distance` or `recycling_index` cells into the domain, is sampled, and its fluctuation is added
+to the exterior value ``\phi^{\mathrm{ext}}`` given by the boundary condition,
+```math
+    \begin{equation}
+    \label{eq:turbulence_recycling}
+    \phi^b = \phi^{\mathrm{ext}} + d \left ( \phi^r - \langle \phi^r \rangle \right ) \, ,
+    \end{equation}
+```
+where ``\phi^r`` is the value on the recycling plane at the same position along the boundary,
+``\langle \cdot \rangle`` is an average over the dimensions given by `averaging`, and ``d`` is `damping`.
+As for the other schemes, ``\phi^b`` is the boundary face in a `NormalFlowBoundaryCondition` and the first
+halo cell in a `ValueBoundaryCondition`. The recycling plane lies the same whole number of cells,
+`recycling_index`, away from ``\phi^b`` for every field. If `recycling_distance` is given instead,
+`recycling_index` is that of the cell face nearest to it.
+
+The average is weighted by the grid spacings along the averaged dimensions. Points on a wall or an immersed
+boundary are left out of it and receive no fluctuation. If ``d`` does not vary along the averaged
+dimensions, the fluctuation averages to zero, so the average of ``\phi^b`` is that of
+``\phi^{\mathrm{ext}}``: the exterior value sets the mean inflow, and for a boundary-normal velocity also
+the transport through the boundary. This is the form used by [kataoka.mizuno2002](@citet) and by the PALM
+model [maronga.ea2015](@citep), with an average along the direction in which the flow is homogeneous, for
+example `averaging = 2` on the west boundary of a channel that is periodic in ``y``. With
+`averaging = nothing` the plane is recycled together with its mean. The region between the boundary and the
+recycling plane then evolves like a periodic domain, and ``\phi^{\mathrm{ext}}`` is usually zero.
+
+The recycled signal returns to the boundary at every pass through the region between the boundary and the
+recycling plane, so the scheme assumes that the flow there is statistically homogeneous along the
+boundary-normal direction, as in a channel. Where the mean flow slows down on the way to the recycling
+plane, perturbations of the normal velocity grow on the way and return amplified. The fluctuations then
+grow from pass to pass, and so does whatever part of the mean flow the average leaves in the recycled
+signal, such as the variation of the mean inflow along the direction of a line average.
+
+The factor ``d`` confines the recycled signal to part of the boundary. A profile that is one inside a
+turbulent layer and falls to zero outside it keeps recycled fluctuations from thickening the layer
+[maronga.ea2015](@citep).
+
+The plane is sampled at every stage of a time step, after the interior is stepped and before the pressure
+correction, so the scheme stores no state between stages. The correction of the
+[net transport](@ref "Net transport through open boundaries") treats a recycled boundary like any other
+boundary with a scheme. A `target_transport` keeps the transport of a recycled inflow at a prescribed value.
+
+Structures re-enter the domain after travelling `recycling_distance`, which imprints the corresponding
+period on the flow if the distance is short [kataoka.mizuno2002](@citep). The distance should be several
+times the size of the largest eddies. The region between the boundary and the recycling plane generates
+the turbulence and should be left out of the analysis of the results.
 
 ### Gravity wave radiation
 
