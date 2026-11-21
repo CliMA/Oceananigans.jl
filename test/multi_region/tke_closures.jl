@@ -7,8 +7,10 @@ function stepped_tke(grid, closure, timestepper)
     free_surface = SplitExplicitFreeSurface(substeps=10, extend_halos=!(grid isa YinYangGrid))
     boundary_conditions = (u = FieldBoundaryConditions(top=FluxBoundaryCondition(-1e-4)),
                            T = FieldBoundaryConditions(top=FluxBoundaryCondition(1e-5)))
+    # Multi-region grids do not support materialized buoyancy gradients, so compute them inline on every grid
+    buoyancy = BuoyancyForce(grid, SeawaterBuoyancy(); materialize_gradients=false)
     model = HydrostaticFreeSurfaceModel(grid; closure, timestepper, free_surface, boundary_conditions,
-                                        tracers=(:T, :S), buoyancy=SeawaterBuoyancy())
+                                        tracers=(:T, :S), buoyancy)
     set!(model, T=(x, y, z) -> 20 + z / 10, S=35)
     for _ in 1:3
         time_step!(model, 60)

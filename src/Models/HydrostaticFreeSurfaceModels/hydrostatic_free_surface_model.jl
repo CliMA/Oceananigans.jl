@@ -18,6 +18,7 @@ using Oceananigans.TimeSteppers: AbstractLagrangianParticles, Clock, TimeStepper
                                  materialize_lagrangian_particles, reconcile_state!,
                                  time_discretization, update_state!
 using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization, add_closure_specific_boundary_conditions,
+                                       materialize_buoyancy_gradients,
                                        build_closure_fields, closure_required_tracers, implicit_diffusion_solver,
                                        initialize_closure_fields!, validate_closure, with_penetrative_radiation,
                                        with_tracers
@@ -232,7 +233,7 @@ function materialize_hydrostatic_free_surface_model(grid, ::Val{tracer_names}, t
     # the grid and backend is known
     advection = map(scheme -> materialize_advection(scheme, grid), advection)
 
-    buoyancy = materialize_buoyancy(buoyancy, grid)
+    buoyancy = materialize_buoyancy(buoyancy, grid; materialize_gradients=materialize_buoyancy_gradients(closure))
 
     # Collect boundary conditions for all model prognostic fields and, if specified, some model
     # auxiliary fields. Boundary conditions are "regularized" based on the _name_ of the field:

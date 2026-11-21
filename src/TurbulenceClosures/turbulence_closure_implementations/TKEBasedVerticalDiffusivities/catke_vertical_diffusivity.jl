@@ -59,6 +59,9 @@ const CATKEVD{TD} = CATKEVerticalDiffusivity{TD} where TD
 const CATKEVDArray{TD} = AbstractArray{<:CATKEVD{TD}} where TD
 const FlavorOfCATKE{TD} = Union{CATKEVD{TD}, CATKEVDArray{TD}} where TD
 
+# The mixing length and stability functions evaluate N² at several neighboring points
+TurbulenceClosures.materialize_buoyancy_gradients(::FlavorOfCATKE) = true
+
 TurbulenceClosures.with_penetrative_radiation(closures::CATKEVDArray, radiation) = map(closure -> with_penetrative_radiation(closure, radiation), closures)
 
 """
