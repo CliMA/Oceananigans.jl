@@ -1,7 +1,8 @@
 using Oceananigans: fields
 using Oceananigans.Grids: bottommost_active_node
 using Oceananigans.Operators: σ⁻, σ⁻¹ⁿ, σⁿ
-using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, SplitRungeKuttaTimeStepper, implicit_step!
+using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, MultiStageTimeStepper, SSPRungeKutta3TimeStepper,
+                                 _ssp_blend_tracer_field!, implicit_step!
 
 get_time_step(closure::CATKEVerticalDiffusivity) = closure.tke_time_step
 
@@ -74,7 +75,7 @@ function time_step_catke_equation!(model, ::QuasiAdamsBashforth2TimeStepper, Δt
     return nothing
 end
 
-function time_step_catke_equation!(model, ::SplitRungeKuttaTimeStepper, Δt)
+function time_step_catke_equation!(model, timestepper::MultiStageTimeStepper, Δt)
 
     # TODO: properly handle closure tuples
     if model.closure isa Tuple
@@ -117,7 +118,15 @@ function time_step_catke_equation!(model, ::SplitRungeKuttaTimeStepper, Δt)
                 κe, grid, closure,
                 model.velocities, tracers, buoyancy, closure_fields)
 
-        if m == 1
+        if m == 1 && timestepper isa SSPRungeKutta3TimeStepper
+            # First substep of an SSP stage: advance the previous stage σᵐ⁻¹ eᵐ⁻¹
+            launch!(arch, grid, :xyz,
+                    _ssp_substep_turbulent_kinetic_energy!,
+                    Le, grid, closure,
+                    model.velocities, previous_velocities,
+                    tracers, buoyancy, closure_fields,
+                    Δτ, Gⁿ)
+        elseif m == 1
             # First substep: reset from cached state σe⁻
             launch!(arch, grid, :xyz,
                     _rk_substep_turbulent_kinetic_energy!,
@@ -140,6 +149,11 @@ function time_step_catke_equation!(model, ::SplitRungeKuttaTimeStepper, Δt)
                        model.clock,
                        fields(model),
                        Δτ)
+    end
+
+    if timestepper isa SSPRungeKutta3TimeStepper
+        a, b = convert.(eltype(grid), timestepper.coefficients[model.clock.stage])
+        launch!(arch, grid, :xyz, _ssp_blend_tracer_field!, e, grid, σe⁻, a, b)
     end
 
     return nothing
@@ -282,6 +296,31 @@ end
     @inbounds begin
         total_Gⁿ = slow_Gⁿe[i, j, k] + fast_Gⁿe * σᶜᶜⁿ
         e[i, j, k] = (σe⁻[i, j, k] + Δt * total_Gⁿ * active) * σ⁻¹ᶜᶜⁿ
+    end
+end
+
+# The SSP stage advances the previous stage σᵐ⁻¹ eᵐ⁻¹, where σ⁻ holds σᵐ⁻¹ once the grid has moved to σᵐ
+@kernel function _ssp_substep_turbulent_kinetic_energy!(Le, grid, closure,
+                                                        next_velocities, previous_velocities,
+                                                        tracers, buoyancy, closure_fields,
+                                                        Δt, slow_Gⁿe)
+
+    i, j, k = @index(Global, NTuple)
+
+    e = tracers.e
+
+    fast_Gⁿe = fast_tke_tendency(i, j, k, grid, Le, closure,
+                                 next_velocities, previous_velocities,
+                                 tracers, buoyancy, closure_fields)
+
+    σᶜᶜ⁻   = σ⁻(i, j, k, grid, Center(), Center(), Center())
+    σᶜᶜⁿ   = σⁿ(i, j, k, grid, Center(), Center(), Center())
+    σ⁻¹ᶜᶜⁿ = σ⁻¹ⁿ(i, j, k, grid, Center(), Center(), Center())
+    active = !inactive_cell(i, j, k, grid)
+
+    @inbounds begin
+        total_Gⁿ = slow_Gⁿe[i, j, k] + fast_Gⁿe * σᶜᶜⁿ
+        e[i, j, k] = (σᶜᶜ⁻ * e[i, j, k] + Δt * total_Gⁿ * active) * σ⁻¹ᶜᶜⁿ
     end
 end
 
