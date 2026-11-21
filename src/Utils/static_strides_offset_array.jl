@@ -31,6 +31,7 @@ OffsetArrays.offsets(::SSOA{T, N, S, O}) where {T, N, S, O} = O
 OffsetArrays.parenttype(::Type{<:SSOA{T, N, S, O, A}}) where {T, N, S, O, A} = A
 
 Base.size(::SSOA{T, N, S}) where {T, N, S} = S
+@inline Base.axes(::SSOA{T, N, S, O}) where {T, N, S, O} = map((n, o) -> OffsetArrays.IdOffsetRange(Base.OneTo(n), o), S, O)
 
 rewrap(a::SSOA{T, N, S, O}, p) where {T, N, S, O} = StaticStridesOffsetArray{eltype(p), N, S, O, typeof(p)}(p)
 
@@ -43,13 +44,17 @@ Architectures.on_architecture(arch::AbstractSerialArchitecture, a::SSOA) = rewra
 @inline linear_index(::SSOA{T, N, S, O}, I) where {T, N, S, O} = @inbounds LinearIndices(S)[(I .- O)...]
 Base.dropdims(a::SSOA; dims) = StaticStridesOffsetArray(dropdims(parent(a); dims), OffsetArrays.offsets(a)[setdiff(1:ndims(a), dims)]...)
 
+# bounds-checked accesses index the parent along each dimension; only `@inbounds` accesses use the static strides
 @inline function Base.getindex(a::SSOA{T, N, S, O, <:DenseArray}, I::Vararg{Int, N}) where {T, N, S, O}
-    @boundscheck checkbounds(a, I...)
+    @boundscheck return parent(a)[(I .- O)...]
     return @inbounds parent(a)[linear_index(a, I)]
 end
 
 @inline function Base.setindex!(a::SSOA{T, N, S, O, <:DenseArray}, v, I::Vararg{Int, N}) where {T, N, S, O}
-    @boundscheck checkbounds(a, I...)
+    @boundscheck begin
+        parent(a)[(I .- O)...] = v
+        return a
+    end
     @inbounds parent(a)[linear_index(a, I)] = v
     return a
 end

@@ -417,6 +417,16 @@ end
         @test_throws OverflowError StaticStridesOffsetArray(array_slice, typemax(Int), 0)
     end
 
+    @testset "StaticStridesOffsetArray indexing" begin
+        array = StaticStridesOffsetArray(reshape(collect(1.0:12.0), 4, 3), -1, -2)
+        @test axes(array) == (0:3, -1:1)
+        @test array[0, -1] == 1
+        @test_throws BoundsError array[4, -1]
+        array[3, 1] = 0
+        @test parent(array)[4, 3] == 0
+        @test_throws BoundsError array[4, -1] = 0
+    end
+
     @testset "Field initialization" begin
         @info "  Testing Field initialization..."
 
