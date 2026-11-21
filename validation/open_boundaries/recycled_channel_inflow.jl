@@ -11,8 +11,8 @@
 #   * `fluctuations`: the precursor's mean profile as the boundary value plus recycled fluctuations about the
 #     `y`-mean, with the transport pinned by `target_transport`. The pressure-gradient force then only changes
 #     the pressure, since the transport is set at the inflow.
-#   * `absolute`: the recycling plane imposed as is, with no boundary value and no target, so that the force
-#     sets the bulk flow as in the periodic channel.
+#   * `absolute`: the recycling plane imposed as is, with no boundary value, and the transport pinned by
+#     `target_transport` as in `fluctuations`.
 #   * `laminar`: the same mean profile imposed without recycling, for reference.
 #
 # The script writes a figure of statistics and an animation of the first part of the four runs, in which a dashed
@@ -205,7 +205,7 @@ outflow = NormalFlowBoundaryCondition(exterior_velocity; scheme = ObliqueRadiati
 west_conditions = (fluctuations = (u = NormalFlowBoundaryCondition(exterior_velocity; scheme = recycling(2; target_transport)),
                                    v = ValueBoundaryCondition(0; scheme = recycling(2)),
                                    w = ValueBoundaryCondition(0; scheme = recycling(2))),
-                   absolute = (u = NormalFlowBoundaryCondition(0; scheme = recycling(nothing)),
+                   absolute = (u = NormalFlowBoundaryCondition(0; scheme = recycling(nothing; target_transport)),
                                v = ValueBoundaryCondition(0; scheme = recycling(nothing)),
                                w = ValueBoundaryCondition(0; scheme = recycling(nothing))),
                    laminar = (u = NormalFlowBoundaryCondition(exterior_velocity), v = ValueBoundaryCondition(0), w = ValueBoundaryCondition(0)))
@@ -257,7 +257,7 @@ y = (1:N) .* Δy .- Δy / 2
 z = (1:Nz) .* Δz .- Δz / 2
 colors = (fluctuations = :royalblue, absolute = :firebrick, laminar = :gray50)
 descriptions = (fluctuations = "Open channel, inflow: mean profile + recycled fluctuations\n(averaging = 2, target_transport)",
-                absolute = "Open channel, inflow: recycled plane as is\n(averaging = nothing, no target_transport)",
+                absolute = "Open channel, inflow: recycled plane as is\n(averaging = nothing, target_transport)",
                 laminar = "Open channel, inflow: mean profile only\n(no recycling)")
 mark_recycling_plane!(axis) = vlines!(axis, box_length; color = :limegreen, linestyle = :dash, linewidth = 2.5, label = "Recycling plane")
 upstream = N+1:3N÷2    # cells between the recycling plane and the hill, 2π < x / H < 3π
