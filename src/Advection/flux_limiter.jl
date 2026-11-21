@@ -278,6 +278,76 @@ end
 @inline flux_fraction(transported, available) =
     ifelse(isfinite(transported) & (transported > available), available / transported, one(available))
 
+# With the rescaled upwind face values cached by the θ kernel, the antidiffusive flux of a face costs a read and
+# a few flops, so the fractions kernel computes A on the faces of its cell itself and stores it: each cell writes
+# its lower faces, and the last cell of the range in each direction also its upper face. The stored A is the one the
+# separate kernel would store (the same expression), and the tendency and any other user of `antidiffusive_fluxes`
+# read it as before; the fused kernel saves one launch and the reads of A.
+@inline antidiffusive_flux_x(i, j, k, grid, advection, ρ, U, c) = bounded_face_flux_x(i, j, k, grid, advection, ρ, U.u, c) - upwind_face_flux_x(i, j, k, grid, advection, ρ, U.u, c)
+@inline antidiffusive_flux_y(i, j, k, grid, advection, ρ, U, c) = bounded_face_flux_y(i, j, k, grid, advection, ρ, U.v, c) - upwind_face_flux_y(i, j, k, grid, advection, ρ, U.v, c)
+@inline antidiffusive_flux_z(i, j, k, grid, advection, ρ, U, c) = bounded_face_flux_z(i, j, k, grid, advection, ρ, U.w, c) - upwind_face_flux_z(i, j, k, grid, advection, ρ, U.w, c)
+
+@inline local_antidiffusion_x(i, j, k, grid::XFlatGrid, args...) = zero(grid), zero(grid), zero(grid), zero(grid)
+@inline local_antidiffusion_y(i, j, k, grid::YFlatGrid, args...) = zero(grid), zero(grid), zero(grid), zero(grid)
+@inline local_antidiffusion_z(i, j, k, grid::ZFlatGrid, args...) = zero(grid), zero(grid), zero(grid), zero(grid)
+
+# The antidiffusive fluxes through the lower and upper faces of cell (i, j, k), and the parts that leave and enter it
+@inline function local_antidiffusion_x(i, j, k, grid, advection, ρ, U, c)
+    A⁻ = antidiffusive_flux_x(i,   j, k, grid, advection, ρ, U, c)
+    A⁺ = antidiffusive_flux_x(i+1, j, k, grid, advection, ρ, U, c)
+    return A⁻, A⁺, max(0, A⁺) - min(0, A⁻), max(0, A⁻) - min(0, A⁺)
+end
+
+@inline function local_antidiffusion_y(i, j, k, grid, advection, ρ, U, c)
+    A⁻ = antidiffusive_flux_y(i, j,   k, grid, advection, ρ, U, c)
+    A⁺ = antidiffusive_flux_y(i, j+1, k, grid, advection, ρ, U, c)
+    return A⁻, A⁺, max(0, A⁺) - min(0, A⁻), max(0, A⁻) - min(0, A⁺)
+end
+
+@inline function local_antidiffusion_z(i, j, k, grid, advection, ρ, U, c)
+    A⁻ = antidiffusive_flux_z(i, j, k,   grid, advection, ρ, U, c)
+    A⁺ = antidiffusive_flux_z(i, j, k+1, grid, advection, ρ, U, c)
+    return A⁻, A⁺, max(0, A⁺) - min(0, A⁻), max(0, A⁻) - min(0, A⁺)
+end
+
+@inline store_antidiffusion_x!(A, i, j, k, grid::XFlatGrid, A⁻, A⁺, last) = nothing
+@inline store_antidiffusion_y!(A, i, j, k, grid::YFlatGrid, A⁻, A⁺, last) = nothing
+@inline store_antidiffusion_z!(A, i, j, k, grid::ZFlatGrid, A⁻, A⁺, last) = nothing
+
+@inline function store_antidiffusion_x!(A, i, j, k, grid, A⁻, A⁺, last)
+    @inbounds A[i, j, k] = A⁻
+    @inbounds last && (A[i+1, j, k] = A⁺)
+    return nothing
+end
+
+@inline function store_antidiffusion_y!(A, i, j, k, grid, A⁻, A⁺, last)
+    @inbounds A[i, j, k] = A⁻
+    @inbounds last && (A[i, j+1, k] = A⁺)
+    return nothing
+end
+
+@inline function store_antidiffusion_z!(A, i, j, k, grid, A⁻, A⁺, last)
+    @inbounds A[i, j, k] = A⁻
+    @inbounds last && (A[i, j, k+1] = A⁺)
+    return nothing
+end
+
+@kernel function _compute_antidiffusive_fluxes_and_fractions!(R⁻, R⁺, A, grid, advection, U, c, ρ, Δt, iᴸ, jᴸ, kᴸ)
+    i, j, k = @index(Global, NTuple)
+    Q⁻, Q⁺ = upwind_room(i, j, k, grid, advection, ρ, U, c, Δt)
+    A⁻ˣ, A⁺ˣ, Oˣ, Iˣ = local_antidiffusion_x(i, j, k, grid, advection, ρ, U, c)
+    A⁻ʸ, A⁺ʸ, Oʸ, Iʸ = local_antidiffusion_y(i, j, k, grid, advection, ρ, U, c)
+    A⁻ᶻ, A⁺ᶻ, Oᶻ, Iᶻ = local_antidiffusion_z(i, j, k, grid, advection, ρ, U, c)
+    store_antidiffusion_x!(A.x, i, j, k, grid, A⁻ˣ, A⁺ˣ, i == iᴸ)
+    store_antidiffusion_y!(A.y, i, j, k, grid, A⁻ʸ, A⁺ʸ, j == jᴸ)
+    store_antidiffusion_z!(A.z, i, j, k, grid, A⁻ᶻ, A⁺ᶻ, k == kᴸ)
+    scale = Δt * V⁻¹ᶜᶜᶜ(i, j, k, grid)
+    P⁻ = scale * (Oˣ + Oʸ + Oᶻ)
+    P⁺ = scale * (Iˣ + Iʸ + Iᶻ)
+    @inbounds R⁻[i, j, k] = flux_fraction(P⁻, Q⁻)
+    @inbounds R⁺[i, j, k] = flux_fraction(P⁺, Q⁺)
+end
+
 # R⁻ = min(1, Q⁻ / P⁻) and R⁺ = min(1, Q⁺ / P⁺)
 @kernel function _compute_flux_fractions!(R⁻, R⁺, grid, advection, A, U, c, ρ, Δt)
     i, j, k = @index(Global, NTuple)
@@ -290,12 +360,12 @@ end
 # The fractions are computed in the first horizontal halo layer too, from the halos of `c`, `U` and θ (which
 # the rescaling then computes in two halo layers), so that the faces of every interior cell find the fractions
 # of both their cells without a halo fill: only the bottom and top halos, which are never communicated, are filled.
-function flux_fraction_kernel_parameters(grid)
+flux_fraction_kernel_parameters(grid) = KernelParameters(flux_fraction_ranges(grid)...)
+
+function flux_fraction_ranges(grid)
     Nx, Ny, Nz = size(grid)
     Tx, Ty, Tz = topology(grid)
-    ii = ifelse(Tx == Flat, 1:Nx, 0:Nx+1)
-    jj = ifelse(Ty == Flat, 1:Ny, 0:Ny+1)
-    return KernelParameters(ii, jj, 1:Nz)
+    return (ifelse(Tx == Flat, 1:Nx, 0:Nx+1), ifelse(Ty == Flat, 1:Ny, 0:Ny+1), 1:Nz)
 end
 
 """
@@ -317,11 +387,25 @@ function update_flux_limiter!(scheme::FluxLimitedWENO, grid, c, U, Δt, ρ=1)
     R⁻ = limiter.outgoing_fraction
     R⁺ = limiter.incoming_fraction
     A = limiter.antidiffusive_fluxes
-    launch!(architecture(grid), grid, antidiffusive_flux_kernel_parameters(grid), _compute_antidiffusive_fluxes!, A, grid, scheme, ρ, U, c)
-    launch!(architecture(grid), grid, flux_fraction_kernel_parameters(grid), _compute_flux_fractions!, R⁻, R⁺, grid, scheme, A, U, c, ρ, Δt)
+    compute_antidiffusive_fluxes_and_fractions!(R⁻, R⁺, A, grid, scheme, scheme.bounds.upwind_face_values, U, c, ρ, Δt)
     loc = (Center(), Center(), Center())
     fill_bottom_and_top_halo!(R⁻.data, R⁻.boundary_conditions, R⁻.indices, loc, grid)
     fill_bottom_and_top_halo!(R⁺.data, R⁺.boundary_conditions, R⁺.indices, loc, grid)
+    return nothing
+end
+
+# Without cached face values (`rescaling=false`) the antidiffusive fluxes are reconstructed once per face in their own
+# kernel, which the fractions then read; with them, one fused kernel computes both.
+function compute_antidiffusive_fluxes_and_fractions!(R⁻, R⁺, A, grid, scheme, ::Nothing, U, c, ρ, Δt)
+    launch!(architecture(grid), grid, antidiffusive_flux_kernel_parameters(grid), _compute_antidiffusive_fluxes!, A, grid, scheme, ρ, U, c)
+    launch!(architecture(grid), grid, flux_fraction_kernel_parameters(grid), _compute_flux_fractions!, R⁻, R⁺, grid, scheme, A, U, c, ρ, Δt)
+    return nothing
+end
+
+function compute_antidiffusive_fluxes_and_fractions!(R⁻, R⁺, A, grid, scheme, face_values, U, c, ρ, Δt)
+    parameters = flux_fraction_kernel_parameters(grid)
+    iᴸ, jᴸ, kᴸ = map(last, flux_fraction_ranges(grid))
+    launch!(architecture(grid), grid, parameters, _compute_antidiffusive_fluxes_and_fractions!, R⁻, R⁺, A, grid, scheme, U, c, ρ, Δt, iᴸ, jᴸ, kᴸ)
     return nothing
 end
 
