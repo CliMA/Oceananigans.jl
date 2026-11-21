@@ -412,8 +412,8 @@ the same way as the stored values of normal radiation.
 A turbulence-resolving simulation with an inflow boundary needs turbulence that is already developed when
 it enters the domain. [`TurbulenceRecycling`](@ref) takes it from the simulation itself, following
 [lund.ea1998](@citet) and [kataoka.mizuno2002](@citet). A plane parallel to the boundary, at a distance
-`recycling_distance` into the domain, is sampled, and its fluctuation is added to the exterior value
-``\phi^{\mathrm{ext}}`` given by the boundary condition,
+`recycling_distance` or `recycling_index` cells into the domain, is sampled, and its fluctuation is added
+to the exterior value ``\phi^{\mathrm{ext}}`` given by the boundary condition,
 ```math
     \begin{equation}
     \label{eq:turbulence_recycling}
@@ -423,8 +423,9 @@ it enters the domain. [`TurbulenceRecycling`](@ref) takes it from the simulation
 where ``\phi^r`` is the value on the recycling plane at the same position along the boundary,
 ``\langle \cdot \rangle`` is an average over the dimensions given by `averaging`, and ``d`` is `damping`.
 As for the other schemes, ``\phi^b`` is the boundary face in a `NormalFlowBoundaryCondition` and the first
-halo cell in a `ValueBoundaryCondition`. The recycling plane lies the same whole number of cells away from
-``\phi^b`` for every field, on the cell face nearest to `recycling_distance`.
+halo cell in a `ValueBoundaryCondition`. The recycling plane lies the same whole number of cells,
+`recycling_index`, away from ``\phi^b`` for every field. If `recycling_distance` is given instead,
+`recycling_index` is that of the cell face nearest to it.
 
 The average is weighted by the grid spacings along the averaged dimensions. Points on a wall or an immersed
 boundary are left out of it and receive no fluctuation. If ``d`` does not vary along the averaged

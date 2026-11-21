@@ -7,7 +7,7 @@ using Oceananigans.Models: boundary_total_area
 boundary_normal_dimension(side) = side in (:west, :east) ? 1 : side in (:south, :north) ? 2 : 3
 
 # One recycling step of a single field against the formula φᵇ = φᵉˣᵗ + damping * (φʳ - ⟨φʳ⟩), on a stretched grid
-function test_recycled_plane(arch, FT, side, BoundaryConditionConstructor, averaging)
+function test_recycled_plane(arch, FT, side, BoundaryConditionConstructor, averaging; placement = :recycling_distance)
     faces = (FT[0, 1, 3, 4, 6, 9, 10], FT[0, 2, 3, 5, 6, 8], FT[0, 1, 3, 6, 7])
     grid = RectilinearGrid(arch, FT; size = length.(faces) .- 1, x = faces[1], y = faces[2], z = faces[3], topology = (Open, Open, Open))
     cpu_grid = on_architecture(CPU(), grid)
@@ -18,6 +18,7 @@ function test_recycled_plane(arch, FT, side, BoundaryConditionConstructor, avera
     cells = 2
     ξ = faces[dim]
     recycling_distance = inward > 0 ? ξ[1 + cells] - ξ[1] : ξ[end] - ξ[end - cells]
+    plane_position = placement === :recycling_index ? (; recycling_index = cells) : (; recycling_distance)
 
     # A boundary-normal velocity, or a field at centers in the normal direction and at faces along the boundary
     normal_flow = BoundaryConditionConstructor === NormalFlowBoundaryCondition
@@ -27,26 +28,26 @@ function test_recycled_plane(arch, FT, side, BoundaryConditionConstructor, avera
 
     φᵉˣᵗ = FT(0.7)
     damping = on_architecture(arch, FT[(i + 2j) / 10 for i in 1:N[t₁], j in 1:N[t₂]])
-    scheme = TurbulenceRecycling(FT; recycling_distance, averaging, damping)
+    scheme = TurbulenceRecycling(FT; plane_position..., averaging, damping)
     boundary_conditions = FieldBoundaryConditions(grid, loc; side => BoundaryConditionConstructor(φᵉˣᵗ; scheme))
     field = Field(loc, grid; boundary_conditions)
     set!(field, (x, y, z) -> sin(x) + cos(2y) + z^2 / 10 + x * y * z / 50)
 
     boundary_index = inward > 0 ? (normal_flow ? 1 : 0) : size(grid, dim) + 1
-    recycling_index = boundary_index + inward * cells
+    sampled_index = boundary_index + inward * cells
     plane(data, index) = view(selectdim(data, dim, index + H[dim]), (1:N[t₁]) .+ H[t₁], (1:N[t₂]) .+ H[t₂])
 
     before = Array(parent(field))
     step_boundary_conditions!((field,), Clock(time = zero(FT)), (;), one(FT))
     after = Array(parent(field))
 
-    φʳ = plane(before, recycling_index)
+    φʳ = plane(before, sampled_index)
 
     recycled_mean = if isnothing(averaging)
         zero(FT)
     else
         spacings = (Δx, Δy, Δz)
-        point(i, j) = ntuple(d -> d == dim ? recycling_index : d == t₁ ? i : j, 3)
+        point(i, j) = ntuple(d -> d == dim ? sampled_index : d == t₁ ? i : j, 3)
         weights = [prod(spacings[d](point(i, j)..., cpu_grid, loc...) for d in (t₁, t₂) if d in averaging) for i in 1:N[t₁], j in 1:N[t₂]]
         reduced_dimensions = Tuple(n for (n, d) in enumerate((t₁, t₂)) if d in averaging)
         sum(weights .* φʳ; dims = reduced_dimensions) ./ sum(weights; dims = reduced_dimensions)
@@ -133,10 +134,11 @@ function test_recycled_inflow_model(arch, FT)
 end
 
 @testset "Turbulence recycling [$(summary(arch)), $FT]" for arch in archs, FT in float_types
-    @testset "Recycled plane on the $side boundary" for side in (:west, :east, :south, :north, :bottom, :top)
+    @testset "Recycled plane on the $side boundary, placed by $placement" for side in (:west, :east, :south, :north, :bottom, :top),
+                                                                              placement in (:recycling_distance, :recycling_index)
         t₁, t₂ = filter(!=(boundary_normal_dimension(side)), (1, 2, 3))
-        test_recycled_plane(arch, FT, side, NormalFlowBoundaryCondition, t₁)
-        test_recycled_plane(arch, FT, side, ValueBoundaryCondition, (t₁, t₂))
+        test_recycled_plane(arch, FT, side, NormalFlowBoundaryCondition, t₁; placement)
+        test_recycled_plane(arch, FT, side, ValueBoundaryCondition, (t₁, t₂); placement)
     end
 
     test_recycled_plane(arch, FT, :west, NormalFlowBoundaryCondition, 3)

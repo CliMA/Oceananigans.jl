@@ -517,9 +517,9 @@ as on velocities: the shift is then uniform in mass flux, and the velocity incre
 ### 14. Turbulent inflow by recycling
 
 A [`TurbulenceRecycling`](@ref) scheme feeds turbulence that has developed inside the domain back through
-an inflow boundary. Each stage it samples the plane `recycling_distance` away from the boundary, removes
-the mean of that plane over the `averaging` dimensions, and adds the result to the boundary value. For a
-west boundary with a mean inflow velocity of ``1`` and a mean taken along ``y``:
+an inflow boundary. Each stage it samples the plane `recycling_distance`, or `recycling_index` cells, away
+from the boundary, removes the mean of that plane over the `averaging` dimensions, and adds the result to
+the boundary value. For a west boundary with a mean inflow velocity of ``1`` and a mean taken along ``y``:
 
 ```jldoctest
 julia> using Oceananigans
@@ -527,6 +527,7 @@ julia> using Oceananigans
 julia> recycling = TurbulenceRecycling(recycling_distance=100, averaging=2, target_transport=50)
 TurbulenceRecycling{Float64}
 ├── recycling_distance: 100.0
+├── recycling_index: nothing
 ├── averaging: 2
 ├── damping: 1
 └── target_transport: 50.0

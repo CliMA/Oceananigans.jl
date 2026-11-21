@@ -5,16 +5,21 @@ using Oceananigans.Grids: nodes, peripheral_node
 ##### TurbulenceRecycling open boundary scheme
 #####
 
-struct TurbulenceRecycling{FT, A, D, TF, N, S, R} <: AbstractRadiationScheme{FT}
-    recycling_distance :: FT
+struct TurbulenceRecycling{FT, L, A, D, TF, N, S, R} <: AbstractRadiationScheme{FT}
+    recycling_distance :: L # distance between the boundary and the recycling plane (number or nothing)
     averaging :: A
     damping :: D
     target_transport :: TF
-    recycling_cells :: N # cells between the boundary and the recycling plane (integer or nothing)
+    recycling_index :: N # cells between the boundary and the recycling plane (integer or nothing)
     φʳ :: S   # recycling plane times the averaging weight (2D array or nothing)
     Δʳ :: S   # averaging weight on the recycling plane (2D array or nothing)
     φ̄ʳ :: R   # mean of the recycling plane over the averaged dimensions (2D array or nothing)
     ΣΔʳ :: R  # `Δʳ` summed over the averaged dimensions (2D array or nothing)
+
+    function TurbulenceRecycling{FT}(recycling_distance::L, averaging::A, damping::D, target_transport::TF, recycling_index::N,
+                                     φʳ::S, Δʳ::S, φ̄ʳ::R, ΣΔʳ::R) where {FT, L, A, D, TF, N, S, R}
+        return new{FT, L, A, D, TF, N, S, R}(recycling_distance, averaging, damping, target_transport, recycling_index, φʳ, Δʳ, φ̄ʳ, ΣΔʳ)
+    end
 end
 
 """
@@ -22,9 +27,9 @@ $(SIGNATURES)
 
 Open boundary scheme that feeds developed turbulence through an inflow boundary by recycling it from the
 interior, after [Lund et al. (1998)](@cite lund.ea1998) and [Kataoka and Mizuno (2002)](@cite kataoka.mizuno2002).
-Each stage, the plane parallel to the boundary and `recycling_distance` into the domain is sampled, its mean
-over the `averaging` dimensions is removed, and the result is added to the exterior value `φᵉˣᵗ` of the
-boundary condition:
+Each stage, the plane parallel to the boundary and `recycling_distance`, or `recycling_index` cells, into the
+domain is sampled, its mean over the `averaging` dimensions is removed, and the result is added to the exterior
+value `φᵉˣᵗ` of the boundary condition:
 
     φᵇ = φᵉˣᵗ + damping * (φʳ - ⟨φʳ⟩)
 
@@ -40,6 +45,8 @@ Keyword Arguments
 
 - `recycling_distance`: distance between the boundary and the recycling plane, in units of the
   boundary-normal coordinate. The plane is placed on the nearest cell face.
+- `recycling_index`: number of cells between the boundary and the recycling plane, given instead of
+  `recycling_distance`.
 - `averaging`: dimensions over which the mean `⟨φʳ⟩` is taken, as in `Average(field; dims)`, for example `2`
   or `(2, 3)` on a west boundary. The mean is weighted by the grid spacings. With `nothing` no mean is removed.
 - `damping`: factor multiplying the recycled signal. A number, an array, or a function with the signature of
@@ -63,25 +70,32 @@ TurbulenceRecycling(recycling_distance = 100, averaging = 2)
 # output
 TurbulenceRecycling{Float64}
 ├── recycling_distance: 100.0
+├── recycling_index: nothing
 ├── averaging: 2
 ├── damping: 1
 └── target_transport: nothing
 ```
 """
-function TurbulenceRecycling(FT = defaults.FloatType; recycling_distance, averaging, damping = 1, target_transport = nothing)
-    recycling_distance = convert(FT, recycling_distance)
+function TurbulenceRecycling(FT = defaults.FloatType; recycling_distance = nothing, recycling_index = nothing,
+                             averaging, damping = 1, target_transport = nothing)
+
+    isnothing(recycling_distance) == isnothing(recycling_index) &&
+        throw(ArgumentError("TurbulenceRecycling needs exactly one of recycling_distance and recycling_index."))
+
+    recycling_distance = isnothing(recycling_distance) ? nothing : convert(FT, recycling_distance)
     damping = materialize_condition(damping, nothing, false, ())
     target_transport = convert_target_transport(FT, target_transport)
-    return TurbulenceRecycling(recycling_distance, averaging, damping, target_transport, nothing, nothing, nothing, nothing, nothing)
+    return TurbulenceRecycling{FT}(recycling_distance, averaging, damping, target_transport, recycling_index, nothing, nothing, nothing, nothing)
 end
 
-Adapt.adapt_structure(to, r::TurbulenceRecycling) = TurbulenceRecycling(r.recycling_distance, r.averaging, adapt(to, r.damping),
-                                                                        adapt(to, r.target_transport), r.recycling_cells,
-                                                                        adapt(to, r.φʳ), adapt(to, r.Δʳ), adapt(to, r.φ̄ʳ), adapt(to, r.ΣΔʳ))
+Adapt.adapt_structure(to, r::TurbulenceRecycling{FT}) where FT = TurbulenceRecycling{FT}(r.recycling_distance, r.averaging, adapt(to, r.damping),
+                                                                                         adapt(to, r.target_transport), r.recycling_index,
+                                                                                         adapt(to, r.φʳ), adapt(to, r.Δʳ), adapt(to, r.φ̄ʳ), adapt(to, r.ΣΔʳ))
 
 function Base.show(io::IO, r::TurbulenceRecycling)
     print(io, summary(r), '\n')
     print(io, "├── recycling_distance: ", prettysummary(r.recycling_distance), '\n')
+    print(io, "├── recycling_index: ", prettysummary(r.recycling_index), '\n')
     print(io, "├── averaging: ", r.averaging, '\n')
     print(io, "├── damping: ", prettysummary(r.damping), '\n')
     print(io, "└── target_transport: ", prettysummary(r.target_transport))
@@ -91,14 +105,19 @@ const RecyclingBC = Union{BoundaryCondition{<:Value{<:TurbulenceRecycling}}, Bou
 
 has_target_transport(r::TurbulenceRecycling) = !isnothing(r.target_transport)
 
-function materialize_radiation_storage(r::TurbulenceRecycling, grid, loc, dim, Side, args...)
+function materialize_radiation_storage(r::TurbulenceRecycling{FT}, grid, loc, dim, Side, args...) where FT
     architecture(grid) isa AbstractSerialArchitecture || throw(ArgumentError("TurbulenceRecycling does not support distributed grids."))
 
-    faces = on_architecture(CPU(), nodes(grid, Face(), Face(), Face())[dim])
-    boundary = Side === LeftBoundary ? first(faces) : last(faces)
-    distances = sort(abs.(faces .- boundary))
-    cells = argmin(abs.(distances .- r.recycling_distance)) - 1
-    0 < cells < size(grid, dim) || throw(ArgumentError("recycling_distance = $(r.recycling_distance) does not place the recycling plane inside the domain."))
+    recycling_index = r.recycling_index
+
+    if isnothing(recycling_index)
+        faces = on_architecture(CPU(), nodes(grid, Face(), Face(), Face())[dim])
+        boundary = Side === LeftBoundary ? first(faces) : last(faces)
+        distances = sort(abs.(faces .- boundary))
+        recycling_index = argmin(abs.(distances .- r.recycling_distance)) - 1
+    end
+
+    0 < recycling_index < size(grid, dim) || throw(ArgumentError("recycling_index = $recycling_index does not place the recycling plane inside the domain."))
 
     damping = regularize_boundary_condition(r.damping, grid, loc, dim, Side, args...)
 
@@ -112,7 +131,7 @@ function materialize_radiation_storage(r::TurbulenceRecycling, grid, loc, dim, S
         buffers = (zeros(grid, plane...), zeros(grid, plane...), zeros(grid, reduced...), zeros(grid, reduced...))
     end
 
-    return TurbulenceRecycling(r.recycling_distance, r.averaging, damping, r.target_transport, cells, buffers...)
+    return TurbulenceRecycling{FT}(r.recycling_distance, r.averaging, damping, r.target_transport, recycling_index, buffers...)
 end
 
 #####
@@ -122,7 +141,7 @@ end
 # The weight is the product of the spacings along the averaged dimensions, and vanishes on peripheral nodes
 @inline function weigh_recycled_state!(side, i, j, grid, c, bc, loc)
     r = bc.classification.scheme
-    iʳ, jʳ, kʳ = boundary_point(side, loc, grid, r.recycling_cells, i, j)
+    iʳ, jʳ, kʳ = boundary_point(side, loc, grid, r.recycling_index, i, j)
 
     Δˣ = Δx(iʳ, jʳ, kʳ, grid, loc...)
     Δʸ = Δy(iʳ, jʳ, kʳ, grid, loc...)
@@ -149,7 +168,7 @@ end
 @inline function step_exterior_state!(side, i, j, grid, c, bc::RecyclingBC, loc, clock, model_fields, Δt)
     r = bc.classification.scheme
     iᵇ, jᵇ, kᵇ = boundary_point(side, loc, grid, 0, i, j)
-    iʳ, jʳ, kʳ = boundary_point(side, loc, grid, r.recycling_cells, i, j)
+    iʳ, jʳ, kʳ = boundary_point(side, loc, grid, r.recycling_index, i, j)
 
     φᵉˣᵗ = getbc(bc, i, j, grid, clock, model_fields)
     damping = getbc(r.damping, i, j, grid, clock, model_fields)
