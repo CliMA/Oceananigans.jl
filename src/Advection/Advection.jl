@@ -21,7 +21,6 @@ export
 
 using Adapt: Adapt
 using Base: Callable
-using MuladdMacro: @muladd
 
 using Oceananigans: Oceananigans, fully_supported_float_types
 using Oceananigans.Architectures: Architectures, architecture, on_architecture, CPU
@@ -35,8 +34,7 @@ using Oceananigans.Operators: flux_div_xyᶜᶜᶜ, ∂t_σ, Ax_qᶠᶜᶜ, Ax�
                               δxᶜᵃᵃ, δxᶠᵃᵃ, δyᵃᶜᵃ, δyᵃᶠᵃ, δzᵃᵃᶜ, ℑxᶜᵃᵃ, ℑxᶠᵃᵃ, ℑyᵃᶜᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶜ, ℑzᵃᵃᶠ,
                               FirstDerivative, Primitive, SecondDerivative, calc_reconstruction_stencil, stencil_coefficients,
                               vorticity_flux_xᶠᶜᶜ, vorticity_flux_yᶜᶠᶜ
-using Oceananigans.Utils: StaticStridesOffsetArray, SIGNATURES, TYPEDSIGNATURES
-
+using Oceananigans.Utils: StaticStridesOffsetArray, SIGNATURES, TYPEDSIGNATURES, @fused_muladd
 
 abstract type AbstractAdvectionScheme{B, FT, TD} end
 abstract type AbstractCenteredAdvectionScheme{B, FT, TD} <: AbstractAdvectionScheme{B, FT, TD} end

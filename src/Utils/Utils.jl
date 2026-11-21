@@ -21,8 +21,10 @@ export ϕ₁, ϕ₂, ϕ₃, ϕ₄, ϕ₅, ϕ₆, ϕ₇, ϕ₈
 using Adapt: Adapt
 using DocStringExtensions: DocStringExtensions
 using KernelAbstractions: KernelAbstractions
+using MuladdMacro: MuladdMacro
 using Oceananigans: Oceananigans
 using Oceananigans.Architectures: Architectures
+using Preferences: @load_preference
 
 # Docstring signatures that also show default argument values with DocStringExtensions v0.10, where
 # `MethodSignatures` and `TypedMethodSignatures` take a `defaults` keyword. In v0.9 they are empty structs,
@@ -74,6 +76,7 @@ include("user_function_arguments.jl")
 include("multi_region_transformation.jl")
 include("sum_of_arrays.jl")
 include("newton_div.jl")
+include("fused_multiply_add.jl")
 include("f32_safe_cbrt.jl")
 include("interpolation.jl")
 include("tabulated_function.jl")
