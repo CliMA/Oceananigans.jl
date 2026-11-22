@@ -461,10 +461,6 @@ end
 
 update_field_time_series!(fts, first_time::Time, last_time::Time) = nothing
 
-# The number of records from `n₁` to `n₂`. A `Cyclical` series continues with its first record after its last.
-time_index_span(time_indexing, n₁, n₂, Nt) = min(n₂, Nt) - n₁ + 1
-time_index_span(::Cyclical, n₁, n₂, Nt) = mod(n₂ - n₁, Nt) + 1
-
 # Update the `fts` to contain every time between `first_time.time` and `last_time.time`
 function update_field_time_series!(fts::PartlyInMemoryFTS, first_time::Time, last_time::Time)
     arch = architecture(fts)
@@ -473,7 +469,8 @@ function update_field_time_series!(fts::PartlyInMemoryFTS, first_time::Time, las
     Nm = length(fts.backend)
     Nt = length(fts.times)
 
-    time_index_span(fts.time_indexing, n₁, n₂, Nt) ≤ Nm ||
+    # `n₂ < n₁` when the times span the last and the first record of a `Cyclical` series
+    mod(n₂ - n₁, Nt) < Nm ||
         throw(ArgumentError("times $(first_time.time) to $(last_time.time) span time indices $n₁ to $n₂, " *
                             "more than the $Nm held in memory; increase `time_indices_in_memory`."))
 
