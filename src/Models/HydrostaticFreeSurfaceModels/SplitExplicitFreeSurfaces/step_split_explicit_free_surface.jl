@@ -152,6 +152,10 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
 
     barotropic_model_fields = (; U, V, η)
 
+    # The substeps read the boundary conditions of U, V and η up to the last substep time, past tⁿ⁺¹
+    first_time, last_time = Time(clock.time), Time(add_time_interval(clock.time, Δτᴮ, Nsubsteps - 1))
+    foreach(fts -> update_field_time_series!(fts, first_time, last_time), extract_field_time_series(barotropic_model_fields))
+
     # Builds also a separate "sub-stepping" clock to account for time dependent forcing and boundary conditions
     @apply_regionally U_halo_args = build_halo_fill_args(arch, U, grid, barotropic_model_fields)
     @apply_regionally V_halo_args = build_halo_fill_args(arch, V, grid, barotropic_model_fields)
@@ -295,12 +299,6 @@ function HydrostaticFreeSurfaceModels.step_free_surface!(free_surface::SplitExpl
 
     # Reset the filtered fields and the barotropic timestepper to zero.
     @apply_regionally initialize_free_surface_state!(free_surface, baroclinic_timestepper, barotropic_timestepper)
-
-    # Substep halo fills read the time series in the boundary conditions of U, V and η up to the last substep time,
-    # which can lie past tⁿ⁺¹
-    t = model.clock.time
-    first_time, last_time = Time(t), Time(add_time_interval(t, Δτᴮ, Nsubsteps - 1))
-    foreach(fts -> update_field_time_series!(fts, first_time, last_time), extract_field_time_series((U, V, η)))
 
     # Solve for the free surface at tⁿ⁺¹.
     iterate_split_explicit!(free_surface, free_surface_grid, GUⁿ, GVⁿ, Δτᴮ, F, model.clock, weights, transport_weights, Val(Nsubsteps))

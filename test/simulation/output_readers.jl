@@ -908,12 +908,12 @@ end
 
 function test_split_explicit_with_two_records_in_memory(arch)
     grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1), topology=(Periodic, Periodic, Bounded))
-    filename = "split_explicit_tracer_flux_test.jld2"
+    filename = joinpath(mktempdir(), "tracer_flux.jld2")
     flux = Field{Center, Center, Nothing}(grid)
+    set!(flux, 1e-4)
     Q = FieldTimeSeries{Center, Center, Nothing}(grid, 0:10; backend=OnDisk(), path=filename, name="Q")
 
     for n in eachindex(Q.times)
-        set!(flux, 1e-4)
         set!(Q, flux, n)
     end
 
@@ -924,12 +924,10 @@ function test_split_explicit_with_two_records_in_memory(arch)
                                         free_surface=SplitExplicitFreeSurface(grid; substeps=10))
 
     # The substeps of a time step run past its end, and so past the record times this run crosses
-    simulation = Simulation(model, Δt=0.3, stop_time=3)
+    simulation = Simulation(model, Δt=0.3, stop_time=3, verbose=false)
     run!(simulation)
 
     @test mean(model.tracers.T) ≈ -3e-4
-
-    rm(filename, force=true)
 
     return nothing
 end
