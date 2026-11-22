@@ -288,3 +288,34 @@ end
     Δτ = diff(substep_times)
     @test all(isapprox.(Δτ, Δτ[1]; rtol=1e-6))
 end
+
+@testset "Barotropic boundary time series need 3 records in memory [$(summary(arch))]" for arch in archs
+    grid = RectilinearGrid(arch; size=(4, 4, 4), x=(0, 1), y=(0, 1), z=(-1, 0), topology=(Open, Periodic, Bounded))
+    path = joinpath(mktempdir(), "transport.jld2")
+    Uᵉˣᵗ = FieldTimeSeries{Nothing, Center, Nothing}(grid, 0:3; backend=OnDisk(), path, name="U")
+    transport = Field{Nothing, Center, Nothing}(grid)
+
+    for n in eachindex(Uᵉˣᵗ.times)
+        set!(Uᵉˣᵗ, transport, n)
+    end
+
+    @inline uᵇ(j, k, grid, clock, fields, Uᵉˣᵗ) = @inbounds Uᵉˣᵗ[1, j, 1, Time(clock.time)]
+    @inline Uᵇ(j, k, grid, clock, fields, Uᵉˣᵗ) = (@inbounds(Uᵉˣᵗ[1, j, 1, Time(clock.time)]), zero(grid))
+
+    function build_model(time_indices_in_memory)
+        Uᵉˣᵗ = FieldTimeSeries(path, "U"; architecture=arch, backend=InMemory(time_indices_in_memory))
+        u_bc = NormalFlowBoundaryCondition(uᵇ, discrete_form=true, parameters=Uᵉˣᵗ)
+        U_bc = GravityWaveRadiationBoundaryCondition(Uᵇ, discrete_form=true, parameters=Uᵉˣᵗ)
+        boundary_conditions = (u = FieldBoundaryConditions(west=u_bc, east=u_bc),
+                               U = FieldBoundaryConditions(west=U_bc, east=U_bc))
+
+        return HydrostaticFreeSurfaceModel(grid; boundary_conditions, free_surface=SplitExplicitFreeSurface(grid; substeps=10))
+    end
+
+    @test_throws ArgumentError build_model(2)
+    model = build_model(3)
+    for _ in 1:4
+        time_step!(model, 0.3)
+    end
+    @test model.clock.time ≈ 1.2
+end

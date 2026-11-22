@@ -21,7 +21,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceMo
                                                         update_vertical_velocities!
 using Oceananigans.Operators: Az⁻¹ᶜᶜᶠ, Δx_qᶜᶠᶠ, Δxᶜᶠᵃ, Δy_qᶠᶜᶠ, Δyᶠᶜᵃ, Δzᶜᶠᶜ, Δzᶠᶜᶜ, δxTᶜᵃᵃ, δxᶜᶜᶜ, δyTᵃᶜᵃ, δyᶜᶜᶜ,
                               ∂xᵣTᶠᶜᶠ, ∂xᵣᶠᶜᶠ, ∂yᵣTᶜᶠᶠ, ∂yᵣᶜᶠᶠ
-using Oceananigans.OutputReaders: extract_field_time_series, update_field_time_series!
+using Oceananigans.OutputReaders: PartlyInMemoryFTS, extract_field_time_series, update_field_time_series!
 using Oceananigans.Units: Time
 using Oceananigans.Utils: Utils, @apply_regionally, KernelParameters, add_time_interval, configure_kernel, launch!, SIGNATURES, TYPEDSIGNATURES
 
