@@ -8,7 +8,7 @@ using Oceananigans.Grids: Periodic, ZDirection, topology
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryCondition, ImmersedBoundaryGrid, immersed_inactive_node,
                                        immersed_peripheral_node
 using Oceananigans.Operators: Δz⁻¹
-using Oceananigans.Solvers: BatchedTridiagonalSolver, solve!
+using Oceananigans.Solvers: BatchedTridiagonalSolver, solve!, masked_multiply
 
 const IBG = ImmersedBoundaryGrid
 
@@ -210,9 +210,9 @@ where ``cⁿ⁺¹`` and ``c_★`` live at cell `Center`s in the vertical,
 and ``wⁿ⁺¹`` and ``w_★`` live at cell `Face`s in the vertical.
 
 The row of ``w`` on the bottom face, and on any immersed face, is an identity row since ``w = 0``
-there; the top face is not part of the system. On an `ImmersedBoundaryGrid`, the off-diagonals
-vanish across the immersed boundary, so the rows of the inactive cells are decoupled from the
-active part of the column. ``L`` collects the linear coefficients of the closure and of the forcing.
+there; the top face is not part of the system, so its ``w`` enters the right hand side of row `Nz`.
+On an `ImmersedBoundaryGrid`, the off-diagonals vanish across the immersed boundary, so the rows
+of the inactive cells are decoupled from the active part of the column. 
 """
 function implicit_diffusion_solver(::VerticallyImplicitTimeDiscretization, grid)
     topo = topology(grid)
@@ -256,6 +256,13 @@ end
     dbc = boundary_flux_diagonal(i, j, k, grid, ℓx, ℓy, ℓz, Δt, clk, fields, top_bc, bottom_bc, immersed_bc, ϕ)
     dF  = forcing_diagonal(i, j, k, grid, ℓx, ℓy, ℓz, Δt, clk, fields, forcing)
     return dκ + dw + dbc + dF
+end
+
+# The known w[Nz+1], nonzero with a free surface or an open top, enters the right hand side of row Nz
+@inline function Solvers.get_coefficient(i, j, k, grid, f::AbstractArray{<:Any, 3}, p, d::ZDirection, clo, K, id, ℓx, ℓy, ℓz::Face, args...)
+    Nz = size(grid, 3)
+    cᴺ = Solvers.get_coefficient(i, j, Nz, grid, VerticallyImplicitDiffusionUpperDiagonal(), p, d, clo, K, id, ℓx, ℓy, ℓz, args...)
+    return @inbounds f[i, j, k] - masked_multiply(cᴺ * (k == Nz), f[i, j, Nz+1])
 end
 
 #####
