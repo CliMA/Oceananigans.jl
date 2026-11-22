@@ -665,6 +665,8 @@ end
 xz_reduced_boundary_condition(condition, dim) = condition
 xz_reduced_boundary_condition(condition::XZReducedField, dim) = BoundaryConditions.xz_reduced_condition(condition, dim)
 
+xz_reduced_boundary_condition(condition::XYZReducedField, dim) = condition
+
 boundary_plane(::Type{LeftBoundary},  condition, dim) = 1
 boundary_plane(::Type{RightBoundary}, condition, dim) = size(condition, dim)
 

@@ -2,19 +2,16 @@ module Grids
 
 export constant_with_arch
 
-using Reactant
-using Reactant: TracedRArray
-using OffsetArrays
+using Reactant: Reactant, ConcreteRArray, Sharding, TracedRArray
+using OffsetArrays: OffsetArrays, OffsetArray
 
-using Oceananigans
-using Oceananigans: Distributed
+using Oceananigans: Oceananigans
 using Oceananigans.Architectures: ReactantState, CPU
-using Oceananigans.Fields: Field
 using Oceananigans.Grids: AbstractGrid, AbstractUnderlyingGrid, StaticVerticalDiscretization, MutableVerticalDiscretization,
                           LatitudeLongitudeGrid, RectilinearGrid, OrthogonalSphericalShellGrid,
-                          Center, Face, Periodic, TwoSided, Bounded, Closed, Connected, Flat, FaceExtendedTopology
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedVerticalBoundaries, AbstractImmersedBoundary
-using Oceananigans.OrthogonalSphericalShellGrids: TripolarGrid
+                          Face, Periodic, TwoSided, Bounded, Closed, Connected, FaceExtendedTopology
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedVerticalBoundaries
+using Oceananigans.OrthogonalSphericalShellGrids: OrthogonalSphericalShellGrids, TripolarGrid
 using Oceananigans.Utils: StaticStridesOffsetArray, unparameterized_type
 
 using ..OceananigansReactantExt: OceananigansReactantExt, deconcretize
