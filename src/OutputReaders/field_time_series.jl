@@ -1093,8 +1093,13 @@ const MAX_FTS_TUPLE_SIZE = 10
 BoundaryConditions.fill_halo_regions!(fts::OnDiskFTS) = nothing
 
 function BoundaryConditions.fill_halo_regions!(fts::InMemoryFTS)
-    for indices in Iterators.partition(time_indices(fts), MAX_FTS_TUPLE_SIZE)
-        fill_halo_regions!(Tuple(fts[n] for n in indices))
+    partitioned_indices = collect(Iterators.partition(time_indices(fts), MAX_FTS_TUPLE_SIZE))
+    Ni = length(partitioned_indices)
+
+    for i in 1:Ni
+        indices = partitioned_indices[i]
+        fts_tuple = Tuple(fts[n] for n in indices)
+        fill_halo_regions!(fts_tuple)
     end
 
     return nothing
