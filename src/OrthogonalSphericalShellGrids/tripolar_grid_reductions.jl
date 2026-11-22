@@ -127,7 +127,9 @@ function immersed_reduced_tripolar_condition_operand(func, op, condition, mask)
         tripolar_condition = immersed_cond
     end
 
-    return ConditionalOperation(op; func, condition=tripolar_condition, mask)
+    # `immersed_cond` already masks the immersed columns
+    LX, LY, LZ = Fields.location(op)
+    return ConditionalOperation{LX, LY, LZ}(op, func, op.grid, tripolar_condition, mask)
 end
 
 @inline Fields.condition_operand(::typeof(identity), op::ITRF, ::Nothing, mask) = immersed_reduced_tripolar_condition_operand(nothing, op, nothing, mask)

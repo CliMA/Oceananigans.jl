@@ -216,6 +216,38 @@ tripolar_immersed_on_architecture_script(fold_topology, pivot) = """
     run_mpi_script(tripolar_immersed_on_architecture_script(fold_topology, pivot), 4)
 end
 
+# Every rank must create the same fields in a reduction, also the rank of the fold, otherwise the next halo
+# exchange never completes.
+tripolar_immersed_reduction_script(fold_topology, pivot) = """
+    using MPI
+    MPI.Init(threadlevel=:multiple)
+    using Test
+
+    include($(repr(distributed_tests_utils)))
+
+    using Oceananigans.DistributedComputations: check_field_tags
+
+    arch = Distributed(CPU(), partition=Partition(1, 4))
+    underlying_grid = TripolarGrid(arch; size = (20, 40, 4), z = (-1000, 0), halo = (3, 3, 3), fold_topology = $fold_topology, pivot = $pivot)
+    bottom_height = [j > 30 ? 0 : -1000 for i in 1:20, j in 1:40]
+    grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height))
+
+    c = Field{Center, Center, Nothing}(grid)
+    set!(c, 1)
+
+    wet_columns = sum(c; dims = (1, 2))
+    check_field_tags(arch)
+    @test only(interior(wet_columns)) == 20 * 30
+
+    average = Field(Average(c, dims = (1, 2)))
+    check_field_tags(arch)
+    @test only(interior(compute!(average))) ≈ 1
+"""
+
+@testset "Test distributed immersed TripolarGrid reductions $fold_topology..." for (fold_topology, pivot) in fold_topologies
+    run_mpi_script(tripolar_immersed_reduction_script(fold_topology, pivot), 4)
+end
+
 tripolar_boundary_conditions_script(fold_topology, pivot) = """
     using MPI
     MPI.Init(threadlevel=:multiple)
