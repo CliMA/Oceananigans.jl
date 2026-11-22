@@ -906,6 +906,34 @@ function test_in_memory_window_covers_time_span(arch)
     return nothing
 end
 
+function test_split_explicit_with_two_records_in_memory(arch)
+    grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1), topology=(Periodic, Periodic, Bounded))
+    filename = "split_explicit_tracer_flux_test.jld2"
+    flux = Field{Center, Center, Nothing}(grid)
+    Q = FieldTimeSeries{Center, Center, Nothing}(grid, 0:10; backend=OnDisk(), path=filename, name="Q")
+
+    for n in eachindex(Q.times)
+        set!(flux, 1e-4)
+        set!(Q, flux, n)
+    end
+
+    Q = FieldTimeSeries(filename, "Q"; architecture=arch, backend=InMemory(2))
+    T_bcs = FieldBoundaryConditions(top=FluxBoundaryCondition(Q))
+
+    model = HydrostaticFreeSurfaceModel(grid; tracers=:T, boundary_conditions=(; T=T_bcs),
+                                        free_surface=SplitExplicitFreeSurface(grid; substeps=10))
+
+    # The substeps of a time step run past its end, and so past the record times this run crosses
+    simulation = Simulation(model, Δt=0.3, stop_time=3)
+    run!(simulation)
+
+    @test mean(model.tracers.T) ≈ -3e-4
+
+    rm(filename, force=true)
+
+    return nothing
+end
+
 @testset "OutputReaders" begin
     Nt = 5
     Nx, Ny, Nz = 16, 10, 5
@@ -1110,6 +1138,10 @@ end
     for arch in archs
         @testset "Partly-in-memory window covers a time span [$(typeof(arch))]" begin
             test_in_memory_window_covers_time_span(arch)
+        end
+
+        @testset "Split-explicit free surface with two records in memory [$(typeof(arch))]" begin
+            test_split_explicit_with_two_records_in_memory(arch)
         end
     end
 
