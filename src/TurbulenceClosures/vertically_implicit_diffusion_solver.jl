@@ -212,7 +212,7 @@ and ``wⁿ⁺¹`` and ``w_★`` live at cell `Face`s in the vertical.
 The row of ``w`` on the bottom face, and on any immersed face, is an identity row since ``w = 0``
 there; the top face is not part of the system, so its ``w`` enters the right hand side of row `Nz`.
 On an `ImmersedBoundaryGrid`, the off-diagonals vanish across the immersed boundary, so the rows
-of the inactive cells are decoupled from the active part of the column. 
+of the inactive cells are decoupled from the active part of the column.
 """
 function implicit_diffusion_solver(::VerticallyImplicitTimeDiscretization, grid)
     topo = topology(grid)
