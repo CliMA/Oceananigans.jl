@@ -396,7 +396,7 @@ recv_from_buffers!(c::AbstractOffsetArray, buff::CommunicationBuffers, grid, ::B
     @inbounds c[I] = recv[I]
 end
 
-copy_from_buffer!(c, recv) = _copy_from_buffer!(get_backend(recv))(c, recv; ndrange = size(c))
+copy_from_buffer!(c, recv) = any(iszero, size(c)) ? nothing : _copy_from_buffer!(get_backend(recv))(c, recv; ndrange = size(c))
 
 for dir in (:west, :east, :south, :north, :southwest, :southeast, :northwest, :northeast)
     _fill_send_buffer! = Symbol(:_fill_, dir, :_send_buffer!)
