@@ -23,6 +23,9 @@ const ISSDVector{TD, A} = AbstractVector{<:ISSD{TD, A}} where {TD, A}
 const FlavorOfISSD{TD, A} = Union{ISSD{TD, A}, ISSDVector{TD, A}} where {TD, A}
 const SkewAdvectionISSD = ISSD{<:Any, <:AdvectiveFormulation}
 
+# Each isopycnal flux evaluates buoyancy gradients at several neighboring points
+materialize_buoyancy_gradients(::FlavorOfISSD) = true
+
 const issd_coefficient_loc = (Center(), Center(), Face())
 
 # The slope limiter of Gerdes, Koberle and Willebrand (1991)

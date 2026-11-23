@@ -17,6 +17,7 @@ using Oceananigans.TimeSteppers: AbstractLagrangianParticles, Clock, TimeStepper
                                  materialize_lagrangian_particles,
                                  time_discretization, update_state!
 using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization, build_closure_fields,
+                                       materialize_buoyancy_gradients,
                                        implicit_diffusion_solver, initialize_closure_fields!, validate_closure,
                                        with_penetrative_radiation, with_tracers
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE
@@ -204,7 +205,7 @@ function NonhydrostaticModel(grid;
     all_auxiliary_fields = merge(auxiliary_fields, biogeochemical_auxiliary_fields(biogeochemistry))
     tracers, auxiliary_fields = validate_biogeochemistry(tracers, all_auxiliary_fields, biogeochemistry, grid, clock)
     validate_buoyancy(buoyancy, tracernames(tracers))
-    buoyancy = materialize_buoyancy(buoyancy, grid)
+    buoyancy = materialize_buoyancy(buoyancy, grid; materialize_gradients=materialize_buoyancy_gradients(closure))
 
     !isnothing(particles) && arch isa Distributed && error("LagrangianParticles are not supported on Distributed architectures.")
 
