@@ -39,7 +39,7 @@ Adapt.adapt_structure(to, vd::PrognosticTripolarCells) = PrognosticTripolarCells
     center_folded_domain = ifelse(Ly == Face, true, !last_half_row_center)
 
     # `Ny` is the local size: ranks without the fold keep their top row
-    folded_domain = ifelse(TY == TwoSided{Closed, FaceFolded}, face_folded_domain, center_folded_domain)
+    folded_domain = ifelse(TY <: TwoSided{<:Any, <:Union{FaceFolded, FaceFoldConnected}}, face_folded_domain, center_folded_domain)
     return ifelse(TY <: Oceananigans.Grids.FoldedTopology, folded_domain, true)
 end
 
