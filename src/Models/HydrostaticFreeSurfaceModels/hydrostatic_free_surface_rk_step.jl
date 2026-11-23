@@ -26,7 +26,7 @@ The order of operations for explicit free surfaces is:
 5. Advance grid scaling (for z-star coordinates)
 6. Advance velocities
 7. Correct barotropic mode to reconcile baroclinic and barotropic velocities
-8. Step open boundary conditions of the corrected velocities and correct the barotropic mode again
+8. Step open boundary conditions of the corrected velocities and correct the radiated boundary columns
 9. Advance tracers
 """
 @inline function TimeSteppers.rk_substep!(model, free_surface, grid, Δτ, callbacks)
@@ -60,7 +60,7 @@ The order of operations for explicit free surfaces is:
         step_boundary_conditions!((u, v), model.clock, fields(model), Δτ)
 
         # Bring the radiated boundary columns back onto the barotropic transport
-        correct_barotropic_mode!(model, Δτ)
+        correct_radiating_boundary_columns!(model, free_surface)
         rk_substep_tracers!(model.tracers, model, Δτ)
     end
 
