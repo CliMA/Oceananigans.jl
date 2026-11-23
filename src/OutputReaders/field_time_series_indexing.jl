@@ -469,7 +469,8 @@ function update_field_time_series!(fts::PartlyInMemoryFTS, first_time::Time, las
     Nm = length(fts.backend)
     Nt = length(fts.times)
 
-    min(n₂, Nt) - n₁ < Nm ||
+    # `n₂ < n₁` when the times span the last and the first record of a `Cyclical` series
+    mod(n₂ - n₁, Nt) < Nm ||
         throw(ArgumentError("times $(first_time.time) to $(last_time.time) span time indices $n₁ to $n₂, " *
                             "more than the $Nm held in memory; increase `time_indices_in_memory`."))
 

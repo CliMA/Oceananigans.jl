@@ -901,6 +901,14 @@ function test_in_memory_window_covers_time_span(arch)
 
     @test_throws ArgumentError update_field_time_series!(fts, Time(1.9), Time(4.1))
 
+    # Times 5.9 to 6.1 of a cyclical series span its last two records and its first
+    cyclical = FieldTimeSeries(filename, "f"; architecture=arch, backend=InMemory(3), time_indexing=Cyclical())
+    update_field_time_series!(cyclical, Time(5.9), Time(6.1))
+    @test time_indices(cyclical) == (6, 7, 1)
+    @test all(on_architecture(CPU(), interior(cyclical[1])) .== 1)
+
+    @test_throws ArgumentError update_field_time_series!(cyclical, Time(4.9), Time(6.1))
+
     rm(filename, force=true)
 
     return nothing
