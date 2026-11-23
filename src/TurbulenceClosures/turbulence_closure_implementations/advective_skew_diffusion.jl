@@ -1,6 +1,7 @@
 using Oceananigans.BuoyancyFormulations: ∂xᵣ_b, ∂yᵣ_b, ∂z_b
 using Oceananigans.Fields: VelocityFields
 using Oceananigans.Grids: inactive_node, peripheral_node
+using Oceananigans.Utils: sum_of_velocities
 
 # Fallback
 compute_eddy_velocities!(closure_fields, closure, model; parameters = :xyz) = nothing
@@ -152,46 +153,33 @@ end
 @inline closure_auxiliary_velocity(clo, K, val_tracer_name) = nothing
 @inline closure_auxiliary_velocity(::SkewAdvectionISSD, K, val_tracer_name) = (u = K.u, v = K.v, w = K.w)
 
-# 2-tuple closure
-@inline select_velocities(::Nothing, U) = U
-@inline select_velocities(U, ::Nothing) = U
-@inline select_velocities(::Nothing, ::Nothing) = nothing
+# Velocities of several closures add up
+@inline sum_of_closure_velocities(::Nothing, ::Nothing) = nothing
+@inline sum_of_closure_velocities(U₁, U₂) = sum_of_velocities(U₁, U₂)
+@inline sum_of_closure_velocities(U₁, U₂, U₃) = sum_of_closure_velocities(sum_of_closure_velocities(U₁, U₂), U₃)
+@inline sum_of_closure_velocities(U₁, U₂, U₃, U₄) = sum_of_closure_velocities(sum_of_closure_velocities(U₁, U₂, U₃), U₄)
 
-# 3-tuple closure
-@inline select_velocities(U, ::Nothing, ::Nothing) = U
-@inline select_velocities(::Nothing, U, ::Nothing) = U
-@inline select_velocities(::Nothing, ::Nothing, U) = U
-@inline select_velocities(::Nothing, ::Nothing, ::Nothing) = nothing
-
-# 4-tuple closure
-@inline select_velocities(U, ::Nothing, ::Nothing, ::Nothing) = U
-@inline select_velocities(::Nothing, U, ::Nothing, ::Nothing) = U
-@inline select_velocities(::Nothing, ::Nothing, U, ::Nothing) = U
-@inline select_velocities(::Nothing, ::Nothing, ::Nothing, U) = U
-@inline select_velocities(::Nothing, ::Nothing, ::Nothing, ::Nothing) = nothing
-
-# Handle tuple of closures.
-# Assumption: there is only one ISSD closure in the tuple of closures.
+# Handle tuple of closures
 @inline closure_auxiliary_velocity(closures::Tuple{<:Any}, Ks, val_tracer_name) =
             closure_auxiliary_velocity(closures[1], Ks[1], val_tracer_name)
 
 @inline closure_auxiliary_velocity(closures::Tuple{<:Any, <:Any}, Ks, val_tracer_name) =
-    select_velocities(closure_auxiliary_velocity(closures[1], Ks[1], val_tracer_name),
-                      closure_auxiliary_velocity(closures[2], Ks[2], val_tracer_name))
+    sum_of_closure_velocities(closure_auxiliary_velocity(closures[1], Ks[1], val_tracer_name),
+                              closure_auxiliary_velocity(closures[2], Ks[2], val_tracer_name))
 
 @inline closure_auxiliary_velocity(closures::Tuple{<:Any, <:Any, <:Any}, Ks, val_tracer_name) =
-    select_velocities(closure_auxiliary_velocity(closures[1], Ks[1], val_tracer_name),
-                      closure_auxiliary_velocity(closures[2], Ks[2], val_tracer_name),
-                      closure_auxiliary_velocity(closures[3], Ks[3], val_tracer_name))
+    sum_of_closure_velocities(closure_auxiliary_velocity(closures[1], Ks[1], val_tracer_name),
+                              closure_auxiliary_velocity(closures[2], Ks[2], val_tracer_name),
+                              closure_auxiliary_velocity(closures[3], Ks[3], val_tracer_name))
 
 @inline closure_auxiliary_velocity(closures::Tuple{<:Any, <:Any, <:Any, <:Any}, Ks, val_tracer_name) =
-    select_velocities(closure_auxiliary_velocity(closures[1], Ks[1], val_tracer_name),
-                      closure_auxiliary_velocity(closures[2], Ks[2], val_tracer_name),
-                      closure_auxiliary_velocity(closures[3], Ks[3], val_tracer_name),
-                      closure_auxiliary_velocity(closures[4], Ks[4], val_tracer_name))
+    sum_of_closure_velocities(closure_auxiliary_velocity(closures[1], Ks[1], val_tracer_name),
+                              closure_auxiliary_velocity(closures[2], Ks[2], val_tracer_name),
+                              closure_auxiliary_velocity(closures[3], Ks[3], val_tracer_name),
+                              closure_auxiliary_velocity(closures[4], Ks[4], val_tracer_name))
 
 @inline closure_auxiliary_velocity(closures::Tuple, Ks, val_tracer_name) =
-    select_velocities(closure_auxiliary_velocity(closures[1], Ks[1], val_tracer_name),
-                      closure_auxiliary_velocity(closures[2], Ks[2], val_tracer_name),
-                      closure_auxiliary_velocity(closures[3], Ks[3], val_tracer_name),
-                      closure_auxiliary_velocity(closures[4:end], Ks[4:end], val_tracer_name))
+    sum_of_closure_velocities(closure_auxiliary_velocity(closures[1], Ks[1], val_tracer_name),
+                              closure_auxiliary_velocity(closures[2], Ks[2], val_tracer_name),
+                              closure_auxiliary_velocity(closures[3], Ks[3], val_tracer_name),
+                              closure_auxiliary_velocity(closures[4:end], Ks[4:end], val_tracer_name))
