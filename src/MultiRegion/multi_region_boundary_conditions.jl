@@ -1,9 +1,5 @@
 using Oceananigans: instantiated_location
 using Oceananigans.Architectures: on_architecture, device_copy_to!
-using Oceananigans.Operators: assumed_field_location
-using Oceananigans.Fields: reduced_dimensions
-using Oceananigans.DistributedComputations: fill_send_buffers!
-
 using Oceananigans.BoundaryConditions:
     BoundaryCondition,
     ContinuousBoundaryFunction,
@@ -13,6 +9,9 @@ using Oceananigans.BoundaryConditions:
     MultiRegionFillHalo,
     MultiRegionCommunicationBoundaryCondition,
     XZReducedCondition
+using Oceananigans.DistributedComputations: fill_send_buffers!
+using Oceananigans.Fields: reduced_dimensions
+using Oceananigans.Operators: assumed_field_location
 
 @inline bc_str(::MultiRegionObject) = "MultiRegion Boundary Conditions"
 
