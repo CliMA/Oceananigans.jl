@@ -1,17 +1,8 @@
 module OceananigansEnzymeExt
 
-using Oceananigans
-using Oceananigans.Fields: FunctionField
-using Oceananigans.Utils: contiguousrange
-#Oceananigans.Models.HydrostaticFreeSurfaceModels.top_tracer_boundary_conditions
-
-using KernelAbstractions
-
-#isdefined(Base, :get_extension) ? (import EnzymeCore) : (import ..EnzymeCore)
-isdefined(Base, :get_extension) ? (import Enzyme) : (import ..Enzyme)
-
-using Enzyme: EnzymeCore
-using Enzyme.EnzymeCore: Active, Const, Duplicated
+using Oceananigans: Oceananigans
+using Enzyme: Enzyme, EnzymeCore
+using Enzyme.EnzymeCore: Const, Duplicated
 
 EnzymeCore.EnzymeRules.inactive_noinl(::typeof(Base.:(==)), ::Oceananigans.AbstractGrid, ::Oceananigans.AbstractGrid) = nothing
 EnzymeCore.EnzymeRules.inactive_noinl(::typeof(Oceananigans.AbstractOperations.validate_grid), x...) = nothing
@@ -356,8 +347,8 @@ function EnzymeCore.EnzymeRules.augmented_primal(config,
         tapes = []
         for (fts, dfts) in zip(time_series_tuple, dtime_series_tuple)
             dupft = Enzyme.Compiler.guaranteed_const(typeof(fts)) ? Const(fts) : Duplicated(fts, dfts)
-            fwdfn, revfn = Enzyme.autodiff_thunk(EnzymeCore.ReverseSplitNoPrimal, Const{typeof(Oceananigans.Models.update_field_time_series!)}, Const, typeof(dupft), typeof(time))
-            tape, primal, shadow = fwdfn(Const(Oceananigans.Models.update_field_time_series!), dupft, time)
+            fwdfn, revfn = Enzyme.autodiff_thunk(EnzymeCore.ReverseSplitNoPrimal, Const{typeof(Oceananigans.OutputReaders.update_field_time_series!)}, Const, typeof(dupft), typeof(time))
+            tape, primal, shadow = fwdfn(Const(Oceananigans.OutputReaders.update_field_time_series!), dupft, time)
             push!(tapes, tape)
         end
         tapes
@@ -370,8 +361,8 @@ function EnzymeCore.EnzymeRules.augmented_primal(config,
             tapes = []
             for (fts, dfts) in zip(time_series_tuple, dtime_series_tuple)
                 dupft = Enzyme.Compiler.guaranteed_const(typeof(fts)) ? Const(fts) : Duplicated(fts, dfts)
-                fwdfn, revfn = Enzyme.autodiff_thunk(EnzymeCore.ReverseSplitNoPrimal, Const{typeof(Oceananigans.Models.update_field_time_series!)}, Const, typeof(dupft), typeof(time))
-                tape, primal, shadow = fwdfn(Const(Oceananigans.Models.update_field_time_series!), dupft, time)
+                fwdfn, revfn = Enzyme.autodiff_thunk(EnzymeCore.ReverseSplitNoPrimal, Const{typeof(Oceananigans.OutputReaders.update_field_time_series!)}, Const, typeof(dupft), typeof(time))
+                tape, primal, shadow = fwdfn(Const(Oceananigans.OutputReaders.update_field_time_series!), dupft, time)
                 push!(tapes, tape)
             end
             tapes
@@ -402,8 +393,8 @@ function EnzymeCore.EnzymeRules.reverse(config,
         i = 1
         for (fts, dfts) in zip(time_series_tuple, dtime_series_tuple)
             dupft = Enzyme.Compiler.guaranteed_const(typeof(fts)) ? Const(fts) : Duplicated(fts, dfts)
-            fwdfn, revfn = Enzyme.autodiff_thunk(EnzymeCore.ReverseSplitNoPrimal, Const{typeof(Oceananigans.Models.update_field_time_series!)}, Const, typeof(dupft), typeof(time))
-            revfn(Const(Oceananigans.Models.update_field_time_series!), dupft, time, tapes[i])
+            fwdfn, revfn = Enzyme.autodiff_thunk(EnzymeCore.ReverseSplitNoPrimal, Const{typeof(Oceananigans.OutputReaders.update_field_time_series!)}, Const, typeof(dupft), typeof(time))
+            revfn(Const(Oceananigans.OutputReaders.update_field_time_series!), dupft, time, tapes[i])
             i+= 1
         end
     else
@@ -417,8 +408,8 @@ function EnzymeCore.EnzymeRules.reverse(config,
             i += 1
             for (fts, dfts) in zip(time_series_tuple, dtime_series_tuple)
                 dupft = Enzyme.Compiler.guaranteed_const(typeof(fts)) ? Const(fts) : Duplicated(fts, dfts)
-                fwdfn, revfn = Enzyme.autodiff_thunk(EnzymeCore.ReverseSplitNoPrimal, Const{typeof(Oceananigans.Models.update_field_time_series!)}, Const, typeof(dupft), typeof(time))
-                revfn(Const(Oceananigans.Models.update_field_time_series!), dupft, time, tapes[i])
+                fwdfn, revfn = Enzyme.autodiff_thunk(EnzymeCore.ReverseSplitNoPrimal, Const{typeof(Oceananigans.OutputReaders.update_field_time_series!)}, Const, typeof(dupft), typeof(time))
+                revfn(Const(Oceananigans.OutputReaders.update_field_time_series!), dupft, time, tapes[i])
                 i+=1
             end
         end
