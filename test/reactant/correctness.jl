@@ -396,4 +396,51 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
             end
         end
     end
+
+    @testset "Split-explicit substeps as a traced loop" begin
+        # Reactant traces the substeps as a loop rather than unrolling them
+        Nx, Ny, Nz = 8, 8, 2
+        Δt = 60.0
+        stop_iteration = 3
+
+        for topo in ((Periodic, Periodic, Bounded), (Periodic, Bounded, Bounded))
+            @testset "topology=$topo" begin
+                @info "Testing split-explicit substeps as a traced loop ($topo)..."
+                kw = (size=(Nx, Ny, Nz), x=(0, 1e5), y=(0, 1e5), z=(-100, 0), topology=topo)
+                vanilla_grid = RectilinearGrid(vanilla_arch; kw...)
+                reactant_grid = RectilinearGrid(reactant_arch; kw...)
+
+                model_kw = (; coriolis=FPlane(f=1e-4), momentum_advection=nothing, tracers=(), buoyancy=nothing,
+                              free_surface=SplitExplicitFreeSurface(substeps=13))
+                vanilla_model = HydrostaticFreeSurfaceModel(vanilla_grid; model_kw...)
+                reactant_model = HydrostaticFreeSurfaceModel(reactant_grid; model_kw...)
+
+                Random.seed!(1234)
+                u_init = 0.1 * randn(size(vanilla_model.velocities.u)...)
+                v_init = 0.1 * randn(size(vanilla_model.velocities.v)...)
+                set!(vanilla_model, u=u_init, v=v_init)
+                set!(reactant_model, u=u_init, v=v_init)
+
+                vanilla_simulation = Simulation(vanilla_model; Δt, stop_iteration, verbose=false)
+                run!(vanilla_simulation)
+
+                @jit Oceananigans.TimeSteppers.update_state!(reactant_model)
+
+                hlo = string(@code_hlo Oceananigans.TimeSteppers.time_step!(reactant_model, Δt))
+                @info "stablehlo.while loops in time_step!: $(count("stablehlo.while", hlo))"
+                @test count("stablehlo.while", hlo) ≥ 1
+
+                r_first_time_step! = @compile sync=true Oceananigans.TimeSteppers.first_time_step!(reactant_model, Δt)
+                r_time_step! = @compile sync=true Oceananigans.TimeSteppers.time_step!(reactant_model, Δt)
+                reactant_simulation = Simulation(reactant_model; Δt, stop_iteration, verbose=false)
+                r_run!(reactant_simulation, r_time_step!, r_first_time_step!)
+
+                @test compare_interior("u", vanilla_model.velocities.u, reactant_model.velocities.u)
+                @test compare_interior("v", vanilla_model.velocities.v, reactant_model.velocities.v)
+                @test compare_interior("η", vanilla_model.free_surface.displacement, reactant_model.free_surface.displacement)
+                @test compare_interior("U", vanilla_model.free_surface.barotropic_velocities.U,
+                                       reactant_model.free_surface.barotropic_velocities.U)
+            end
+        end
+    end
 end
