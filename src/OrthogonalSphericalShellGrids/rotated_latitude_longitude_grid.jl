@@ -1,3 +1,4 @@
+using CubedSphere.SphericalGeometry: cartesian_to_lat_lon, lat_lon_to_cartesian
 using Oceananigans.Grids: Center, LatitudeLongitudeGrid, validate_lat_lon_grid_args, λnode, φnode
 using Oceananigans.Operators: Operators
 using Oceananigans.Utils: KernelParameters, launch!
@@ -26,12 +27,10 @@ end
 """
 $(SIGNATURES)
 
-Return a `RotatedLatitudeLongitudeGrid` with arbitrary `north_pole`, a 2-tuple
-giving the longitude and latitude of the "grid north pole", which may differ from the
-geographic north pole at `(0, 90)`.
+Return a `RotatedLatitudeLongitudeGrid` with arbitrary `north_pole`, a 2-tuple giving the longitude and latitude of the
+"grid north pole", which may differ from the geographic north pole at `(0, 90)`.
 
-Note that `longitude` and `latitude` are interpreted as applying to the grid _before_
-the pole is rotated.
+Note that `longitude` and `latitude` are interpreted as applying to the grid _before_ the pole is rotated.
 
 All other arguments are the same as for [`LatitudeLongitudeGrid`](@ref).
 
@@ -114,58 +113,37 @@ function rotate_metrics!(grid, shifted_lat_lon_grid)
     return nothing
 end
 
-# Convert from Spherical to Cartesian
-function spherical_to_cartesian(φ, λ; radius = 1, check_latitude_bounds = true)
-    check_latitude_bounds && abs(φ) > π/2 && error("Latitude φ must be within -90 ≤ φ ≤ 90 degrees.")
-    x = radius * cos(λ) * cos(φ)
-    y = radius * sin(λ) * cos(φ)
-    z = radius * sin(φ)
-    return x, y, z
-end
+# Rotation about x-axis by Δλ (Change in Longitude)
+x_rotation_matrix(Δλ) = @SMatrix [1        0       0
+                                  0  cos(Δλ) -sin(Δλ)
+                                  0  sin(Δλ)  cos(Δλ)]
 
-# Convert from Cartesian to Spherical
-function cartesian_to_spherical(x, y, z)
-    φ = atan(z, sqrt(x*x + y*y))
-    λ = atan(y, x)
-    return φ, λ
-end
-
-function cartesian_to_spherical(X)
-    x, y, z = X
-    return cartesian_to_spherical(x, y, z)
-end
-
-# Rotation about x-axis by dλ (Change in Longitude)
-x_rotation_matrix(dλ) = @SMatrix [1        0       0
-                                  0  cos(dλ) -sin(dλ)
-                                  0  sin(dλ)  cos(dλ)]
-
-# Rotation about y-axis by dφ (Change in Latitude)
-y_rotation_matrix(dφ) = @SMatrix [ cos(dφ)  0  sin(dφ)
+# Rotation about y-axis by Δφ (Change in Latitude)
+y_rotation_matrix(Δφ) = @SMatrix [ cos(Δφ)  0  sin(Δφ)
                                    0        1  0
-                                  -sin(dφ)  0  cos(dφ)]
+                                  -sin(Δφ)  0  cos(Δφ)]
 
-# Rotation about z-axis by dλ (Change in Longitude)
-z_rotation_matrix(dλ) = @SMatrix [cos(dλ) -sin(dλ) 0
-                                  sin(dλ)  cos(dλ) 0
+# Rotation about z-axis by Δλ (Change in Longitude)
+z_rotation_matrix(Δλ) = @SMatrix [cos(Δλ) -sin(Δλ) 0
+                                  sin(Δλ)  cos(Δλ) 0
                                   0        0       1]
 
 """
 $(TYPEDSIGNATURES)
 
-Return the geographic longitude and latitude `(λ, φ)` corresponding to the rotated
-coordinates `(λ′, φ′)` on a grid whose north pole is located at `(λ₀, φ₀)`. All
-arguments are interpreted in degrees. The rotation aligns the grid pole with the
-geographic pole, then maps the rotated point back to geographic coordinates.
+Return the geographic longitude and latitude `(λ, φ)` corresponding to the rotated coordinates `(λ′, φ′)` on a grid
+whose north pole is located at `(λ₀, φ₀)`. All arguments are interpreted in degrees. The rotation aligns the grid pole
+with the geographic pole, then maps the rotated point back to geographic coordinates.
 """
 function rotate_coordinates(λ′, φ′, λ₀, φ₀)
     FT = typeof(float(λ′))
-    λ′, φ′, dλ, φ₀ = map(x -> deg2rad(convert(FT, x)), (λ′, φ′, λ₀, φ₀))
-    dφ = convert(FT, π) / 2 - φ₀
-    X′ = SVector(spherical_to_cartesian(φ′, λ′; check_latitude_bounds = false)...)
-    X = z_rotation_matrix(dλ) * y_rotation_matrix(dφ) * X′
-    φ, λ = cartesian_to_spherical(X)
-    return rad2deg(λ), rad2deg(φ)
+    λ′, φ′, λ₀, φ₀ = map(x -> convert(FT, x), (λ′, φ′, λ₀, φ₀))
+    Δλ = deg2rad(λ₀)
+    Δφ = deg2rad(90 - φ₀)
+    X′ = SVector(lat_lon_to_cartesian(φ′, λ′; check_latitude_bounds = false)...)
+    X = z_rotation_matrix(Δλ) * y_rotation_matrix(Δφ) * X′
+    φ, λ = cartesian_to_lat_lon(X)
+    return λ, φ
 end
 
 # The angle θ (radians) from the geographic basis at the geographic point `(λ, φ)` to the basis of a frame whose north
