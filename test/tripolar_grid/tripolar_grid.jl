@@ -132,6 +132,22 @@ end
     end
 end
 
+@testset "Reductions count each fold-row cell once" begin
+    for arch in archs
+        @testset "$fold_topology $pivot fold topology [$(typeof(arch))]" for (fold_topology, pivot) in fold_topologies
+            grid = TripolarGrid(arch; size = (8, 10, 1), z = (0, 1), fold_topology, pivot)
+
+            @testset "$LX, $LY" for (LX, LY) in ((Center, Center), (Face, Center), (Center, Face), (Face, Face))
+                f = Field{LX, LY, Center}(grid)
+                set!(f, rand(size(f)...))
+                fill_halo_regions!(f) # the zipper copies the repeated fold-row cells from their mirrors
+                data = Array(interior(f, :, :, 1))
+                @test sum(f) ≈ sum(data[:, 1:end-1]) + sum(unique(data[:, end]))
+            end
+        end
+    end
+end
+
 @testset "Inactive cells on tripolar grids" begin
     for arch in archs
         @testset "$fold_topology $pivot fold topology" for (fold_topology, pivot) in fold_topologies

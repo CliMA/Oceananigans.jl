@@ -235,28 +235,37 @@ tripolar_immersed_reduction_script(fold_topology, pivot) = """
         return ImmersedBoundaryGrid(grid, GridFittedBottom(bottom_height))
     end
 
-    arch = Distributed(CPU(), partition=Partition(1, 4))
-    grid = immersed_tripolar_grid(arch)
     serial_grid = immersed_tripolar_grid(CPU())
-
-    c  = Field{Center, Center, Nothing}(grid)
     cs = Field{Center, Center, Nothing}(serial_grid)
-    v  = YFaceField(grid)
+    us = XFaceField(serial_grid)
     vs = YFaceField(serial_grid)
-
-    set!(c,  (λ, φ) -> φ + λ / 1000)
     set!(cs, (λ, φ) -> φ + λ / 1000)
-    set!(v,  (λ, φ, z) -> φ - λ / 1000 + z / 100)
+    set!(us, (λ, φ, z) -> φ + λ / 100 + z / 100)
     set!(vs, (λ, φ, z) -> φ - λ / 1000 + z / 100)
 
-    @test sum(c; dims = (1, 2))[1, 1, 1] ≈ sum(cs; dims = (1, 2))[1, 1, 1]
-    check_field_tags(arch)
+    for partition in (Partition(1, 4), Partition(2, 2))
+        arch = Distributed(CPU(); partition)
+        grid = immersed_tripolar_grid(arch)
 
-    @test Field(Average(c, dims = (1, 2)))[1, 1, 1] ≈ Field(Average(cs, dims = (1, 2)))[1, 1, 1]
-    check_field_tags(arch)
+        c = Field{Center, Center, Nothing}(grid)
+        u = XFaceField(grid)
+        v = YFaceField(grid)
+        set!(c, (λ, φ) -> φ + λ / 1000)
+        set!(u, (λ, φ, z) -> φ + λ / 100 + z / 100)
+        set!(v, (λ, φ, z) -> φ - λ / 1000 + z / 100)
 
-    @test sum(v) ≈ sum(vs)
-    check_field_tags(arch)
+        @test sum(c; dims = (1, 2))[1, 1, 1] ≈ sum(cs; dims = (1, 2))[1, 1, 1]
+        check_field_tags(arch)
+
+        @test Field(Average(c, dims = (1, 2)))[1, 1, 1] ≈ Field(Average(cs, dims = (1, 2)))[1, 1, 1]
+        check_field_tags(arch)
+
+        @test sum(u) ≈ sum(us)
+        check_field_tags(arch)
+
+        @test sum(v) ≈ sum(vs)
+        check_field_tags(arch)
+    end
 """
 
 @testset "Test distributed immersed TripolarGrid reductions $fold_topology..." for (fold_topology, pivot) in fold_topologies
