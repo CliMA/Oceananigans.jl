@@ -227,18 +227,35 @@ tripolar_immersed_reduction_script(fold_topology, pivot) = """
 
     using Oceananigans.DistributedComputations: check_field_tags
 
-    arch = Distributed(CPU(), partition=Partition(1, 4))
     Nx, Ny = 20, 40
-    underlying_grid = TripolarGrid(arch; size = (Nx, Ny, 4), z = (-1000, 0), halo = (3, 3, 3), fold_topology = $fold_topology, pivot = $pivot)
     bottom_height = [j > Ny ÷ 4 ? -1000 : 0 for i in 1:Nx, j in 1:Ny]
-    grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height))
 
-    c = Field{Center, Center, Nothing}(grid)
+    function immersed_tripolar_grid(arch)
+        grid = TripolarGrid(arch; size = (Nx, Ny, 4), z = (-1000, 0), halo = (3, 3, 3), fold_topology = $fold_topology, pivot = $pivot)
+        return ImmersedBoundaryGrid(grid, GridFittedBottom(bottom_height))
+    end
 
-    sum(c; dims = (1, 2))
+    arch = Distributed(CPU(), partition=Partition(1, 4))
+    grid = immersed_tripolar_grid(arch)
+    serial_grid = immersed_tripolar_grid(CPU())
+
+    c  = Field{Center, Center, Nothing}(grid)
+    cs = Field{Center, Center, Nothing}(serial_grid)
+    v  = YFaceField(grid)
+    vs = YFaceField(serial_grid)
+
+    set!(c,  (λ, φ) -> φ + λ / 1000)
+    set!(cs, (λ, φ) -> φ + λ / 1000)
+    set!(v,  (λ, φ, z) -> φ - λ / 1000 + z / 100)
+    set!(vs, (λ, φ, z) -> φ - λ / 1000 + z / 100)
+
+    @test sum(c; dims = (1, 2))[1, 1, 1] ≈ sum(cs; dims = (1, 2))[1, 1, 1]
     check_field_tags(arch)
 
-    Field(Average(c, dims = (1, 2)))
+    @test Field(Average(c, dims = (1, 2)))[1, 1, 1] ≈ Field(Average(cs, dims = (1, 2)))[1, 1, 1]
+    check_field_tags(arch)
+
+    @test sum(v) ≈ sum(vs)
     check_field_tags(arch)
 """
 
