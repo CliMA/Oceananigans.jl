@@ -185,6 +185,7 @@ end
         grid = RectilinearGrid(arch; size=(1, 1, 1), extent=(1, 1, 1))
         clock = Clock(time=DateTime(2021, 1, 1))
         model = NonhydrostaticModel(grid; clock, timestepper=:QuasiAdamsBashforth2, tracers=:c)
+        set!(model, c=2)
 
         filepath = abspath("test_zarr_datetime.zarr")
         isdir(filepath) && rm(filepath; recursive=true, force=true)
@@ -204,6 +205,11 @@ end
         expected_initial_time = value(DateTime(2021, 1, 1) - epoch) / 1000
         @test group["time"].attrs["units"] == "seconds since 2000-01-01 00:00:00"
         @test group["time"][1] == expected_initial_time
+
+        # The reader decodes the CF axis back to the clock's instants and matches them to load data.
+        fts = FieldTimeSeries(filepath, "c"; architecture=arch)
+        @test fts.times == [DateTime(2021, 1, 1), DateTime(2021, 1, 1, 0, 0, 1)]
+        @test CUDA.@allowscalar fts[2][1, 1, 1] == 2
 
         rm(filepath; recursive=true, force=true)
     end

@@ -32,7 +32,7 @@ Nparticles = 10
 x₀ = Lx / 10 * (2rand(Nparticles) .- 1)
 y₀ = Ly / 10 * (2rand(Nparticles) .- 1)
 z₀ = - Lz / 10 * rand(Nparticles)
-particles = LagrangianParticles(x=x₀, y=y₀, z=z₀, restitution=0)
+particles = LagrangianParticles(x=x₀, y=y₀, z=z₀, boundary_conditions=ParticleBoundaryConditions(ReflectingBoundary(0)))
 
 @info "Initialized Lagrangian particles"
 @show particles

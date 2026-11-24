@@ -1,19 +1,15 @@
 using Oceananigans.Utils: prettysummary
 
-struct ScalarDiffusivity{TD, F, N, V, K} <: AbstractScalarDiffusivity{TD, F, N}
+struct ScalarDiffusivity{TD, F, N, V, K, O} <: AbstractScalarDiffusivity{TD, F, N}
     ν :: V
     κ :: K
-    ScalarDiffusivity{TD, F, N}(ν::V, κ::K) where {TD, F, N, V, K} = new{TD, F, N, V, K}(ν, κ)
+    ScalarDiffusivity{TD, F, N}(ν::V, κ::K, ::Val{O}=Val(2)) where {TD, F, N, V, K, O} = new{TD, F, N, V, K, O}(ν, κ)
 end
 
+@inline stencil_order(::ScalarDiffusivity{TD, F, N, V, K, O}) where {TD, F, N, V, K, O} = Val(O)
+
 """
-    ScalarDiffusivity(time_discretization = ExplicitTimeDiscretization(),
-                      formulation = ThreeDimensionalFormulation(), FT = Float64;
-                      ν = nothing,
-                      κ = nothing,
-                      discrete_form = false,
-                      loc = (nothing, nothing, nothing),
-                      parameters = nothing)
+$(SIGNATURES)
 
 Return `ScalarDiffusivity` turbulence closure with viscosity `ν` and tracer diffusivities `κ`
 for each tracer field in `tracers`. If a single `κ` is provided, it is applied to all tracers.
@@ -68,6 +64,10 @@ value of keyword argument `discrete_form`, the constructor expects:
 * `parameters`: `NamedTuple` with parameters used by the functions
   that compute viscosity and/or diffusivity; default: `nothing`.
 
+* `stencil_order`: order of accuracy of the discrete Laplacian, a positive even integer; default: `2`.
+  Orders above 2 apply in regularly spaced `RectilinearGrid` directions and decrease near boundaries. They require
+  `ThreeDimensionalFormulation` or `VerticalFormulation` with `ExplicitTimeDiscretization`.
+
 Examples
 ========
 
@@ -76,6 +76,11 @@ julia> using Oceananigans
 
 julia> ScalarDiffusivity(ν=1000, κ=2000)
 ScalarDiffusivity{ExplicitTimeDiscretization}(ν=1000.0, κ=2000.0)
+```
+
+```jldoctest ScalarDiffusivity
+julia> ScalarDiffusivity(ν=1e-6, κ=1e-7, stencil_order=4)
+ScalarDiffusivity{ExplicitTimeDiscretization}(ν=1.0e-6, κ=1.0e-7, stencil_order=4)
 ```
 
 ```jldoctest ScalarDiffusivity
@@ -119,11 +124,24 @@ function ScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(),
                            discrete_form = false,
                            loc = (nothing, nothing, nothing),
                            parameters = nothing,
-                           required_halo_size::Int = 1)
+                           required_halo_size::Int = 1,
+                           stencil_order::Int = 2)
 
     if formulation == HorizontalFormulation() && time_discretization == VerticallyImplicitTimeDiscretization()
       throw(ArgumentError("VerticallyImplicitTimeDiscretization is only supported for \
           `VerticalFormulation` or `ThreeDimensionalFormulation`"))
+    end
+
+    stencil_order > 0 && iseven(stencil_order) || throw(ArgumentError("ScalarDiffusivity stencil_order must be positive and even; got stencil_order = $stencil_order"))
+
+    if stencil_order > 2
+        formulation isa Union{ThreeDimensionalFormulation, VerticalFormulation} ||
+            throw(ArgumentError("stencil_order > 2 is only supported for ThreeDimensionalFormulation and VerticalFormulation"))
+
+        time_discretization isa ExplicitTimeDiscretization ||
+            throw(ArgumentError("stencil_order > 2 is only supported with ExplicitTimeDiscretization"))
+
+        required_halo_size = max(required_halo_size, stencil_order ÷ 2)
     end
 
     κ = convert_diffusivity(FT, κ; discrete_form, loc, parameters)
@@ -133,10 +151,10 @@ function ScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(),
     # This particular short-circuiting of the required_halo_size kwargs is necessary to perform parameter
     # estimation of the diffusivity coefficients using autodiff.
     if ν isa Number && κ isa Number
-      return ScalarDiffusivity{typeof(time_discretization), typeof(formulation), 1}(ν, κ)
+      return ScalarDiffusivity{typeof(time_discretization), typeof(formulation), stencil_order ÷ 2}(ν, κ, Val(stencil_order))
     end
 
-    return ScalarDiffusivity{typeof(time_discretization), typeof(formulation), required_halo_size}(ν, κ)
+    return ScalarDiffusivity{typeof(time_discretization), typeof(formulation), required_halo_size}(ν, κ, Val(stencil_order))
 end
 
 # Explicit default
@@ -148,9 +166,7 @@ const HorizontalScalarDiffusivity{TD} = ScalarDiffusivity{TD, HorizontalFormulat
 const HorizontalDivergenceScalarDiffusivity{TD} = ScalarDiffusivity{TD, HorizontalDivergenceFormulation} where TD
 
 """
-    VerticalScalarDiffusivity([time_discretization=ExplicitTimeDiscretization(),
-                              FT::DataType=Float64;]
-                              kwargs...)
+$(SIGNATURES)
 
 Shorthand for a `ScalarDiffusivity` with `VerticalFormulation()`. See [`ScalarDiffusivity`](@ref).
 """
@@ -159,9 +175,7 @@ Shorthand for a `ScalarDiffusivity` with `VerticalFormulation()`. See [`ScalarDi
     ScalarDiffusivity(time_discretization, VerticalFormulation(), FT; kwargs...)
 
 """
-    HorizontalScalarDiffusivity([time_discretization=ExplicitTimeDiscretization(),
-                                FT::DataType=Float64;]
-                                kwargs...)
+$(SIGNATURES)
 
 Shorthand for a `ScalarDiffusivity` with `HorizontalFormulation()`. See [`ScalarDiffusivity`](@ref).
 """
@@ -170,9 +184,7 @@ Shorthand for a `ScalarDiffusivity` with `HorizontalFormulation()`. See [`Scalar
     ScalarDiffusivity(time_discretization, HorizontalFormulation(), FT; kwargs...)
 
 """
-    HorizontalDivergenceScalarDiffusivity([time_discretization=ExplicitTimeDiscretization(),
-                                          FT::DataType=Float64;]
-                                          kwargs...)
+$(SIGNATURES)
 
 Shorthand for a `ScalarDiffusivity` with `HorizontalDivergenceFormulation()`. See [`ScalarDiffusivity`](@ref).
 """
@@ -188,7 +200,7 @@ HorizontalDivergenceScalarDiffusivity(FT::DataType; kwargs...) = ScalarDiffusivi
 
 @inline function Utils.with_tracers(tracers, closure::ScalarDiffusivity{TD, F, N}) where {TD, F, N}
     κ = tracer_diffusivities(tracers, closure.κ)
-    return ScalarDiffusivity{TD, F, N}(closure.ν, κ)
+    return ScalarDiffusivity{TD, F, N}(closure.ν, κ, stencil_order(closure))
 end
 
 @inline viscosity(closure::ScalarDiffusivity, K) = closure.ν
@@ -196,7 +208,7 @@ end
 
 compute_closure_fields!(closure_fields, ::ScalarDiffusivity, args...) = nothing
 
-function Base.summary(closure::ScalarDiffusivity)
+function Base.summary(closure::ScalarDiffusivity{<:Any, <:Any, <:Any, <:Any, <:Any, O}) where O
     TD = summary(TimeSteppers.time_discretization(closure))
     prefix = replace(summary(formulation(closure)), "Formulation" => "")
     prefix === "ThreeDimensional" && (prefix = "")
@@ -207,6 +219,10 @@ function Base.summary(closure::ScalarDiffusivity)
         summary_str = string(prefix, "ScalarDiffusivity{$TD}(ν=", prettysummary(closure.ν), ", κ=", prettysummary(closure.κ), ")")
     end
 
+    if O > 2
+        summary_str = summary_str[1:end-1] * ", stencil_order=$O)"
+    end
+
     return summary_str
 end
 
@@ -215,13 +231,13 @@ Base.show(io::IO, closure::ScalarDiffusivity) = print(io, summary(closure))
 function Adapt.adapt_structure(to, closure::ScalarDiffusivity{TD, F, N}) where {TD, F, N}
     ν = Adapt.adapt(to, closure.ν)
     κ = Adapt.adapt(to, closure.κ)
-    return ScalarDiffusivity{TD, F, N}(ν, κ)
+    return ScalarDiffusivity{TD, F, N}(ν, κ, stencil_order(closure))
 end
 
 function Architectures.on_architecture(to, closure::ScalarDiffusivity{TD, F, N}) where {TD, F, N}
     ν = on_architecture(to, closure.ν)
     κ = on_architecture(to, closure.κ)
-    return ScalarDiffusivity{TD, F, N}(ν, κ)
+    return ScalarDiffusivity{TD, F, N}(ν, κ, stencil_order(closure))
 end
 
 #####

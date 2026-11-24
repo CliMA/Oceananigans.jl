@@ -1,9 +1,9 @@
 using GPUArraysCore: @allowscalar
 using Oceananigans.AbstractOperations: Averaging
 using Oceananigans.Fields: Fields, AbstractField, ReducedAbstractField, Scan, AbstractReducing, AbstractAccumulating,
-    AllReduction, AnyReduction, MaximumReduction, MinimumReduction, ProdReduction, SumReduction,
-    condition_operand, conditional_length, filltype, get_neutral_mask, indices,
-    initialize_reduced_field!, reduced_dimensions, reduced_location, reduction_operand, scan_indices
+                           AllReduction, AnyReduction, MaximumReduction, MinimumReduction, ProdReduction, SumReduction,
+                           condition_operand, conditional_length, filltype, get_neutral_mask, indices,
+                           initialize_reduced_field!, reduced_dimensions, reduced_location, reduction_operand, scan_indices
 using Oceananigans.ImmersedBoundaries: NotImmersed, NotImmersedColumn
 using Oceananigans.Utils: tupleit
 using Statistics: Statistics

@@ -71,7 +71,7 @@ function Fields.Field(operand::OperationOrFunctionField;
 end
 
 """
-    compute!(comp::ComputedField, time=nothing)
+$(SIGNATURES)
 
 Compute `comp.operand` and store the result in `comp.data`.
 If `time` then only compute dependency fields with `time != field.status.time`.

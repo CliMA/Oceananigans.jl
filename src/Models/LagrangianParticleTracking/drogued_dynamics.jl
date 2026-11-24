@@ -25,8 +25,9 @@ DroguedParticleDynamics{StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base
 julia> particles = LagrangianParticles(; x = zeros(n), y = zeros(n), z = zeros(n), dynamics)
 10 LagrangianParticles with eltype Particle:
 ├── 3 properties: (:x, :y, :z)
-├── particle-wall restitution coefficient: 1.0
+├── boundary conditions: ParticleBoundaryConditions(ReflectingBoundary(1.0))
 ├── 0 tracked fields: ()
+├── sorting: nothing
 └── dynamics: DroguedParticleDynamics{StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}, Int64}}
 
 ```
@@ -40,33 +41,13 @@ Adapt.adapt_structure(to, dbd::DroguedParticleDynamics) =
 
 @inline (::DroguedParticleDynamics)(args...) = nothing
 
-const DroguedParticles = LagrangianParticles{<:Any, <:Any, <:Any, <:DroguedParticleDynamics}
+# Sorting and removal reorder particle properties, but not the depths of drogued particles
+validate_reordering(dynamics, sorting, removal) = nothing
 
-function advect_lagrangian_particles!(particles::DroguedParticles, model, Δt)
-    grid = model.grid
-    arch = architecture(grid)
-    parameters = KernelParameters(1:length(particles))
-
-    launch!(arch, grid, parameters,
-            _advect_drogued_particles!,
-            particles.properties, particles.restitution, model.grid, Δt, total_velocities(model), particles.dynamics.depths)
-
-    return nothing
+function validate_reordering(::DroguedParticleDynamics, sorting, removal)
+    isnothing(sorting) && isnothing(removal) && return nothing
+    throw(ArgumentError("DroguedParticleDynamics does not support sorting or AbsorbingBoundary conditions."))
 end
 
-@kernel function _advect_drogued_particles!(properties, restitution, grid, Δt, velocities, depths)
-    p = @index(Global)
-
-    @inbounds begin
-        x = properties.x[p]
-        y = properties.y[p]
-        z = depths[p]
-    end
-
-    x⁺, y⁺, _ = advect_particle((x, y, z), properties, p, restitution, grid, Δt, velocities)
-
-    @inbounds begin
-        properties.x[p] = x⁺
-        properties.y[p] = y⁺
-    end
-end
+# Drogued particles are advected horizontally with the velocity at their `depths`
+drogue_depths(dynamics::DroguedParticleDynamics) = dynamics.depths

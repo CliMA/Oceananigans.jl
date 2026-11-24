@@ -27,20 +27,7 @@ noinit(args...) = nothing
 ext(::Type{JLD2Writer}) = ".jld2"
 
 """
-    JLD2Writer(model, outputs; filename, schedule,
-               dir = ".",
-               indices = (:, :, :),
-               with_halos = true,
-               grid = nothing,
-               array_type = Array{Float32},
-               file_splitting = NoFileSplitting(),
-               overwrite_files = false,
-               init = noinit,
-               including = default_included_properties(model),
-               verbose = false,
-               part = 1,
-               compress = [Shuffle(), ZstdFilter(1)],
-               jld2_kw = Dict{Symbol, Any}())
+$(SIGNATURES)
 
 Construct a `JLD2Writer` for an Oceananigans `model` that writes `label, output` pairs
 in `outputs` to a JLD2 file.
@@ -241,7 +228,7 @@ end
 # can be large immutable structs (for example, fields of a `KernelFunctionOperation` whose
 # kernel function holds many fields).
 Base.@nospecializeinfer function initialize_jld2_file!(filepath, init, jld2_kw, including,
-                                                      @nospecialize(outputs), @nospecialize(model))
+                                                       @nospecialize(outputs), @nospecialize(model))
     # Output is appended to an existing file, which already holds the metadata
     isfile(filepath) && return nothing
 

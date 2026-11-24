@@ -38,10 +38,9 @@ Adapt.adapt_structure(to, vd::PrognosticTripolarCells) = PrognosticTripolarCells
     face_folded_domain   = ifelse(Ly == Face, !last_half_row_face,   true)
     center_folded_domain = ifelse(Ly == Face, true, !last_half_row_center)
 
-    # At the moment it does not work for UPivot distributed tripolar grids since
-    # if TY != TwoSided{Closed, FaceFolded} it assumes an FPivot which is the default distributed tripolar grids.
-    # TODO: add support for a `UPivot` distributed tripolar grid.
-    return ifelse(TY == TwoSided{Closed, FaceFolded}, face_folded_domain, center_folded_domain)
+    # `Ny` is the local size: ranks without the fold keep their top row
+    folded_domain = ifelse(TY <: TwoSided{<:Any, <:Union{FaceFolded, FaceFoldConnected}}, face_folded_domain, center_folded_domain)
+    return ifelse(TY <: Oceananigans.Grids.FoldedTopology, folded_domain, true)
 end
 
 @inline function AbstractOperations.evaluate_condition(vd::PrognosticTripolarCells,
@@ -66,17 +65,8 @@ const TF = Union{<:AbstractField{<:Any, <:Any, <:Any, <:TripolarGridOfSomeKind},
 @inline Fields.conditional_length(c::TF, dims::Int) = sum(conditional_one(c, 0); dims)
 @inline Fields.conditional_length(c::TF, dims::Tuple) = sum(conditional_one(c, 0); dims)
 
-@inline function tripolar_condition_operand(func, op, condition, mask)
-    arch = architecture(op)
-
-    if !(arch isa Distributed) || (arch.ranks[2] == arch.local_index[2]) # The last core
-        tripolar_condition = PrognosticTripolarCells(condition)
-    else # intermediate cores
-        tripolar_condition = condition
-    end
-
-    return ConditionalOperation(op; func, condition=tripolar_condition, mask)
-end
+@inline tripolar_condition_operand(func, op, condition, mask) =
+    ConditionalOperation(op; func, condition=PrognosticTripolarCells(condition), mask)
 
 @inline Fields.condition_operand(::typeof(identity), op::TF, ::Nothing, mask) = tripolar_condition_operand(nothing, op, nothing, mask)
 @inline Fields.condition_operand(::Nothing, op::TF, ::Nothing, mask) = tripolar_condition_operand(nothing, op, nothing, mask)
@@ -118,16 +108,11 @@ const ITRF = Union{XITRF, YITRF, ZITRF, YZITRF, XZITRF, XYITRF, XYZITRF}
 # For ITRF, we combine both tripolar (PrognosticTripolarCells) and immersed (NotImmersedColumn) conditions
 
 function immersed_reduced_tripolar_condition_operand(func, op, condition, mask)
-    arch = architecture(op)
-    immersed_cond = NotImmersedColumn(immersed_column(op), condition)
+    immersed_condition = NotImmersedColumn(immersed_column(op), condition)
 
-    if !(arch isa Distributed) || (arch.ranks[2] == arch.local_index[2]) # The last core
-        tripolar_condition = PrognosticTripolarCells(immersed_cond)
-    else # intermediate cores
-        tripolar_condition = immersed_cond
-    end
-
-    return ConditionalOperation(op; func, condition=tripolar_condition, mask)
+    # `immersed_condition` already masks the immersed columns
+    LX, LY, LZ = Fields.location(op)
+    return ConditionalOperation{LX, LY, LZ}(op, func, op.grid, PrognosticTripolarCells(immersed_condition), mask)
 end
 
 @inline Fields.condition_operand(::typeof(identity), op::ITRF, ::Nothing, mask) = immersed_reduced_tripolar_condition_operand(nothing, op, nothing, mask)

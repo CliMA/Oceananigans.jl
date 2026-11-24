@@ -42,7 +42,6 @@ export
     closure_required_tracers
 
 using Adapt: Adapt, adapt
-using DocStringExtensions: TYPEDSIGNATURES
 using KernelAbstractions: @index, @kernel
 
 using Oceananigans: Oceananigans, fields
@@ -68,7 +67,7 @@ using Oceananigans.TimeSteppers: TimeSteppers,
                                  VerticallyImplicitTimeDiscretization,
                                  reset!,
                                  step_closure_prognostics!
-using Oceananigans.Utils: Utils, launch!, named_tuple, prettysummary, with_tracers
+using Oceananigans.Utils: Utils, launch!, named_tuple, prettysummary, with_tracers, SIGNATURES, TYPEDSIGNATURES
 
 const VerticallyBoundedGrid{FT} = AbstractGrid{FT, <:Any, <:Any, <:BoundaryTopology}
 
@@ -149,6 +148,18 @@ function buoyancy_force end # to be defined by models that want to use Turbulenc
 function buoyancy_tracers end # to be defined by models that want to use TurbulenceClosures
 
 #####
+##### Interface for radiation absorbed below the surface
+#####
+
+"""
+    with_penetrative_radiation(closure, radiation)
+
+Return `closure` with `radiation` handed to every closure in it that adjusts for radiation absorbed below the surface.
+"""
+with_penetrative_radiation(closure, radiation) = closure
+with_penetrative_radiation(closures::Tuple, radiation) = map(closure -> with_penetrative_radiation(closure, radiation), closures)
+
+#####
 ##### Fallback: flux = 0
 #####
 
@@ -215,6 +226,7 @@ include("turbulence_closure_utils.jl")
 include("closure_kernel_operators.jl")
 include("velocity_tracer_gradients.jl")
 include("abstract_scalar_diffusivity_closure.jl")
+include("stencil_order_derivatives.jl")
 include("abstract_scalar_biharmonic_diffusivity_closure.jl")
 include("closure_tuples.jl")
 include("isopycnal_rotation_tensor_components.jl")
