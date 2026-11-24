@@ -85,5 +85,27 @@ end
             @test e[end] > 1e-4                        # the surface value 67.83 u★² reaches the top cell
             @test (b[end] - b[end-1]) / 4 < 0.5e-5     # the top is mixed
         end
+
+        # With an active-cells map the diffusivity kernel is launched over the map (a list of (i, j, k)), and the
+        # column kernels must still cover every wet column: same ℓ and κ as without the map
+        @testset "Immersed grid with an active-cells map [$(typeof(arch))]" begin
+            underlying_grid = RectilinearGrid(arch, size = (4, 4, 32), x = (0, 4e3), y = (0, 4e3), z = (-128, 0),
+                                              topology = (Periodic, Bounded, Bounded))
+            land_strip(x, y) = x < 1e3 ? 0.0 : -128.0   # i = 1 is land, i = 2:4 full-depth water
+            u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(-1e-4))
+            ℓs, κs = [], []
+            for active_cells_map in (false, true)
+                grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(land_strip); active_cells_map)
+                model = HydrostaticFreeSurfaceModel(grid; closure = NEMOTKEVerticalDiffusivity(),
+                                                    boundary_conditions = (; u = u_bcs), buoyancy = BuoyancyTracer(),
+                                                    tracers = :b, coriolis = FPlane(f = 1e-4))
+                set!(model, b = (x, y, z) -> 1e-5 * z, e = 1e-4)
+                update_state!(model)
+                push!(ℓs, Array(interior(model.closure_fields.ℓ)))
+                push!(κs, Array(interior(model.closure_fields.κc)))
+            end
+            @test ℓs[2][2:4, :, :] ≈ ℓs[1][2:4, :, :] rtol = 1e-10
+            @test κs[2][2:4, :, :] ≈ κs[1][2:4, :, :] rtol = 1e-10
+        end
     end
 end

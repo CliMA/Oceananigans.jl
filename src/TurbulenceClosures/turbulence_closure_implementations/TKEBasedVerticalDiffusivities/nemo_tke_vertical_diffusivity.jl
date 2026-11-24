@@ -25,7 +25,8 @@
 # turbulent_kinetic_energy_equation = NEMOTKEEquation(), minimum_tke = 1e-6). Vertically implicit time discretization
 # only; a single closure (not an array of closures).
 
-using Oceananigans.Utils: KernelParameters
+using Oceananigans.Utils: KernelParameters, worksize
+using Oceananigans.Grids: topology, Flat
 
 """
     NEMOMixingLength{FT}
@@ -208,8 +209,20 @@ Oceananigans.restore_prognostic_state!(::NEMOTKEClosureFields, ::Nothing) = noth
 #####
 
 # The column kernels cover the same horizontal range as the diffusivity kernel
-nemo_column_kernel_parameters(::Symbol) = :xy
-nemo_column_kernel_parameters(::KernelParameters{S, O}) where {S, O} = KernelParameters(S[1:2], O[1:2])
+nemo_column_kernel_parameters(::Symbol, grid) = :xy
+nemo_column_kernel_parameters(::KernelParameters{S, O}, grid) where {S, O} = KernelParameters(S[1:2], O[1:2])
+
+# On an immersed grid with an active-cells map, the diffusivity kernel gets the map itself (a list of (i, j, k) for
+# the active cells of horizontally_extended_interior_kernel_parameters: interior plus one cell around it). The column
+# kernels then cover that whole horizontal range, i = 0:Nx+1 and j = 0:Ny+1 (1:N in a Flat direction); fully
+# immersed columns are computed too (ℓ = ℓᵐⁱⁿ there) and never read.
+function nemo_column_kernel_parameters(::AbstractArray, grid)
+    Wx, Wy, _ = worksize(grid)
+    Tx, Ty, _ = topology(grid)
+    ii = ifelse(Tx == Flat, 1:Wx, 0:Wx+1)
+    jj = ifelse(Ty == Flat, 1:Wy, 0:Wy+1)
+    return KernelParameters(ii, jj)
+end
 
 function TurbulenceClosures.compute_closure_fields!(closure_fields, closure::NEMOTKEVD, model; parameters = :xyz)
     arch = model.architecture
@@ -220,7 +233,7 @@ function TurbulenceClosures.compute_closure_fields!(closure_fields, closure::NEM
     top_velocity_bcs = (u = velocities.u.boundary_conditions.top,
                         v = velocities.v.boundary_conditions.top)
 
-    launch!(arch, grid, nemo_column_kernel_parameters(parameters),
+    launch!(arch, grid, nemo_column_kernel_parameters(parameters, grid),
             compute_nemo_mixing_length!,
             closure_fields.ℓ, closure_fields.e₀, grid, closure,
             tracers, buoyancy, top_velocity_bcs, model.clock, fields(model))
