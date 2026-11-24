@@ -3,6 +3,7 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_poisson_solvers.jl")
 
 using Metal
 using Oceananigans.Fields: interpolate!
+using Oceananigans.OutputReaders: TimeInterpolator
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 using SeawaterPolynomials.TEOS10: TEOS10EquationOfState
 
@@ -128,6 +129,93 @@ end
     a = rand(Float64, 4, 4, 4)
     set!(c, a)
     @test Array(interior(c)) == Float32.(a)
+end
+
+@testset "MetalGPU: Float64 numbers in kernel arguments" begin
+    wind_stress(x, y, t, p) = p.τ * cos(t / p.T)
+    heating(x, y, z, t, p) = p.Q * exp(z / p.h)
+
+    function stepped_model(arch)
+        grid = RectilinearGrid(arch; size=(4, 4, 4), extent=(1, 1, 1), topology=(Periodic, Periodic, Bounded))
+        u_bcs = FieldBoundaryConditions(top=FluxBoundaryCondition(wind_stress, parameters=(τ=1e-4, T=1day)))
+        buoyancy_forcing = (Forcing(heating, parameters=(Q=1e-8, h=0.5)),
+                            Relaxation(rate=1/hour, target=1e-3, mask=GaussianMask{:z}(center=-1.0, width=0.2)))
+
+        model = HydrostaticFreeSurfaceModel(grid;
+                                            buoyancy = BuoyancyTracer(),
+                                            tracers = :b,
+                                            boundary_conditions = (; u=u_bcs),
+                                            forcing = (; b=buoyancy_forcing))
+
+        for _ in 1:3
+            time_step!(model, 1minute)
+        end
+
+        return model
+    end
+
+    metal_model = stepped_model(GPU(Metal.MetalBackend()))
+    cpu_model = stepped_model(CPU())
+
+    @test Array(interior(metal_model.velocities.u)) ≈ interior(cpu_model.velocities.u)
+    @test Array(interior(metal_model.tracers.b)) ≈ interior(cpu_model.tracers.b)
+
+    c = CenterField(metal_model.grid)
+    set!(c, 1)
+    c .= 2.5 .* c .+ 1e-3
+    @test all(Array(interior(c)) .≈ 2.501f0)
+end
+
+@kernel function _interpolate_in_time!(c, time_series, time_interpolator)
+    i, j, k = @index(Global, NTuple)
+    @inbounds c[i, j, k] = time_series[i, j, k, time_interpolator]
+end
+
+@testset "MetalGPU: FieldTimeSeries in kernels" begin
+    times = [0, 1hour, 3hours]
+
+    function stepped_tracer(arch)
+        grid = RectilinearGrid(arch; size=(4, 4, 4), x=(0, 1000), y=(0, 1000), z=(-100, 0),
+                               topology=(Periodic, Periodic, Bounded))
+
+        u = FieldTimeSeries{Face, Center, Center}(grid, times)
+        surface_flux = FieldTimeSeries{Center, Center, Nothing}(grid, times)
+
+        for n in eachindex(times)
+            set!(u[n], n / 100)
+            set!(surface_flux[n], n / 10000)
+        end
+
+        c_bcs = FieldBoundaryConditions(top=FluxBoundaryCondition(surface_flux))
+
+        model = HydrostaticFreeSurfaceModel(grid;
+                                            buoyancy = nothing,
+                                            tracers = :c,
+                                            velocities = PrescribedVelocityFields(; u),
+                                            boundary_conditions = (; c=c_bcs))
+
+        set!(model, c = (x, y, z) -> sin(2π * x / 1000))
+
+        for _ in 1:3
+            time_step!(model, 10minutes)
+        end
+
+        return Array(interior(model.tracers.c))
+    end
+
+    @test stepped_tracer(GPU(Metal.MetalBackend())) ≈ stepped_tracer(CPU())
+
+    # https://github.com/CliMA/Oceananigans.jl/issues/6572
+    grid = RectilinearGrid(GPU(Metal.MetalBackend()); size=(4, 4, 1), extent=(1, 1, 1))
+    time_series = FieldTimeSeries{Center, Center, Center}(grid, [0, 1hour])
+    set!(time_series[1], 1)
+    set!(time_series[2], 3)
+
+    c = CenterField(grid)
+    time_interpolator = TimeInterpolator(time_series, 30minutes)
+    launch!(architecture(grid), grid, :xyz, _interpolate_in_time!, c, time_series, time_interpolator)
+
+    @test all(Array(interior(c)) .== 2)
 end
 
 @testset "MetalGPU: TimeStepWizard" begin
