@@ -50,7 +50,7 @@ export
     # Fields and field manipulation
     Field, CenterField, XFaceField, YFaceField, ZFaceField,
     Average, Integral, CumulativeIntegral, Reduction, Accumulation, BackgroundField,
-    interior, set!, compute!, regrid!, interpolate!, RegriddedOperation, interpolated_field,
+    interior, set!, compute!, regrid!, interpolate!, RegriddedOperation, interpolated_field, interpolated_vector, interpolate_vector!,
     at_minimum, at_maximum,
 
     # Forcing functions

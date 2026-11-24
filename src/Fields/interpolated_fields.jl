@@ -40,14 +40,14 @@ interpolation_method(destination::AbstractField, source) =
     interpolation_method(destination.grid, instantiated_location(destination), source)
 
 """
-    interpolate!((uᵍ, vᵍ), (u, v), method = interpolation_method(uᵍ, (u, v)))
+    interpolate_vector!((uᵍ, vᵍ), (u, v), method = interpolation_method(uᵍ, (u, v)))
 
-Interpolate the horizontal vector with components `(u, v)` onto its geographic components `(uᵍ, vᵍ)`,
-which share a location. Fields on grids with rotated bases, such as a `YinYangGrid`, must be
-interpolated as vectors if they are the components of one.
+Interpolate the horizontal vector with grid components `(u, v)` onto its eastward and northward
+(extrinsic) components `(uᵍ, vᵍ)`, which share a location. The components of a vector on a grid with
+a rotated basis, such as a `YinYangGrid`, must be interpolated together rather than as scalars.
 """
-function interpolate!(geographic::Tuple{AbstractField, AbstractField}, components::Tuple,
-                      method = interpolation_method(first(geographic), components))
+function interpolate_vector!(geographic::Tuple{AbstractField, AbstractField}, components::Tuple,
+                             method = interpolation_method(first(geographic), components))
     interpolate_with!(geographic[1], components, method, Val(1))
     interpolate_with!(geographic[2], components, method, Val(2))
     return geographic
@@ -133,8 +133,7 @@ end
     interpolated_field(source, destination_grid; indices = (:, :, :))
 
 Return a computed field that holds `source`, a field or an operation on another grid, interpolated at its own
-location onto `destination_grid` with the [`interpolation_method`](@ref) of the pair of grids, or the pair of
-geographic components at cell centers of the horizontal vector `source = (u, v)`. The field is windowed
+location onto `destination_grid` with the [`interpolation_method`](@ref) of the pair of grids. The field is windowed
 to `indices` on `destination_grid`, within the vertical window of `source`, and is recomputed from `source`
 by `compute!`, so it can be reduced, composed into operations, and written by output writers like any
 other field.
@@ -171,7 +170,15 @@ function interpolated_field(source::AbstractField, destination_grid; indices = d
     return interpolated_field(source, method, destination_grid, loc, indices, nothing)
 end
 
-function interpolated_field(components::Tuple{AbstractField, AbstractField}, destination_grid; indices = default_indices(3))
+"""
+    interpolated_vector((u, v), destination_grid; indices = (:, :, :))
+
+Return the eastward and northward (extrinsic) components, at cell centers of `destination_grid`, of
+the horizontal vector with grid components `(u, v)`, as a pair of computed fields like those of
+[`interpolated_field`](@ref). Use this rather than `interpolated_field` on each component when the
+source grid has a rotated basis, such as a `YinYangGrid`.
+"""
+function interpolated_vector(components::Tuple{AbstractField, AbstractField}, destination_grid; indices = default_indices(3))
     validate_interpolation_destination(destination_grid)
     u, v = components
     loc = (Center(), Center(), instantiated_location(u)[3])

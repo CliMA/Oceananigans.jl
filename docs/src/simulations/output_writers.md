@@ -218,10 +218,10 @@ See [`JLD2Writer`](@ref) for more information.
 
 ## Output on another grid
 
-The keyword `output_grid` interpolates every field output onto another grid before it is written, with
-[`interpolated_field`](@ref). The `indices` and `with_halos` of the writer then refer to `output_grid`,
+The keyword `grid` interpolates every field output onto another grid before it is written, with
+[`interpolated_field`](@ref). The `indices` and `with_halos` of the writer then refer to `grid`,
 which is the grid saved to the file, so a [`FieldTimeSeries`](@ref) loads the output on it. Fields that
-already live on `output_grid` are written as they are. Interpolation samples point values and does not
+already live on `grid` are written as they are. Interpolation samples point values and does not
 conserve integrals; for conservative regridding, see [`regrid!`](@ref).
 
 ```@example interpolated_output
@@ -237,14 +237,14 @@ simulation = Simulation(model, Δt=1, stop_iteration=1)
 simulation.output_writers[:coarse] = JLD2Writer(model, model.tracers;
                                                 filename = "coarse_tracers.jld2",
                                                 schedule = IterationInterval(1),
-                                                output_grid = coarse_grid,
+                                                grid = coarse_grid,
                                                 overwrite_files = true)
 ```
 
 A simulation on a [`YinYangGrid`](@ref), whose panels overlap, is written in geographic coordinates with
-`output_grid = latitude_longitude_grid(model.grid)`, which interpolates each node from the panel that owns it.
+`grid = latitude_longitude_grid(model.grid)`, which interpolates each node from the panel that owns it.
 The components of a horizontal vector on such a grid are rotated into the geographic basis, which requires
-both of them, so they are interpolated explicitly with `interpolated_field((u, v), output_grid)`, and the writer passes
+both of them, so they are interpolated explicitly with `interpolated_vector((u, v), grid)`, and the writer passes
 them through:
 
 ```julia
@@ -252,12 +252,12 @@ using Oceananigans.MultiRegion: latitude_longitude_grid
 
 geographic_grid = latitude_longitude_grid(model.grid)
 u, v, w = model.velocities
-uᵍ, vᵍ = interpolated_field((u, v), geographic_grid)
+uᵍ, vᵍ = interpolated_vector((u, v), geographic_grid)
 
 simulation.output_writers[:geographic] = JLD2Writer(model, (; u = uᵍ, v = vᵍ, T = model.tracers.T);
                                                     filename = "geographic.jld2",
                                                     schedule = TimeInterval(1day),
-                                                    output_grid = geographic_grid)
+                                                    grid = geographic_grid)
 ```
 
 With an `AveragedTimeInterval`, each output is interpolated as it is accumulated, so the written average is

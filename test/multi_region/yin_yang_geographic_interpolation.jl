@@ -71,7 +71,7 @@ zonal_average(source) = Field(Average(source, dims=1))
         set_panel_components!(u, v, solid_body_velocity)
         for ℓ in ((Center(), Center()), (Center(), Face()), (Face(), Face()))
             uᵍ, vᵍ = location_field(ℓ..., destination_grid), location_field(ℓ..., destination_grid)
-            interpolate!((uᵍ, vᵍ), (u, v))
+            interpolate_vector!((uᵍ, vᵍ), (u, v))
             @test interpolation_error(uᵍ, (λ, φ) -> solid_body_velocity(λ, φ)[1]) < 1e-5
             @test interpolation_error(vᵍ, (λ, φ) -> solid_body_velocity(λ, φ)[2]) < 1e-5
         end
@@ -99,7 +99,7 @@ zonal_average(source) = Field(Average(source, dims=1))
         @test interpolation_error(vˡ, (λ, φ) -> sind(φ)) < 2e-5
 
         set_panel_components!(u, v, solid_body_velocity)
-        uᵍ, vᵍ = interpolated_field((u, v))
+        uᵍ, vᵍ = interpolated_vector((u, v))
         ū, v̄ = map(zonal_average, (uᵍ, vᵍ))
         @test location(v̄) == (Nothing, Center, Center)
         @test Array(interior(ū, 1, :, 1)) ≈ cosd.(φ) .* cos(π/4) rtol=1e-5

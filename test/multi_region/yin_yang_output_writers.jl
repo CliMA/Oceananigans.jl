@@ -80,16 +80,16 @@ end
     c = model.tracers.c
 
     # Scalars are interpolated by the writer; the components of a vector are interpolated together
-    uᵍ, vᵍ = interpolated_field((u, v), geographic_grid)
+    uᵍ, vᵍ = interpolated_vector((u, v), geographic_grid)
     outputs = (; c, c² = c^2, cˢ = Field(c; indices=(:, :, 1)), u = uᵍ, v = vᵍ)
     Δt, Nt = 1/16, 4
     simulation = Simulation(model; Δt, stop_iteration = Nt, verbose = false)
     simulation.output_writers[:geographic] = JLD2Writer(model, outputs; dir, filename = "geographic", with_halos = false,
-                                                        output_grid = geographic_grid, schedule = IterationInterval(Nt))
+                                                        grid = geographic_grid, schedule = IterationInterval(Nt))
     simulation.output_writers[:level] = JLD2Writer(model, (; c); dir, filename = "level", with_halos = false, indices = (:, :, 2),
-                                                   output_grid = geographic_grid, schedule = IterationInterval(Nt))
+                                                   grid = geographic_grid, schedule = IterationInterval(Nt))
     simulation.output_writers[:average] = JLD2Writer(model, (; c); dir, filename = "average", with_halos = false,
-                                                     output_grid = geographic_grid, schedule = AveragedTimeInterval(Nt * Δt))
+                                                     grid = geographic_grid, schedule = AveragedTimeInterval(Nt * Δt))
     @test simulation.output_writers[:geographic].outputs.u.operand === uᵍ.operand
     @test all(output.grid === geographic_grid for output in simulation.output_writers[:geographic].outputs)
 

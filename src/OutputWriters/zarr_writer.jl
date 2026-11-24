@@ -94,11 +94,11 @@ Keyword arguments
 
 - `with_halos`: Whether to include halo regions. Default: `false`.
 
-- `output_grid`: A grid onto which every field output is interpolated with [`interpolated_field`](@ref)
-                 before it is written; `indices` and `with_halos` then refer to `output_grid`. Fields already
-                 on `output_grid` are written as they are. The components of a horizontal vector on a rotated
-                 grid must be interpolated together with `interpolated_field((u, v), output_grid)`.
-                 Default: `nothing`, which writes each output on its own grid.
+- `grid`: A grid onto which every field output is interpolated with [`interpolated_field`](@ref)
+          before it is written; `indices` and `with_halos` then refer to `grid`. Fields already on `grid`
+          are written as they are. The components of a horizontal vector on a rotated grid must be
+          interpolated together with `interpolated_vector((u, v), grid)`. Default: `nothing`, which
+          writes each output on its own grid.
 
 - `global_attributes`: Metadata to store on the root Zarr group.
 

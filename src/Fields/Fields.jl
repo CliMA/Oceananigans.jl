@@ -7,7 +7,7 @@ export interior, data, xnode, ynode, znode
 export set!, compute!, @compute, regrid!
 export VelocityFields, TracerFields, tracernames
 export interpolate, interpolate!
-export interpolated_field
+export interpolated_field, interpolated_vector, interpolate_vector!
 
 using Adapt: Adapt, adapt
 using OffsetArrays: AbstractOffsetArray

@@ -1,4 +1,4 @@
-using Oceananigans.Fields: Fields, AbstractField, Interpolate, interpolate_with!, interpolation_method, interpolated_field
+using Oceananigans.Fields: Fields, AbstractField, Interpolate, interpolate_with!, interpolation_method, interpolated_field, interpolated_vector
 using Oceananigans.Grids: λnode, φnode, cpu_face_constructor_z, halo_size, interior_z_indices
 using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom
 
@@ -121,14 +121,14 @@ Fields.validate_interpolation_destination(::MultiRegionGrids) =
 
 """
     interpolated_field(source::YinYangField)
-    interpolated_field((u, v)::Tuple{YinYangField, YinYangField})
+    interpolated_vector((u, v)::Tuple{YinYangField, YinYangField})
 
 Return `source`, or the vector `(u, v)`, interpolated onto the [`latitude_longitude_grid`](@ref) of its grid.
 """
 Fields.interpolated_field(source::YinYangField; kw...) = interpolated_field(source, latitude_longitude_grid(source.grid); kw...)
 
-Fields.interpolated_field(components::Tuple{YinYangField, YinYangField}; kw...) =
-    interpolated_field(components, latitude_longitude_grid(first(components).grid); kw...)
+Fields.interpolated_vector(components::Tuple{YinYangField, YinYangField}; kw...) =
+    interpolated_vector(components, latitude_longitude_grid(first(components).grid); kw...)
 
 #####
 ##### Interpolation kernels
@@ -136,7 +136,7 @@ Fields.interpolated_field(components::Tuple{YinYangField, YinYangField}; kw...) 
 
 """
     interpolate!(destination, source::YinYangField)
-    interpolate!((uᵍ, vᵍ), (u, v)::Tuple{YinYangField, YinYangField})
+    interpolate_vector!((uᵍ, vᵍ), (u, v)::Tuple{YinYangField, YinYangField})
 
 Interpolate the scalar `source`, or the horizontal vector with panel components `(u, v)`, from a Yin-Yang grid
 onto the interior nodes of `destination`, or onto the geographic components `(uᵍ, vᵍ)`, which share

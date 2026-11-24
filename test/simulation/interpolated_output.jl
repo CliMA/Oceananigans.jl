@@ -46,7 +46,7 @@ end
     @test interior(interpolated_field(Field(c; indices=(:, :, 2)), coarse_grid; indices=(:, :, 1:3))) ≈ 2 .* interior(expected, :, :, 2:2)
 
     @test_throws ArgumentError interpolated_field(Field(c; indices=(1:2, :, :)), coarse_grid)
-    @test_throws ArgumentError interpolated_field((u, v), coarse_grid)
+    @test_throws ArgumentError interpolated_vector((u, v), coarse_grid)
 end
 
 @testset "Interpolated output [$(typeof(arch))]" for arch in archs
@@ -63,21 +63,21 @@ end
     dir = mktempdir()
     outputs = (; c, c² = c^2, cᵏ = Field(c; indices=(:, :, 2)), already_coarse, clock_time = model -> model.clock.time)
     message = r"will not be interpolated"
-    simulation.output_writers[:jld2] = @test_logs (:warn, message) JLD2Writer(model, outputs; dir, output_grid = coarse_grid,
+    simulation.output_writers[:jld2] = @test_logs (:warn, message) JLD2Writer(model, outputs; dir, grid = coarse_grid,
                                                                              filename = "interpolated", with_halos = false,
                                                                              schedule = IterationInterval(1))
 
-    simulation.output_writers[:slice] = JLD2Writer(model, (; c); dir, output_grid = coarse_grid, indices = (:, :, 3),
+    simulation.output_writers[:slice] = JLD2Writer(model, (; c); dir, grid = coarse_grid, indices = (:, :, 3),
                                                    filename = "slice", with_halos = false, schedule = IterationInterval(1))
 
-    simulation.output_writers[:average] = JLD2Writer(model, (; c, c² = c^2); dir, output_grid = coarse_grid, filename = "average",
+    simulation.output_writers[:average] = JLD2Writer(model, (; c, c² = c^2); dir, grid = coarse_grid, filename = "average",
                                                      with_halos = false, schedule = AveragedTimeInterval(2))
 
     # A NetCDF file holds one set of dimensions per grid, so a level is written with the writer's `indices`
     netcdf_outputs = (; c, c² = c^2, already_coarse)
-    simulation.output_writers[:netcdf] = NetCDFWriter(model, netcdf_outputs; dir, output_grid = coarse_grid,
+    simulation.output_writers[:netcdf] = NetCDFWriter(model, netcdf_outputs; dir, grid = coarse_grid,
                                                       filename = "interpolated", schedule = IterationInterval(1))
-    simulation.output_writers[:netcdf_level] = NetCDFWriter(model, (; c); dir, output_grid = coarse_grid, indices = (:, :, 2),
+    simulation.output_writers[:netcdf_level] = NetCDFWriter(model, (; c); dir, grid = coarse_grid, indices = (:, :, 2),
                                                             filename = "level", schedule = IterationInterval(1))
 
     # Every output is a field on the coarse grid, except the function, and fields already on it are not interpolated
