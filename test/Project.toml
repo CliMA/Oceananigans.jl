@@ -76,7 +76,6 @@ ParallelTestRunner = "2.10"
 Pkg = "<0.0.1, 1"
 Printf = "<0.0.1, 1"
 Random = "1.9"
-# https://github.com/EnzymeAD/Reactant.jl/issues/3842
 Reactant = "0.2.300 - 0.2.308"
 Rotations = "1"
 SafeTestsets = "0.1"
