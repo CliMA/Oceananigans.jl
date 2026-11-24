@@ -48,6 +48,22 @@ end
             @test κc[k] ≈ 0.01 * sqrt(2e / N²) * sqrt(e) rtol = 1e-10
         end
 
+        @testset "Fixed surface mixing length (NEMO 3.1-3.2, ln_mxl0 = false) [$(typeof(arch))]" begin
+            mixing_length = NEMOMixingLength(Cᴿ = 0.0, ℓᵐⁱⁿ = 0.1, ℓ₀ᵐⁱⁿ = 0.4)
+            grid = RectilinearGrid(arch, size = 32, z = (-128, 0), topology = (Flat, Flat, Bounded))
+            u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(-1e-4))
+            model = HydrostaticFreeSurfaceModel(grid; closure = NEMOTKEVerticalDiffusivity(; mixing_length),
+                                                boundary_conditions = (; u = u_bcs), buoyancy = BuoyancyTracer(),
+                                                tracers = :b, coriolis = FPlane(f = 1e-4))
+            N², e = 1e-5, 1e-4
+            set!(model, b = z -> N² * z, e = e)
+            update_state!(model)
+            zᶠ = znodes(model.grid, Face())
+            expected = [min(sqrt(2e / N²), 0.1 + (z + 128), 0.4 - z) for z in zᶠ]
+            expected[1], expected[end] = 0.1, 0.4
+            @test Array(interior(model.closure_fields.ℓ, 1, 1, :)) ≈ expected rtol = 1e-10
+        end
+
         @testset "Enhanced vertical diffusion where N² < 0 [$(typeof(arch))]" begin
             model = nemo_column(arch)
             set!(model, b = z -> - 1e-5 * z, e = 1e-4)

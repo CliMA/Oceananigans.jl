@@ -8,7 +8,8 @@
 #   ∂t e = ∂z(κᵉ ∂z e) + νᵉ S² − κᶜ N² − Cᴰ e^{3/2} / ℓ,       κᵉ = νᵉ,  νᵉ = max(Cᵏ ℓ √e, νᵇ)
 #   κᶜ = max(Pr⁻¹ max(Cᵏ ℓ √e, κᵇ), κᵇ),   Pr⁻¹ = max(1 / Prᵐᵃˣ, Riᶜ / max(Riᶜ, Ri))                (nn_pdl = 1)
 #   ℓ = √(2e) / N on faces, then limited so that it grows by at most the distance between faces away from the sea
-#       floor (ℓᵐⁱⁿ) and the surface (ℓ₀ = Cᴿ u★², the stress-dependent surface length of ln_mxl0)         (nn_mxl = 2)
+#       floor (ℓᵐⁱⁿ) and the surface (ℓ₀ = max(ℓ₀ᵐⁱⁿ, Cᴿ u★²), the stress-dependent surface length of ln_mxl0;
+#       Cᴿ = 0 and ℓ₀ᵐⁱⁿ = 0.4 m is NEMO 3.1-3.2's default, ln_mxl0 = false)                            (nn_mxl = 2)
 #   e = e₀ = max(e₀ᵐⁱⁿ, Cᵉᵇ u★²) at the surface (rn_ebb: wave breaking, kept under ice as in NEMO), e ≥ minimum_tke
 #   κᶜ = κᵉᵛᵈ where N² < −10⁻¹² (enhanced vertical diffusion, ln_zdfevd; νᵉᵛᵈ for momentum, off by default: nn_evdm = 0)
 #
@@ -34,7 +35,10 @@ with NEMO's reference values as defaults:
 
 - `Cᵏ`: eddy diffusivity coefficient, νᵉ = Cᵏ ℓ √e (`rn_ediff` = 0.1)
 - `Cᴿ`: surface mixing length ℓ₀ = Cᴿ u★², the von Kármán constant times Stacey's 2 × 10⁵ over g (`ln_mxl0`)
-- `ℓᵐⁱⁿ`: smallest mixing length, 10⁻⁶ / (rn_ediff √rn_emin) = 0.01 m
+- `ℓᵐⁱⁿ`: smallest mixing length in the interior and at the sea floor, 10⁻⁶ / (rn_ediff √rn_emin) = 0.01 m
+  (NEMO 3.1-3.2: `rn_lmin` = 0.1 m)
+- `ℓ₀ᵐⁱⁿ`: smallest mixing length at the surface (0.01 m; NEMO 3.1-3.2: `rn_lmin0` = 0.4 m, and with
+  `ln_mxl0 = false` the surface length is this value: `Cᴿ = 0`)
 - `Riᶜ`: critical Richardson number of the Prandtl number, 2 / (2 + rn_ediss / rn_ediff) = 2/9
 - `Prᵐᵃˣ`: largest Prandtl number (10)
 - `νᵇ`, `κᵇ`: background viscosity and diffusivity (`rn_avm0` = 1.2 × 10⁻⁴, `rn_avt0` = 1.2 × 10⁻⁵ m² s⁻¹)
@@ -45,6 +49,7 @@ Base.@kwdef struct NEMOMixingLength{FT}
     Cᵏ    :: FT = 0.1
     Cᴿ    :: FT = 0.4 * 2e5 / 9.80665
     ℓᵐⁱⁿ  :: FT = 0.01
+    ℓ₀ᵐⁱⁿ :: FT = 0.01
     Riᶜ   :: FT = 2 / 9
     Prᵐᵃˣ :: FT = 10.0
     νᵇ    :: FT = 1.2e-4
@@ -245,6 +250,7 @@ end
     closure_ij = getclosure(i, j, closure)
     ℓᵐⁱⁿ = closure_ij.mixing_length.ℓᵐⁱⁿ
     Cᴿ = closure_ij.mixing_length.Cᴿ
+    ℓ₀ᵐⁱⁿ = closure_ij.mixing_length.ℓ₀ᵐⁱⁿ
     Cᵉᵇ = closure_ij.turbulent_kinetic_energy_equation.Cᵉᵇ
     e₀ᵐⁱⁿ = closure_ij.turbulent_kinetic_energy_equation.e₀ᵐⁱⁿ
     eᵐⁱⁿ = closure_ij.minimum_tke
@@ -261,7 +267,7 @@ end
     end
 
     # ... and down from the surface, where ℓ = ℓ₀
-    @inbounds ℓ[i, j, Nz+1] = max(ℓᵐⁱⁿ, Cᴿ * u★^2)
+    @inbounds ℓ[i, j, Nz+1] = max(ℓ₀ᵐⁱⁿ, Cᴿ * u★^2)
     for k in Nz:-1:2
         @inbounds ℓ[i, j, k] = min(ℓ[i, j, k], ℓ[i, j, k+1] + Δzᶜᶜᶜ(i, j, k, grid))
     end
@@ -401,6 +407,7 @@ function Base.show(io::IO, closure::NEMOTKEVD)
               "│   ├── Cᵏ:    ", prettysummary(ℓ.Cᵏ), '\n',
               "│   ├── Cᴿ:    ", prettysummary(ℓ.Cᴿ), '\n',
               "│   ├── ℓᵐⁱⁿ:  ", prettysummary(ℓ.ℓᵐⁱⁿ), '\n',
+              "│   ├── ℓ₀ᵐⁱⁿ: ", prettysummary(ℓ.ℓ₀ᵐⁱⁿ), '\n',
               "│   ├── Riᶜ:   ", prettysummary(ℓ.Riᶜ), '\n',
               "│   ├── Prᵐᵃˣ: ", prettysummary(ℓ.Prᵐᵃˣ), '\n',
               "│   ├── νᵇ:    ", prettysummary(ℓ.νᵇ), '\n',
