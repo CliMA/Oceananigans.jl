@@ -178,7 +178,7 @@ into a binary operator on `Oceananigans.Fields` for use in `AbstractOperations`.
 
 Note: a binary function is a function with two arguments: for example, `+(x, y)` is a binary function.
 
-Also note: a binary function in `Base` must be imported to be extended: use `import Base: op; @binary op`.
+Also note: a binary function in `Base` must be qualified to be extended: use `@binary Base.op` (or `@binary Base.:op` for operators).
 
 Example
 =======

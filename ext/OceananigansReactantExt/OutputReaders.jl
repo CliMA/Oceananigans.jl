@@ -1,9 +1,9 @@
 module OutputReaders
 
 using GPUArraysCore: @allowscalar
-using Oceananigans: Oceananigans
+using Oceananigans: Oceananigans, instantiated_location
 using Oceananigans.Architectures: ReactantState, on_architecture, CPU
-using Oceananigans.Fields: Field, FixedTime, instantiated_location
+using Oceananigans.Fields: Field, FixedTime
 using Oceananigans.Grids: offset_data
 using Oceananigans.OutputReaders: TimeInterpolator, TotallyInMemoryFTS, memory_index
 using Oceananigans.Units: Time

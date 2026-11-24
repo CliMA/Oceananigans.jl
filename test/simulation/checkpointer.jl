@@ -1843,6 +1843,29 @@ function test_checkpoint_missing_file_warning(arch)
     return nothing
 end
 
+function test_pickup_with_directory_in_prefix(arch)
+    grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
+    directory = mktempdir()
+    prefix = joinpath(directory, "directory_in_prefix")
+
+    function checkpointed_simulation(stop_iteration)
+        simulation = Simulation(NonhydrostaticModel(grid); Δt=1, stop_iteration, verbose=false)
+        simulation.output_writers[:checkpointer] = Checkpointer(simulation.model; schedule=IterationInterval(2), prefix)
+        return simulation
+    end
+
+    run!(checkpointed_simulation(4))
+    @test isfile(joinpath(directory, "directory_in_prefix_iteration4.jld2"))
+
+    simulation = checkpointed_simulation(6)
+    @test_logs pickup_log set!(simulation; checkpoint=:latest)
+    @test iteration(simulation) == 4
+
+    rm(directory; recursive=true)
+
+    return nothing
+end
+
 function test_pickup_mode_selection_and_default(arch)
     N = 4
     L = 1
@@ -2541,6 +2564,7 @@ for arch in archs
     @testset "Edge cases [$(typeof(arch))]" begin
         test_checkpoint_empty_tracers(arch)
         test_checkpoint_missing_file_warning(arch)
+        test_pickup_with_directory_in_prefix(arch)
         test_pickup_mode_selection_and_default(arch)
     end
 
