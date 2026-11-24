@@ -1,7 +1,8 @@
 using Oceananigans.Architectures: architecture
 using Oceananigans.DistributedComputations: DistributedGrid
-using Oceananigans.Grids: halo_size, isrectilinear
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+using Oceananigans.Fields: Field
+using Oceananigans.Grids: halo_size, isrectilinear, surface_kernel_parameters
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, MutableGridOfSomeKind
 using Oceananigans.Operators: Azᶜᶜᶜ, Azᶜᶜᶠ, Δx_qᶜᶠᶜ, Δxᶜᶠᵃ, Δx⁻¹ᶠᶜᶠ, Δy_qᶠᶜᶜ, Δyᶠᶜᵃ, Δy⁻¹ᶜᶠᶠ, δxᶜᵃᵃ, δxᶜᶜᶜ, δxᶠᶜᶠ,
                               δyᵃᶜᵃ, δyᶜᶜᶜ, δyᶜᶠᶠ
 using Oceananigans.Solvers: Solvers, ConjugateGradientSolver, solve!
@@ -42,11 +43,13 @@ step `Δt`, gravitational acceleration `g`, and free surface at time-step `n` `�
 """
 function PCGImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitational_acceleration=nothing)
 
-    # Initialize vertically integrated lateral face areas
-    ∫ᶻ_Axᶠᶜᶜ = KernelFunctionOperation{Face, Center, Nothing}(integrated_x_area, grid)
-    ∫ᶻ_Ayᶜᶠᶜ = KernelFunctionOperation{Center, Face, Nothing}(integrated_y_area, grid)
+    # Vertically integrated lateral face areas, stored so that the CG iteration reads them
+    # instead of recomputing the column depth at every operator and preconditioner application.
+    ∫ᶻ_Axᶠᶜᶜ = Field{Face, Center, Nothing}(grid)
+    ∫ᶻ_Ayᶜᶠᶜ = Field{Center, Face, Nothing}(grid)
 
     vertically_integrated_lateral_areas = (xᶠᶜᶜ = ∫ᶻ_Axᶠᶜᶜ, yᶜᶠᶜ = ∫ᶻ_Ayᶜᶠᶜ)
+    @apply_regionally compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas)
 
     # Set some defaults
     settings = Dict{Symbol, Any}(settings)
@@ -72,6 +75,35 @@ function PCGImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitationa
     return PCGImplicitFreeSurfaceSolver(vertically_integrated_lateral_areas, solver, right_hand_side)
 end
 
+"""
+    compute_vertically_integrated_lateral_areas!(∫ᶻA)
+
+Fill `∫ᶻA.xᶠᶜᶜ` and `∫ᶻA.yᶜᶠᶜ` with the vertically integrated lateral face areas,
+including the halo points that the linear operator and the preconditioners read.
+"""
+function compute_vertically_integrated_lateral_areas!(∫ᶻA)
+    grid = ∫ᶻA.xᶠᶜᶜ.grid
+    arch = architecture(grid)
+    launch!(arch, grid, surface_kernel_parameters(grid),
+            _compute_vertically_integrated_lateral_areas!, ∫ᶻA.xᶠᶜᶜ, ∫ᶻA.yᶜᶠᶜ, grid)
+    return nothing
+end
+
+@kernel function _compute_vertically_integrated_lateral_areas!(∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, grid)
+    i, j = @index(Global, NTuple)
+    @inbounds begin
+        ∫ᶻ_Axᶠᶜᶜ[i, j, 1] = integrated_x_area(i, j, 1, grid)
+        ∫ᶻ_Ayᶜᶠᶜ[i, j, 1] = integrated_y_area(i, j, 1, grid)
+    end
+end
+
+# The column depth on a static grid does not change, so the areas computed at construction
+# stay valid. On a mutable grid (for example `ZStarCoordinate`) the column depth follows the
+# free surface, so the areas are recomputed before every solve.
+update_vertically_integrated_lateral_areas!(∫ᶻA, grid) = nothing
+update_vertically_integrated_lateral_areas!(∫ᶻA, ::MutableGridOfSomeKind) =
+    compute_vertically_integrated_lateral_areas!(∫ᶻA)
+
 build_implicit_step_solver(::Val{:PreconditionedConjugateGradient}, grid, settings, gravitational_acceleration) =
     PCGImplicitFreeSurfaceSolver(grid, settings, gravitational_acceleration)
 
@@ -86,6 +118,7 @@ function Solvers.solve!(η, implicit_free_surface_solver::PCGImplicitFreeSurface
 
     ∫ᶻA = implicit_free_surface_solver.vertically_integrated_lateral_areas
     solver = implicit_free_surface_solver.preconditioned_conjugate_gradient_solver
+    @apply_regionally update_vertically_integrated_lateral_areas!(∫ᶻA, η.grid)
 
     # solve!(x, solver, b, args...) solves A*x = b for x.
     solve!(η, solver, rhs, ∫ᶻA.xᶠᶜᶜ, ∫ᶻA.yᶜᶠᶜ, g, Δt)
