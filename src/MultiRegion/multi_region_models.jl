@@ -1,5 +1,5 @@
 using Oceananigans.Advection: Advection, WENO, VectorInvariant, adapt_advection_order, cell_advection_timescale, materialize_advection,
-                              BoundsPreservation, OnlySelfUpwinding, CrossAndSelfUpwinding
+                              BoundsPreservation, FluxLimiter, OnlySelfUpwinding, CrossAndSelfUpwinding
 using Oceananigans.BuoyancyFormulations: BuoyancyFormulations, BuoyancyForce, NegativeZDirection, AbstractBuoyancyFormulation, validate_unit_vector
 using Oceananigans.Fields: XFaceField, YFaceField
 using Oceananigans.ImmersedBoundaries: GridFittedVerticalBoundaries, PartialCellVerticalBoundaries, GridFittedBoundary
@@ -58,6 +58,7 @@ Types = (HydrostaticFreeSurfaceModel,
          GridFittedVerticalBoundaries,
          PartialCellVerticalBoundaries,
          BoundsPreservation,
+         FluxLimiter,
          CATKEClosureFields,
          TKEDissipationClosureFields)
 

@@ -137,7 +137,7 @@ end
                                         tracer_advection=WENO(order=5, bounds=(0, 1)), timestepper=:SplitRungeKutta3)
     set!(model, c=(λ, φ, z) -> ifelse(cosd(λ) * cosd(φ) > 1/2, 1, 0))
     time_step!(model, 1)
-    limiter = model.advection.c.bounds.limiter
+    limiter = model.advection.c.bounds.reconstruction_limiter
     @test 0 ≤ minimum(limiter) < 1
     @test maximum(limiter) ≤ 1
     @test minimum(model.tracers.c) == 0

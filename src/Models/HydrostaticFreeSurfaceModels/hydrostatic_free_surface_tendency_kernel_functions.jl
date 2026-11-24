@@ -1,4 +1,4 @@
-using Oceananigans.Advection: U_dot_∇u, U_dot_∇u_hydrostatic_metric, U_dot_∇v, U_dot_∇v_hydrostatic_metric, div_Uc
+using Oceananigans.Advection: Advection, U_dot_∇u, U_dot_∇u_hydrostatic_metric, U_dot_∇v, U_dot_∇v_hydrostatic_metric, div_Uc
 using Oceananigans.Biogeochemistry: biogeochemical_drift_velocity,
                                     biogeochemical_transition,
                                     include_biogeochemistry_transitions
@@ -106,6 +106,10 @@ biogeochemical drift velocity, the closure's auxiliary velocity and any advectiv
     total_velocities = sum_of_velocities(velocities, biogeochemical_velocities, closure_velocities)
     return with_advective_forcing(forcing, total_velocities)
 end
+
+Advection.tracer_transport_velocities(model::HydrostaticFreeSurfaceModel, val_tracer_name::Val{name}) where name =
+    tracer_advecting_velocities(model.transport_velocities, model.biogeochemistry, model.closure,
+                                model.closure_fields, model.forcing[name], val_tracer_name)
 
 """
 Return the tendency for a tracer field with index `tracer_index`
