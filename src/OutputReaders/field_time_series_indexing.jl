@@ -470,7 +470,7 @@ function update_field_time_series!(fts::PartlyInMemoryFTS, first_time::Time, las
     Nt = length(fts.times)
 
     min(n₂, Nt) - n₁ < Nm ||
-        throw(ArgumentError("times $(first_time.time) to $(last_time.time) span time indices $n₁ to $n₂, " *
+        throw(ArgumentError("$(summary(fts)): times $(first_time.time) to $(last_time.time) span time indices $n₁ to $n₂, " *
                             "more than the $Nm held in memory; increase `time_indices_in_memory`."))
 
     return update_field_time_series!(fts, n₁, n₂)
