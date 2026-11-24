@@ -20,8 +20,8 @@ const RFTRG = TripolarGridOfSomeKind{<:Any, <:Any, <:TwoSided{Closed, FaceFolded
 # - `horizontally_extended_interior_kernel_parameters`
 # do not need any change because they cover `-H+2:N+H-1` where H is 1-larger in the y-direction for RFTRG
 
-# TODO: fix also the "buffer" kernel parameters functions to allow asynchronous distributed RFTRG
-# TODO: fix also the "buffer" active cells map to allow for distributed asynchronous RFTRG
+# On asynchronous distributed grids, the buffer kernel parameters and the split active cells maps
+# are built from `worksize`, so they also cover the extra row on the fold rank
 
 #####
 ##### Covers the symbols kernel parameters as well as
