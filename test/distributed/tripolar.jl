@@ -466,3 +466,42 @@ run_large_pencil_distributed_grid(fold_topology, pivot) = """
     @test all(cs .≈ cp)
     @test all(ηs .≈ ηp)
 end
+
+run_active_cells_map_distributed_grid(fold_topology, pivot, Rx, Ry) = """
+    using MPI
+    MPI.Init(threadlevel=:multiple)
+
+    include($(repr(distributed_tests_utils)))
+    arch = Distributed(CPU(), partition = Partition($Rx, $Ry))
+    run_distributed_tripolar_grid(arch, "distributed_$(fold_topology)_$(pivot)_active_cells_map_tripolar.jld2";
+                                  fold_topology = $fold_topology, pivot = $pivot, active_cells_map = true)
+"""
+
+# With an active cells map and asynchronous communication, the interior is split into a halo-independent
+# core and halo-dependent maps. On the fold rank of a `FaceFolded` grid these must also cover the fold row `Ny+1`.
+@testset "Test distributed TripolarGrid simulations with active cells map $fold_topology..." for (fold_topology, pivot) in fold_topologies
+    grid  = TripolarGrid(size = (40, 40, 1), z = (-1000, 0), halo = (5, 5, 5); fold_topology, pivot)
+    grid  = analytical_immersed_tripolar_grid(grid)
+    model = run_distributed_simulation(grid)
+
+    us = interior(model.velocities.u, :, :, 1)
+    vs = interior(model.velocities.v, :, :, 1)
+    cs = interior(model.tracers.c, :, :, 1)
+    ηs = interior(model.free_surface.displacement, :, :, 1)
+
+    for (Rx, Ry) in ((1, 4), (2, 2))
+        run_mpi_script(run_active_cells_map_distributed_grid(fold_topology, pivot, Rx, Ry), 4)
+
+        filename = "distributed_$(fold_topology)_$(pivot)_active_cells_map_tripolar.jld2"
+        up = jldopen(filename)["u"]
+        vp = jldopen(filename)["v"]
+        cp = jldopen(filename)["c"]
+        ηp = jldopen(filename)["η"]
+        rm(filename)
+
+        @test all(us .≈ up)
+        @test all(vs .≈ vp)
+        @test all(cs .≈ cp)
+        @test all(ηs .≈ ηp)
+    end
+end
