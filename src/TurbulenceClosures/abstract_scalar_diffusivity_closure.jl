@@ -360,6 +360,7 @@ const Lᶜᶜᶜ = Tuple{Center, Center, Center}
 @inline νᶜᶠᶠ(i, j, k, grid, ::Lᶜᶜᶜ, ν::AbstractArray, clk, fields) = ℑyzᵃᶠᶠ(i, j, k, grid, ν)
 @inline νᶠᶠᶜ(i, j, k, grid, ::Lᶜᶜᶜ, ν::AbstractArray, clk, fields) = ℑxyᶠᶠᵃ(i, j, k, grid, ν)
 
+@inline κᶜᶜᶜ(i, j, k, grid, ::Lᶜᶜᶜ, κ::AbstractArray, clk, fields) = @inbounds κ[i, j, k]
 @inline κᶠᶜᶜ(i, j, k, grid, ::Lᶜᶜᶜ, κ::AbstractArray, clk, fields) = ℑxᶠᵃᵃ(i, j, k, grid, κ)
 @inline κᶜᶠᶜ(i, j, k, grid, ::Lᶜᶜᶜ, κ::AbstractArray, clk, fields) = ℑyᵃᶠᵃ(i, j, k, grid, κ)
 @inline κᶜᶜᶠ(i, j, k, grid, ::Lᶜᶜᶜ, κ::AbstractArray, clk, fields) = ℑzᵃᵃᶠ(i, j, k, grid, κ)
