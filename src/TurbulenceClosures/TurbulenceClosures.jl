@@ -20,6 +20,7 @@ export
     RiBasedVerticalDiffusivity,
     IsopycnalSkewSymmetricDiffusivity,
     CATKEVerticalDiffusivity,
+    NEMOTKEVerticalDiffusivity,
     TKEDissipationVerticalDiffusivity,
     FluxTapering,
 
@@ -263,7 +264,7 @@ include("turbulence_closure_implementations/isopycnal_skew_symmetric_diffusivity
 include("turbulence_closure_implementations/advective_skew_diffusion.jl")
 include("turbulence_closure_implementations/leith_enstrophy_diffusivity.jl")
 
-using .TKEBasedVerticalDiffusivities: CATKEVerticalDiffusivity, TKEDissipationVerticalDiffusivity
+using .TKEBasedVerticalDiffusivities: CATKEVerticalDiffusivity, NEMOTKEVerticalDiffusivity, TKEDissipationVerticalDiffusivity
 using .Smagorinskys: Smagorinsky, DynamicSmagorinsky, SmagorinskyLilly
 using .Smagorinskys: LillyCoefficient, DynamicCoefficient, LagrangianAveraging
 

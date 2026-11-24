@@ -1,6 +1,7 @@
 module TKEBasedVerticalDiffusivities
 
 export CATKEVerticalDiffusivity,
+       NEMOTKEVerticalDiffusivity,
        TKEDissipationVerticalDiffusivity
 
 using Adapt: Adapt, adapt
@@ -152,6 +153,7 @@ include("catke_vertical_diffusivity.jl")
 include("catke_mixing_length.jl")
 include("catke_equation.jl")
 include("time_step_catke_equation.jl")
+include("nemo_tke_vertical_diffusivity.jl")
 
 include("tke_dissipation_vertical_diffusivity.jl")
 include("tke_dissipation_stability_functions.jl")

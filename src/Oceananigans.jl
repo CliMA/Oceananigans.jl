@@ -78,6 +78,7 @@ export
     AnisotropicMinimumDissipation,
     ConvectiveAdjustmentVerticalDiffusivity,
     CATKEVerticalDiffusivity,
+    NEMOTKEVerticalDiffusivity,
     TKEDissipationVerticalDiffusivity,
     RiBasedVerticalDiffusivity,
     ExplicitTimeDiscretization,
