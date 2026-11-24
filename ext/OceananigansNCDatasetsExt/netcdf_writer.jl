@@ -220,7 +220,7 @@ Base.@nospecializeinfer function initialize_nc_file(@nospecialize(model),
 
     # Add useful metadata
     useful_attributes = Dict("date" => "This file was generated on $(now()) local time ($(now(UTC)) UTC).",
-                             "Julia" => "This file was generated using " * versioninfo_with_gpu(),
+                             "Julia" => "This file was generated using " * versioninfo_with_gpu(child_architecture(architecture(model))),
                              "Oceananigans" => "This file was generated using " * oceananigans_versioninfo())
 
     if with_halos
