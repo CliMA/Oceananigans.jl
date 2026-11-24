@@ -1,5 +1,5 @@
+using Oceananigans.BoundaryConditions: step_boundary_conditions!
 using Oceananigans.TimeSteppers: _ab2_step_field!, implicit_step!
-import Oceananigans.TimeSteppers: ab2_step!
 
 """
 $(TYPEDSIGNATURES)
@@ -7,7 +7,7 @@ $(TYPEDSIGNATURES)
 Advance `NonhydrostaticModel` by one Adams-Bashforth 2nd-order time step with pressure correction.
 Dispatches to `pressure_correction_ab2_step!` which implements a predictor-corrector scheme
 """
-ab2_step!(model::NonhydrostaticModel, args...) =
+TimeSteppers.ab2_step!(model::NonhydrostaticModel, args...) =
     pressure_correction_ab2_step!(model, args...)
 
 """
@@ -55,6 +55,7 @@ function step_prognostic_fields!(model, substep_velocity!::SV, substep_tracer!::
     implicit_advecting_velocities(model)
     step_velocities!(model, substep_velocity!, implicit_Δt)
     step_tracers!(model, substep_tracer!, implicit_Δt)
+    step_boundary_conditions!(prognostic_fields(model), model.clock, fields(model), implicit_Δt)
     return nothing
 end
 

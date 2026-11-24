@@ -65,7 +65,7 @@ diffusivity components ``\kappa_h`` and ``\kappa_z``.
 
 ## Smagorinsky-Lilly turbulence closure
 
-In the turbulence closure proposed by [Lilly62](@citet) and [Smagorinsky63](@citet),
+In the turbulence closure proposed by [Lilly62](@citet) and [Smagorinsky1963](@citet),
 the negative of the subgrid stress tensor associated with unresolved turbulent motions is modeled
 diffusively via
 ```math

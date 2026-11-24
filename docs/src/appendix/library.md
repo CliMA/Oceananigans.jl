@@ -201,6 +201,13 @@ Modules = [OceananigansNCDatasetsExt.OceananigansNCDatasetsExt]
 Private = false
 ```
 
+### OceananigansMakieExt
+
+```@autodocs
+Modules = [OceananigansMakieExt.OceananigansMakieExt]
+Private = false
+```
+
 ## Simulations
 
 ```@autodocs

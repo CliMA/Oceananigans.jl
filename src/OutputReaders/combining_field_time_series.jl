@@ -1,16 +1,16 @@
 using JLD2: JLD2, jldopen
 using Glob: Glob, glob
 using GPUArraysCore: @allowscalar
-using OffsetArrays: OffsetArray
 using Statistics: mean
 
-using Oceananigans.DistributedComputations: reconstruct_global_topology
 using Oceananigans.BoundaryConditions: fill_halo_regions!
+using Oceananigans.DistributedComputations: reconstruct_global_topology
 using Oceananigans.Fields: Fields, interior, Field, instantiated_location, FixedTime
 using Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid,
                           cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z,
                           topology, size, halo_size, generate_coordinate,
                           with_precomputed_metrics, metrics_precomputed
+using Oceananigans.Utils: StaticStridesOffsetArray
 
 #####
 ##### DistributedPaths - wrapper for path that includes rank file info
@@ -93,7 +93,7 @@ end
 #
 
 """
-    get_rank(all_ranks, i, j, k=1)
+$(SIGNATURES)
 
 Find the RankOutputData with local_index == (i, j, k).
 """
@@ -333,13 +333,12 @@ function assemble_global_2d_array(all_ranks, field_accessor)
 
     # The arrays in OrthogonalSphericalShellGrid have extra halo padding
     # We need to preserve the offset structure
-    sample_offsets = sample_array.offsets
+    sample_offsets = OffsetArrays.offsets(sample_array)
     Hx = -sample_offsets[1] - 1  # Infer halo from offset
     Hy = -sample_offsets[2] - 1
 
     # Allocate global array with same offset structure
-    global_array = OffsetArray(zeros(FT, Nx_global + 2Hx + 4, Ny_global + 2Hy + 4),
-                               -Hx-2:Nx_global+Hx+1, -Hy-2:Ny_global+Hy+1)
+    global_array = StaticStridesOffsetArray(zeros(FT, Nx_global + 2Hx + 4, Ny_global + 2Hy + 4), -Hx - 3, -Hy - 3)
 
     # Fill in data from each rank
     for j in 1:Ry, i in 1:Rx
@@ -410,7 +409,7 @@ function assemble_global_2d_array(all_ranks, field_accessor)
 end
 
 function build_global_grid_from_files(grid0, arch, FT, topo, N, H, xG, yG, zG)
-    grid_type = typeof(grid0).name.wrapper
+    grid_type = nameof(typeof(grid0))
     error("Automatic combining of distributed output is not yet supported for $grid_type. " *
           "Consider using OceanEnsembles.jl or pass a pre-constructed global `grid` to FieldTimeSeries.")
 end

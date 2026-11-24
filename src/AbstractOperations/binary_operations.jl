@@ -32,7 +32,7 @@ end
 # Recompute location of binary operation
 @inline at(loc, β::BinaryOperation) = β.op(loc, at(loc, β.a), at(loc, β.b))
 
-indices(β::BinaryOperation) = construct_regionally(intersect_indices, location(β), β.a, β.b)
+Fields.indices(β::BinaryOperation) = intersect_indices(location(β), β.a, β.b)
 
 """Create a binary operation for `op` acting on `a` and `b` at `Lc`, where
 `a` and `b` have location `La` and `Lb`."""
@@ -178,7 +178,7 @@ into a binary operator on `Oceananigans.Fields` for use in `AbstractOperations`.
 
 Note: a binary function is a function with two arguments: for example, `+(x, y)` is a binary function.
 
-Also note: a binary function in `Base` must be imported to be extended: use `import Base: op; @binary op`.
+Also note: a binary function in `Base` must be qualified to be extended: use `@binary Base.op` (or `@binary Base.:op` for operators).
 
 Example
 =======
@@ -226,7 +226,7 @@ end
 ##### Nested computations
 #####
 
-function compute_at!(β::BinaryOperation, time)
+function Fields.compute_at!(β::BinaryOperation, time)
     compute_at!(β.a, time)
     compute_at!(β.b, time)
     return nothing

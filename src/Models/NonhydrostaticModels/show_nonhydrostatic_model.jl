@@ -1,5 +1,5 @@
-using Oceananigans.Utils: prettytime, prettykeys
 using Oceananigans.TurbulenceClosures: closure_summary
+using Oceananigans.Utils: prettykeys, prettytime
 
 function Base.summary(model::NonhydrostaticModel)
     A = Base.summary(architecture(model.grid))

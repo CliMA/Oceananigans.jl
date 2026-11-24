@@ -28,7 +28,7 @@ Run the Bickley jet validation experiment until `stop_time` using `momentum_adve
 scheme or formulation, with horizontal resolution `Nh`, viscosity `ν`, on `arch`itecture.
 """
 function run_immersed_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU(), Nh = 64,
-                           momentum_advection = VectorInvariant())
+                                    momentum_advection = VectorInvariant())
 
     grid = bickley_grid(; arch, Nh, halo=(7, 7, 7))
 
@@ -77,7 +77,7 @@ function run_immersed_bickley_jet(; output_time_interval = 2, stop_time = 200, a
 
     outputs = merge(model.velocities, model.tracers, (ζ=ζ, η=model.free_surface.displacement))
 
-    name = typeof(model.advection.momentum).name.wrapper
+    name = nameof(typeof(model.advection.momentum))
     if model.advection.momentum isa WENOVectorInvariantVel
         name = string(name) * "VectorInvariantVel"
     end

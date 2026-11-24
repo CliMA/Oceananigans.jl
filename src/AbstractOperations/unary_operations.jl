@@ -1,5 +1,5 @@
-using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Fields: AbstractField, instantiated_location
+using Oceananigans.Grids: AbstractGrid
 
 const unary_operators = Set()
 
@@ -27,7 +27,7 @@ end
 ##### UnaryOperation construction
 #####
 
-indices(υ::UnaryOperation) = indices(υ.arg)
+Fields.indices(υ::UnaryOperation) = indices(υ.arg)
 
 """Create a unary operation for `operator` acting on `arg` which interpolates the
 result from `Larg` to `L`."""
@@ -48,7 +48,7 @@ into a unary operator on `Oceananigans.Fields` for use in `AbstractOperations`.
 
 Note: a unary function is a function with one argument: for example, `sin(x)` is a unary function.
 
-Also note: a unary function in `Base` must be imported to be extended: use `import Base: op; @unary op`.
+Also note: a unary function in `Base` must be qualified to be extended: use `@unary Base.op` (or `@unary Base.:op` for operators).
 
 Example
 =======
@@ -125,7 +125,7 @@ end
 ##### Nested computations
 #####
 
-compute_at!(υ::UnaryOperation, time) = compute_at!(υ.arg, time)
+Fields.compute_at!(υ::UnaryOperation, time) = compute_at!(υ.arg, time)
 
 #####
 ##### GPU capabilities

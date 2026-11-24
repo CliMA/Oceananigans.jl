@@ -1,11 +1,11 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Oceananigans.Grids: MutableVerticalDiscretization, required_halo_size_x, required_halo_size_y, required_halo_size_z
-using Oceananigans.Models: ZStarCoordinate, ZCoordinate, surface_kernel_parameters
+using Oceananigans.Grids: surface_kernel_parameters
+using Oceananigans.Models: ZStarCoordinate, ZCoordinate
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: update_zstar_scaling!
 using Oceananigans.TurbulenceClosures: with_tracers,
                                        IsopycnalSkewSymmetricDiffusivity,
-                                       TriadIsopycnalSkewSymmetricDiffusivity,
                                        DiffusiveFormulation, AdvectiveFormulation
 using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂xᵣᶠᶜᶜ, Axᶠᶜᶜ, Vᶜᶜᶜ
 
@@ -117,6 +117,10 @@ function redi_preserves_stratification_on_zstar(arch)
     fill!(grid.z.σᶜᶠⁿ, σ)
     fill!(grid.z.σᶠᶠⁿ, σ)
     fill!(grid.z.σᶠᶜⁿ, σ)
+    fill!(grid.z.σ⁻¹ᶜᶜⁿ, 1 / σ)
+    fill!(grid.z.σ⁻¹ᶜᶠⁿ, 1 / σ)
+    fill!(grid.z.σ⁻¹ᶠᶠⁿ, 1 / σ)
+    fill!(grid.z.σ⁻¹ᶠᶜⁿ, 1 / σ)
 
     model = HydrostaticFreeSurfaceModel(grid;
                                         buoyancy = BuoyancyTracer(),
@@ -217,10 +221,8 @@ end
              IsopycnalSkewSymmetricDiffusivity(κ_skew=1000.0, κ_symmetric=1000.0,
                                                skew_flux_formulation=DiffusiveFormulation())),
             ("ISSD AdvectiveFormulation",
-             IsopycnalSkewSymmetricDiffusivity(κ_skew=1000.0, κ_symmetric=1000.0,
+             IsopycnalSkewSymmetricDiffusivity(κ_skew=1000, κ_symmetric=1000,
                                                skew_flux_formulation=AdvectiveFormulation())),
-            # ("TISSD", TODO: test when ready
-            # TriadIsopycnalSkewSymmetricDiffusivity(κ_skew=1000.0, κ_symmetric=1000.0)),
         ]
 
         @testset "z-star time-stepping [$arch]" begin

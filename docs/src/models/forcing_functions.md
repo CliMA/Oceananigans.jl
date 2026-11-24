@@ -246,6 +246,10 @@ and `target` restores the field in question to 0.
 
 ### Mask types
 
+`mask` may also be a field or array that shares the forced field's grid and location,
+in which case it is read at `i, j, k` rather than called. That is useful when the mask is expensive to
+evaluate but constant in time, since it can then be computed once instead of at every kernel call.
+
 Two built-in mask types are available for the `mask` keyword:
 
 - `GaussianMask{D}(center, width)`: smooth Gaussian profile, equal to 1 at `center` and falling off as

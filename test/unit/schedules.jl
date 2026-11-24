@@ -7,8 +7,6 @@ using Oceananigans: initialize!, prognostic_state, restore_prognostic_state!
 using Dates: Second, Minute
 
 @testset "Schedules" begin
-    @info "Testing schedules..."
-
     # Some fake models
     fake_model_at_iter_0 = (; clock=Clock(time=0.0, iteration=0))
     fake_model_at_iter_2 = (; clock=Clock(time=0.0, iteration=2))
@@ -244,8 +242,6 @@ using Dates: Second, Minute
 end
 
 @testset "TimeOffset time step alignment" begin
-    @info "Testing TimeOffset time step alignment..."
-
     grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
 
     for (offset, expected_times) in [(-0.2, [0.0, 0.8, 1.0, 1.8, 2.0]),

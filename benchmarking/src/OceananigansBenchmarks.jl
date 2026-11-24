@@ -3,6 +3,7 @@ module OceananigansBenchmarks
 export
     # Benchmark cases
     earth_ocean,
+    nonhydrostatic_box,
 
     # Benchmark utilities
     many_time_steps!,
@@ -23,10 +24,12 @@ using Printf
 using Statistics
 
 using Oceananigans
-using Oceananigans.Architectures: architecture
-using Oceananigans.Utils: sync_device!
-using Oceananigans.Units
+using Oceananigans.Architectures: architecture, child_architecture
+using Oceananigans.Diagnostics: hasnan
 using Oceananigans.OutputWriters: write_output!
+using Oceananigans.Solvers: ConjugateGradientPoissonSolver, iteration
+using Oceananigans.Units
+using Oceananigans.Utils: sync_device!
 
 using NCDatasets
 using Zarr
@@ -66,5 +69,6 @@ include("utils.jl")
 
 # Benchmark cases
 include("earth_ocean.jl")
+include("nonhydrostatic_box.jl")
 
 end # module

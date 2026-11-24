@@ -7,6 +7,7 @@ using Oceananigans.BoundaryConditions: GravityWaveRadiationBoundaryCondition, Di
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom,
                                        immersed_peripheral_node, immersed_inactive_node, mask_immersed_field!
 using Oceananigans.Operators: Δzᶠᶜᶜ, Δzᶜᶠᶜ
+using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: LocalHaloFilling
 
 #####
 ##### Boundary / halo handling of the SplitExplicitFreeSurface barotropic corrector.
@@ -171,7 +172,7 @@ bump(x, y) = -0.5 - 0.4 * exp(-((x - 0.5)^2 + (y - 0.5)^2) / 0.05)
         grid = on_architecture(CPU(), underlying)
         f, c = Face(), Center()
 
-        @test typeof(model.free_surface).parameters[1].name.name == :LocalHaloFilling
+        @test model.free_surface isa SplitExplicitFreeSurface{<:LocalHaloFilling}
         @test !any(immersed_peripheral_node(1, j, 1, grid, f, c, c) |
                    immersed_inactive_node(1, j, 1, grid, f, c, c) for j in 1:grid.Ny)
     end
@@ -199,27 +200,89 @@ bump(x, y) = -0.5 - 0.4 * exp(-((x - 0.5)^2 + (y - 0.5)^2) / 0.05)
     end
 end
 
-@testset "Time-dependent barotropic boundary conditions see the correct substep time" begin
+@testset "z★ keeps a uniform tracer uniform through open boundaries [$(summary(arch))]" for arch in archs
+    # A zero-net, along-boundary-varying barotropic inflow through two open boundaries moves the free surface,
+    # so c ≡ 1 stays uniform only if the filtered transport Ũ, Ṽ that sets w̃ also set η, including at the
+    # boundary faces.
+    Nb, Na, Nz, H = 16, 8, 4, 1000
+
+    @inline normal_flow(n, p) = p.a * sin(2π * (n - 1/2) / p.Nb + p.ϕ)
+    @inline vᵉˣᵗ(i, k, grid, clock, fields, p) = normal_flow(i, p)
+    @inline uᵉˣᵗ(j, k, grid, clock, fields, p) = normal_flow(j, p)
+    @inline Vᵉˣᵗ(i, k, grid, clock, fields, p) = (p.H * normal_flow(i, p), zero(grid))
+    @inline Uᵉˣᵗ(j, k, grid, clock, fields, p) = (p.H * normal_flow(j, p), zero(grid))
+
+    left  = (a = 0.1, Nb = Nb, H = H, ϕ = 0.0)
+    right = (a = 0.1, Nb = Nb, H = H, ϕ = π / 2)
+
+    flow_bc(f, p)      = NormalFlowBoundaryCondition(f, discrete_form = true, parameters = p)
+    transport_bc(F, p) = GravityWaveRadiationBoundaryCondition(F, discrete_form = true, parameters = p)
+    one_bc = ValueBoundaryCondition(1)
+
+    north_south = (size = (Nb, Na, Nz), topology = (Periodic, Open, Bounded),
+                   boundary_conditions = (v = FieldBoundaryConditions(south = flow_bc(vᵉˣᵗ, left), north = flow_bc(vᵉˣᵗ, right)),
+                                          V = FieldBoundaryConditions(south = transport_bc(Vᵉˣᵗ, left), north = transport_bc(Vᵉˣᵗ, right)),
+                                          c = FieldBoundaryConditions(south = one_bc, north = one_bc)))
+
+    west_east = (size = (Na, Nb, Nz), topology = (Open, Periodic, Bounded),
+                 boundary_conditions = (u = FieldBoundaryConditions(west = flow_bc(uᵉˣᵗ, left), east = flow_bc(uᵉˣᵗ, right)),
+                                        U = FieldBoundaryConditions(west = transport_bc(Uᵉˣᵗ, left), east = transport_bc(Uᵉˣᵗ, right)),
+                                        c = FieldBoundaryConditions(west = one_bc, east = one_bc)))
+
+    @testset "$name" for (name, setup) in (("north-south", north_south), ("west-east", west_east))
+        z = MutableVerticalDiscretization(range(-H, 0, length = Nz + 1))
+        grid = RectilinearGrid(arch; setup.size, halo = (4, 4, 4), x = (0, 50e3), y = (0, 50e3), z, setup.topology)
+
+        model = HydrostaticFreeSurfaceModel(grid; free_surface = SplitExplicitFreeSurface(grid; substeps = 20),
+                                            vertical_coordinate = ZStarCoordinate(), timestepper = :SplitRungeKutta3,
+                                            setup.boundary_conditions, tracers = :c, buoyancy = nothing,
+                                            momentum_advection = nothing, tracer_advection = Centered())
+        set!(model, c = 1)
+
+        for _ in 1:50
+            time_step!(model, 20)
+        end
+
+        η = Array(interior(model.free_surface.displacement))
+        c = Array(interior(model.tracers.c))
+
+        @test maximum(abs, η) > 1e-3
+        @test maximum(abs, c .- 1) < 1e-12
+    end
+end
+
+@testset "Time-dependent barotropic boundary conditions see the correct substep time [$(summary(arch))]" for arch in archs
     # A frozen substep clock would report the same time on every evaluation; `GravityWaveRadiation`
     # is documented to apply at every barotropic substep, so a time-dependent exterior value must
     # see each substep's own time, evenly spaced by the barotropic Δτ.
-    grid = RectilinearGrid(size=(8, 1, 1), x=(0, 1000), y=(0, 100), z=(-100, 0),
-                           topology=(Bounded, Periodic, Bounded))
+    grid = RectilinearGrid(arch; size=(8, 1, 1), x=(0, 1000), y=(0, 100), z=(-100, 0),
+                           topology=((Closed, Open), Periodic, Bounded))
 
-    times = Float64[]
-    recording_U_ext(i, j, grid, clock, model_fields) = (push!(times, clock.time); 0.0)
+    # Boundary conditions are evaluated in kernels, so the times are recorded in an array, at
+    # the position of each substep (substep clocks have `last_stage_Δt = Δτ`). In kernels both
+    # clocks are `NamedTuple`s, but only the model clock has a `last_Δt`.
+    times = on_architecture(arch, fill(NaN, 100))
     recording_η_ext(i, j, grid, clock, model_fields) = 0.0
 
-    U_bc = GravityWaveRadiationBoundaryCondition((DiscreteBoundaryFunction(recording_U_ext, nothing),
+    function recording_U_ext(i, j, grid, clock, model_fields, times)
+        if !hasproperty(clock, :last_Δt)
+            n = clamp(unsafe_trunc(Int, round(clock.time / clock.last_stage_Δt)) + 1, 1, length(times))
+            @inbounds times[n] = clock.time
+        end
+        return zero(grid)
+    end
+
+    U_bc = GravityWaveRadiationBoundaryCondition((DiscreteBoundaryFunction(recording_U_ext, times),
                                                   DiscreteBoundaryFunction(recording_η_ext, nothing)))
     U_bcs = FieldBoundaryConditions(grid, (Face(), Center(), nothing); east=U_bc)
 
+    u_bcs = FieldBoundaryConditions(east=NormalFlowBoundaryCondition(0))
     model = HydrostaticFreeSurfaceModel(grid; free_surface=SplitExplicitFreeSurface(grid; substeps=10),
-                                        boundary_conditions=(; U=U_bcs), buoyancy=nothing, tracers=())
+                                        boundary_conditions=(; u=u_bcs, U=U_bcs), buoyancy=nothing, tracers=())
 
     time_step!(model, 100.0)
 
-    substep_times = sort(unique(times))
+    substep_times = filter(!isnan, Array(times))
     @test length(substep_times) > 1
 
     Δτ = diff(substep_times)

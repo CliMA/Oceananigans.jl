@@ -5,7 +5,7 @@
 Oceananigans.jl is a Julia package for fast, friendly, flexible, ocean-flavored fluid dynamics on CPUs and GPUs.
 It solves the incompressible (Boussinesq) Navier-Stokes equations with models including:
 nonhydrostatic (with free surfaces), hydrostatic free-surface, and shallow water —
-on RectilinearGrid, LatitudeLongitudeGrid, CubedSphereGrid, and ImmersedBoundaryGrid.
+on RectilinearGrid, LatitudeLongitudeGrid, ConformalCubedSphereGrid, TripolarGrid, and ImmersedBoundaryGrid.
 
 ## Language & Environment
 
@@ -35,12 +35,20 @@ on RectilinearGrid, LatitudeLongitudeGrid, CubedSphereGrid, and ImmersedBoundary
 ### Imports
 
 - Source code: explicit imports (checked by tests)
+- **Never write `import` in `src/` or `ext/`** — not to extend functions (`import Oceananigans.Fields: set!`),
+  not to bring in a module (`import Dates`), not to alias one (`import Oceananigans.Utils as UT`).
+  Bring names in with `using Module: Module, name` (or `using Module: Module as M`), and extend with the
+  qualified name: `Module.function_name(...) = ...` or `function Module.function_name() ... end`
+  (e.g. `Fields.set!(f::MyField, a) = ...`, `Base.:+(a::ZeroField, b::AbstractField) = b`,
+  `@binary Base.:*`, `CUDA.@device_override @inline function KernelAbstractions.__validindex(...)`)
 - Examples/docs: rely on `using Oceananigans`; never explicitly import exported names
 
 ### Docstrings
 
-- Use DocStringExtensions.jl with `$(TYPEDSIGNATURES)` when the signature does not include
-  default values for args and/or kwargs.
+- Use `$(TYPEDSIGNATURES)` when the signature has no default values, and `$(SIGNATURES)` when it does.
+  Import both from `Oceananigans.Utils`, not DocStringExtensions: they show defaults with DocStringExtensions
+  v0.10 and fall back to plain signatures with v0.9. Write the signature by hand only when the
+  generated one would mislead, e.g. when it would drop a type the method dispatches on.
 - **ALWAYS `jldoctest` blocks, NEVER plain `julia` blocks** — doctests are tested; plain blocks rot
 - Include `# output` with verifiable output; prefer `show` methods over boolean comparisons
 - Use unicode for math (`Δt`, `η`, `ρ`), not LaTeX — LaTeX doesn't render in the REPL
@@ -64,25 +72,34 @@ on RectilinearGrid, LatitudeLongitudeGrid, CubedSphereGrid, and ImmersedBoundary
 
 ```
 src/
-├── Oceananigans.jl            # Main module, exports
-├── Architectures.jl           # CPU/GPU architecture abstractions
-├── Grids/                     # Grid types and constructors
-├── Fields/                    # Field types and operations
-├── Operators/                 # Finite difference operators
-├── BoundaryConditions/        # Boundary condition types
-├── Models/                    # Model implementations
+├── Oceananigans.jl                 # Main module, exports
+├── Architectures.jl                # CPU/GPU architecture abstractions
+├── Grids/                          # Grid types and constructors
+├── OrthogonalSphericalShellGrids/  # Tripolar and other curvilinear spherical-shell grids
+├── ImmersedBoundaries/             # ImmersedBoundaryGrid and immersed boundary conditions
+├── MultiRegion/                    # Multi-region grids (ConformalCubedSphereGrid)
+├── DistributedComputations/        # MPI-distributed architectures and halo communication
+├── Fields/                         # Field types and operations
+├── AbstractOperations/             # Lazy operations on fields (KernelFunctionOperation, etc.)
+├── Operators/                      # Finite difference operators
+├── BoundaryConditions/             # Boundary condition types
+├── Forcings/                       # Forcing functions
+├── Coriolis/                       # Coriolis formulations
+├── BuoyancyFormulations/           # Buoyancy models
+├── Advection/                      # Advection schemes
+├── TurbulenceClosures/             # LES and eddy viscosity models
+├── Models/                         # Model implementations
 │   ├── NonhydrostaticModels/
 │   ├── HydrostaticFreeSurfaceModels/
 │   ├── ShallowWaterModels/
 │   └── LagrangianParticleTracking/
-├── TimeSteppers/              # Time stepping schemes
-├── Solvers/                   # Poisson and tridiagonal solvers
-├── TurbulenceClosures/        # LES and eddy viscosity models
-├── Advection/                 # Advection schemes
-├── BuoyancyFormulations/      # Buoyancy models
-├── OutputWriters/             # File I/O
-├── Simulations/               # High-level simulation interface
-└── Utils/                     # Utilities and helpers
+├── TimeSteppers/                   # Time stepping schemes
+├── Solvers/                        # Poisson and tridiagonal solvers
+├── Simulations/                    # High-level simulation interface
+├── Diagnostics/                    # Diagnostics and callbacks
+├── OutputWriters/                  # File I/O
+├── OutputReaders/                  # FieldTimeSeries and output loading
+└── Utils/                          # Utilities and helpers
 ```
 
 ## Common Pitfalls
@@ -149,6 +166,9 @@ Rules in `.claude/rules/` load automatically when you touch matching files:
 - `testing-rules.md` — test writing and running (test/)
 - `docs-rules.md` — documentation building and style (docs/)
 - `examples-rules.md` — Literate.jl example conventions (examples/)
+- `style-rules.md` — naming, notation, and comment style (src/, test/, validation/, examples/)
+- `restriction-rules.md` — small diffs, no scaffolding, scarce comments, and a self-review checklist (src/, test/, validation/, examples/)
+- `julia-repl-rules.md` — prefer an MCP Julia REPL over Bash when available (always)
 
 ### Skills (slash commands)
 

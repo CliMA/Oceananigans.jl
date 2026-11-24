@@ -1,6 +1,6 @@
 using MPI
 
-MPI.Init()
+MPI.Init(threadlevel=:multiple)
 
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 

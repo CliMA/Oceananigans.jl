@@ -1,4 +1,4 @@
-using LinearAlgebra: LinearAlgebra, I
+using LinearAlgebra: LinearAlgebra, I, dot, norm
 using Krylov: Krylov, FloatOrComplex
 
 ## Wrapper for AbstractField so that it behaves as a vector for Krylov.jl
@@ -115,14 +115,7 @@ Architectures.architecture(solver::KrylovSolver) = solver.architecture
 Base.summary(solver::KrylovSolver) = "KrylovSolver"
 
 """
-    KrylovSolver(linear_operator;
-                 template_field::AbstractField,
-                 maxiter::Int = prod(size(template_field)),
-                 maxtime::Real = Inf,
-                 reltol::Real = sqrt(eps(eltype(template_field.grid))),
-                 abstol::Real = zero(eltype(template_field.grid)),
-                 preconditioner = nothing,
-                 method::Symbol = :cg)
+$(SIGNATURES)
 
 Construct a Krylov subspace solver for implicit linear systems defined by `linear_operator`,
 using the structure of a reference field `template_field`.

@@ -1,7 +1,6 @@
 ---
 name: babysit-ci
 description: Monitor CI, auto-fix small issues, pause on bigger problems, retrigger flaky runs
-user_invocable: true
 ---
 
 # Babysit CI

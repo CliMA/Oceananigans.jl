@@ -145,7 +145,7 @@ model = NonhydrostaticModel(grid;
 
 mixed_layer_depth = 32 # m
 
-stratification(z) = z < -mixed_layer_depth ? N² * z : - N² * mixed_layer_depth
+stratification(z) = N² * min(z, -mixed_layer_depth)
 noise(z) = 1e-4 * N² * grid.Lz * randn() * exp(z / 4)
 initial_buoyancy(x, z) = stratification(z) + noise(z)
 
@@ -159,7 +159,7 @@ simulation = Simulation(model, Δt=2minutes, stop_time=24hours)
 
 # with a `TimeStepWizard` that limits the
 # time-step to 2 minutes, and adapts the time-step such that CFL
-# (Courant-Freidrichs-Lewy) number hovers around `1.0`,
+# (Courant–Friedrichs–Lewy) number hovers around `1.0`,
 
 conjure_time_step_wizard!(simulation, cfl=1.0, max_Δt=2minutes)
 
@@ -172,12 +172,12 @@ progress(sim) = @printf("Iteration: %d, time: %s, Δt: %s\n",
 
 add_callback!(simulation, progress, IterationInterval(100))
 
-# and a basic `JLD2Writer` that writes velocities and both
+# and a basic `JLD2Writer` that writes the vertical velocity and both
 # the two-dimensional and horizontally-averaged plankton concentration,
 
 outputs = (w = model.velocities.w,
            P = model.tracers.P,
-           avg_P = Average(model.tracers.P, dims=(1, 2)))
+           P̄ = Average(model.tracers.P, dims=(1, 2)))
 
 simulation.output_writers[:simple_output] =
     JLD2Writer(model, outputs,
@@ -203,14 +203,14 @@ run!(simulation)
 
 # ## Visualizing the solution
 #
-# We'd like to a make a plankton movie. First we load the output file
+# We'd like to make a plankton movie. First we load the output file
 # and build a time-series of the buoyancy flux,
 
 filepath = simulation.output_writers[:simple_output].filepath
 
 w_timeseries = FieldTimeSeries(filepath, "w")
 P_timeseries = FieldTimeSeries(filepath, "P")
-avg_P_timeseries = FieldTimeSeries(filepath, "avg_P")
+P̄_timeseries = FieldTimeSeries(filepath, "P̄")
 
 times = w_timeseries.times
 buoyancy_flux_time_series = [buoyancy_flux(0, t, buoyancy_flux_parameters) for t in times]
@@ -218,22 +218,17 @@ nothing # hide
 
 # Now, we animate plankton mixing and blooming,
 
-using CairoMakie
-
 @info "Making a movie about plankton..."
 
 n = Observable(1)
 
-title = @lift @sprintf("t = %s", prettytime(times[$n]))
+title = @lift "t = " * prettytime(times[$n])
 
 wn = @lift w_timeseries[$n]
 Pn = @lift P_timeseries[$n]
-avg_Pn = @lift avg_P_timeseries[$n]
+P̄n = @lift P̄_timeseries[$n]
 
-w_lim = maximum(abs, interior(w_timeseries))
-w_lims = (-w_lim, w_lim)
-
-P_lims = (0.95, 1.1)
+wmax = maximum(abs, w_timeseries)
 
 fig = Figure(size = (1200, 1000))
 
@@ -241,22 +236,22 @@ ax_w = Axis(fig[2, 2]; xlabel = "x (m)", ylabel = "z (m)", aspect = 1)
 ax_P = Axis(fig[3, 2]; xlabel = "x (m)", ylabel = "z (m)", aspect = 1)
 ax_b = Axis(fig[2, 3]; xlabel = "Time (hours)", ylabel = "Buoyancy flux (m² s⁻³)", yaxisposition = :right)
 
-ax_avg_P = Axis(fig[3, 3]; xlabel = "Plankton concentration (μM)", ylabel = "z (m)", yaxisposition = :right)
-xlims!(ax_avg_P, 0.85, 1.3)
+ax_P̄ = Axis(fig[3, 3]; xlabel = "Plankton concentration (μM)", ylabel = "z (m)", yaxisposition = :right)
+xlims!(ax_P̄, 0.85, 1.3)
 
 fig[1, 1:3] = Label(fig, title, tellwidth=false)
 
-hm_w = heatmap!(ax_w, wn; colormap = :balance, colorrange = w_lims)
+hm_w = heatmap!(ax_w, wn; colormap = :balance, colorrange = (-wmax, wmax))
 Colorbar(fig[2, 1], hm_w; label = "Vertical velocity (m s⁻¹)", flipaxis = false)
 
-hm_P = heatmap!(ax_P, Pn; colormap = :matter, colorrange = P_lims)
+hm_P = heatmap!(ax_P, Pn; colormap = :matter, colorrange = (0.95, 1.1))
 Colorbar(fig[3, 1], hm_P; label = "Plankton 'concentration'", flipaxis = false)
 
 lines!(ax_b, times ./ hour, buoyancy_flux_time_series; linewidth = 1, color = :black, alpha = 0.4)
 
 b_flux_point = @lift Point2(times[$n] / hour, buoyancy_flux_time_series[$n])
 scatter!(ax_b, b_flux_point; marker = :circle, markersize = 16, color = :black)
-lines!(ax_avg_P, avg_Pn)
+lines!(ax_P̄, P̄n)
 
 current_figure() #hide
 fig

@@ -297,6 +297,11 @@ for arch in archs
             three_index_kernel_function(i, j, k, grid) = i + j
             op = KernelFunctionOperation{Center, Center, Nothing}(three_index_kernel_function, grid)
             @test Array(interior(compute!(Field(op))))[:, :, 1] == [i + j for i in 1:size(grid, 1), j in 1:size(grid, 2)]
+
+            # GPU reductions adapt their operand inside the kernel, which needs an inferable adapt rule
+            field_kernel_function(i, j, k, grid, q) = @inbounds q[i, j, k]
+            op = KernelFunctionOperation{Center, Center, Center}(field_kernel_function, grid, q)
+            @test minimum(op) == 2
         end
 
         @testset "InterpolatedOperations [$A]" begin
@@ -624,6 +629,30 @@ for arch in archs
             @test indices(b * c * d * a) == (3:3, 2:2, 2:2)
             @test indices(c * d * a * b) == (2:3, 3:3, 2:2)
             @test indices(d * a * b * c) == (3:3, 3:3, 2:2)
+        end
+
+        @testset "Rebuilding an operation gives the same type [$A]" begin
+            grid = RectilinearGrid(arch, size=(3, 3, 3), extent=(1, 1, 1))
+            u, v, w = VelocityFields(grid)
+            c = CenterField(grid)
+
+            # Operations that are compiled for their type are compiled only once
+            builders = (() -> sin(c), () -> c * c, () -> 2 * c, () -> c * 2, () -> c + c + c,
+                        () -> ∂x(c), () -> ∂x(u), () -> u * v, () -> Integral(c), () -> Average(c * c; dims=3))
+
+            for build in builders
+                @test typeof(build()) == typeof(build())
+            end
+        end
+
+        @testset "Deeply nested operations at a single location [$A]" begin
+            grid = RectilinearGrid(arch, size=(3, 3, 3), extent=(1, 1, 1))
+            c = CenterField(grid)
+            set!(c, 2)
+
+            ν = 3
+            ε = Field(ν * ((c^2 + c * c + c) * (c + c) + c / c) - sin(c - c))
+            @test all(Array(interior(ε)) .== 123)
         end
     end
 end

@@ -13,9 +13,9 @@
     end
 end
 
-update_lagrangian_particle_state!(particles, model) = nothing
+TimeSteppers.update_lagrangian_particle_state!(particles, model) = nothing
 
-function update_lagrangian_particle_state!(particles::LagrangianParticles, model)
+function TimeSteppers.update_lagrangian_particle_state!(particles::LagrangianParticles, model)
     grid = model.grid
     arch = architecture(grid)
     workgroup = min(length(particles), 256)

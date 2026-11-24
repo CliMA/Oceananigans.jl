@@ -4,6 +4,7 @@ using Oceananigans: Oceananigans
 using Aqua: Aqua
 using ExplicitImports: ExplicitImports
 using Test: @testset, @test, detect_ambiguities
+using Pkg: Pkg
 
 # Load other packages to force running Aqua tests only on extensions
 using NCDatasets: NCDataset
@@ -35,121 +36,61 @@ function get_submodules(mod::Module; self=true)
 end
 
 @testset "Aqua" begin
-    @info "testing quality assurance via Aqua"
     Aqua.test_all(Oceananigans; ambiguities=false, piracies=false)
 
-    # Until we resolve all ambiguities, we make sure we don't increase them.
-    # Do not increase this number. If ambiguities increase, resolve them before merging.
-    number_of_ambiguities = length(detect_ambiguities(Oceananigans; recursive=true))
-    # When ambiguities are resolved, update the cap accordingly.
-    @test number_of_ambiguities == 9
-    @info "Number of ambiguities: $number_of_ambiguities"
-
-    modules = (
-        # Oceananigans.AbstractOperations,
-        Oceananigans.Advection,
-        Oceananigans.Architectures,
-        Oceananigans.Biogeochemistry,
-        Oceananigans.BoundaryConditions,
-        Oceananigans.BuoyancyFormulations,
-        Oceananigans.Coriolis,
-        Oceananigans.Diagnostics,
-        Oceananigans.DistributedComputations,
-        # Oceananigans.Fields,
-        Oceananigans.Forcings,
-        Oceananigans.Grids,
-        Oceananigans.ImmersedBoundaries,
-        Oceananigans.Logger,
-        Oceananigans.Models,
-        Oceananigans.Models.BulkDragBoundaryConditions,
-        Oceananigans.Models.ShallowWaterModels,
-        Oceananigans.Models.VarianceDissipationComputations,
-        Oceananigans.MultiRegion,
-        Oceananigans.Operators,
-        Oceananigans.OrthogonalSphericalShellGrids,
-        Oceananigans.OutputReaders,
-        Oceananigans.OutputWriters,
-        Oceananigans.Simulations,
-        Oceananigans.Solvers,
-        Oceananigans.StokesDrifts,
-        Oceananigans.TimeSteppers,
-        Oceananigans.TurbulenceClosures,
-        Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities,
-        Oceananigans.Units,
-        Oceananigans.Utils,
-    )
-
-    # In addition to capping the total number of ambiguities above, we make sure
-    # modules which don't have any don't get new ones.
-    @testset "No ambiguities for module $(mod)" for mod in modules
-        @info "Testing no ambiguities for module $(mod)"
-        @test isempty(detect_ambiguities(mod; recursive=true))
+    @testset "No ambiguities" begin
+        @test isempty(detect_ambiguities(Oceananigans; recursive=true))
     end
 
     # `test_piracies` doesn't recurse in inner modules, so we have to test that manually.
     @testset "No type piracy in $(mod)" for mod in get_submodules(Oceananigans)
-        @info "Testing no type piracy for module $(mod)"
         Aqua.test_piracies(mod)
     end
 end
 
 @testset "ExplicitImports" begin
-
-    modules = (
-        Oceananigans.AbstractOperations,
-        Oceananigans.Advection,
-        Oceananigans.Architectures,
-        Oceananigans.Biogeochemistry,
-        Oceananigans.BoundaryConditions,
-        Oceananigans.BuoyancyFormulations,
-        Oceananigans.Coriolis,
-        Oceananigans.Diagnostics,
-        # Oceananigans.DistributedComputations,
-        Oceananigans.Fields,
-        Oceananigans.Forcings,
-        Oceananigans.Grids,
-        Oceananigans.ImmersedBoundaries,
-        Oceananigans.Logger,
-        # Oceananigans.Models,
-        Oceananigans.Models.HydrostaticFreeSurfaceModels,
-        Oceananigans.MultiRegion,
-        Oceananigans.Operators,
-        Oceananigans.OrthogonalSphericalShellGrids,
-        Oceananigans.OutputReaders,
-        Oceananigans.OutputWriters,
-        Oceananigans.Simulations,
-        Oceananigans.Solvers,
-        Oceananigans.StokesDrifts,
-        Oceananigans.TimeSteppers,
-        Oceananigans.TurbulenceClosures,
-        Oceananigans.Units,
-        Oceananigans.Utils,
-    )
-
-    @testset "Explicit Imports [$(mod)]" for mod in modules
-        @info "Testing no implicit imports for module $(mod)"
-        @test ExplicitImports.check_no_implicit_imports(mod) === nothing
+    @testset "Explicit Imports" begin
+        @test ExplicitImports.check_no_implicit_imports(Oceananigans) === nothing
     end
 
     @testset "Import via Owner" begin
-        @info "Testing imports via owner"
-        @test ExplicitImports.check_all_explicit_imports_via_owners(Oceananigans) === nothing
+        # `@atomic` is owned by Atomix, which is not a direct dependency; KernelAbstractions re-exports it
+        @test ExplicitImports.check_all_explicit_imports_via_owners(Oceananigans; ignore=(Symbol("@atomic"),)) === nothing
     end
 
     @testset "Stale Explicit Imports" begin
-        @info "Testing no stale implicit imports"
         @test ExplicitImports.check_no_stale_explicit_imports(Oceananigans) === nothing
     end
 
     @testset "Qualified Accesses" begin
-        @info "Testing qualified access via owners"
         @test ExplicitImports.check_all_qualified_accesses_via_owners(Oceananigans) === nothing
     end
 
     @testset "Self Qualified Accesses" begin
-        @info "Testing no self qualified accesses"
         @test ExplicitImports.check_no_self_qualified_accesses(Oceananigans) === nothing
     end
+end
+
+# Loaded only after the Aqua tests, which would otherwise report ambiguities between these packages and Oceananigans
+using AMDGPU: AMDGPU
+using CairoMakie: CairoMakie
+using ConservativeRegridding: ConservativeRegridding
+using CUDA: CUDA
+using Enzyme: Enzyme
+using Metal: Metal
+using NCCL: NCCL
+using oneAPI: oneAPI
+using Reactant: Reactant
+
+extension_names = Pkg.TOML.parsefile(joinpath(pkgdir(Oceananigans), "Project.toml"))["extensions"] |> keys |> collect |> sort
+
+@testset "ExplicitImports in $name" for name in Symbol.(extension_names)
+    extension = Base.get_extension(Oceananigans, name)
+    @test ExplicitImports.check_no_implicit_imports(extension) === nothing
+    @test ExplicitImports.check_all_explicit_imports_via_owners(extension) === nothing
+    @test ExplicitImports.check_no_stale_explicit_imports(extension) === nothing
+    @test ExplicitImports.check_all_qualified_accesses_via_owners(extension) === nothing
+    @test ExplicitImports.check_no_self_qualified_accesses(extension) === nothing
 end
 
 ################################################################################

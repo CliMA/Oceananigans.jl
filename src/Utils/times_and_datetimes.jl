@@ -1,5 +1,4 @@
-import Dates
-using Dates: AbstractTime, Period, Nanosecond
+using Dates: Dates, AbstractTime, Period, Nanosecond
 
 # For Oceananigans clocks based on calendar values (e.g. DateTime or TimeDate),
 # time-stepping in Oceananigans advances prognostic variables using a real-valued
@@ -19,10 +18,10 @@ using Dates: AbstractTime, Period, Nanosecond
     return convert(T, period_to_seconds(period))
 end
 
-@inline time_difference_seconds(target, current) = float(target - current)
-@inline time_difference_seconds(target::AbstractTime, current::AbstractTime) = period_to_seconds(target - current)
-@inline time_difference_seconds(target::Number, current::AbstractTime) = period_to_seconds(target - current)
-@inline time_difference_seconds(target::AbstractTime, current::Number) = period_to_seconds(target - current)
+@inline time_difference_in_seconds(target, current) = float(target - current)
+@inline time_difference_in_seconds(target::AbstractTime, current::AbstractTime) = period_to_seconds(target - current)
+@inline time_difference_in_seconds(target::Number, current::AbstractTime) = period_to_seconds(target - current)
+@inline time_difference_in_seconds(target::AbstractTime, current::Number) = period_to_seconds(target - current)
 
 @inline add_time_interval(base::Number, interval::Number, count=1) = base + count * interval
 @inline add_time_interval(base::Number, interval::Period, count=1) = base + count * period_to_seconds(interval)

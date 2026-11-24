@@ -128,25 +128,16 @@ const norm_∂y_v = ∂y_v
 const norm_∂z_w = ∂z_w
 
 # ffc
-@inline norm_∂x_v(i, j, k, grid, v) =
-    Δᶠx_ffc(i, j, k, grid) / Δᶠy_ffc(i, j, k, grid) * ∂x_v(i, j, k, grid, v)
-
-@inline norm_∂y_u(i, j, k, grid, u) =
-    Δᶠy_ffc(i, j, k, grid) / Δᶠx_ffc(i, j, k, grid) * ∂y_u(i, j, k, grid, u)
+@inline norm_∂x_v(i, j, k, grid, v) = Δᶠx_ffc(i, j, k, grid) * Δᶠy⁻¹_ffc(i, j, k, grid) * ∂x_v(i, j, k, grid, v)
+@inline norm_∂y_u(i, j, k, grid, u) = Δᶠy_ffc(i, j, k, grid) * Δᶠx⁻¹_ffc(i, j, k, grid) * ∂y_u(i, j, k, grid, u)
 
 # fcf
-@inline norm_∂x_w(i, j, k, grid, w) =
-    Δᶠx_fcf(i, j, k, grid) / Δᶠz_fcf(i, j, k, grid) * ∂x_w(i, j, k, grid, w)
-
-@inline norm_∂z_u(i, j, k, grid, u) =
-    Δᶠz_fcf(i, j, k, grid) / Δᶠx_fcf(i, j, k, grid) * ∂z_u(i, j, k, grid, u)
+@inline norm_∂x_w(i, j, k, grid, w) = Δᶠx_fcf(i, j, k, grid) * Δᶠz⁻¹_fcf(i, j, k, grid) * ∂x_w(i, j, k, grid, w)
+@inline norm_∂z_u(i, j, k, grid, u) = Δᶠz_fcf(i, j, k, grid) * Δᶠx⁻¹_fcf(i, j, k, grid) * ∂z_u(i, j, k, grid, u)
 
 # cff
-@inline norm_∂y_w(i, j, k, grid, w) =
-    Δᶠy_cff(i, j, k, grid) / Δᶠz_cff(i, j, k, grid) * ∂y_w(i, j, k, grid, w)
-
-@inline norm_∂z_v(i, j, k, grid, v) =
-    Δᶠz_cff(i, j, k, grid) / Δᶠy_cff(i, j, k, grid) * ∂z_v(i, j, k, grid, v)
+@inline norm_∂y_w(i, j, k, grid, w) = Δᶠy_cff(i, j, k, grid) * Δᶠz⁻¹_cff(i, j, k, grid) * ∂y_w(i, j, k, grid, w)
+@inline norm_∂z_v(i, j, k, grid, v) = Δᶠz_cff(i, j, k, grid) * Δᶠy⁻¹_cff(i, j, k, grid) * ∂z_v(i, j, k, grid, v)
 
 # tracers
 @inline norm_∂x_c(i, j, k, grid, c) = Δᶠx_fcc(i, j, k, grid) * ∂xᵣᶠᶜᶜ(i, j, k, grid, c)

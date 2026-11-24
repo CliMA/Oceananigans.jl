@@ -4,24 +4,25 @@ using Oceananigans.Operators: ∂xᵣᶠᶜᶠ, ∂yᵣᶜᶠᶠ
 """
 $(TYPEDSIGNATURES)
 
-Shift `velocities` by `Δt` times the barotropic acceleration `-g∇η` of `free_surface`, so that implicit momentum flux boundary
-conditions  act on a velocity that has felt the free surface. Pass `-Δt` to undo the shift once the implicit solve is done.
-The ExplicitFreeSurface, and velocities without an implicit flux boundary condition, are left alone.
+Shift `velocities` by `Δt` times the barotropic acceleration `-g∇η` of the free surface `η` the step starts from, so that
+implicit momentum flux boundary conditions act on a velocity that has felt the free surface. Pass `-Δt` to undo the shift
+once the implicit solve is done. The ExplicitFreeSurface, and velocities without an implicit flux boundary condition, are
+left alone.
 """
-add_deferred_barotropic_acceleration!(velocities, grid, free_surface, Δt) = nothing
+add_barotropic_acceleration!(velocities, grid, free_surface, η, Δt) = nothing
 
-function add_deferred_barotropic_acceleration!(velocities, grid, free_surface::Union{SplitExplicitFreeSurface, ImplicitFreeSurface}, Δt)
+function add_barotropic_acceleration!(velocities, grid, free_surface::Union{SplitExplicitFreeSurface, ImplicitFreeSurface}, η, Δt)
     u, v = velocities.u, velocities.v
     needs_implicit_solver(u.boundary_conditions) | needs_implicit_solver(v.boundary_conditions) || return nothing
 
     g = free_surface.gravitational_acceleration
 
-    launch!(architecture(grid), grid, :xyz, _add_deferred_barotropic_acceleration!, u, v, grid, free_surface.displacement, g, Δt; exclude_periphery=true)
+    launch!(architecture(grid), grid, :xyz, _add_barotropic_acceleration!, u, v, grid, η, g, Δt; exclude_periphery=true)
 
     return nothing
 end
 
-@kernel function _add_deferred_barotropic_acceleration!(u, v, grid, η, g, Δt)
+@kernel function _add_barotropic_acceleration!(u, v, grid, η, g, Δt)
     i, j, k = @index(Global, NTuple)
 
     @inbounds begin

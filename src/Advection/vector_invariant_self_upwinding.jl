@@ -44,6 +44,35 @@ end
 end
 
 #####
+##### Vertical flux consistent with the cross term of the divergence flux
+#####
+
+# With continuity, the cross term u ∂y v of the divergence flux cancels the term u ∂z w of the vertical flux ∂z(w u).
+# Discretely, this cancellation is exact only if the advecting velocity W is interpolated with the same scheme
+# as the cross term. Otherwise the difference couples with the Lamb term and produces a spurious growing mode.
+
+@inline vector_invariant_flux_Wu(i, j, k, grid, scheme::VectorInvariantSelfVerticalUpwinding, W, u) =
+    self_upwinding_flux_Wu(i, j, k, grid, scheme, scheme.vertical_advection_scheme, TimeSteppers.time_discretization(scheme), W, u)
+
+@inline vector_invariant_flux_Wv(i, j, k, grid, scheme::VectorInvariantSelfVerticalUpwinding, W, v) =
+    self_upwinding_flux_Wv(i, j, k, grid, scheme, scheme.vertical_advection_scheme, TimeSteppers.time_discretization(scheme), W, v)
+
+@inline self_upwinding_flux_Wu(i, j, k, grid, scheme, vertical_scheme, td, W, u) = vertical_flux_Wu(i, j, k, grid, vertical_scheme, W, u)
+@inline self_upwinding_flux_Wv(i, j, k, grid, scheme, vertical_scheme, td, W, v) = vertical_flux_Wv(i, j, k, grid, vertical_scheme, W, v)
+
+@inline function self_upwinding_flux_Wu(i, j, k, grid, scheme, vertical_scheme::UpwindScheme, ::ETD, W, u)
+    w̃  = _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.upwinding.cross_scheme, Az_qᶜᶜᶠ, W)
+    uᴿ = _biased_interpolate_zᵃᵃᶠ(i, j, k, grid, vertical_scheme, bias(w̃), u)
+    return conditional_flux(i, j, k, grid, Face(), Center(), Face(), zero(grid), w̃ * uᴿ)
+end
+
+@inline function self_upwinding_flux_Wv(i, j, k, grid, scheme, vertical_scheme::UpwindScheme, ::ETD, W, v)
+    w̃  = _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.upwinding.cross_scheme, Az_qᶜᶜᶠ, W)
+    vᴿ = _biased_interpolate_zᵃᵃᶠ(i, j, k, grid, vertical_scheme, bias(w̃), v)
+    return conditional_flux(i, j, k, grid, Center(), Face(), Face(), zero(grid), w̃ * vᴿ)
+end
+
+#####
 ##### Self Upwinding of Kinetic Energy Gradient
 #####
 

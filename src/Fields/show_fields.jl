@@ -1,5 +1,5 @@
-using Oceananigans.Grids: grid_name, size_summary
 using Oceananigans.BoundaryConditions: bc_str
+using Oceananigans.Grids: grid_name, size_summary
 using Statistics: mean
 
 location_str(::Type{Face})    = "Face"
@@ -11,8 +11,8 @@ show_location(field::AbstractField) = show_location(location(field)...)
 Grids.grid_name(field::Field) = grid_name(field.grid)
 
 function Base.summary(field::Field)
-    LX, LY, LZ = location(field)
-    prefix = string(size_summary(size(field)), " Field{$LX, $LY, $LZ}")
+    nLX, nLY, nLZ = map(nameof, location(field))
+    prefix = string(size_summary(size(field)), " Field{$nLX, $nLY, $nLZ}")
 
     reduced_dims = reduced_dimensions(field)
 

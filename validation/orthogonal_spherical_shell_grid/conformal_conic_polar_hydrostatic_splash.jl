@@ -8,15 +8,15 @@ Nx, Ny, Nz = 64, 64, 4
 Δ = 20kilometers
 H = 200meters
 
-grid = LambertConformalConicGrid(arch, Float64;
-                                 size = (Nx, Ny, Nz),
-                                 center = (0, 89),
-                                 spacing = Δ,
-                                 standard_parallel = 90,  # polar stereographic limit
-                                 central_longitude = 0,
-                                 latitude_of_origin = 90,
-                                 z = (-H, 0),
-                                 halo = (3, 3, 3))
+grid = ConformalConicGrid(arch, Float64;
+                          size = (Nx, Ny, Nz),
+                          center = (0, 89),
+                          spacing = Δ,
+                          standard_parallel = 90,  # polar stereographic limit
+                          central_longitude = 0,
+                          latitude_of_origin = 90,
+                          z = (-H, 0),
+                          halo = (3, 3, 3))
 
 model = HydrostaticFreeSurfaceModel(grid;
                                     coriolis = HydrostaticSphericalCoriolis(),

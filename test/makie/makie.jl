@@ -4,6 +4,8 @@ using Test
 using Oceananigans
 using Oceananigans.Fields: interior
 using Oceananigans.Grids: nodes
+using Oceananigans.MultiRegion: owned_weights
+using LinearAlgebra: cross
 using Oceananigans.Units: hours, kilometers
 
 const CAIROMAKIE_AVAILABLE = let loaded = false
@@ -161,6 +163,97 @@ sequential_data(sz::NTuple{N, Int}) where N = reshape(Float64.(1:prod(sz)), sz..
 
         plt = surface!(ax, T; colormap=:viridis)
         @test plt isa CairoMakie.Surface
+    end
+
+    @testset "Longitude–latitude surface! on TripolarGrid [$FT]" for FT in (Float32, Float64)
+        grid = TripolarGrid(CPU(), FT; size=(8, 10, 2), z=(-2, 0))
+        height = Field{Center, Center, Nothing}(grid)
+        set!(height, (λ, φ) -> ifelse(φ > 0, 1, -1))
+        bathymetry = Field{Center, Center, Nothing}(grid)
+        interior(bathymetry) .= ifelse.(interior(height) .< 0, .-interior(height), FT(NaN))
+
+        fig = Figure()
+        ax = Axis(fig[1, 1])
+        plt = surface!(ax, bathymetry; colormap=:deep, nan_color=:gray)
+        λ, φ, _ = nodes(bathymetry)
+        colors = interior(bathymetry, :, :, 1)
+
+        @test plt isa CairoMakie.Surface
+        @test plt.converted[][1] ≈ Float32.(λ)
+        @test plt.converted[][2] ≈ Float32.(φ)
+        @test all(iszero, plt.converted[][3])
+        @test isequal(plt.color[], colors)
+        @test any(isnan, plt.color[])
+        @test any(==(1), plt.color[])
+
+        streamfunction = Field((bathymetry - 1) / 2)
+        streamfunction_plot = surface!(ax, streamfunction)
+        @test all(iszero, filter(!isnan, streamfunction_plot.color[]))
+        @test isnan.(streamfunction_plot.color[]) == isnan.(colors)
+
+        field = CenterField(grid)
+        set!(field, 2)
+        slice = view(field, :, :, size(grid, 3))
+        slice_plot = surface!(ax, slice)
+        @test all(==(2), slice_plot.color[])
+        @test_throws ArgumentError surface!(ax, field)
+
+        immersed_grid = ImmersedBoundaryGrid(grid, GridFittedBottom(height))
+        immersed_field = CenterField(immersed_grid)
+        set!(immersed_field, 2)
+        immersed_slice = view(immersed_field, :, :, size(grid, 3))
+        immersed_plot = surface!(ax, immersed_slice)
+        @test isnan.(immersed_plot.color[]) == isnan.(colors)
+        @test all(==(2), filter(!isnan, immersed_plot.color[]))
+
+        observable = CairoMakie.Observable(immersed_slice)
+        observable_plot = surface!(ax, observable)
+        coordinates = deepcopy(observable_plot.converted[])
+        set!(immersed_field, 3)
+        CairoMakie.notify(observable)
+        @test isnan.(observable_plot.color[]) == isnan.(colors)
+        @test all(==(3), filter(!isnan, observable_plot.color[]))
+        @test observable_plot.converted[] == coordinates
+    end
+
+    @testset "Longitude–latitude quadmesh! on TripolarGrid [$FT]" for FT in (Float32, Float64)
+        grid = TripolarGrid(CPU(), FT; size=(8, 10, 2), z=(-2, 0))
+        height = Field{Center, Center, Nothing}(grid)
+        set!(height, (λ, φ) -> ifelse(φ > 0, 1, -1))
+        immersed_grid = ImmersedBoundaryGrid(grid, GridFittedBottom(height))
+        bathymetry = Field{Center, Center, Nothing}(immersed_grid)
+        set!(bathymetry, -height)
+        Nx, Ny = size(grid, 1), size(grid, 2)
+
+        fig = Figure()
+        ax = Axis(fig[1, 1])
+        plt = quadmesh!(ax, bathymetry; colormap=:deep, nan_color=:gray)
+        vertices = plt[1][].position
+        colors = plt.color[]
+
+        @test plt isa CairoMakie.Mesh
+        @test length(vertices) == 4 * Nx * Ny
+        @test any(isnan, colors)
+        @test all(==(1), filter(!isnan, colors))
+
+        # Away from the north poles, cells at the periodic seam are not drawn across the map
+        λ = [vertex[1] for vertex in vertices]
+        southern_cells = 1:4:4 * Nx * (Ny ÷ 2)
+        @test all(maximum(λ[q:q+3]) - minimum(λ[q:q+3]) < 180 for q in southern_cells)
+
+        streamfunction = Field{Face, Face, Nothing}(grid)
+        set!(streamfunction, 2)
+        streamfunction_plot = quadmesh!(ax, streamfunction)
+        @test all(==(2), streamfunction_plot.color[])
+
+        field = CenterField(immersed_grid)
+        set!(field, 2)
+        observable = CairoMakie.Observable(view(field, :, :, size(grid, 3)))
+        observable_plot = quadmesh!(ax, observable)
+        set!(field, 3)
+        CairoMakie.notify(observable)
+        @test all(==(3), filter(!isnan, observable_plot.color[]))
+        @test isnan.(observable_plot.color[]) == isnan.(colors)
     end
 
     @testset "surface! with Observable on spherical grid" begin
@@ -436,5 +529,72 @@ sequential_data(sz::NTuple{N, Int}) where N = reshape(Float64.(1:prod(sz)), sz..
         # A 3D non-spherical grid is ambiguous → clear error.
         g3 = RectilinearGrid(size = (4, 4, 4), extent = (1, 1, 1))
         @test_throws ArgumentError quadmesh!(CairoMakie.Axis(CairoMakie.Figure()[1, 1]), g3)
+    end
+
+    @testset "quadmesh! on YinYangGrid" begin
+        grid = YinYangGrid(size=(48, 16, 2), z=(-2, 0))
+        immersed_grid = ImmersedBoundaryGrid(grid, GridFittedBottom((λ, φ) -> ifelse(φ > 60, 0, -2)))
+
+        weights = owned_weights(grid)
+        Nyin = count(≥(1/2), interior(weights[1]))
+        Nyang = count(>(0), interior(weights[2]))
+
+        c = CenterField(immersed_grid)
+        set!(c, 2)
+
+        fig = Figure()
+        ax = Axis3(fig[1, 1]; aspect=:data)
+        plt = quadmesh!(ax, view(c, :, :, 2); colormap=:thermal, nan_color=:gray)
+        vertices = plt[1][].position
+        colors = plt.color[]
+
+        @test plt isa CairoMakie.Mesh
+        @test length(vertices) == length(colors) == 4 * (Nyin + Nyang)
+        @test any(isnan, colors)
+        @test all(==(2), filter(!isnan, colors))
+
+        # Land north of 60°N is masked, and nothing else is
+        polar_quad(q) = all(v[3] > sind(55) for v in vertices[q:q+3])
+        @test all(polar_quad(q) for q in 1:4:length(vertices) if isnan(colors[q]))
+
+        # Yin is drawn on the sphere and Yang just beneath it
+        radius(v) = sqrt(sum(abs2, v))
+        @test all(radius(v) ≈ 1 for v in vertices[1:4Nyin])
+        @test all(radius(v) ≈ 0.995 for v in vertices[4Nyin+1:end])
+
+        # The drawn cells cover the sphere, with only a thin overlap
+        function quad_area(q)
+            p₁, p₂, p₃, p₄ = (vertices[q+n] / radius(vertices[q+n]) for n in 0:3)
+            triangle_area(a, b, c) = sqrt(sum(abs2, cross(b - a, c - a))) / 2
+            return triangle_area(p₁, p₂, p₃) + triangle_area(p₁, p₃, p₄)
+        end
+        area = sum(quad_area, 1:4:length(vertices))
+        @test 0.99 * 4π < area < 1.2 * 4π
+
+        # Observable fields update the colors but not the mesh
+        c₁ = Field{Center, Center, Nothing}(grid)
+        c₂ = Field{Center, Center, Nothing}(grid)
+        set!(c₁, (λ, φ) -> φ)
+        set!(c₂, 3)
+        fields = [c₁, c₂]
+        n = CairoMakie.Observable(1)
+        observable = CairoMakie.@lift fields[$n]
+        observable_plot = quadmesh!(ax, observable)
+        @test !all(==(3), observable_plot.color[])
+        n[] = 2
+        @test all(==(3), observable_plot.color[])
+        @test length(observable_plot[1][].position) == 4 * (Nyin + Nyang)
+
+        ext = Base.get_extension(Oceananigans, :OceananigansMakieExt)
+        @test ext.geo_surface!(ax, c₁) isa CairoMakie.Mesh
+        @test ext.geo_surface!(ax, observable) isa CairoMakie.Mesh
+        @test surface!(ax, c₁) isa CairoMakie.Mesh
+
+        geo_fig, geo_ax, geo_plt = ext.geo_surface(c₁)
+        @test geo_ax isa CairoMakie.Axis3
+        @test geo_plt isa CairoMakie.Mesh
+
+        @test_throws ArgumentError quadmesh!(ax, c)
+        @test_throws ArgumentError quadmesh!(ax, view(XFaceField(grid), :, :, 1))
     end
 end

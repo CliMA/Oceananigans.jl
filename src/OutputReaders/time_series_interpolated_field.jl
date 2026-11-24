@@ -1,8 +1,8 @@
 using Adapt: Adapt, adapt
 
 using Oceananigans: location
-using Oceananigans.Architectures: Architectures, on_architecture
 using Oceananigans.AbstractOperations: AbstractOperation
+using Oceananigans.Architectures: Architectures, on_architecture
 using Oceananigans.Fields: Fields, indices, show_location
 using Oceananigans.Grids: size as grid_size
 using Oceananigans.Units: Time
@@ -73,9 +73,10 @@ end
 
 function Adapt.adapt_structure(to, f::TimeSeriesInterpolation{LX, LY, LZ}) where {LX, LY, LZ}
     adapted_time_series = Adapt.adapt(to, f.time_series)
+    adapted_time = Adapt.adapt(to, f.clock.time)
     T = eltype(f)
-    return GPUAdaptedTimeSeriesInterpolation{LX, LY, LZ, typeof(adapted_time_series), typeof(f.clock.time), typeof(indices(f)), T}(
-        adapted_time_series, f.clock.time, indices(f))
+    return GPUAdaptedTimeSeriesInterpolation{LX, LY, LZ, typeof(adapted_time_series), typeof(adapted_time), typeof(indices(f)), T}(
+        adapted_time_series, adapted_time, indices(f))
 end
 
 function Adapt.adapt_structure(to, f::GPUAdaptedTimeSeriesInterpolation{LX, LY, LZ, <:Any, <:Any, <:Any, T}) where {LX, LY, LZ, T}

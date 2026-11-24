@@ -1,8 +1,8 @@
-using Oceananigans.Utils: tupleit
-using Oceananigans.Grids: regular_dimensions, topology, Periodic, has_static_discretization
 using Oceananigans.Fields: Field, Scan, Reducing, ScannedComputedField, condition_operand, reverse_cumsum!,
-                          AbstractAccumulating, AbstractReducing
-using Oceananigans.Fields: filter_nothing_dims, instantiated_location, interior
+                           AbstractAccumulating, AbstractReducing,
+                           filter_nothing_dims, instantiated_location, interior
+using Oceananigans.Grids: regular_dimensions, topology, Periodic, has_static_discretization
+using Oceananigans.Utils: tupleit
 
 #####
 ##### Metric inference
@@ -46,7 +46,7 @@ end
 Base.summary(r::Average) = string("Average of ", summary(r.operand), " over dims ", r.dims)
 
 """
-    Average(field::AbstractField; dims=:, condition=nothing, mask=0)
+$(SIGNATURES)
 
 Return `Reduction` representing a spatial average of `field` over `dims`.
 
@@ -95,7 +95,7 @@ const Integral = Scan{<:Integrating}
 Base.summary(r::Integral) = string("Integral of ", summary(r.operand), " over dims ", r.dims)
 
 """
-    Integral(field::AbstractField; dims=:, condition=nothing, mask=0)
+$(SIGNATURES)
 
 
 Return a `Reduction` representing a spatial integral of `field` over `dims`.
@@ -122,16 +122,16 @@ julia> set!(f, (x, y, z) -> x * y * z)
 ├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
-└── data: 14×14×14 OffsetArray(::Array{Float64, 3}, -2:11, -2:11, -2:11) with eltype Float64 with indices -2:11×-2:11×-2:11
+└── data: 14×14×14 StaticStridesOffsetArray(::Array{Float64, 3}, -2:11, -2:11, -2:11) with eltype Float64 with indices -2:11×-2:11×-2:11
     └── max=0.823975, min=0.000244141, mean=0.125
 
 julia> ∫f = Integral(f) |> Field
 1×1×1 Field{Nothing, Nothing, Nothing} reduced over dims = (1, 2, 3) on RectilinearGrid on CPU
-├── data: OffsetArrays.OffsetArray{Float64, 3, Array{Float64, 3}}, size: (1, 1, 1)
+├── data: Oceananigans.Utils.StaticStridesOffsetArray{Float64, 3, (1, 1, 1), (0, 0, 0), Array{Float64, 3}}, size: (1, 1, 1)
 ├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── operand: Integral of BinaryOperation at (Center, Center, Center) over dims (1, 2, 3)
 ├── status: time=0.0
-└── data: 1×1×1 OffsetArray(::Array{Float64, 3}, 1:1, 1:1, 1:1) with eltype Float64 with indices 1:1×1:1×1:1
+└── data: 1×1×1 StaticStridesOffsetArray(::Array{Float64, 3}, 1:1, 1:1, 1:1) with eltype Float64 with indices 1:1×1:1×1:1
     └── max=0.125, min=0.125, mean=0.125
 
 julia> ∫f[1, 1, 1]
@@ -155,7 +155,7 @@ const CumulativeIntegral = Scan{<:CumulativelyIntegrating}
 Base.summary(c::CumulativeIntegral) = string("CumulativeIntegral of ", summary(c.operand), " over dims ", c.dims)
 
 """
-    CumulativeIntegral(field::AbstractField; dims, reverse=false, condition=nothing, mask=0)
+$(SIGNATURES)
 
 Return an `Accumulation` representing the cumulative spatial integral of `field` over `dims`.
 
@@ -179,11 +179,11 @@ set!(c, z -> z)
 
 # output
 1×1×9 Field{Center, Center, Face} on RectilinearGrid on CPU
-├── data: OffsetArrays.OffsetArray{Float64, 3, Array{Float64, 3}}, size: (1, 1, 9)
+├── data: Oceananigans.Utils.StaticStridesOffsetArray{Float64, 3, (1, 1, 15), (0, 0, -3), Array{Float64, 3}}, size: (1, 1, 9)
 ├── grid: 1×1×8 RectilinearGrid{Float64, Flat, Flat, Bounded} on CPU with 0×0×3 halo
 ├── operand: CumulativeIntegral of BinaryOperation at (Center, Center, Center) over dims 3
 ├── status: time=0.0
-└── data: 1×1×15 OffsetArray(::Array{Float64, 3}, 1:1, 1:1, -2:12) with eltype Float64 with indices 1:1×1:1×-2:12
+└── data: 1×1×15 StaticStridesOffsetArray(::Array{Float64, 3}, 1:1, 1:1, -2:12) with eltype Float64 with indices 1:1×1:1×-2:12
     └── max=0.5, min=0.0, mean=0.177083
 ```
 """

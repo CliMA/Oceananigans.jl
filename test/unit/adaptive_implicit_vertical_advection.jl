@@ -26,6 +26,29 @@ using Oceananigans.TurbulenceClosures: implicit_diffusion_solver, VerticallyImpl
     @test td_f32.cfl == 0.4f0
 end
 
+# An adaptor that converts Float64 to Float32, to check that adapting
+# AdaptiveVerticallyImplicitDiscretization passes its fields through `adapt`
+# (as is needed, for example, to convert a traced Δt for a Reactant kernel).
+struct Float32Adaptor end
+Adapt.adapt_storage(::Float32Adaptor, x::Float64) = Float32(x)
+
+@testset "Adapting AdaptiveVerticallyImplicitDiscretization" begin
+    td = AdaptiveVerticallyImplicitDiscretization(Float64; cfl=0.3)
+    td.Δt[] = 2.0
+
+    adapted = Adapt.adapt(Float32Adaptor(), td)
+    @test adapted isa AdaptiveVerticallyImplicitDiscretization
+    @test adapted.cfl isa Float32
+    @test adapted.Δt isa Float32
+    @test adapted.cfl == 0.3f0
+    @test adapted.Δt == 2.0f0
+
+    # Adapting for the CPU leaves the fields unchanged, but unwraps the Ref.
+    adapted = Adapt.adapt(Array, td)
+    @test adapted.cfl === 0.3
+    @test adapted.Δt === 2.0
+end
+
 @testset "AIVA scheme dispatch" begin
     for scheme in (WENO, Centered, UpwindBiased)
         extra_kw = scheme == WENO ? (; weight_computation = Oceananigans.Utils.NormalDivision) : (; )
@@ -186,6 +209,12 @@ end
     @test column_momentum(q) ≈ momentum₀
     @test minimum(q[1, 1, k] for k in 1:Nz) ≥ -sqrt(eps(eltype(grid)))
     @test momentum_height(q) > height₀
+
+    # A downdraft carries the top-face value into the column, so a uniform q stays uniform
+    set!(W, -5)
+    set!(q, 1)
+    implicit_step!(q, solver, nothing, nothing, nothing, clock, (;), Δt, scheme, (; w=W))
+    @test all(≈(1), interior(q))
 end
 
 @testset "NonhydrostaticModel steps w at vertical CFL ≫ 1" begin
@@ -278,6 +307,70 @@ end
         # The upwind operator is flux-form, so a closed column conserves ∑ V q (uniform V here).
         @test sum(interior(q)) ≈ mass₀ rtol=1e-10
     end
+end
+
+@testset "AIVA solve with explicit and implicit closure tuples" begin
+    Nz = 16
+    grid = RectilinearGrid(CPU(), size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=(0, 1000),
+                           halo=(1, 1, 4), topology=(Periodic, Periodic, Bounded))
+
+    Δt = 50.0
+    td = AdaptiveVerticallyImplicitDiscretization(cfl=0.3)
+    td.Δt[] = Δt
+    scheme = WENO(; time_discretization=td)
+    solver = implicit_diffusion_solver(VerticallyImplicitTimeDiscretization(), grid)
+    clock = Clock(grid)
+
+    W = ZFaceField(grid)
+    set!(W, (x, y, z) -> 5 * exp(-(z - 500)^2 / (2 * 100^2)))
+    fill_halo_regions!(W)
+
+    q₀(x, y, z) = exp(-((z - 400) / 150)^2)
+    initial = CenterField(grid)
+    set!(initial, q₀)
+    fill_halo_regions!(initial)
+    initial = Array(interior(initial))
+
+    function step_with_closure(closure, closure_fields; boundary_conditions=nothing, advection=scheme)
+        q = isnothing(boundary_conditions) ? CenterField(grid) : CenterField(grid; boundary_conditions)
+        set!(q, q₀)
+        fill_halo_regions!(q)
+
+        implicit_step!(q, solver, closure, closure_fields, Val(1), clock, (;), Δt, advection, (; w=W))
+        return Array(interior(q))
+    end
+
+    no_closure = step_with_closure(nothing, nothing)
+    explicit_closure = step_with_closure(SmagorinskyLilly(), nothing)
+    explicit_singleton = step_with_closure((SmagorinskyLilly(),), (nothing,))
+    explicit_tuple = step_with_closure((SmagorinskyLilly(), ScalarDiffusivity(ν=0, κ=0)), (nothing, nothing))
+    reported_tuple = step_with_closure((SmagorinskyLilly(), ScalarDiffusivity(ν=1.5e-5, κ=2.1e-5)), (nothing, nothing))
+
+    @test maximum(abs, no_closure .- initial) > 0
+    @test explicit_closure ≈ no_closure
+    @test explicit_singleton ≈ explicit_closure
+    @test explicit_tuple ≈ no_closure
+    @test reported_tuple ≈ no_closure
+
+    implicit_closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(); κ=2.1e-5)
+    implicit_singleton = step_with_closure(implicit_closure, nothing)
+    mixed_tuple = step_with_closure((SmagorinskyLilly(), implicit_closure), (nothing, nothing))
+
+    @test maximum(abs, implicit_singleton .- no_closure) > 0
+    @test mixed_tuple ≈ implicit_singleton
+
+    boundary_conditions = FieldBoundaryConditions(grid, (Center(), Center(), Center());
+                                                  top=IMEXFluxBoundaryCondition(0.0, 0.05))
+    no_closure_with_flux = step_with_closure(nothing, nothing; boundary_conditions)
+    tuple_with_flux = step_with_closure((SmagorinskyLilly(), ScalarDiffusivity(ν=0, κ=0)),
+                                        (nothing, nothing); boundary_conditions)
+    flux_only = step_with_closure((SmagorinskyLilly(), ScalarDiffusivity(ν=0, κ=0)),
+                                  (nothing, nothing); boundary_conditions, advection=nothing)
+
+    @test no_closure_with_flux[1, 1, end] < no_closure[1, 1, end]
+    @test tuple_with_flux ≈ no_closure_with_flux
+    @test flux_only[1, 1, end] ≈ initial[1, 1, end] / (1 + Δt * 0.05 / (1000 / Nz))
+    @test flux_only[1, 1, 1:end-1] ≈ initial[1, 1, 1:end-1]
 end
 
 @testset "AIVA and bounds preservation both refresh" begin
