@@ -1,6 +1,7 @@
 using Oceananigans: prognostic_state, restore_prognostic_state!
 using Oceananigans.Advection: AbstractAdvectionScheme, Centered, VectorInvariant, WENOVectorInvariant,
-                              adapt_advection_order, materialize_advection, weno_order
+                              adapt_advection_order, materialize_advection, weno_order, advection_required_tracers,
+                              with_moment_advection, FirstMoment
 using Oceananigans.Architectures: AbstractArchitecture, ReactantState
 using Oceananigans.Biogeochemistry: AbstractBiogeochemistry, biogeochemical_auxiliary_fields, validate_biogeochemistry
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions, needs_implicit_solver,
@@ -176,9 +177,10 @@ function HydrostaticFreeSurfaceModel(grid;
     biogeochemical_fields = biogeochemical_auxiliary_fields(biogeochemistry)
     tracers, biogeochemical_fields = validate_biogeochemistry(tracers, biogeochemical_fields, biogeochemistry, grid, clock)
 
-    # Automatically append closure-required tracers and disallow users from specifying them explicitly
+    # Automatically append closure- and advection-required tracers and disallow users from specifying closure tracers explicitly
     user_tracer_names = tracernames(tracers)
     closure_tracer_names = closure_required_tracers(closure)
+    required_tracer_names = (closure_tracer_names..., advection_required_tracers(tracer_advection, user_tracer_names)...)
 
     # Throw an error in case of a conflict between user-specified tracers and any other tracers.
     if any(name ∈ user_tracer_names for name in closure_tracer_names)
@@ -188,11 +190,11 @@ function HydrostaticFreeSurfaceModel(grid;
                      "or be the names of biogeochemical tracers.")
         throw(ArgumentError(msg))
     elseif tracers isa NamedTuple
-        closure_tracer_fields = Tuple(CenterField(grid) for _ in closure_tracer_names)
-        closure_tracers = NamedTuple{closure_tracer_names}(closure_tracer_fields)
-        tracers = merge(tracers, closure_tracers)
+        required_tracer_fields = Tuple(CenterField(grid) for _ in required_tracer_names)
+        required_tracers = NamedTuple{required_tracer_names}(required_tracer_fields)
+        tracers = merge(tracers, required_tracers)
     else
-        tracers = tuple(user_tracer_names..., closure_tracer_names...)
+        tracers = tuple(user_tracer_names..., required_tracer_names...)
     end
 
     validate_buoyancy(buoyancy, tracernames(tracers))
@@ -227,6 +229,7 @@ function materialize_hydrostatic_free_surface_model(grid, ::Val{tracer_names}, t
     momentum_advection_tuple = (; momentum = momentum_advection)
     advection = merge(momentum_advection_tuple, tracer_advection_tuple)
     advection = map(scheme -> adapt_advection_order(scheme, grid), advection)
+    advection = with_moment_advection(advection)
 
     # Fill any settings in advection scheme that might have been deferred until
     # the grid and backend is known
@@ -265,8 +268,8 @@ function materialize_hydrostatic_free_surface_model(grid, ::Val{tracer_names}, t
                                                                    tracer_names,
                                                                    buoyancy)
 
-    # Ensure `closure` describes all tracers
-    closure = with_tracers(tracer_names, closure)
+    # Ensure `closure` describes all tracers but the first moments
+    closure = with_tracers(diffused_tracer_names(advection, tracer_names), closure)
 
     # Put CATKE first in the list of closures
     closure = validate_closure(closure)
@@ -276,6 +279,8 @@ function materialize_hydrostatic_free_surface_model(grid, ::Val{tracer_names}, t
     return Base.invokelatest(build_hydrostatic_free_surface_model, grid, Val(tracer_names), timestepper,
                              advection, buoyancy, boundary_conditions, closure, settings)
 end
+
+diffused_tracer_names(advection, tracer_names) = filter(name -> !(advection[name] isa FirstMoment), tracer_names)
 
 function build_hydrostatic_free_surface_model(grid, ::Val{tracer_names}, timestepper,
                                               advection, buoyancy, boundary_conditions, closure, settings) where tracer_names
@@ -288,8 +293,9 @@ function build_hydrostatic_free_surface_model(grid, ::Val{tracer_names}, timeste
     # Either check grid-correctness, or construct tuples of fields
     velocities     = hydrostatic_velocity_fields(velocities, grid, clock, boundary_conditions)
     tracers        = materialize_tracers(tracers, tracer_names, grid, boundary_conditions)
+    advection      = with_moment_advection(advection, tracers)
     pressure       = PressureField(grid)
-    closure_fields = build_closure_fields(closure_fields, grid, clock, tracer_names, boundary_conditions, closure)
+    closure_fields = build_closure_fields(closure_fields, grid, clock, diffused_tracer_names(advection, tracer_names), boundary_conditions, closure)
 
     @apply_regionally validate_velocity_boundary_conditions(grid, velocities)
 

@@ -1,5 +1,6 @@
 using Oceananigans: MomentumTendency, TendencyCallsite, TracerTendencyCallsite, UpdateStateCallsite, fields,
                     prognostic_fields
+using Oceananigans.Advection: Reconstructions, THINCBVD, moment_tendencies
 using Oceananigans.Biogeochemistry: add_biogeochemical_transitions!, biogeochemical_auxiliary_fields, update_tendencies!
 using Oceananigans.Fields: immersed_boundary_condition
 using Oceananigans.Grids: halo_size
@@ -115,10 +116,15 @@ function compute_hydrostatic_tracer_tendencies!(model, kernel_parameters)
     return nothing
 end
 
-@inline function launch_tracer_tendency!(model, arch, grid, kernel_parameters, ::Val{tracer_index}, ::Val{tracer_name}) where {tracer_index, tracer_name}
+@inline function launch_tracer_tendency!(model, arch, grid, kernel_parameters, val_tracer_index, val_tracer_name::Val{tracer_name}) where tracer_name
+    return launch_tracer_tendency!(model.advection[tracer_name], model, arch, grid, kernel_parameters, val_tracer_index, val_tracer_name)
+end
+
+@inline launch_tracer_tendency!(::FirstMoment, model, arch, grid, kernel_parameters, val_tracer_index, ::Val) = nothing
+
+@inline function launch_tracer_tendency!(c_advection, model, arch, grid, kernel_parameters, val_tracer_index, val_tracer_name::Val{tracer_name}) where tracer_name
 
     @inbounds c_tendency    = model.timestepper.Gⁿ[tracer_name]
-    @inbounds c_advection   = model.advection[tracer_name]
     @inbounds c_forcing     = model.forcing[tracer_name]
     @inbounds c_immersed_bc = immersed_boundary_condition(model.tracers[tracer_name])
 
@@ -126,8 +132,8 @@ end
             compute_hydrostatic_free_surface_Gc!,
             c_tendency,
             grid,
-            Val(tracer_index),
-            Val(tracer_name),
+            val_tracer_index,
+            val_tracer_name,
             c_advection,
             model.closure,
             c_immersed_bc,
@@ -141,6 +147,18 @@ end
             model.clock,
             c_forcing)
 
+    return nothing
+end
+
+const MomentAdvection = THINCBVD{<:Any, <:Any, <:Any, <:Any, <:Any, <:Reconstructions{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Tuple}}
+
+function launch_tracer_tendency!(scheme::MomentAdvection, model, arch, grid, kernel_parameters, val_tracer_index, val_tracer_name::Val{name}) where name
+    moment_names = advection_required_tracers(scheme, name)
+    moments = map(n -> model.tracers[n], moment_names)
+    tendencies = map(n -> model.timestepper.Gⁿ[n], (name, moment_names...))
+    launch!(arch, grid, kernel_parameters, compute_moment_advected_tendencies!, tendencies, grid, val_tracer_index, val_tracer_name, moments,
+            scheme, model.closure, immersed_boundary_condition(model.tracers[name]), model.buoyancy, model.biogeochemistry,
+            model.transport_velocities, model.free_surface, model.tracers, model.closure_fields, model.auxiliary_fields, model.clock, model.forcing[name])
     return nothing
 end
 
@@ -254,4 +272,19 @@ end
                                                                      c_immersed_bc, buoyancy, biogeochemistry, velocities,
                                                                      free_surface, tracers, closure_fields, auxiliary_fields,
                                                                      clock, forcing)
+end
+
+""" Calculate the tendencies of a tracer and of its first moments, which share the tracer's face fluxes through the one `scheme`. """
+@kernel function compute_moment_advected_tendencies!(tendencies, grid, val_tracer_index, val_tracer_name, moments, scheme, closure,
+                                                     c_immersed_bc, buoyancy, biogeochemistry, velocities, free_surface, tracers,
+                                                     closure_fields, auxiliary_fields, clock, forcing)
+    i, j, k = @index(Global, NTuple)
+    Gc = hydrostatic_free_surface_tracer_tendency(i, j, k, grid, val_tracer_index, val_tracer_name, scheme, closure, c_immersed_bc, buoyancy,
+                                                  biogeochemistry, velocities, free_surface, tracers, closure_fields, auxiliary_fields, clock, forcing)
+    U = tracer_advecting_velocities(velocities, biogeochemistry, closure, closure_fields, forcing, val_tracer_name)
+    Gˣ, Gʸ, Gᶻ = moment_tendencies(i, j, k, grid, scheme, U, moments)
+    @inbounds tendencies[1][i, j, k] = Gc
+    @inbounds tendencies[2][i, j, k] = Gˣ
+    @inbounds tendencies[3][i, j, k] = Gʸ
+    @inbounds tendencies[4][i, j, k] = Gᶻ
 end

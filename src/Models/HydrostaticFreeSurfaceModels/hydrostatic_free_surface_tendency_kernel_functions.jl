@@ -1,9 +1,11 @@
-using Oceananigans.Advection: U_dot_∇u, U_dot_∇u_hydrostatic_metric, U_dot_∇v, U_dot_∇v_hydrostatic_metric, div_Uc
+using Oceananigans.Advection: FirstMoment, U_dot_∇u, U_dot_∇u_hydrostatic_metric, U_dot_∇v, U_dot_∇v_hydrostatic_metric, div_Uc
 using Oceananigans.Biogeochemistry: biogeochemical_drift_velocity,
                                     biogeochemical_transition,
                                     include_biogeochemistry_transitions
+using Oceananigans.Fields: Field
 using Oceananigans.Forcings: with_advective_forcing
 using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂yᶜᶠᶜ
+using Oceananigans.Solvers: BatchedTridiagonalSolver
 using Oceananigans.TurbulenceClosures: closure_auxiliary_velocity, immersed_∂ⱼ_τ₁ⱼ, immersed_∂ⱼ_τ₂ⱼ, immersed_∇_dot_qᶜ,
                                        ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∇_dot_qᶜ
 using Oceananigans.Utils: sum_of_velocities
@@ -152,3 +154,6 @@ where `c = C[tracer_index]`.
              + bgc_tendency
              + forcing(i, j, k, grid, clock, model_fields))
 end
+
+# The first moments of a tracer advect with it explicitly
+TimeSteppers.implicit_step!(::Field, ::BatchedTridiagonalSolver, closure, closure_fields, tracer_index, clock, fields, Δt, ::FirstMoment, velocities) = nothing
