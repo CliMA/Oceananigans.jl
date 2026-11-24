@@ -25,7 +25,7 @@ using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Architectures: Architectures, CPU, GPU, architecture, on_architecture
 using Oceananigans.Fields: Fields, AbstractField, Field, data, interior, set!, Reduction, location, indices
 using Oceananigans.Grids:
-    Grids, Center, Face, TwoSided, grid, nodes, constructor_arguments,
+    Center, Face, TwoSided, grid, nodes, constructor_arguments,
     generate_coordinate, validate_topology, AbstractVerticalCoordinate, OrthogonalSphericalShellGrid
 using Oceananigans.OrthogonalSphericalShellGrids:
     TripolarGrid, RotatedLatitudeLongitudeGrid,

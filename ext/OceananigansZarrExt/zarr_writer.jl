@@ -8,7 +8,7 @@ function OutputWriters.ZarrWriter(model::AbstractModel, outputs;
                                   dir = ".",
                                   indices = (:, :, :),
                                   with_halos = false,
-                                  grid = nothing,
+                                  output_grid = nothing,
                                   array_type = Array{Float32},
                                   global_attributes = Dict(),
                                   output_attributes = Dict(),
@@ -61,7 +61,7 @@ function OutputWriters.ZarrWriter(model::AbstractModel, outputs;
     schedule = materialize_schedule(schedule)
     update_file_splitting_schedule!(file_splitting, filepath)
 
-    nt_outputs = NamedTuple(Symbol(name) => construct_output(outputs[name], indices, with_halos, grid)
+    nt_outputs = NamedTuple(Symbol(name) => construct_output(outputs[name], indices, with_halos, output_grid)
                             for name in output_names(outputs))
     schedule, d_outputs = time_average_outputs(schedule, nt_outputs, model)
 
@@ -69,7 +69,7 @@ function OutputWriters.ZarrWriter(model::AbstractModel, outputs;
     # particles) map to grid_index = nothing.
     output_grids = Dict{String, Any}()
     for (n, out) in pairs(d_outputs)
-        g = output_grid(out)
+        g = grid_of_output(out)
         output_grids[string(n)] = g
     end
     unique_grids = Tuple(unique(objectid, filter(!isnothing, collect(values(output_grids)))))
@@ -123,10 +123,10 @@ zarr_attribute_dict(attributes) =
 
 # Extract grid for an output. Field-like outputs delegate to `grid(...)`; non-field
 # outputs return nothing.
-output_grid(field::AbstractField)                            = grid(field)
-output_grid(wta::WindowedTimeAverage{<:AbstractField})       = grid(wta.operand)
-output_grid(output::TimeFilteredOutput)                      = grid(output.operand)
-output_grid(other)                                           = nothing
+grid_of_output(field::AbstractField)                            = grid(field)
+grid_of_output(wta::WindowedTimeAverage{<:AbstractField})       = grid(wta.operand)
+grid_of_output(output::TimeFilteredOutput)                      = grid(output.operand)
+grid_of_output(other)                                           = nothing
 
 #####
 ##### Initialization

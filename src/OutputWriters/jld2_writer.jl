@@ -63,13 +63,11 @@ Keyword arguments
 - `with_halos` (Bool): Whether or not to slice off or keep halo regions from fields before writing output.
                        Preserving halo region data can be useful for postprocessing. Default: true.
 
-- `grid`: A grid onto which every field output is remapped with [`remapped_field`](@ref) before it is
-          written, so that `indices` and `with_halos` refer to `grid`, which is the grid saved to the file.
-          Fields that already live on `grid` are written as they are. For example, the fields of a
-          simulation on a `YinYangGrid` are written in geographic coordinates with
-          `grid = latitude_longitude_grid(model.grid)`; the components of a horizontal vector, which must be
-          rotated together, are remapped explicitly with `remapped_field((u, v), grid)`. Default: `nothing`,
-          which writes each output on its own grid.
+- `output_grid`: A grid onto which every field output is interpolated with [`interpolated_field`](@ref)
+                 before it is written; `indices` and `with_halos` then refer to `output_grid`. Fields already
+                 on `output_grid` are written as they are. The components of a horizontal vector on a rotated
+                 grid must be interpolated together with `interpolated_field((u, v), output_grid)`.
+                 Default: `nothing`, which writes each output on its own grid.
 
 - `array_type`: The array type to which output arrays are converted to prior to saving.
                 Default: `Array{Float32}`.
@@ -176,7 +174,7 @@ function JLD2Writer(model, outputs; filename, schedule,
                     dir = ".",
                     indices = (:, :, :),
                     with_halos = true,
-                    grid = nothing,
+                    output_grid = nothing,
                     array_type = Array{Float32},
                     file_splitting = NoFileSplitting(),
                     overwrite_files = false,
@@ -198,7 +196,7 @@ function JLD2Writer(model, outputs; filename, schedule,
     initialize!(file_splitting, model)
     update_file_splitting_schedule!(file_splitting, filepath)
 
-    nt_outputs = NamedTuple(Symbol(name) => construct_output(outputs[name], indices, with_halos, grid) for name in output_names(outputs))
+    nt_outputs = NamedTuple(Symbol(name) => construct_output(outputs[name], indices, with_halos, output_grid) for name in output_names(outputs))
     schedule = materialize_schedule(schedule)
 
     # Convert each output to WindowedTimeAverage if schedule::AveragedTimeWindow is specified

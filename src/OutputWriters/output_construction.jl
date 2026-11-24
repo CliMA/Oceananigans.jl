@@ -1,4 +1,4 @@
-using Oceananigans.Fields: validate_indices, Reduction, remapped_field
+using Oceananigans.Fields: validate_indices, Reduction, interpolated_field
 using Oceananigans.Grids: default_indices
 using Oceananigans.Utils: @apply_regionally, getregion
 
@@ -87,15 +87,15 @@ function construct_output(derivative::TimeDerivative, indices, with_halos)
 end
 
 #####
-##### Remapping onto the grid of the writer
+##### Interpolation onto the grid of the writer
 #####
 
-# Outputs are remapped onto `grid` with `remapped_field` unless they already live on it, or `grid` is `nothing`.
+# Outputs are interpolated onto `grid` with `interpolated_field` unless they already live on it, or `grid` is `nothing`.
 # `indices` and `with_halos` refer to `grid`, where the output is written.
 same_grid(output_grid, grid) = output_grid === grid || output_grid == grid
 
 function construct_output(output, indices, with_halos, grid)
-    isnothing(grid) || @warn "Cannot remap $output onto $(summary(grid)): output will not be remapped."
+    isnothing(grid) || @warn "Cannot interpolate $output onto $(summary(grid)): output will not be interpolated."
     return construct_output(output, indices, with_halos)
 end
 
@@ -105,7 +105,7 @@ Base.@nospecializeinfer function construct_output(@nospecialize(output::Union{Ab
     end
 
     indices = output_indices(output, grid, user_indices, with_halos)
-    return remapped_field(output, grid; indices = getregion(indices, 1))
+    return interpolated_field(output, grid; indices = getregion(indices, 1))
 end
 
 construct_output(output::ConstantFields, indices, with_halos, grid) = output
