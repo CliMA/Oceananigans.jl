@@ -142,7 +142,7 @@ function ImmersedBoundaries.build_active_cells_map(grid::AbstractGrid{<:Any, <:A
     arch = architecture(grid)
     Rx, Ry, _  = arch.ranks
     Tx, Ty, _  = topology(grid)
-    Nx, Ny, Nz = size(grid)
+    Nx, Ny, Nz = Utils.worksize(grid) # includes the extra fold row `Ny+1` on the fold rank of a `FaceFolded` grid
     Hx, Hy, _  = halo_size(grid)
 
     one_sided_x = (Tx <: TwoSided{<:CommunicatingSide}) != (Tx <: TwoSided{<:Any, <:CommunicatingSide})
