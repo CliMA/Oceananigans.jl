@@ -40,13 +40,14 @@ function maximum_numeric_diffusivity(κ::FunctionDiffusivity, grid, clock, field
     return maximum(diffusivity_kfo)
 end
 
-function Diagnostics.cell_diffusion_timescale(closure::ScalarDiffusivity{TD, Dir}, closure_fields, grid, clock, fields) where {TD, Dir}
+function Diagnostics.cell_diffusion_timescale(closure::ScalarDiffusivity{TD, Dir, N, V, K, O}, closure_fields, grid, clock, fields) where {TD, Dir, N, V, K, O}
     Δ = min_Δxyz(grid, formulation(closure))
     max_κ = maximum_numeric_diffusivity(closure.κ, grid, clock, fields)
     max_ν = maximum_numeric_diffusivity(closure.ν, grid, clock, fields)
 
-    # The largest eigenvalue of the fourth-order Laplacian is 4/3 that of the second-order Laplacian
-    Δ² = stencil_order(closure) isa Val{4} ? 3Δ^2 / 4 : Δ^2
+    # Largest eigenvalue of the Laplacian, at kΔ = π, relative to second order: truncated series of arcsin²
+    eigenvalue_ratio = sum(2 * 4.0^(m - 1) / m^2 / binomial(2m, m) for m in 1:O÷2)
+    Δ² = Δ^2 / oftype(Δ, eigenvalue_ratio)
 
     return min(Δ² / max_ν, Δ² / max_κ)
 end

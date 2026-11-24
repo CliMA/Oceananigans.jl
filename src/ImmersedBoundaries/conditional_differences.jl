@@ -1,4 +1,4 @@
-using Oceananigans.Operators: Operators, δxTᶜᵃᵃ, δyTᵃᶜᵃ, ℑxyᶠᶠᵃ, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ, ∂xTᶠᶜᶠ, ∂yTᶜᶠᶠ, ∂xᵣTᶠᶜᶠ, ∂yᵣTᶜᶠᶠ, δxᶜᶜᶜ, δyᶜᶜᶜ, δxᶜᵃᵃ, δyᵃᶜᵃ
+using Oceananigans.Operators: Operators, δxTᶜᵃᵃ, δyTᵃᶜᵃ, ℑxyᶠᶠᵃ, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ, ∂xTᶠᶜᶠ, ∂yTᶜᶠᶠ, ∂xᵣTᶠᶜᶠ, ∂yᵣTᶜᶠᶠ
 
 # Conditional differences that are "immersed boundary aware".
 # Here we return `zero(ibg)` rather than `δx` (for example) when _one_ of the
@@ -69,11 +69,19 @@ for (d, ξ) in enumerate((:x, :y, :z))
         end
 
         @eval begin
-            @inline Operators.$δξ(i, j, k, ibg::IBG, args...)              = $conditional_δξ($(other_locs[1]), $(other_locs[2]), i, j, k, ibg, $δξᵃ, args...)
+            @inline Operators.$δξ(i, j, k, ibg::IBG, ϕ)                    = $conditional_δξ($(other_locs[1]), $(other_locs[2]), i, j, k, ibg, $δξᵃ, ϕ)
             @inline Operators.$δξ(i, j, k, ibg::IBG, ϕ::Function, args...) = $conditional_δξ($(other_locs[1]), $(other_locs[2]), i, j, k, ibg, $δξᵃ, ϕ, args...)
        end
     end
 end
+
+for δ in (:δxᶠᵃᵃ, :δxᶜᵃᵃ, :δyᵃᶠᵃ, :δyᵃᶜᵃ, :δzᵃᵃᶠ, :δzᵃᵃᶜ)
+    @eval @inline Operators.$δ(i, j, k, ibg::IBG, order::Val, ψ) = Operators.$δ(i, j, k, ibg.underlying_grid, order, ψ)
+end
+
+# Partial cells make the vertical spacing irregular
+@inline Operators.δzᵃᵃᶠ(i, j, k, ibg::PCBIBG, ::Val, ψ) = Operators.δzᵃᵃᶠ(i, j, k, ibg.underlying_grid, ψ)
+@inline Operators.δzᵃᵃᶜ(i, j, k, ibg::PCBIBG, ::Val, ψ) = Operators.δzᵃᵃᶜ(i, j, k, ibg.underlying_grid, ψ)
 
 # Topology-aware immersed boundary operators
 #   * Velocities are `0` on `peripheral_node`s and
@@ -93,16 +101,6 @@ end
 
 @inline Operators.δxTᶜᵃᵃ(i, j, k, ibg::IBG, f, args...) = δxTᶜᵃᵃ(i, j, k, ibg.underlying_grid, conditional_uᶠᶜᶜ, f, args...)
 @inline Operators.δyTᵃᶜᵃ(i, j, k, ibg::IBG, f, args...) = δyTᵃᶜᵃ(i, j, k, ibg.underlying_grid, conditional_vᶜᶠᶜ, f, args...)
-
-# Barotropic transport divergences: masked at k = Nz without an immersed top, per column beneath one
-@inline Operators.δxᶜᶜᵃ(i, j, k, ibg::IBG, args...)              = δxᶜᶜᶜ(i, j, k, ibg, args...)
-@inline Operators.δxᶜᶜᵃ(i, j, k, ibg::IBG, f::Function, args...) = δxᶜᶜᶜ(i, j, k, ibg, f, args...)
-@inline Operators.δyᶜᶜᵃ(i, j, k, ibg::IBG, args...)              = δyᶜᶜᶜ(i, j, k, ibg, args...)
-@inline Operators.δyᶜᶜᵃ(i, j, k, ibg::IBG, f::Function, args...) = δyᶜᶜᶜ(i, j, k, ibg, f, args...)
-
-# Barotropic transports live in every wet column, so beneath a top they are masked at the free surface
-@inline Operators.δxᶜᶜᵃ(i, j, k, ibg::ImmersedTopIBG, Φ::Function, args...) = conditional_δx_c(c, f, i, j, ibg.Nz + 1, ibg, δxᶜᵃᵃ, Φ, args...)
-@inline Operators.δyᶜᶜᵃ(i, j, k, ibg::ImmersedTopIBG, Φ::Function, args...) = conditional_δy_c(c, f, i, j, ibg.Nz + 1, ibg, δyᵃᶜᵃ, Φ, args...)
 
 @inline Operators.∂xTᶠᶜᶠ(i, j, k, ibg::IBG, f, args...) = conditional_∂xTᶠᶜᶠ(i, j, k, ibg, f, args...)
 @inline Operators.∂yTᶜᶠᶠ(i, j, k, ibg::IBG, f, args...) = conditional_∂yTᶜᶠᶠ(i, j, k, ibg, f, args...)

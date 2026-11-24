@@ -25,9 +25,9 @@ end
 @inline y_derivative_operator(::Val{true})  = ∂yᵣᶜᶠᶠ
 
 @inline x_difference_operator(::Val{false}) = δxTᶜᵃᵃ
-@inline x_difference_operator(::Val{true})  = δxᶜᶜᵃ
+@inline x_difference_operator(::Val{true})  = δx_U
 @inline y_difference_operator(::Val{false}) = δyTᵃᶜᵃ
-@inline y_difference_operator(::Val{true})  = δyᶜᶜᵃ
+@inline y_difference_operator(::Val{true})  = δy_V
 
 @inline x_column_depth(i, j, k, grid, ::Val{false}, η) = column_depthTᶠᶜᵃ(i, j, k, grid, η)
 @inline x_column_depth(i, j, k, grid, ::Val{true},  η) =  column_depthᶠᶜᵃ(i, j, k, grid, η)
@@ -254,7 +254,8 @@ end
 
 # Open boundaries read model fields while filling the barotropic halos; `ExtendedHalos` has none, so it
 # fills without threading them, which avoids a per-step allocation on distributed grids.
-@inline fill_barotropic_state_halos!(field, ::SplitExplicitFreeSurface{ExtendedHalos}, model; kwargs...) = fill_halo_regions!(field; async=true, kwargs...)
+# `ExtendedHalos` also steps the wall faces and the halos behind them, so every side is refilled.
+@inline fill_barotropic_state_halos!(field, ::SplitExplicitFreeSurface{ExtendedHalos}, model; kwargs...) = fill_halo_regions!(field; async=true)
 
 @inline fill_barotropic_state_halos!(field, ::FillHaloSplitExplicit, model; kwargs...) = fill_halo_regions!(field, model.clock, fields(model); async=true, kwargs...)
 

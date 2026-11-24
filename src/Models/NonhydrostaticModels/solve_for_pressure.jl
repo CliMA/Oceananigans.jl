@@ -1,6 +1,6 @@
 using Oceananigans.DistributedComputations: DistributedFFTBasedPoissonSolver
 using Oceananigans.Grids: XDirection, YDirection, ZDirection, inactive_cell
-using Oceananigans.Operators: Vᶜᶜᶜ, divᶜᶜᶜ, Δxᶜᶜᶜ, Δyᶜᶜᶜ, Δzᵃᵃᶜ, Δzᵃᵃᶠ, Δz⁻¹ᵃᵃᶠ, ∂xᶠᶜᶜ, ∂yᶜᶠᶜ, ∂zᶜᶜᶠ
+using Oceananigans.Operators: Vᶜᶜᶜ, divᶜᶜᶜ, Azᶜᶜᶠ, Δxᶜᶜᶜ, Δyᶜᶜᶜ, Δzᶜᶜᶜ, Δzᵃᵃᶜ, Δzᵃᵃᶠ, Δz⁻¹ᵃᵃᶠ, ∂xᶠᶜᶜ, ∂yᶜᶠᶜ, ∂zᶜᶜᶠ
 using Oceananigans.Solvers: ConjugateGradientPoissonSolver, FFTBasedPoissonSolver, FourierTridiagonalPoissonSolver,
                             solve!
 
@@ -67,26 +67,35 @@ function compute_source_term!(solver::DistributedFourierTridiagonalPoissonSolver
     return nothing
 end
 
-add_inhomogeneous_boundary_terms!(rhs, ::Nothing, grid, Ũ, Δt) = nothing
+add_inhomogeneous_boundary_terms!(rhs, ::Nothing, grid, Ũ, Δt; area_weighted=true) = nothing
 
-@kernel function _add_inhomogeneous_boundary_terms!(rhs, grid, w̃, Δt, g, η)
+# The free surface sits on top of cell `free_surface_index`, a distance `free_surface_spacing / 2` above its center
+@inline free_surface_index(i, j, grid) = grid.Nz
+@inline free_surface_spacing(i, j, k, grid) = Δzᵃᵃᶠ(i, j, grid.Nz+1, grid)
+@inline free_surface_inverse_spacing(i, j, k, grid) = Δz⁻¹ᵃᵃᶠ(i, j, grid.Nz+1, grid)
+
+@kernel function _add_inhomogeneous_boundary_terms!(rhs, grid, w̃, Δt, g, η, area_weighted)
     i, j = @index(Global, NTuple)
     Nz = grid.Nz
-    Δzᶠ = Δzᵃᵃᶠ(i, j, Nz+1, grid)
+    k = free_surface_index(i, j, grid)
+    active = !inactive_cell(i, j, k, grid)
+    Δzᶠ = free_surface_spacing(i, j, k, grid)
+    Az = Azᶜᶜᶠ(i, j, k+1, grid)
+    weight = ifelse(area_weighted, Az, one(Az))
 
     @inbounds begin
-        num = η[i, j, Nz+1] + Δt * w̃[i, j, Nz+1]
+        num = η[i, j, Nz+1] + Δt * w̃[i, j, k+1]
         den = Δt^2 + Δzᶠ / 2g
-        rhs[i, j, Nz] -= Δt * (num / den)
+        rhs[i, j, k] -= active * weight * Δt * (num / den)
     end
 end
 
 # function add_inhomogeneous_boundary_terms!(rhs, free_surface::ImplicitFreeSurface, grid, Ũ, Δt)
-function add_inhomogeneous_boundary_terms!(rhs, free_surface, grid, Ũ, Δt)
+function add_inhomogeneous_boundary_terms!(rhs, free_surface, grid, Ũ, Δt; area_weighted=true)
     g = free_surface.gravitational_acceleration
     η = free_surface.displacement
     arch = grid.architecture
-    launch!(arch, grid, :xy, _add_inhomogeneous_boundary_terms!, rhs, grid, Ũ.w, Δt, g, η)
+    launch!(arch, grid, :xy, _add_inhomogeneous_boundary_terms!, rhs, grid, Ũ.w, Δt, g, η, area_weighted)
     return nothing
 end
 
@@ -97,9 +106,9 @@ function compute_source_term!(solver::FourierTridiagonalPoissonSolver, free_surf
     tdir = solver.batched_tridiagonal_solver.tridiagonal_direction
     launch!(arch, grid, :xyz, _fourier_tridiagonal_source_term!, rhs, tdir, grid, Ũ)
 
-    # Add the inhomgeneous terms on the top boundary associated with an implicit
-    # free surface formulation represneting a Robin boundary condition on pressure.
-    add_inhomogeneous_boundary_terms!(rhs, free_surface, grid, Ũ, Δt)
+    # Add the inhomogeneous terms on the top boundary associated with an implicit
+    # free surface formulation representing a Robin boundary condition on pressure.
+    add_inhomogeneous_boundary_terms!(rhs, free_surface, grid, Ũ, Δt; area_weighted=false)
 
     return nothing
 end
@@ -124,9 +133,9 @@ function solve_for_pressure!(pressure, solver, free_surface, Ũ, Δt)
     return pressure
 end
 
-update_fourier_tridiagonal_solver!(solver, ::Nothing, Ũ, Δt) = nothing
+update_fourier_tridiagonal_solver!(::FourierTridiagonalPoissonSolver, ::Nothing, Ũ, Δt) = nothing
 
-function update_fourier_tridiagonal_solver!(solver, free_surface, Ũ, Δt)
+function update_fourier_tridiagonal_solver!(solver::FourierTridiagonalPoissonSolver, free_surface, Ũ, Δt)
     g = free_surface.gravitational_acceleration
     η = free_surface.displacement
     λx, λy = solver.poisson_eigenvalues
@@ -135,6 +144,9 @@ function update_fourier_tridiagonal_solver!(solver, free_surface, Ũ, Δt)
     diagonal = solver.batched_tridiagonal_solver.b
     launch!(arch, grid, :xy, _update_fourier_tridiagonal_solver!, diagonal, grid, Ũ, Δt, g, η, λx, λy)
 end
+
+# ADD — fallback for DiagonallyDominant or any other preconditioner:
+update_fourier_tridiagonal_solver!(solver, free_surface, Ũ, Δt) = nothing
 
 @kernel function _update_fourier_tridiagonal_solver!(diagonal, grid, Ũ, Δt, g, η, λx, λy)
     i, j, = @index(Global, NTuple)
@@ -146,6 +158,28 @@ end
 end
 
 function solve_for_pressure!(pressure, solver::ConjugateGradientPoissonSolver, free_surface, Ũ, Δt)
+    ϵ = eps(eltype(pressure))
+    Δt⁺ = max(ϵ, Δt)
+    Δt★ = Δt⁺ * isfinite(Δt)
+    pressure .*= Δt★
+
+    g = free_surface.gravitational_acceleration
+    top_bc = pressure.boundary_conditions.top
+    top_bc.condition.coefficient[] = 1 / (g * Δt^2)
+
+    preconditioner = solver.conjugate_gradient_solver.preconditioner
+    update_fourier_tridiagonal_solver!(preconditioner, free_surface, Ũ, Δt)
+
+    rhs = solver.right_hand_side
+    grid = solver.grid
+    arch = architecture(grid)
+    launch!(arch, grid, :xyz, _cg_source_term!, rhs, grid, Ũ)
+    add_inhomogeneous_boundary_terms!(rhs, free_surface, grid, Ũ, Δt; area_weighted=true)
+
+    return solve!(pressure, solver.conjugate_gradient_solver, rhs, g * Δt^2)
+end
+
+function solve_for_pressure!(pressure, solver::ConjugateGradientPoissonSolver, ::Nothing, Ũ, Δt)
     ϵ = eps(eltype(pressure))
     Δt⁺ = max(ϵ, Δt)
     Δt★ = Δt⁺ * isfinite(Δt)

@@ -34,7 +34,7 @@ const MutableImmersedTopGrid = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Bound
 # The thin-face rule H = h · mean(σ), as a method of the existing `σⁿ`
 @inline function Operators.σⁿ(i, j, k, grid, η)
     h = static_column_depthᶜᶜᵃ(i, j, grid)
-    return @inbounds ifelse(h == 0, one(grid), (h + η[i, j, k]) / ifelse(h == 0, one(grid), h))
+    return @inbounds ifelse(h == 0, one(grid), (h + η[i, j, k]) / h)
 end
 
 @inline Grids.column_depthᶠᶜᵃ(i, j, k, grid::MutableImmersedTopGrid, η) = static_column_depthᶠᶜᵃ(i, j, grid) * ℑxᶠᵃᵃ(i, j, k, grid, σⁿ, η)
@@ -115,15 +115,14 @@ for LX in (:ᶠ, :ᶜ), LY in (:ᶠ, :ᶜ), LZ in (:ᶠ, :ᶜ)
 
     @eval begin
         using Oceananigans.Operators: $rspacing, $rcp_rspacing
-        import Oceananigans.Operators: $zspacing, $rcp_zspacing
 
-        @inline $zspacing(i, j, k, grid::IMRG)  = $rspacing(i, j, k, grid) * σⁿ(i, j, k, grid, $ℓx(), $ℓy(), $ℓz())
-        @inline $zspacing(i, j, k, grid::IMLLG) = $rspacing(i, j, k, grid) * σⁿ(i, j, k, grid, $ℓx(), $ℓy(), $ℓz())
-        @inline $zspacing(i, j, k, grid::IMOSG) = $rspacing(i, j, k, grid) * σⁿ(i, j, k, grid, $ℓx(), $ℓy(), $ℓz())
+        @inline Operators.$zspacing(i, j, k, grid::IMRG)  = $rspacing(i, j, k, grid) * σⁿ(i, j, k, grid, $ℓx(), $ℓy(), $ℓz())
+        @inline Operators.$zspacing(i, j, k, grid::IMLLG) = $rspacing(i, j, k, grid) * σⁿ(i, j, k, grid, $ℓx(), $ℓy(), $ℓz())
+        @inline Operators.$zspacing(i, j, k, grid::IMOSG) = $rspacing(i, j, k, grid) * σⁿ(i, j, k, grid, $ℓx(), $ℓy(), $ℓz())
 
-        @inline $rcp_zspacing(i, j, k, grid::IMRG)  = $rcp_rspacing(i, j, k, grid) * σ⁻¹ⁿ(i, j, k, grid, $ℓx(), $ℓy(), $ℓz())
-        @inline $rcp_zspacing(i, j, k, grid::IMLLG) = $rcp_rspacing(i, j, k, grid) * σ⁻¹ⁿ(i, j, k, grid, $ℓx(), $ℓy(), $ℓz())
-        @inline $rcp_zspacing(i, j, k, grid::IMOSG) = $rcp_rspacing(i, j, k, grid) * σ⁻¹ⁿ(i, j, k, grid, $ℓx(), $ℓy(), $ℓz())
+        @inline Operators.$rcp_zspacing(i, j, k, grid::IMRG)  = $rcp_rspacing(i, j, k, grid) * σ⁻¹ⁿ(i, j, k, grid, $ℓx(), $ℓy(), $ℓz())
+        @inline Operators.$rcp_zspacing(i, j, k, grid::IMLLG) = $rcp_rspacing(i, j, k, grid) * σ⁻¹ⁿ(i, j, k, grid, $ℓx(), $ℓy(), $ℓz())
+        @inline Operators.$rcp_zspacing(i, j, k, grid::IMOSG) = $rcp_rspacing(i, j, k, grid) * σ⁻¹ⁿ(i, j, k, grid, $ℓx(), $ℓy(), $ℓz())
     end
 end
 
@@ -237,8 +236,9 @@ end
 #####
 
 # Pressure is integrated on the underlying grid, and ∂z vanishes on peripheral faces
+@inline active_∂z(i, j, k, grid, args...) = ifelse(peripheral_node(i, j, k, grid, c, c, f), zero(grid), ∂zᶜᶜᶠ(i, j, k, grid.underlying_grid, args...))
+
 @inline function Operators.ℑxzᶠᵃᶜ(i, j, k, grid::MutableImmersedTopGrid, ::typeof(∂zᶜᶜᶠ), args...)
-    active_∂z = (i, j, k, grid, args...) -> ifelse(peripheral_node(i, j, k, grid, c, c, f), zero(grid), ∂zᶜᶜᶠ(i, j, k, grid.underlying_grid, args...))
     N = ℑxzᶠᵃᶜ(i, j, k, grid, not_peripheral_node, c, c, f)
     return ifelse(N == 0, zero(grid), ℑxzᶠᵃᶜ(i, j, k, grid, active_∂z, args...) / N)
 end
@@ -322,9 +322,7 @@ end
 ##### Chain-rule-correct y-derivatives: ∂ϕ/∂y|_z = ∂ϕ/∂y|_r - (∂z/∂y|_r)(∂ϕ/∂z)
 #####
 
-# Pressure is integrated on the underlying grid, and ∂z vanishes on peripheral faces
 @inline function Operators.ℑyzᵃᶠᶜ(i, j, k, grid::MutableImmersedTopGrid, ::typeof(∂zᶜᶜᶠ), args...)
-    active_∂z = (i, j, k, grid, args...) -> ifelse(peripheral_node(i, j, k, grid, c, c, f), zero(grid), ∂zᶜᶜᶠ(i, j, k, grid.underlying_grid, args...))
     N = ℑyzᵃᶠᶜ(i, j, k, grid, not_peripheral_node, c, c, f)
     return ifelse(N == 0, zero(grid), ℑyzᵃᶠᶜ(i, j, k, grid, active_∂z, args...) / N)
 end

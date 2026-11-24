@@ -1,8 +1,6 @@
 using Oceananigans.BoundaryConditions: DistributedFillHalo, WestAndEast, SouthAndNorth,
                                        West, East, South, North, BottomAndTop, Bottom, Top
 
-import Oceananigans.DistributedComputations: synchronize_communication!
-
 #####
 ##### NCCLCommunicator
 #####
@@ -144,8 +142,8 @@ end
 ##### Waits for async NCCL comm_stream to complete, then unpacks recv buffers.
 #####
 
-function synchronize_communication!(field::NCCLDistributedField)
-    arch = DC.architecture(field.grid)
+function DC.synchronize_communication!(field::NCCLDistributedField)
+    arch = AC.architecture(field.grid)
 
     # Synchronize when using heterogeneous NCCL/MPI
     DC.wait_for_messages!(field)
@@ -244,8 +242,7 @@ function enqueue_nccl_send_recv!(::DistributedFillHalo{<:SouthAndNorth}, bcs, nc
     return nothing
 end
 
-for side in (:West, :East, :South, :North)
-    side_sym = Symbol(lowercase(String(side)))
+for (side, side_sym) in ((West, :west), (East, :east), (South, :south), (North, :north))
     @eval function enqueue_nccl_send_recv!(::DistributedFillHalo{<:$side}, bcs, nccl_comm, bufs; stream_kw...)
         _nccl_send_recv_pair!(bufs.$side_sym, bcs[1], nccl_comm; stream_kw...)
         return nothing

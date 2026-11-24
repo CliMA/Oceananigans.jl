@@ -1,11 +1,10 @@
 module Architectures
 
 using Adapt: Adapt
-using Reactant
-using Reactant: AnyConcreteRArray
+using Reactant: Reactant, ConcreteRArray, Sharding
 
-using Oceananigans
-using Oceananigans.Architectures: ReactantState, ReshapedHostArray, child_architecture, on_architecture
+using Oceananigans: Oceananigans
+using Oceananigans.Architectures: CPU, ReactantState, ReshapedHostArray, child_architecture, on_architecture
 using Oceananigans.DistributedComputations: Distributed
 using Oceananigans.Grids: LatitudeLongitudeGrid, topology
 
@@ -28,7 +27,7 @@ Oceananigans.Architectures.array_type(::ReactantState) = ConcreteRArray
 Oceananigans.Architectures.on_architecture(::ReactantState, a::Reactant.AnyTracedRArray) = a
 Oceananigans.Architectures.on_architecture(::CPU, a::AnyConcreteReactantArray) = Array(a)
 
-using OffsetArrays: OffsetArrays, AbstractOffsetArray
+using OffsetArrays: OffsetArrays
 using Oceananigans.Utils: StaticStridesOffsetArray
 const ConcreteReactantOffsetArray = StaticStridesOffsetArray{<:Any, <:Any, <:Any, <:Any, <:AnyConcreteReactantArray}
 Oceananigans.Architectures.on_architecture(::CPU, a::ConcreteReactantOffsetArray) = StaticStridesOffsetArray(Array(parent(a)), OffsetArrays.offsets(a)...)
@@ -57,7 +56,7 @@ Oceananigans.Architectures.unified_array(::ReactantState, a) = a
 
 # Distributed computations
 function Oceananigans.Distributed(arch::ReactantState; devices=nothing,
-    partition=nothing, kw...)
+                                  partition=nothing, kw...)
     if devices === nothing
         devices = Reactant.devices()
 

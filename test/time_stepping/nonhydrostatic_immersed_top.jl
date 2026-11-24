@@ -1,7 +1,7 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Oceananigans.ImmersedBoundaries: TopLoad, mask_immersed_field!
-using Oceananigans.Models.NonhydrostaticModels: ImmersedTopFreeSurfacePoissonSolver, correct_surface_vertical_velocity!
+using Oceananigans.Models.NonhydrostaticModels: ImmersedTopFreeSurfacePoissonSolver, _set_covered_surface_vertical_velocity!
 using Oceananigans.Operators: divᶜᶜᶜ, Azᶜᶜᶜ
 using Oceananigans.Solvers: ConjugateGradientPoissonSolver
 
@@ -20,13 +20,18 @@ function immersed_top_model(grid, free_surface)
                                pressure_solver=immersed_top_pressure_solver(grid))
 end
 
-restore_surface_vertical_velocity!(w, solver, p) = nothing
-restore_surface_vertical_velocity!(w, solver::ImmersedTopFreeSurfacePoissonSolver, p) = correct_surface_vertical_velocity!(solver, w, p)
+restore_surface_vertical_velocity!(w, solver) = nothing
+
+function restore_surface_vertical_velocity!(w, solver::ImmersedTopFreeSurfacePoissonSolver)
+    grid = w.grid
+    launch!(architecture(grid), grid, :xy, _set_covered_surface_vertical_velocity!, w, grid, solver.surface_vertical_velocity)
+    return nothing
+end
 
 # The top face of a top-covered column is masked after the step, so it is restored from the solver
 function velocity_divergence(model)
     w = deepcopy(model.velocities.w)
-    restore_surface_vertical_velocity!(w, model.pressure_solver, model.pressures.pNHS)
+    restore_surface_vertical_velocity!(w, model.pressure_solver)
     U = (model.velocities.u, model.velocities.v, w)
     grid = model.grid
     div = Field(KernelFunctionOperation{Center, Center, Center}(divᶜᶜᶜ, grid, U...))

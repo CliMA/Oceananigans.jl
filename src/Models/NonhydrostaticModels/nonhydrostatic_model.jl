@@ -12,7 +12,7 @@ using Oceananigans.Grids: architecture, topology
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models: AbstractModel, extract_boundary_conditions, materialize_free_surface, materialize_tracers,
                            timestepper_name, total_velocities, validate_model_halo, validate_tracer_advection
-using Oceananigans.Solvers: FFTBasedPoissonSolver
+using Oceananigans.Solvers: FFTBasedPoissonSolver, ConjugateGradientPoissonSolver
 using Oceananigans.TimeSteppers: AbstractLagrangianParticles, Clock, TimeStepper, materialize_clock!,
                                  materialize_lagrangian_particles,
                                  time_discretization, update_state!
@@ -154,7 +154,13 @@ function NonhydrostaticModel(grid;
         if isnothing(free_surface)
             nonhydrostatic_pressure = CenterField(grid)
         else
-            nonhydrostatic_pressure = free_surface_pressure_field(grid)
+        # elseif free_surface isa ImplicitFreeSurface
+            # Use a MixedBoundaryCondition for the top bc for pressure
+            coefficient = Ref(zero(grid))
+            combination = Field{Center, Center, Nothing}(grid)
+            top_bc = MixedBoundaryCondition(coefficient, combination)
+            pressure_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()), top=top_bc)
+            nonhydrostatic_pressure = CenterField(grid; boundary_conditions=pressure_bcs)
         end
     end
 
@@ -302,7 +308,20 @@ function build_nonhydrostatic_model(grid, ::Val{tracer_names}, timestepper,
         pressure_solver = nonhydrostatic_pressure_solver(grid, free_surface)
     end
 
-    pressure_solver = immersed_top_free_surface_solver(pressure_solver, grid, free_surface)
+    if pressure_solver isa ConjugateGradientPoissonSolver && !isnothing(free_surface)
+        top_bc = nonhydrostatic_pressure.boundary_conditions.top
+        preconditioner = free_surface_preconditioner(pressure_solver.conjugate_gradient_solver.preconditioner, free_surface)
+        pressure_solver = ConjugateGradientPoissonSolver(grid;
+                            preconditioner,
+                            reltol = pressure_solver.conjugate_gradient_solver.reltol,
+                            abstol = pressure_solver.conjugate_gradient_solver.abstol,
+                            maxiter = pressure_solver.conjugate_gradient_solver.maxiter,
+                            top_bc = top_bc)
+    end
+
+    if !isnothing(free_surface)
+        pressure_solver = immersed_top_free_surface_solver(pressure_solver, grid)
+    end
 
     # Materialize background fields
     background_fields = BackgroundFields(background_fields, tracer_names, grid, clock)
@@ -396,12 +415,3 @@ function Oceananigans.restore_prognostic_state!(restored::NonhydrostaticModel, f
 end
 
 Oceananigans.restore_prognostic_state!(::NonhydrostaticModel, ::Nothing) = nothing
-
-# Use a MixedBoundaryCondition for the top bc for pressure
-function free_surface_pressure_field(grid)
-    coefficient = Ref(zero(grid))
-    combination = Field{Center, Center, Nothing}(grid)
-    top_bc = MixedBoundaryCondition(coefficient, combination)
-    pressure_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()), top=top_bc)
-    return CenterField(grid; boundary_conditions=pressure_bcs)
-end

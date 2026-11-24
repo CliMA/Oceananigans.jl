@@ -15,13 +15,11 @@ function compute_pressure_correction!(model::NonhydrostaticModel, Δt)
     p_Δt = model.pressures.pNHS
     solve_for_pressure!(p_Δt, model.pressure_solver, model.free_surface, model.velocities, Δt)
 
-    set_top_pressure_boundary_condition!(p_Δt, model.pressure_solver, model.free_surface, model.velocities.w, Δt)
+    set_top_pressure_boundary_condition!(p_Δt, model.free_surface, model.velocities.w, Δt)
     fill_halo_regions!(p_Δt)
 
     return nothing
 end
-
-set_top_pressure_boundary_condition!(p_Δt, solver, free_surface, w̃, Δt) = set_top_pressure_boundary_condition!(p_Δt, free_surface, w̃, Δt)
 
 # TODO: make these fallbacks
 # Routines for rigid lid
@@ -46,16 +44,20 @@ end
 @kernel function _set_top_pressure_boundary_condition!(bc_rhs, grid, w̃, Δt, η, g, p_Δt)
     i, j = @index(Global, NTuple)
     Nz = grid.Nz
+    active = !inactive_cell(i, j, Nz, grid)
 
-    @inbounds bc_rhs[i, j, 1] = η[i, j, Nz+1] / Δt + w̃[i, j, Nz+1]
+    @inbounds bc_rhs[i, j, 1] = ifelse(active, η[i, j, Nz+1] / Δt + w̃[i, j, Nz+1], zero(Δt))
 
     # Compute ηⁿ⁺¹
-    Δz⁻¹ᶠ = Δz⁻¹ᵃᵃᶠ(i, j, Nz+1, grid)
+    k = free_surface_index(i, j, grid)
+    wet = !inactive_cell(i, j, k, grid)
+    Δz⁻¹ᶠ = free_surface_inverse_spacing(i, j, k, grid)
     a = Δz⁻¹ᶠ - 1 / (2g * Δt^2)
     b = Δz⁻¹ᶠ + 1 / (2g * Δt^2)
     @inbounds begin
-        η★ = η[i, j, Nz+1] + Δt * w̃[i, j, Nz+1]
-        η[i, j, Nz+1] = (p_Δt[i, j, Nz] / Δt + (p_Δt[i, j, Nz] * a / (b * Δt) + η★ / (b * Δt^2))) / 2g
+        η★ = η[i, j, Nz+1] + Δt * w̃[i, j, k+1]
+        η_new = (p_Δt[i, j, k] / Δt + (p_Δt[i, j, k] * a / (b * Δt) + η★ / (b * Δt^2))) / 2g
+        η[i, j, Nz+1] = ifelse(wet, η_new, η[i, j, Nz+1])
     end
 end
 
@@ -82,7 +84,7 @@ end
     @inbounds w[i, j, k] -= ∂zᶜᶜᶠ(i, j, k, grid, pNHSΔt)
 end
 
-function correct_surface_vertical_velocity!(solver, w, pNHSΔt)
+function correct_surface_vertical_velocity!(solver, free_surface, w, pNHSΔt, Δt)
     grid = w.grid
     launch!(architecture(grid), grid, :xy, _compute_surface_vertical_velocity!, w, grid, pNHSΔt)
     return nothing
@@ -101,7 +103,7 @@ function make_pressure_correction!(model::NonhydrostaticModel, Δt)
             model.pressures.pNHS)
 
     if !isnothing(model.free_surface)
-        correct_surface_vertical_velocity!(model.pressure_solver, model.velocities.w, model.pressures.pNHS)
+        correct_surface_vertical_velocity!(model.pressure_solver, model.free_surface, model.velocities.w, model.pressures.pNHS, Δt)
     end
 
     ϵ = eps(eltype(model.pressures.pNHS))

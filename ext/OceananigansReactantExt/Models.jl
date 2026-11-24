@@ -1,10 +1,8 @@
 module Models
 
 using ..Grids: ShardedDistributed, ShardedGrid
-using ..TimeSteppers: ReactantModel
 using Oceananigans: Oceananigans
 using Oceananigans.Architectures: ReactantState
-using Oceananigans.DistributedComputations: Distributed
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel
 using Oceananigans.TimeSteppers: RungeKutta3TimeStepper, SplitRungeKuttaTimeStepper, reconcile_state!
 

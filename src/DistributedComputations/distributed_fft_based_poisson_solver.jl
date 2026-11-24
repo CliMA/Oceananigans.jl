@@ -1,4 +1,4 @@
-import FFTW
+using FFTW: FFTW
 
 using Oceananigans.Architectures: architecture
 using Oceananigans.Fields: interior
