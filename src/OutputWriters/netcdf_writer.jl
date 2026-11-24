@@ -113,6 +113,12 @@ Optional keyword arguments
                 information about the boundary conditions is often crucial. In those cases,
                 you might need to set `with_halos = true`. Cannot be used with custom `indices`.
 
+- `grid`: A grid onto which every field output is interpolated with [`interpolated_field`](@ref)
+          before it is written; `indices` and `with_halos` then refer to `grid`. Fields already on `grid`
+          are written as they are. The components of a horizontal vector on a rotated grid must be
+          interpolated together with `interpolated_vector((u, v), grid)`. Default: `nothing`, which
+          writes each output on its own grid.
+
 - `include_grid_metrics`: Include grid metrics such as grid spacings, areas, and volumes as
                           additional variables. Default: `true`. Note that even with
                           `include_grid_metrics = false`, core grid coordinates are still saved.

@@ -7,6 +7,7 @@ export interior, data, xnode, ynode, znode
 export set!, compute!, @compute, regrid!
 export VelocityFields, TracerFields, tracernames
 export interpolate, interpolate!
+export interpolated_field, interpolated_vector, interpolate_vector!
 
 using Adapt: Adapt, adapt
 using OffsetArrays: AbstractOffsetArray
@@ -38,6 +39,7 @@ include("scans.jl")
 include("regridding_fields.jl")
 include("field_tuples.jl")
 include("interpolate.jl")
+include("interpolated_fields.jl")
 include("show_fields.jl")
 include("broadcasting_abstract_fields.jl")
 
