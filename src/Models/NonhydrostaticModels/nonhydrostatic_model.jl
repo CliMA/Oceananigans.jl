@@ -310,8 +310,9 @@ function build_nonhydrostatic_model(grid, ::Val{tracer_names}, timestepper,
 
     if pressure_solver isa ConjugateGradientPoissonSolver && !isnothing(free_surface)
         top_bc = nonhydrostatic_pressure.boundary_conditions.top
+        preconditioner = free_surface_preconditioner(pressure_solver.conjugate_gradient_solver.preconditioner, free_surface)
         pressure_solver = ConjugateGradientPoissonSolver(grid;
-                            preconditioner = pressure_solver.conjugate_gradient_solver.preconditioner,
+                            preconditioner,
                             reltol = pressure_solver.conjugate_gradient_solver.reltol,
                             abstol = pressure_solver.conjugate_gradient_solver.abstol,
                             maxiter = pressure_solver.conjugate_gradient_solver.maxiter,
