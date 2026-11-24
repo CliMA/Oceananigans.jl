@@ -1,19 +1,17 @@
 module TimeSteppers
 
 using ..Architectures: ReactantState
-using ..Grids: ShardedGrid, ReactantGrid
+using ..Grids: ReactantGrid
 
-using Reactant
-using Oceananigans
-
+using Reactant: Reactant, ConcreteRNumber, Sharding
+using Oceananigans: Oceananigans
 using Oceananigans: AbstractModel, Distributed, initialize!
-using Oceananigans.Grids: architecture
 using Oceananigans.BoundaryConditions: cache_boundary_conditions!, initialize_boundary_conditions!
+using Oceananigans.Architectures: architecture
 using Oceananigans.TimeSteppers:
     TimeSteppers as OceananigansTimeSteppers,
     update_state!,
     tick!,
-    tick_stage!,
     substep_lagrangian_particles!,
     step_closure_prognostics!,
     QuasiAdamsBashforth2TimeStepper,

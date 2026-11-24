@@ -24,7 +24,7 @@ function latitude_longitude_shift((λ₀, φ₀))
 end
 
 """
-$(MethodSignatures(; defaults = true))
+$(SIGNATURES)
 
 Return a `RotatedLatitudeLongitudeGrid` with arbitrary `north_pole`, a 2-tuple
 giving the longitude and latitude of the "grid north pole", which may differ from the

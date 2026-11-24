@@ -6,7 +6,7 @@ export
     PrescribedVelocityFields, ZStarCoordinate, ZCoordinate
 
 using Adapt: Adapt
-using DocStringExtensions: MethodSignatures, TYPEDFIELDS, TYPEDSIGNATURES
+using DocStringExtensions: TYPEDFIELDS
 using KernelAbstractions: @index, @kernel
 
 using Oceananigans: Oceananigans, fields, prognostic_fields
@@ -19,7 +19,8 @@ using Oceananigans.Fields: Fields, ZFaceField
 using Oceananigans.Grids: Grids, AbstractGrid, OrthogonalSphericalShellGrid, Periodic, RectilinearGrid,
                           StaticVerticalDiscretization
 using Oceananigans.Models: Models, default_free_surface_boundary_conditions, materialize_free_surface
-using Oceananigans.Operators: Δzᶜᶠᶜ, Δzᶠᶜᶜ
+using Oceananigans.ImmersedBoundaries: ImmersedTopIBG
+using Oceananigans.Operators: Δzᶜᶠᶜ, Δzᶠᶜᶜ, δxᶜᶜᶜ, δxᶜᶜᶠ, δyᶜᶜᶜ, δyᶜᶜᶠ
 using Oceananigans.Simulations: Simulations, timestepper
 using Oceananigans.TimeSteppers: TimeSteppers, QuasiAdamsBashforth2TimeStepper, SplitRungeKuttaName,
                                  SplitRungeKuttaTimeStepper, step_lagrangian_particles!,
@@ -27,7 +28,7 @@ using Oceananigans.TimeSteppers: TimeSteppers, QuasiAdamsBashforth2TimeStepper, 
                                  update_lagrangian_particle_state!
 using Oceananigans.TurbulenceClosures: TurbulenceClosures
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: TKEBasedVerticalDiffusivities
-using Oceananigans.Utils: Utils, @apply_regionally, foreach_name, launch!
+using Oceananigans.Utils: Utils, @apply_regionally, foreach_name, launch!, SIGNATURES, TYPEDSIGNATURES
 
 # The only grid type that can support an FFT implicit free-surface solver
 const XYRegularStaticRG = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:StaticVerticalDiscretization, <:Number, <:Any, <:Any, <:Any, <:Number}
@@ -71,6 +72,13 @@ end
     end
     return V
 end
+
+# Differences of barotropic transports, which beneath an immersed top are masked at the free surface
+@inline δx_U(i, j, k, grid, Φ, args...) = δxᶜᶜᶜ(i, j, k, grid, Φ, args...)
+@inline δy_V(i, j, k, grid, Φ, args...) = δyᶜᶜᶜ(i, j, k, grid, Φ, args...)
+
+@inline δx_U(i, j, k, grid::ImmersedTopIBG, Φ, args...) = δxᶜᶜᶠ(i, j, grid.Nz + 1, grid, Φ, args...)
+@inline δy_V(i, j, k, grid::ImmersedTopIBG, Φ, args...) = δyᶜᶜᶠ(i, j, grid.Nz + 1, grid, Φ, args...)
 
 #####
 ##### HydrostaticFreeSurfaceModel definition

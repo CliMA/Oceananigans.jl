@@ -1,11 +1,10 @@
-using Oceananigans.Operators: Δrᵃᵃᶠ, Δrᵃᵃᶜ, Δzᵃᵃᶠ, Δzᵃᵃᶜ, Δr⁻¹ᵃᵃᶠ, Δr⁻¹ᵃᵃᶜ, Δz⁻¹ᵃᵃᶠ, Δz⁻¹ᵃᵃᶜ
-using Oceananigans.Operators: Δxᶠᵃᵃ, Δxᶜᵃᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ
-using Oceananigans.Operators: Δx⁻¹ᶠᵃᵃ, Δx⁻¹ᶜᵃᵃ, Δy⁻¹ᵃᶠᵃ, Δy⁻¹ᵃᶜᵃ
-using Oceananigans.Operators: Δyᵃᶠᵃ, Δyᵃᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ, Δyᶜᶜᵃ
-using Oceananigans.Operators: Δλᶜᵃᵃ, Δλᶜᶜᵃ, Δλᶜᶠᵃ, Δλᶠᵃᵃ, Δλᶠᶜᵃ, Δλᶠᶠᵃ, Δφᵃᶜᵃ, Δφᵃᶠᵃ, Δφᵃᶠᵃ, Δφᵃᶠᵃ, Δφᶜᶜᵃ, Δφᶜᶠᵃ, Δφᶠᶜᵃ, Δφᶠᶠᵃ
-using Oceananigans.Operators: Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ
-
-using Oceananigans.Operators: Operators, intrinsic_vector, extrinsic_vector, rotation_angle
+using Oceananigans.Operators: Δrᵃᵃᶠ, Δrᵃᵃᶜ, Δzᵃᵃᶠ, Δzᵃᵃᶜ, Δr⁻¹ᵃᵃᶠ, Δr⁻¹ᵃᵃᶜ, Δz⁻¹ᵃᵃᶠ, Δz⁻¹ᵃᵃᶜ,
+                              Δxᶠᵃᵃ, Δxᶜᵃᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ,
+                              Δx⁻¹ᶠᵃᵃ, Δx⁻¹ᶜᵃᵃ, Δy⁻¹ᵃᶠᵃ, Δy⁻¹ᵃᶜᵃ,
+                              Δyᵃᶠᵃ, Δyᵃᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ, Δyᶜᶜᵃ,
+                              Δλᶜᵃᵃ, Δλᶜᶜᵃ, Δλᶜᶠᵃ, Δλᶠᵃᵃ, Δλᶠᶜᵃ, Δλᶠᶠᵃ, Δφᵃᶜᵃ, Δφᵃᶠᵃ, Δφᵃᶠᵃ, Δφᵃᶠᵃ, Δφᶜᶜᵃ, Δφᶜᶠᵃ, Δφᶠᶜᵃ, Δφᶠᶠᵃ,
+                              Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ,
+                              Operators, intrinsic_vector, extrinsic_vector, rotation_angle
 
 # Grid metrics for ImmersedBoundaryGrid
 #

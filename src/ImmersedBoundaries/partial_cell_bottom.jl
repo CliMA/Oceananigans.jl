@@ -1,10 +1,8 @@
 using Oceananigans.Fields: Field, fill_halo_regions!, set!
 using Oceananigans.Grids: Grids, AbstractStaticGrid, constructor_arguments
-
-using Oceananigans.Utils: KernelParameters, prettysummary
-
 using Oceananigans.Operators: Δrᶜᶜᶜ, Δrᶜᶜᶠ, Δrᶜᶠᶜ, Δrᶜᶠᶠ, Δrᶠᶜᶜ, Δrᶠᶜᶠ, Δrᶠᶠᶜ, Δrᶠᶠᶠ, Δr⁻¹ᶜᶜᶜ, Δr⁻¹ᶜᶜᶠ, Δr⁻¹ᶜᶠᶜ,
                               Δr⁻¹ᶜᶠᶠ, Δr⁻¹ᶠᶜᶜ, Δr⁻¹ᶠᶜᶠ, Δr⁻¹ᶠᶠᶜ, Δr⁻¹ᶠᶠᶠ
+using Oceananigans.Utils: KernelParameters, prettysummary
 
 #####
 ##### PartialCellVerticalBoundaries
@@ -82,7 +80,7 @@ function Base.show(io::IO, ib::PartialCellVerticalBoundaries)
 end
 
 """
-$(MethodSignatures(; defaults = true))
+$(SIGNATURES)
 
 Return `PartialCellVerticalBoundaries` representing an immersed boundary with "partial"
 bottom cells. That is, the height of the bottommost cell in each column is reduced
@@ -129,7 +127,7 @@ function PartialCellVerticalBoundaries(; bottom_height=nothing, top_height=nothi
 end
 
 """
-$(MethodSignatures(; defaults = true))
+$(SIGNATURES)
 
 Return a [`PartialCellVerticalBoundaries`](@ref) without an immersed top, bounded below by `bottom_height`.
 """
@@ -419,11 +417,8 @@ const XYFlatPCBIBG = ImmersedBoundaryGrid{<:Any, <:Flat, <:Flat, <:Any, <:Any, <
 @inline Operators.Δrᶠᶠᶜ(i, j, k, ibg::XYFlatPCBIBG) = Δrᶜᶜᶜ(i, j, k, ibg)
 
 # A face with no depth is a wall
-@inline Grids.peripheral_node(i, j, k, ibg::PCBTIBG, ::Face, ::Center, ::Center) =
-    inactive_cell(i, j, k, ibg) | inactive_cell(i-1, j, k, ibg) | (static_column_depthᶠᶜᵃ(i, j, ibg) == 0)
-
-@inline Grids.peripheral_node(i, j, k, ibg::PCBTIBG, ::Center, ::Face, ::Center) =
-    inactive_cell(i, j, k, ibg) | inactive_cell(i, j-1, k, ibg) | (static_column_depthᶜᶠᵃ(i, j, ibg) == 0)
+@inline Grids.peripheral_node(i, j, k, ibg::PCBTIBG, ::Face, ::Center, ::Center) = inactive_cell(i, j, k, ibg) | inactive_cell(i-1, j, k, ibg) | (static_column_depthᶠᶜᵃ(i, j, ibg) == 0)
+@inline Grids.peripheral_node(i, j, k, ibg::PCBTIBG, ::Center, ::Face, ::Center) = inactive_cell(i, j, k, ibg) | inactive_cell(i, j-1, k, ibg) | (static_column_depthᶜᶠᵃ(i, j, ibg) == 0)
 
 # Vertically-static, partial cell bottom, immersed boundary grid
 VSPCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:AbstractStaticGrid, <:PartialCellVerticalBoundaries}
