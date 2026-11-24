@@ -108,7 +108,7 @@ end
     time_series = FieldTimeSeries(joinpath(dir, "remapped.jld2"), "c")
     @test time_series.grid == on_architecture(CPU(), coarse_grid)
     @test size(time_series.grid) == (4, 4, 4)
-    @test interior(time_series[end]) ≈ interior(expected)
+    @test interior(time_series[end]) ≈ on_architecture(CPU(), interior(expected))
 
     jldopen(joinpath(dir, "slice.jld2")) do file
         @test size(file["timeseries/c/2"]) == (4, 4, 1)
