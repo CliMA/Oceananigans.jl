@@ -4,7 +4,7 @@ MPI.Init(threadlevel=:multiple)
 
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
-using Oceananigans.DistributedComputations: Distributed, Partition
+using Oceananigans.DistributedComputations: Distributed, Partition, check_field_tags
 using Oceananigans.BoundaryConditions: BalancedTransport, NormalFlow
 using Oceananigans.Models: enforce_net_zero_transport!
 
@@ -25,9 +25,6 @@ end
 balanced(value) = NormalFlowBoundaryCondition(value; scheme = BalancedTransport())
 imposed(value) = value == 0 ? NormalFlowBoundaryCondition(value) : balanced(value)
 
-# Temporary: report each stage per rank, to locate where the distributed CI job hangs.
-stage(message) = @info "  [boundary_transport, rank $(MPI.Comm_rank(MPI.COMM_WORLD))] $message"
-
 @testset "Net-zero transport is global" begin
     comm = MPI.COMM_WORLD
     Lx, Ly, Lz = 2.0, 1.0, 1.0
@@ -37,23 +34,22 @@ stage(message) = @info "  [boundary_transport, rank $(MPI.Comm_rank(MPI.COMM_WOR
 
     for partition in (Partition(x = 4), Partition(y = 4), Partition(2, 2)), (west, east, south, north) in configurations
         arch = Distributed(child_arch; partition)
-        stage("ranks = $(arch.ranks), (west, east, south, north) = $((west, east, south, north)): building the grid")
         grid = RectilinearGrid(arch; size = (16, 16, 4), x = (0, Lx), y = (0, Ly), z = (0, Lz),
                                topology = (Bounded, Bounded, Bounded))
 
         boundary_conditions = (u = FieldBoundaryConditions(west = balanced(west), east = balanced(east)),
                                v = FieldBoundaryConditions(south = imposed(south), north = imposed(north)))
 
-        stage("building the model")
         model = NonhydrostaticModel(grid; boundary_conditions, timestepper = :RungeKutta3)
         u, v, w = model.velocities
+
+        # Every rank must have created the same distributed fields, or the next halo exchange hangs
+        @test isnothing(check_field_tags(arch))
 
         net_inflow = (west - east) * Ly * Lz + (south - north) * Lx * Lz
         area = 2 * Ly * Lz + (south != 0 ? 2 * Lx * Lz : 0)
 
-        stage("filling halos")
         fill_halo_regions!((u, v, w))
-        stage("enforcing net-zero transport")
         enforce_net_zero_transport!(model.velocities, model.boundary_transport)
 
         @test model.boundary_transport.total_area_pool_boundaries ≈ area
@@ -61,12 +57,10 @@ stage(message) = @info "  [boundary_transport, rank $(MPI.Comm_rank(MPI.COMM_WOR
         shifts = boundary_shifts(u, v, west, east, south, north)
         @test isempty(shifts) || all(s -> isapprox(s, net_inflow / area; atol = 1e-12), shifts)
 
-        stage("time stepping")
         for _ in 1:3
             time_step!(model, 1e-3)
         end
 
-        stage("computing the divergence")
         δ = Field(∂x(u) + ∂y(v) + ∂z(w))
         compute!(δ)
         max_divergence = MPI.Allreduce(maximum(abs, Array(interior(δ))), max, comm)
