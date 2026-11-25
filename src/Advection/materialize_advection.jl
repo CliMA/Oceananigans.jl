@@ -30,43 +30,34 @@ materialize_advection(a::EnergyConservingUpwinding{N, FT, TD}, grid) where {N, F
     EnergyConservingUpwinding{N, FT, TD}(materialize_advection(a.scheme, grid))
 
 # VectorInvariant wraps multiple sub-schemes; recurse into each
-function materialize_advection(vi::VectorInvariant{N, FT, TD, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, M}, grid) where {N, FT, TD, M}
-    return VectorInvariant{N, FT, TD, M}(materialize_advection(vi.vorticity_scheme, grid),
-                                         vi.vorticity_stencil,
-                                         materialize_advection(vi.vertical_advection_scheme, grid),
-                                         materialize_advection(vi.kinetic_energy_gradient_scheme, grid),
-                                         materialize_advection(vi.divergence_scheme, grid),
-                                         materialize_advection(vi.upwinding, grid))
+function materialize_advection(vi::VectorInvariant{N, FT, TD}, grid) where {N, FT, TD}
+    return VectorInvariant{N, FT, TD}(materialize_advection(vi.vorticity_scheme, grid),
+                                      vi.vorticity_stencil,
+                                      materialize_advection(vi.vertical_advection_scheme, grid),
+                                      materialize_advection(vi.kinetic_energy_gradient_scheme, grid),
+                                      materialize_advection(vi.divergence_scheme, grid),
+                                      materialize_advection(vi.upwinding, grid))
 end
 
-# Only the outermost scheme launches `div_Uc`, so only it carries a limiter field.
 materialize_bounds(bounds, grid) = bounds
 materialize_bounds(bounds::BoundsPreservation, grid) = BoundsPreservation(bounds.minimum_value, bounds.maximum_value, bounds.maximum_courant_number, CenterField(grid))
 
 materialize_advection(weno::WENO{N, FT, WCT}, grid) where {N, FT, WCT} =
     WENO{N, FT, WCT}(materialize_bounds(weno.bounds, grid),
-                     materialize_advection(without_bounds_preservation(weno.buffer_scheme), grid),
+                     weno.extrapolation,
                      materialize_advection(weno.advecting_velocity_scheme, grid),
                      weno.time_discretization)
 
 function materialize_advection(weno::WENO{N, FT, Nothing}, grid) where {N, FT}
     WTC = default_weno_weight_computation(architecture(grid))
     return WENO{N, FT, WTC}(materialize_bounds(weno.bounds, grid),
-                            materialize_advection(without_bounds_preservation(weno.buffer_scheme), grid),
+                            weno.extrapolation,
                             materialize_advection(weno.advecting_velocity_scheme, grid),
                             weno.time_discretization)
 end
 
 function materialize_advection(s::THINCBVD{N, FT, TD}, grid) where {N, FT, TD}
     weno = materialize_advection(s.buffer_scheme, grid)
-    reconstructions = Reconstructions(grid, N)
+    reconstructions = Reconstructions(grid)
     return THINCBVD{N, FT, TD, typeof(weno), typeof(s.steepnesses), typeof(reconstructions)}(weno, s.steepnesses, s.base_steepness, reconstructions)
 end
-
-materialize_advection(scheme::UpwindBiased{N, FT}, grid) where {N, FT} =
-    UpwindBiased{N, FT}(materialize_advection(without_bounds_preservation(scheme.buffer_scheme), grid),
-                        materialize_advection(scheme.advecting_velocity_scheme, grid),
-                        scheme.time_discretization)
-
-materialize_advection(scheme::Centered{N, FT}, grid) where {N, FT} =
-    Centered{N, FT}(materialize_advection(without_bounds_preservation(scheme.buffer_scheme), grid), scheme.time_discretization)

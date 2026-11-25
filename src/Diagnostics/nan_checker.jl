@@ -1,5 +1,5 @@
-using Oceananigans.Utils: prettykeys
 using Oceananigans.Solvers: iteration
+using Oceananigans.Utils: prettykeys
 
 mutable struct NaNChecker{F}
     fields :: F
@@ -24,7 +24,7 @@ end
 Base.show(io::IO, nc::NaNChecker) = print(io, summary(nc))
 
 """
-$(MethodSignatures(; defaults = true))
+$(SIGNATURES)
 
 Return a `NaNChecker`, which sets `sim.running=false` if a `NaN` is detected
 in any member of `fields` when `NaNChecker(sim)` is called. `fields` should be

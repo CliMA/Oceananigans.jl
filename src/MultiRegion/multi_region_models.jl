@@ -1,23 +1,21 @@
 using Oceananigans.Advection: Advection, WENO, VectorInvariant, adapt_advection_order, cell_advection_timescale, materialize_advection,
-                              BoundsPreservation
+                              BoundsPreservation, OnlySelfUpwinding, CrossAndSelfUpwinding
 using Oceananigans.BuoyancyFormulations: BuoyancyFormulations, BuoyancyForce, NegativeZDirection, AbstractBuoyancyFormulation, validate_unit_vector
-using Oceananigans.TimeSteppers: TimeSteppers, QuasiAdamsBashforth2TimeStepper, SplitRungeKuttaTimeStepper
+using Oceananigans.Fields: XFaceField, YFaceField
+using Oceananigans.ImmersedBoundaries: GridFittedVerticalBoundaries, PartialCellVerticalBoundaries, GridFittedBoundary
 using Oceananigans.Models: Models, ExplicitFreeSurface, HydrostaticFreeSurfaceModel, ImplicitFreeSurface, PrescribedVelocityFields
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModels
-using Oceananigans.Fields: XFaceField, YFaceField
-using Oceananigans.Operators: rotation_angle
 using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: SplitExplicitFreeSurfaces,
                                                                                   FillHaloSplitExplicit,
                                                                                   apply_barotropic_kernel!,
                                                                                   _split_explicit_barotropic_velocity!,
                                                                                   _split_explicit_free_surface!
-
-using Oceananigans.TurbulenceClosures: TurbulenceClosures, VerticallyImplicitTimeDiscretization, implicit_diffusion_solver,
-    add_closure_specific_boundary_conditions, closure_required_tracers, step_closure_prognostics!
-using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE, FlavorOfTD, CATKEClosureFields, TKEDissipationClosureFields
-using Oceananigans.Advection: OnlySelfUpwinding, CrossAndSelfUpwinding
-using Oceananigans.ImmersedBoundaries: GridFittedVerticalBoundaries, PartialCellVerticalBoundaries, GridFittedBoundary
+using Oceananigans.Operators: rotation_angle
 using Oceananigans.Solvers: ConjugateGradientSolver
+using Oceananigans.TimeSteppers: TimeSteppers, QuasiAdamsBashforth2TimeStepper, SplitRungeKuttaTimeStepper
+using Oceananigans.TurbulenceClosures: TurbulenceClosures, VerticallyImplicitTimeDiscretization, implicit_diffusion_solver,
+                                       add_closure_specific_boundary_conditions, closure_required_tracers, step_closure_prognostics!
+using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE, FlavorOfTD, CATKEClosureFields, TKEDissipationClosureFields
 using Oceananigans.Utils: configure_kernel
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
@@ -158,29 +156,29 @@ end
 
 Advection.WENO(mrg::MultiRegionGrid, args...; kwargs...) = construct_regionally(WENO, mrg, args...; kwargs...)
 
-@inline Utils.getregion(t::VectorInvariant{N, FT, TD, Z, ZS, V, K, D, U, M}, r) where {N, FT, TD, Z, ZS, V, K, D, U, M} =
-    VectorInvariant{N, FT, TD, M}(_getregion(t.vorticity_scheme, r),
-                                  _getregion(t.vorticity_stencil, r),
-                                  _getregion(t.vertical_advection_scheme, r),
-                                  _getregion(t.kinetic_energy_gradient_scheme, r),
-                                  _getregion(t.divergence_scheme, r),
-                                  _getregion(t.upwinding, r))
+@inline Utils.getregion(t::VectorInvariant{N, FT, TD}, r) where {N, FT, TD} =
+    VectorInvariant{N, FT, TD}(_getregion(t.vorticity_scheme, r),
+                               _getregion(t.vorticity_stencil, r),
+                               _getregion(t.vertical_advection_scheme, r),
+                               _getregion(t.kinetic_energy_gradient_scheme, r),
+                               _getregion(t.divergence_scheme, r),
+                               _getregion(t.upwinding, r))
 
-@inline Utils._getregion(t::VectorInvariant{N, FT, TD, Z, ZS, V, K, D, U, M}, r) where {N, FT, TD, Z, ZS, V, K, D, U, M} =
-    VectorInvariant{N, FT, TD, M}(getregion(t.vorticity_scheme, r),
-                                  getregion(t.vorticity_stencil, r),
-                                  getregion(t.vertical_advection_scheme, r),
-                                  getregion(t.kinetic_energy_gradient_scheme, r),
-                                  getregion(t.divergence_scheme, r),
-                                  getregion(t.upwinding, r))
+@inline Utils._getregion(t::VectorInvariant{N, FT, TD}, r) where {N, FT, TD} =
+    VectorInvariant{N, FT, TD}(getregion(t.vorticity_scheme, r),
+                               getregion(t.vorticity_stencil, r),
+                               getregion(t.vertical_advection_scheme, r),
+                               getregion(t.kinetic_energy_gradient_scheme, r),
+                               getregion(t.divergence_scheme, r),
+                               getregion(t.upwinding, r))
 
 # The bounds-preserving limiter of a WENO scheme on a multi-region grid is a multi-region field
 @inline Utils.getregion(weno::WENO{N, FT, WCT}, r) where {N, FT, WCT} =
-    WENO{N, FT, WCT}(_getregion(weno.bounds, r), _getregion(weno.buffer_scheme, r),
+    WENO{N, FT, WCT}(_getregion(weno.bounds, r), weno.extrapolation,
                      _getregion(weno.advecting_velocity_scheme, r), weno.time_discretization)
 
 @inline Utils._getregion(weno::WENO{N, FT, WCT}, r) where {N, FT, WCT} =
-    WENO{N, FT, WCT}(getregion(weno.bounds, r), getregion(weno.buffer_scheme, r),
+    WENO{N, FT, WCT}(getregion(weno.bounds, r), weno.extrapolation,
                      getregion(weno.advecting_velocity_scheme, r), weno.time_discretization)
 
 function Advection.cell_advection_timescale(grid::MultiRegionGrids, velocities)
@@ -249,18 +247,18 @@ function SplitExplicitFreeSurfaces.iterate_split_explicit!(free_surface::FillHal
     @apply_regionally velocity_kernel!, _     = configure_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!)
     @apply_regionally free_surface_kernel!, _ = configure_kernel(arch, grid, parameters, _split_explicit_free_surface!)
 
-    U_args = (grid, Val(true), Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, Ũ, Ṽ, timestepper)
-    η_args = (grid, Val(true), Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)
+    U_args = (grid, Val(true), Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, timestepper)
+    η_args = (grid, Val(true), Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, Ũ, Ṽ, timestepper)
 
     @unroll for substep in 1:Nsubsteps
         @inbounds averaging_weight = weights[substep]
         @inbounds transport_weight = transport_weights[substep]
 
         fill_halo_regions!(η)
-        @apply_regionally apply_barotropic_kernel!(velocity_kernel!, transport_weight, U_args)
+        @apply_regionally apply_barotropic_kernel!(velocity_kernel!, (), U_args)
 
         fill_halo_regions!((U, V))
-        @apply_regionally apply_barotropic_kernel!(free_surface_kernel!, averaging_weight, η_args)
+        @apply_regionally apply_barotropic_kernel!(free_surface_kernel!, (averaging_weight, transport_weight), η_args)
     end
 
     return nothing

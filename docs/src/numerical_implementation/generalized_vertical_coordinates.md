@@ -54,7 +54,7 @@ Using the chain rules above, the divergence of the flow in ``r``-coordinates bec
 \begin{align}
     \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{v} & = \frac{\partial u}{\partial x} \bigg\rvert_{z} + \frac{\partial v}{\partial y} \bigg\rvert_{z} + \frac{\partial w}{\partial z} \nonumber \\
     & = \frac{\partial u}{\partial x} \bigg\rvert_{r} + \frac{\partial v}{\partial y} \bigg\rvert_{r} - \frac{1}{\sigma} \left( \frac{\partial u}{\partial r} \frac{\partial z}{\partial x} + \frac{\partial v}{\partial r} \frac{\partial z}{\partial y} - \frac{\partial w}{\partial r} \right) \nonumber \\
-    & = \frac{1}{\sigma} \left( \frac{\partial \sigma u}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v}{\partial y} \bigg\rvert_{r} - u \frac{\partial \sigma}{\partial x} \bigg\rvert_{r} - v \frac{\partial \sigma}{\partial y} \bigg\rvert_{r} \right)- \frac{1}{\sigma} \left( \frac{\partial u}{\partial r} \frac{\partial z}{\partial x} + \frac{\partial v}{\partial y} \frac{\partial z}{\partial y} - \frac{\partial w}{\partial r} \right)
+    & = \frac{1}{\sigma} \left( \frac{\partial \sigma u}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v}{\partial y} \bigg\rvert_{r} - u \frac{\partial \sigma}{\partial x} \bigg\rvert_{r} - v \frac{\partial \sigma}{\partial y} \bigg\rvert_{r} \right)- \frac{1}{\sigma} \left( \frac{\partial u}{\partial r} \frac{\partial z}{\partial x} + \frac{\partial v}{\partial r} \frac{\partial z}{\partial y} - \frac{\partial w}{\partial r} \right)
 \end{align}
 ```
 We can rewrite ``\partial_x \sigma \rvert_r = \partial_r(\partial_x z)`` and similarly for the ``y`` direction. After a bit of reordering the above yields
@@ -108,7 +108,7 @@ Using the same procedure we followed for the continuity equation, the left-hand-
 ```
 We recover the time derivative of the tracer at constant ``r`` by rewriting the last term using the chain rule for a time derivatives:
 ```math
-\frac{1}{\sigma}  \frac{\partial z}{\partial t}\bigg\rvert_r \frac{\partial c}{\partial r} = \frac{\partial r}{\partial t} \frac{\partial c}{\partial r} = \frac{\partial c}{\partial t}\bigg\rvert_{r} - \frac{\partial c}{\partial t}\bigg\rvert_{z}
+\frac{1}{\sigma}  \frac{\partial z}{\partial t}\bigg\rvert_r \frac{\partial c}{\partial r} = - \frac{\partial r}{\partial t}\bigg\rvert_z \frac{\partial c}{\partial r} = \frac{\partial c}{\partial t}\bigg\rvert_{r} - \frac{\partial c}{\partial t}\bigg\rvert_{z}
 ```
 As such, the left-hand-side of \eqref{tracereq} can be rewritten in ``r``-coordinates as
 ```math

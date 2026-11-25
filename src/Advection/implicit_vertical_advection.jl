@@ -34,7 +34,7 @@ end
 @inline function implicit_vertical_velocityᶠᶜᶠ(i, j, k, grid, scheme, td, W)
     Δt = _unwrap_for_gpu(td.Δt)
     Δz⁻¹ = Δz⁻¹ᶠᶜᶠ(i, j, k, grid)
-    w  = _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, W)
+    w  = symmetric_interpolate_xᶠᶜᶠ(i, j, k, grid, scheme, W)
     α  = abs(w) * Δt * Δz⁻¹
     return w * (1 - ifelse(α > td.cfl, td.cfl / α, one(α)))
 end
@@ -42,7 +42,7 @@ end
 @inline function implicit_vertical_velocityᶜᶠᶠ(i, j, k, grid, scheme, td, W)
     Δt = _unwrap_for_gpu(td.Δt)
     Δz⁻¹ = Δz⁻¹ᶜᶠᶠ(i, j, k, grid)
-    w  = _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, W)
+    w  = symmetric_interpolate_yᶜᶠᶠ(i, j, k, grid, scheme, W)
     α  = abs(w) * Δt * Δz⁻¹
     return w * (1 - ifelse(α > td.cfl, td.cfl / α, one(α)))
 end
@@ -50,7 +50,7 @@ end
 @inline function implicit_vertical_velocityᶜᶜᶜ(i, j, k, grid, scheme, td, W)
     Δt = _unwrap_for_gpu(td.Δt)
     Δz⁻¹ = Δz⁻¹ᶜᶜᶜ(i, j, k, grid)
-    w  = _symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, W)
+    w  = symmetric_interpolate_zᶜᶜᶜ(i, j, k, grid, scheme, W)
     α  = abs(w) * Δt * Δz⁻¹
     return w * (1 - ifelse(α > td.cfl, td.cfl / α, one(α)))
 end
@@ -155,7 +155,7 @@ end
 #####   Fⁱ_k = Az_k ρᶜ_k [max(wⁱ_k, 0) q_k / ρᶠ_k + min(wⁱ_k, 0) q_{k+1} / ρᶠ_{k+1}],   q = ρ w
 #####
 ##### Boundary faces reduce to identity rows, and the coupling of row Nz to the untouched face
-##### Nz+1 vanishes with `w` there.
+##### Nz+1 enters the right hand side with the known `w` there.
 #####
 
 @inline function implicit_advection_upper_diagonal(i, j, k, grid, advection::AIVA, w, Δt, ℓx, ℓy, ℓz::Face, density=nothing)

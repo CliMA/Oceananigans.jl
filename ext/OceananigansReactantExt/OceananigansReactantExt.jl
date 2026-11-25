@@ -1,15 +1,13 @@
 module OceananigansReactantExt
 
-using Reactant
-using Oceananigans
-using OffsetArrays
-using OffsetArrays: AbstractOffsetArray
+using Reactant: Reactant
+using Reactant.ReactantCore: ReactantCore
+using Oceananigans: Oceananigans
+using Oceananigans.Advection: VectorInvariant
+using Oceananigans.Grids: LatitudeLongitudeGrid, RectilinearGrid
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Utils: StaticStridesOffsetArray
-
-using Oceananigans: Distributed, DistributedComputations, ReactantState, CPU,
-                    OrthogonalSphericalShellGrids
-using Oceananigans.Architectures: on_architecture
-using Oceananigans.Grids: Bounded, Periodic
+using OffsetArrays: OffsetArrays, AbstractOffsetArray
 
 deconcretize(obj) = obj # fallback
 deconcretize(a::AbstractOffsetArray) = StaticStridesOffsetArray(Array(parent(a)), OffsetArrays.offsets(a)...)
@@ -51,7 +49,7 @@ using .Solvers
 using ConstructionBase: ConstructionBase
 
 ConstructionBase.constructorof(::Type{<:RectilinearGrid{FT, TX, TY, TZ}}) where {FT, TX, TY, TZ} = RectilinearGrid{TX, TY, TZ}
-ConstructionBase.constructorof(::Type{<:VectorInvariant{N, FT, TD, Z, ZS, V, K, D, U, M}}) where {N, FT, TD, Z, ZS, V, K, D, U, M} = VectorInvariant{N, FT, TD, M}
+ConstructionBase.constructorof(::Type{<:VectorInvariant{N, FT, TD}}) where {N, FT, TD} = VectorInvariant{N, FT, TD}
 
 # https://github.com/CliMA/Oceananigans.jl/blob/da9959f3e5d8ee7cf2fb42b74ecc892874ec1687/src/AbstractOperations/conditional_operations.jl#L8
 Base.@nospecializeinfer function Reactant.traced_type_inner(
@@ -241,6 +239,20 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
     return res
 end
 
+# The grid's float type promoted over every element type a vertical discretization holds, so that the
+# grid's float type is traced whenever its coordinates are. A `StaticVerticalDiscretization` holds arrays
+# and numbers; a discretization that also holds a struct, as Breeze's terrain-following one holds its
+# decay formulation, is entered field by field, since `eltype` of a struct type is `Any`.
+function promote_over_vertical_discretization(FT, @nospecialize(P::Type))
+    P === Nothing && return FT
+    P <: Union{AbstractArray, Number} && return Reactant.promote_traced_type(FT, eltype(P))
+    P isa DataType || return FT
+    for Q in Base.fieldtypes(P)
+        FT = promote_over_vertical_discretization(FT, Q)
+    end
+    return FT
+end
+
 Base.@nospecializeinfer function Reactant.traced_type_inner(
         @nospecialize(OA::Type{<:RectilinearGrid}),
         seen,
@@ -271,13 +283,7 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
         FT2 = Reactant.promote_traced_type(FT2, eltype(NF))
     end
 
-    # Also promote over the vertical discretization's data:
-    if CZ2 !== Nothing
-        for P in Base.fieldtypes(CZ2)
-            P === Nothing && continue
-            FT2 = Reactant.promote_traced_type(FT2, eltype(P))
-        end
-    end
+    FT2 = promote_over_vertical_discretization(FT2, CZ2)
 
     res = Oceananigans.Grids.RectilinearGrid{FT2, TX2, TY2, TZ2, CZ2, DXF2, DXC2, XF2, XC2, DYF2, DYC2, YF2, YC2, Arch, SZ}
 
@@ -309,14 +315,14 @@ function evalcond(c, i, j, k)
     Oceananigans.AbstractOperations.evaluate_condition(c.condition, i, j, k, c.grid, c)
 end
 
-@inline function Reactant.TracedUtils.broadcast_to_size(c::Oceananigans.AbstractOperations.ConditionalOperation, rsize)
+@inline function Reactant.broadcast_to_size(c::Oceananigans.AbstractOperations.ConditionalOperation, rsize)
     if c == rsize
-        return Reactant.TracedUtils.materialize_traced_array(c)
+        return ReactantCore.materialize_traced_array(c)
     end
     return c
 end
 
-@inline function Reactant.TracedUtils.materialize_traced_array(c::Oceananigans.AbstractOperations.ConditionalOperation)
+@inline function ReactantCore.materialize_traced_array(c::Oceananigans.AbstractOperations.ConditionalOperation)
     N = ndims(c)
     axes2 = ntuple(Val(N)) do i
         reshape(Base.OneTo(size(c, i)), (ntuple(Val(N)) do j
@@ -333,7 +339,7 @@ end
     if conds isa Bool
       conds = Reactant.Ops.fill(conds, size(c))
     else
-      conds = Reactant.TracedUtils.materialize_traced_array(conds)
+      conds = ReactantCore.materialize_traced_array(conds)
     end
 
     @assert size(conds) == size(c)
@@ -354,7 +360,7 @@ end
     return Reactant.Ops.select(
                 conds,
                 tvals,
-                Reactant.TracedUtils.broadcast_to_size(mask, size(c))
+                Reactant.broadcast_to_size(mask, size(c))
     )
 end
 
@@ -362,7 +368,7 @@ function eval_kernel_function(kfo, i, j, k)
     return kfo.kernel_function(i, j, k, kfo.grid, kfo.arguments...)
 end
 
-@inline function Reactant.TracedUtils.materialize_traced_array(c::Oceananigans.AbstractOperations.KernelFunctionOperation)
+@inline function ReactantCore.materialize_traced_array(c::Oceananigans.AbstractOperations.KernelFunctionOperation)
     N = ndims(c)
     axes2 = ntuple(Val(N)) do i
         reshape(Base.OneTo(size(c, i)), (ntuple(Val(N)) do j
@@ -390,9 +396,9 @@ end
     return tvals
 end
 
-@inline function Reactant.TracedUtils.broadcast_to_size(c::Oceananigans.AbstractOperations.KernelFunctionOperation, rsize)
+@inline function Reactant.broadcast_to_size(c::Oceananigans.AbstractOperations.KernelFunctionOperation, rsize)
     if c == rsize
-        return Reactant.TracedUtils.materialize_traced_array(c)
+        return ReactantCore.materialize_traced_array(c)
     end
     return c
 end

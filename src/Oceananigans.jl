@@ -35,7 +35,7 @@ export
     Distributed, Partition,
 
     # Advection schemes
-    Centered, UpwindBiased, WENO, THINCBVD,
+    Centered, UpwindBiased, WENO, THINCBVD, MinmodExtrapolation, VanLeerExtrapolation, LinearExtrapolation, ContinuedExtrapolation,
     VectorInvariant, WENOVectorInvariant, FluxFormAdvection,
     AdaptiveImplicitVerticalAdvection,
 

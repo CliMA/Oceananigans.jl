@@ -21,16 +21,15 @@ export
     DistributedFillHalo
 
 using Adapt: Adapt, adapt
-using DocStringExtensions: MethodSignatures, TYPEDSIGNATURES
 using KernelAbstractions: @index, @kernel
 
 using Oceananigans: Oceananigans, defaults
 using Oceananigans.Architectures: Architectures, CPU, GPU, architecture, on_architecture
 using Oceananigans.Grids: Grids, AbstractGrid, Center, CenterFolded, CenterFoldConnected, Closed, Connected, Face, FaceFolded,
                           FaceFoldConnected, Flat, LatitudeLongitudeGrid, Open, TwoSided,
-                          connected_range, halo_size, node, Pole, λnode, φnode, λnodes, φnodes, topology
+                          connected_range, halo_size, left_domain_halo, node, Pole, right_domain_halo, λnode, φnode, λnodes, φnodes, topology
 using Oceananigans.Operators: Ax, Ay, Az, V⁻¹, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
-using Oceananigans.Utils: AbstractTimeDiscretization, ExplicitTimeDiscretization, StaticStridesOffsetArray, launch!, named_tuple
+using Oceananigans.Utils: AbstractTimeDiscretization, ExplicitTimeDiscretization, StaticStridesOffsetArray, launch!, named_tuple, SIGNATURES, TYPEDSIGNATURES
 
 # All possible fill_halo! kernels
 struct WestAndEast end

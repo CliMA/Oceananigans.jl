@@ -33,7 +33,7 @@ struct SphericalCoriolis{S, FT, F} <: AbstractRotation{S}
 end
 
 """
-$(MethodSignatures(; defaults = true))
+$(SIGNATURES)
 
 Return a parameter object for Coriolis forces on a sphere rotating at `rotation_rate`.
 
@@ -77,7 +77,7 @@ const HydrostaticSphericalCoriolis{S, FT}      = SphericalCoriolis{S, FT, <:Hydr
 const NonhydrostaticSphericalCoriolis{S, FT}   = SphericalCoriolis{S, FT, <:NonhydrostaticFormulation} where {S, FT}
 
 """
-$(MethodSignatures(; defaults = true))
+$(SIGNATURES)
 
 Return a `SphericalCoriolis` with `HydrostaticFormulation`. This is a convenience
 constructor that sets `formulation = HydrostaticFormulation()` and defaults to the

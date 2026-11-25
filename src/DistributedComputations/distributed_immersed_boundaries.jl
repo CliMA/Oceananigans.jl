@@ -1,3 +1,4 @@
+using Oceananigans.Grids: CommunicatingSide, TwoSided
 using Oceananigans.ImmersedBoundaries:
     AbstractGridFittedBottom,
     GridFittedBoundary,
@@ -8,8 +9,6 @@ using Oceananigans.ImmersedBoundaries:
     compute_mask,
     has_active_cells_map,
     has_active_z_columns
-
-using Oceananigans.Grids: CommunicatingSide, TwoSided
 
 # For the moment we extend distributed in the `ImmersedBoundaryGrids` module.
 # When we fix the immersed boundary module to remove all the `TurbulenceClosure` stuff
@@ -143,7 +142,7 @@ function ImmersedBoundaries.build_active_cells_map(grid::AbstractGrid{<:Any, <:A
     arch = architecture(grid)
     Rx, Ry, _  = arch.ranks
     Tx, Ty, _  = topology(grid)
-    Nx, Ny, Nz = size(grid)
+    Nx, Ny, Nz = Utils.worksize(grid)
     Hx, Hy, _  = halo_size(grid)
 
     one_sided_x = (Tx <: TwoSided{<:CommunicatingSide}) != (Tx <: TwoSided{<:Any, <:CommunicatingSide})

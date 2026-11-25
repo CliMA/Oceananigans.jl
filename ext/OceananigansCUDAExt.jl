@@ -1,6 +1,5 @@
 module OceananigansCUDAExt
 
-using InteractiveUtils: versioninfo
 using CUDA: CUDA, CuArray, CuContext, CuDevice, CuDeviceArray, CuPtr, context,
     context!, cu, CUDA.CUDABackend
 # TODO: when we'll support CUDA.jl v6 only, add `cuSPARSE`/`CUDACore`/`cuFFT` to
@@ -18,20 +17,17 @@ end
 using GPUArraysCore: allowscalar
 using MPI: MPI
 using Base.Libc.Libdl: dllist, dlopen, dlsym
-using Oceananigans.Utils: linear_expand, __linear_ndrange, MappedCompilerMetadata
+using KernelAbstractions: KernelAbstractions, __iterspace, __dynamic_checkbounds
+using SparseArrays: SparseMatrixCSC
 
-import Oceananigans.Architectures as AC
-import Oceananigans.BoundaryConditions as BC
-import Oceananigans.DistributedComputations as DC
-import Oceananigans.Fields as FD
-import Oceananigans.MultiRegion as MR
-import Oceananigans.Utils: apply_regionally!
-import Oceananigans.Grids as GD
-import Oceananigans.Solvers as SO
-import Oceananigans.Utils as UT
-import SparseArrays: SparseMatrixCSC
-import KernelAbstractions: __iterspace, __dynamic_checkbounds, __validindex
-import Oceananigans.DistributedComputations: Distributed
+using Oceananigans.Architectures: Architectures as AC
+using Oceananigans.BoundaryConditions: BoundaryConditions as BC
+using Oceananigans.DistributedComputations: DistributedComputations as DC, Distributed
+using Oceananigans.Fields: Fields as FD
+using Oceananigans.Grids: Grids as GD
+using Oceananigans.MultiRegion: MultiRegion as MR
+using Oceananigans.Solvers: Solvers as SO
+using Oceananigans.Utils: Utils as UT, apply_regionally!, linear_expand, __linear_ndrange, MappedCompilerMetadata
 
 const GPUVar = Union{CuArray, CuContext, CuPtr, Ptr}
 
@@ -61,7 +57,6 @@ function AC.GPU()
 end
 
 function UT.versioninfo_with_gpu(::CUDAGPU)
-    s = sprint(versioninfo)
     gpu_name = CUDA.CuDevice(0) |> CUDA.name
     return "CUDA GPU: $gpu_name"
 end
@@ -150,7 +145,7 @@ end
 
 # CUDA version, the indices are passed implicitly
 # You must not use KA here as this code is executed in another scope
-CUDA.@device_override @inline function __validindex(ctx::MappedCompilerMetadata)
+CUDA.@device_override @inline function KernelAbstractions.__validindex(ctx::MappedCompilerMetadata)
     if __dynamic_checkbounds(ctx)
         index = @inbounds linear_expand(__iterspace(ctx), CUDA.blockIdx().x, CUDA.threadIdx().x)
         return index ≤ __linear_ndrange(ctx)

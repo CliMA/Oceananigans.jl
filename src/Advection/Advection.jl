@@ -11,7 +11,7 @@ export
     advective_tracer_flux_y,
     advective_tracer_flux_z,
 
-    Centered, UpwindBiased, WENO, THINCBVD,
+    Centered, UpwindBiased, WENO, THINCBVD, MinmodExtrapolation, VanLeerExtrapolation, LinearExtrapolation, ContinuedExtrapolation,
     VectorInvariant, WENOVectorInvariant,
     FluxFormAdvection,
     AdaptiveImplicitVerticalAdvection,
@@ -21,20 +21,22 @@ export
 
 using Adapt: Adapt
 using Base: Callable
-using DocStringExtensions: MethodSignatures, TYPEDSIGNATURES
 using MuladdMacro: @muladd
-using Oceananigans.Utils: StaticStridesOffsetArray
 
 using Oceananigans: Oceananigans, fully_supported_float_types
 using Oceananigans.Architectures: Architectures, architecture, on_architecture, CPU
 using Oceananigans.Grids: Grids, AbstractGrid, Center, Face, Flat, with_halo, horizontally_extended_interior_kernel_parameters,
                           required_halo_size_x, required_halo_size_y, required_halo_size_z,
                           XFlatGrid, YFlatGrid, ZFlatGrid
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, PartialCellBottom, bottom_cell
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, PCBIBG
 using Oceananigans.Operators: flux_div_xyᶜᶜᶜ, ∂t_σ, Ax_qᶠᶜᶜ, Axᶠᶜᶜ, Ay_qᶜᶠᶜ, Ayᶜᶠᶜ, Az_qᶜᶜᶠ,
                               Azᶜᶜᶜ, Azᶜᶜᶠ, Az⁻¹ᶜᶠᶜ, Az⁻¹ᶠᶜᶜ, V⁻¹ᶜᶜᶠ, V⁻¹ᶜᶠᶜ, V⁻¹ᶠᶜᶜ,
                               Δx_qᶜᶠᶜ, Δx⁻¹ᶠᶜᶜ, Δy_qᶠᶜᶜ, Δy⁻¹ᶜᶠᶜ,
-                              δxᶜᵃᵃ, δxᶠᵃᵃ, δyᵃᶜᵃ, δyᵃᶠᵃ, δzᵃᵃᶜ, ℑxᶜᵃᵃ, ℑxᶠᵃᵃ, ℑyᵃᶜᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶜ, ℑzᵃᵃᶠ
+                              δxᶜᵃᵃ, δxᶠᵃᵃ, δyᵃᶜᵃ, δyᵃᶠᵃ, δzᵃᵃᶜ, ℑxᶜᵃᵃ, ℑxᶠᵃᵃ, ℑyᵃᶜᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶜ, ℑzᵃᵃᶠ,
+                              FirstDerivative, Primitive, SecondDerivative, calc_reconstruction_stencil, stencil_coefficients,
+                              vorticity_flux_xᶠᶜᶜ, vorticity_flux_yᶜᶠᶜ
+using Oceananigans.Utils: StaticStridesOffsetArray, SIGNATURES, TYPEDSIGNATURES
+
 
 abstract type AbstractAdvectionScheme{B, FT, TD} end
 abstract type AbstractCenteredAdvectionScheme{B, FT, TD} <: AbstractAdvectionScheme{B, FT, TD} end
@@ -56,13 +58,12 @@ const advection_buffers = [1, 2, 3, 4, 5, 6]
 @inline Grids.required_halo_size_y(::AbstractAdvectionScheme{B}) where B = B
 @inline Grids.required_halo_size_z(::AbstractAdvectionScheme{B}) where B = B
 
-struct DecreasingOrderAdvectionScheme end
-
 include("time_discretization.jl")
 include("centered_advective_fluxes.jl")
 include("upwind_biased_advective_fluxes.jl")
 
 include("reconstruction_coefficients.jl")
+include("interpolation_stencils.jl")
 include("centered_reconstruction.jl")
 include("upwind_biased_reconstruction.jl")
 include("weno_reconstruction.jl")
@@ -78,7 +79,6 @@ include("flux_form_advection.jl")
 include("adaptive_implicit_vertical_advection.jl")
 include("implicit_vertical_advection.jl")
 
-include("topologically_conditional_interpolation.jl")
 include("flat_advective_fluxes.jl")
 include("immersed_advective_fluxes.jl")
 include("momentum_advection_operators.jl")
