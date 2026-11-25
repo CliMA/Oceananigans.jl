@@ -40,13 +40,9 @@ Architectures.on_architecture(to, scheme::Centered{N, FT}) where {N, FT} =
 const ACAS = AbstractCenteredAdvectionScheme
 
 # left and right biased for Centered reconstruction are just symmetric!
-@inline biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::ACAS, bias, args...) = symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, args...)
-@inline biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::ACAS, bias, args...) = symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, args...)
-@inline biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::ACAS, bias, args...) = symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, args...)
-@inline biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme::ACAS, bias, args...) = symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, args...)
-@inline biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme::ACAS, bias, args...) = symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, args...)
-@inline biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme::ACAS, bias, args...) = symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, args...)
+@inline biased_interpolate(i, j, k, grid, scheme::ACAS, bias, dir, ℓ, args...) = symmetric_interpolate(i, j, k, grid, scheme, dir, ℓ, args...)
 
-@inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, ::Centered{N}, ψ, args...) where N = ℑxᶠᵃᵃ(i, j, k, grid, Val(2N), ψ, args...)
-@inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, ::Centered{N}, ψ, args...) where N = ℑyᵃᶠᵃ(i, j, k, grid, Val(2N), ψ, args...)
-@inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, ::Centered{N}, ψ, args...) where N = ℑzᵃᵃᶠ(i, j, k, grid, Val(2N), ψ, args...)
+@inline function symmetric_interpolate(i, j, k, grid, ::Centered{N}, dir, ℓ, ψ, args...) where N
+    S = stencil_nodes(i, j, k, grid, Val(N), dir, ℓ, ψ, args...)
+    return linear_reconstruction(S, typeof(zero(grid)), Val(:symmetric))
+end

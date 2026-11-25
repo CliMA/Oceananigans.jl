@@ -70,38 +70,9 @@ Architectures.on_architecture(to, scheme::UpwindBiased{N, FT}) where {N, FT} =
 const AUAS = AbstractUpwindBiasedAdvectionScheme
 
 # symmetric interpolation for UpwindBiased and WENO
-@inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::AUAS, args...) = symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.advecting_velocity_scheme, args...)
-@inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::AUAS, args...) = symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.advecting_velocity_scheme, args...)
-@inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::AUAS, args...) = symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme.advecting_velocity_scheme, args...)
-@inline symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme::AUAS, args...) = symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme.advecting_velocity_scheme, args...)
-@inline symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme::AUAS, args...) = symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme.advecting_velocity_scheme, args...)
-@inline symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme::AUAS, args...) = symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme.advecting_velocity_scheme, args...)
+@inline symmetric_interpolate(i, j, k, grid, scheme::AUAS, dir, ℓ, args...) = symmetric_interpolate(i, j, k, grid, scheme.advecting_velocity_scheme, dir, ℓ, args...)
 
-# Uniform upwind biased reconstruction
-for buffer in advection_buffers, FT in fully_supported_float_types
-    @eval begin
-        @inline biased_interpolate_xᶠᵃᵃ(i, j, k, grid, ::UpwindBiased{$buffer, $FT}, bias, ψ, args...) =
-            @inbounds @muladd ifelse(bias == LeftBias, $(calc_reconstruction_stencil(FT, buffer, :left,  :x, false)),
-                                                        $(calc_reconstruction_stencil(FT, buffer, :right, :x, false)))
-
-        @inline biased_interpolate_xᶠᵃᵃ(i, j, k, grid, ::UpwindBiased{$buffer, $FT}, bias, ψ::Callable, args...) =
-            @inbounds @muladd ifelse(bias == LeftBias, $(calc_reconstruction_stencil(FT, buffer, :left,  :x, true)),
-                                                        $(calc_reconstruction_stencil(FT, buffer, :right, :x, true)))
-
-        @inline biased_interpolate_yᵃᶠᵃ(i, j, k, grid, ::UpwindBiased{$buffer, $FT}, bias, ψ, args...) =
-            @inbounds @muladd ifelse(bias == LeftBias, $(calc_reconstruction_stencil(FT, buffer, :left,  :y, false)),
-                                                        $(calc_reconstruction_stencil(FT, buffer, :right, :y, false)))
-
-        @inline biased_interpolate_yᵃᶠᵃ(i, j, k, grid, ::UpwindBiased{$buffer, $FT}, bias, ψ::Callable, args...) =
-            @inbounds @muladd ifelse(bias == LeftBias, $(calc_reconstruction_stencil(FT, buffer, :left,  :y, true)),
-                                                        $(calc_reconstruction_stencil(FT, buffer, :right, :y, true)))
-
-        @inline biased_interpolate_zᵃᵃᶠ(i, j, k, grid, ::UpwindBiased{$buffer, $FT}, bias, ψ, args...) =
-            @inbounds @muladd ifelse(bias == LeftBias, $(calc_reconstruction_stencil(FT, buffer, :left,  :z, false)),
-                                                        $(calc_reconstruction_stencil(FT, buffer, :right, :z, false)))
-
-        @inline biased_interpolate_zᵃᵃᶠ(i, j, k, grid, ::UpwindBiased{$buffer, $FT}, bias, ψ::Callable, args...) =
-            @inbounds @muladd ifelse(bias == LeftBias, $(calc_reconstruction_stencil(FT, buffer, :left,  :z, true)),
-                                                        $(calc_reconstruction_stencil(FT, buffer, :right, :z, true)))
-    end
+@inline function biased_interpolate(i, j, k, grid, ::UpwindBiased{N, FT}, bias, dir, ℓ, ψ, args...) where {N, FT}
+    S = stencil_nodes(i, j, k, grid, Val(N), dir, ℓ, ψ, args...)
+    return ifelse(bias == LeftBias, linear_reconstruction(S, FT, Val(:left)), linear_reconstruction(S, FT, Val(:right)))
 end

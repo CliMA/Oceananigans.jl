@@ -464,23 +464,16 @@ end
 @inline      weno_anchor(::WENO{N}, S) where N = @inbounds S[N]
 @inline weno_differences(::WENO{N}, S) where N = @inbounds ntuple(i -> S[i+1] - S[i], Val(2N - 2))
 
-@inline stencil_value(i, j, k, grid, ψ, args...)           = @inbounds ψ[i, j, k]
-@inline stencil_value(i, j, k, grid, ψ::Callable, args...) = ψ(i, j, k, grid, args...)
-
-@inline function upwind_stencil(i, j, k, grid, ::WENO{N}, bias, e, ψ, args...) where N
-    Ψ = ntuple(Val(2N)) do n
-        @inline
-        i′, j′, k′ = (i, j, k) .+ (n - N - 1) .* e
-        stencil_value(i′, j′, k′, grid, ψ, args...)
-    end
-    return ifelse(bias == LeftBias, Ψ, reverse(Ψ))
+@inline function upwind_stencil(i, j, k, grid, ::WENO{N}, bias, dir, ℓ, ψ, args...) where N
+    S = stencil_nodes(i, j, k, grid, Val(N), dir, ℓ, ψ, args...)
+    return ifelse(bias == LeftBias, S, reverse(S))
 end
 
 # Different smoothness treatment
-@inline smoothness_differences(i, j, k, grid, scheme, bias, e, ::AbstractSmoothnessStencil, args...) =  nothing
-@inline smoothness_differences(i, j, k, grid, scheme, bias, e,    stencil::FunctionStencil, args...) =  weno_differences(scheme, upwind_stencil(i, j, k, grid, scheme, bias, e, stencil.func, args...))
-@inline smoothness_differences(i, j, k, grid, scheme, bias, e,     ::VelocityStencil, u, v, args...) = (weno_differences(scheme, upwind_stencil(i, j, k, grid, scheme, bias, e, ℑyᵃᶠᵃ, u)),
-                                                                                                        weno_differences(scheme, upwind_stencil(i, j, k, grid, scheme, bias, e, ℑxᶠᵃᵃ, v)))
+@inline smoothness_differences(i, j, k, grid, scheme, bias, dir, ℓ, ::AbstractSmoothnessStencil, args...) =  nothing
+@inline smoothness_differences(i, j, k, grid, scheme, bias, dir, ℓ,    stencil::FunctionStencil, args...) =  weno_differences(scheme, upwind_stencil(i, j, k, grid, scheme, bias, dir, ℓ, stencil.func, args...))
+@inline smoothness_differences(i, j, k, grid, scheme, bias, dir, ℓ,     ::VelocityStencil, u, v, args...) = (weno_differences(scheme, upwind_stencil(i, j, k, grid, scheme, bias, dir, ℓ, ℑyᵃᶠᵃ, u)),
+                                                                                                             weno_differences(scheme, upwind_stencil(i, j, k, grid, scheme, bias, dir, ℓ, ℑxᶠᵃᵃ, v)))
 
 # Trick to force compilation of Val(stencil-1) and avoid loops on the GPU
 @inline function metaprogrammed_weno_reconstruction(buffer)
@@ -516,25 +509,13 @@ for buffer in advection_buffers[2:end]
     @eval @inline weno_reconstruction(scheme::WENO{$buffer}, ψ₀, δ, ω) = @inbounds @muladd $(metaprogrammed_weno_reconstruction(buffer))
 end
 
-@inline function weno_interpolate(i, j, k, grid, scheme::WENO, bias, e, stencil, ψ, args...)
-    S  = upwind_stencil(i, j, k, grid, scheme, bias, e, ψ, args...)
+@inline function weno_interpolate(i, j, k, grid, scheme::WENO, bias, dir, ℓ, stencil, ψ, args...)
+    S  = upwind_stencil(i, j, k, grid, scheme, bias, dir, ℓ, ψ, args...)
     δ  = weno_differences(scheme, S)
-    δˢ = smoothness_differences(i, j, k, grid, scheme, bias, e, stencil, args...)
+    δˢ = smoothness_differences(i, j, k, grid, scheme, bias, dir, ℓ, stencil, args...)
     ω  = biased_weno_weights(something(δˢ, δ), grid, scheme)
     return weno_reconstruction(scheme, weno_anchor(scheme, S), δ, ω)
 end
 
-@inline unit_vector(::Val{1}) = (1, 0, 0)
-@inline unit_vector(::Val{2}) = (0, 1, 0)
-@inline unit_vector(::Val{3}) = (0, 0, 1)
-
-# Interpolation functions
-for (dir, ξ) in enumerate((:x, :y, :z))
-    e = unit_vector(Val(dir))
-    interpolate = Symbol(:biased_interpolate_, ξ, ntuple(d -> d == dir ? :ᶠ : :ᵃ, 3)...)
-
-    @eval begin
-        @inline $interpolate(i, j, k, grid, scheme::WENO, bias, ψ, args...) = weno_interpolate(i, j, k, grid, scheme, bias, $e, DefaultStencil(), ψ, args...)
-        @inline $interpolate(i, j, k, grid, scheme::WENO, bias, ψ, stencil::AbstractSmoothnessStencil, args...) = weno_interpolate(i, j, k, grid, scheme, bias, $e, stencil, ψ, args...)
-    end
-end
+@inline biased_interpolate(i, j, k, grid, scheme::WENO, bias, dir, ℓ, ψ, args...) = weno_interpolate(i, j, k, grid, scheme, bias, dir, ℓ, DefaultStencil(), ψ, args...)
+@inline biased_interpolate(i, j, k, grid, scheme::WENO, bias, dir, ℓ, ψ, stencil::AbstractSmoothnessStencil, args...) = weno_interpolate(i, j, k, grid, scheme, bias, dir, ℓ, stencil, ψ, args...)

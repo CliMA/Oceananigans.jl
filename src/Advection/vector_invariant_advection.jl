@@ -466,14 +466,5 @@ end
 const AS = AbstractSmoothnessStencil
 
 # To adapt passing smoothness stencils to upwind biased schemes and centered schemes (not WENO)
-@inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, s::Centered, f::Callable, ::AS, args...) = symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, s, f, args...)
-@inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, s::Centered, f::Callable, ::AS, args...) = symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, s, f, args...)
-@inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, s::Centered, f::Callable, ::AS, args...) = symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, s, f, args...)
-
-for b in advection_buffers, FT in fully_supported_float_types
-    @eval begin
-        @inline biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s::UpwindBiased{$b, $FT}, bias, f::Callable, ::AS, args...) = biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s, bias, f, args...)
-        @inline biased_interpolate_yᵃᶠᵃ(i, j, k, grid, s::UpwindBiased{$b, $FT}, bias, f::Callable, ::AS, args...) = biased_interpolate_yᵃᶠᵃ(i, j, k, grid, s, bias, f, args...)
-        @inline biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s::UpwindBiased{$b, $FT}, bias, f::Callable, ::AS, args...) = biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s, bias, f, args...)
-    end
-end
+@inline symmetric_interpolate(i, j, k, grid, s::Centered, dir, ℓ, f::Callable, ::AS, args...) = symmetric_interpolate(i, j, k, grid, s, dir, ℓ, f, args...)
+@inline biased_interpolate(i, j, k, grid, s::UpwindBiased, bias, dir, ℓ, f::Callable, ::AS, args...) = biased_interpolate(i, j, k, grid, s, bias, dir, ℓ, f, args...)
