@@ -22,7 +22,7 @@ using Statistics: mean
 
 using Oceananigans: Oceananigans, prettytime, pretty_filesize, AbstractModel, initialize!
 using Oceananigans.AbstractOperations: AbstractOperation
-using Oceananigans.Architectures: Architectures, CPU, GPU, architecture, on_architecture
+using Oceananigans.Architectures: Architectures, CPU, GPU, architecture, child_architecture, on_architecture
 using Oceananigans.Fields: Fields, AbstractField, Field, data, interior, set!, Reduction, location, indices
 using Oceananigans.Grids:
     Center, Face, TwoSided, grid, nodes, constructor_arguments,
