@@ -49,6 +49,7 @@ Keyword Arguments
   `recycling_distance`.
 - `averaging`: dimensions over which the mean `⟨φʳ⟩` is taken, as in `Average(field; dims)`, for example `2`
   or `(2, 3)` on a west boundary. The mean is weighted by the grid spacings. With `nothing` no mean is removed.
+  Default: `nothing`.
 - `damping`: factor multiplying the recycled signal. A number, an array, or a function with the signature of
   a boundary condition function, for example `damping(y, z, t)` on `x`-boundaries. Default: `1`.
 - `target_transport`: net volume transport through the boundary [m³ s⁻¹], positive in the positive coordinate
@@ -77,7 +78,7 @@ TurbulenceRecycling{Float64}
 ```
 """
 function TurbulenceRecycling(FT = defaults.FloatType; recycling_distance = nothing, recycling_index = nothing,
-                             averaging, damping = 1, target_transport = nothing)
+                             averaging = nothing, damping = 1, target_transport = nothing)
 
     isnothing(recycling_distance) == isnothing(recycling_index) &&
         throw(ArgumentError("TurbulenceRecycling needs exactly one of recycling_distance and recycling_index."))

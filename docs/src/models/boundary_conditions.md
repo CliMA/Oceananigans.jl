@@ -536,8 +536,8 @@ TurbulenceRecycling{Float64}
 The boundary-normal velocity takes the scheme through `NormalFlowBoundaryCondition(1; scheme = recycling)`.
 The other velocity components and the tracers take it through a `ValueBoundaryCondition`, for
 example `ValueBoundaryCondition(0; scheme = TurbulenceRecycling(recycling_distance=100, averaging=2))`.
-`averaging` has no default: on a west or east boundary it can be `2`, `3`, `(2, 3)`, or `nothing` to
-recycle the plane together with its mean. A `target_transport` keeps the transport through the inflow
+On a west or east boundary `averaging` can be `2`, `3`, `(2, 3)`, or `nothing`, the default, which
+recycles the plane together with its mean. A `target_transport` keeps the transport through the inflow
 at a prescribed value, and the side where the flow leaves needs a scheme such as `PerturbationAdvection`.
 The flow has to be turbulent to begin with, for example from an initial condition taken from a simulation
 with periodic boundaries. The scheme assumes that the flow between the boundary and the recycling plane is
