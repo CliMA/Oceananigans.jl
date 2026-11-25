@@ -52,6 +52,7 @@ function Checkpointer(model; schedule,
                       verbose = false,
                       cleanup = false)
 
+    dir, prefix = splitdir(joinpath(dir, prefix))
     mkpath(dir)
     filename = with_architecture_suffix(architecture(model), string(prefix, ".jld2"), ".jld2")
     prefix = String(chop(filename, tail=length(".jld2")))

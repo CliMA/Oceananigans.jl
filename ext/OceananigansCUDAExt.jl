@@ -1,6 +1,5 @@
 module OceananigansCUDAExt
 
-using InteractiveUtils: versioninfo
 using CUDA: CUDA, CuArray, CuContext, CuDevice, CuDeviceArray, CuPtr, context,
     context!, cu, CUDA.CUDABackend
 # TODO: when we'll support CUDA.jl v6 only, add `cuSPARSE`/`CUDACore`/`cuFFT` to
@@ -58,7 +57,6 @@ function AC.GPU()
 end
 
 function UT.versioninfo_with_gpu(::CUDAGPU)
-    s = sprint(versioninfo)
     gpu_name = CUDA.CuDevice(0) |> CUDA.name
     return "CUDA GPU: $gpu_name"
 end
