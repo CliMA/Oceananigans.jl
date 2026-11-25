@@ -31,6 +31,13 @@ Ghosts that continue the data with the van Leer mean `2ab / (a + b)` of its last
 struct VanLeerExtrapolation end
 
 """
+    LinearExtrapolation()
+
+Ghosts that continue the data with its last difference.
+"""
+struct LinearExtrapolation end
+
+"""
     ContinuedExtrapolation()
 
 Ghosts that continue the data with its last value.
@@ -39,10 +46,12 @@ struct ContinuedExtrapolation end
 
 Base.summary(::MinmodExtrapolation)    = "MinmodExtrapolation()"
 Base.summary(::VanLeerExtrapolation)   = "VanLeerExtrapolation()"
+Base.summary(::LinearExtrapolation)    = "LinearExtrapolation()"
 Base.summary(::ContinuedExtrapolation) = "ContinuedExtrapolation()"
 
 @inline limited_slope(::MinmodExtrapolation,    a, b) = ifelse(a * b > 0, ifelse(abs(a) < abs(b), a, b), zero(a))
 @inline limited_slope(::VanLeerExtrapolation,   a, b) = ifelse(a * b > 0, 2a * b / (a + b), zero(a))
+@inline limited_slope(::LinearExtrapolation,    a, b) = a
 @inline limited_slope(::ContinuedExtrapolation, a, b) = zero(a)
 
 # The data at the three nodes with data nearest the boundary, outermost first, and the number of nodes with data
