@@ -2,7 +2,8 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Oceananigans
 using Oceananigans.BoundaryConditions: GravityWaveRadiation, NormalRadiation, GravityWaveRadiationBoundaryCondition, SurfaceWaveRadiationBoundaryCondition, fill_halo_regions!
-using Oceananigans.BoundaryConditions: ObliqueRadiation, oblique_radiation_update, normal_radiation_update
+using Oceananigans.BoundaryConditions: ObliqueRadiation, oblique_radiation_update, oblique_phase_speeds,
+                                       cache_boundary_condition!, step_boundary_condition!
 using Oceananigans.BoundaryConditions: TracerReservoir, reservoir_update
 using Oceananigans.Units
 using Oceananigans.MultiRegion: MultiRegionGrid, XPartition
@@ -517,23 +518,138 @@ end
 ##### Test: ObliqueRadiation
 #####
 
-# With zero tangential differences the oblique update equals the normal update.
-function test_oblique_reduces_to_normal()
-    obl = ObliqueRadiation(inflow_timescale = 0, outflow_timescale = Inf)
-    nrm = NormalRadiation(inflow_timescale = 0, outflow_timescale = Inf)
-    Δt, Cᵃ, φᵉˣᵗ = 10.0, 0.05, -0.37
+# Without a tangential gradient and without averaging, the oblique update is the one-dimensional radiation
+# update: φᵇ ← (φᵇ + C φ₁) / (1 + C) with C = min(∂ₜφ / ∂ₙφ, 1), followed by nudging toward φᵉˣᵗ.
+function test_oblique_radiation_update()
+    Δt, φᵉˣᵗ = 10.0, -0.37
+    free   = ObliqueRadiation(inflow_timescale = 0, outflow_timescale = Inf, phase_speed_weight = 1)
+    nudged = ObliqueRadiation(inflow_timescale = 0, outflow_timescale = 100, phase_speed_weight = 1)
 
-    reduces = true
-    for φᵇ in (-1.0, 0.0, 0.7), φ₁ in (-0.5, 0.3, 1.2), φ₂ in (-0.2, 0.9), φ₁ⁿ in (0.1, 0.6), outflow in (true, false)
-        o = oblique_radiation_update(φᵇ, φ₁, φ₂, φ₁ⁿ, 0.0, 0.0, 0.0, 0.0, φᵉˣᵗ, Δt, obl, outflow, Cᵃ)
-        n = normal_radiation_update(φᵇ, φ₁, φ₂, φ₁ⁿ, φᵉˣᵗ, Δt, nrm, outflow, Cᵃ)
-        reduces &= isapprox(o, n; rtol = 1e-12, atol = 1e-14)
+    radiate(radiation, φᵇ, φ₁, φ₂, φ₁ⁿ; δᵇ = (0.0, 0.0), δ₁ = (0.0, 0.0)) = begin
+        rₙ, rₜ, c, radiating = oblique_phase_speeds(φ₁, φ₂, φ₁ⁿ, δ₁...)
+        oblique_radiation_update(φᵇ, φ₁, δᵇ..., rₙ, rₜ, c, radiating, φᵉˣᵗ, Δt, radiation)
     end
 
-    tilted = oblique_radiation_update(0.5, 0.8, 0.3, 0.6, 0.2, 0.1, 0.25, 0.15, φᵉˣᵗ, Δt, obl, true, Cᵃ)
-    normal = normal_radiation_update(0.5, 0.8, 0.3, 0.6, φᵉˣᵗ, Δt, nrm, true, Cᵃ)
+    ok = true
+    for φᵇ in (-1.0, 0.0, 0.7), φ₁ in (-0.5, 0.3, 1.2), φ₂ in (-0.2, 0.9), φ₁ⁿ in (0.1, 0.6)
+        ∂t, ∂n = φ₁ⁿ - φ₁, φ₁ - φ₂
+        if ∂t * ∂n > 0 # phase speed out of the domain: radiate
+            C = min(∂t / ∂n, 1)
+            expected = (φᵇ + C * φ₁) / (1 + C)
+            ok &= radiate(free, φᵇ, φ₁, φ₂, φ₁ⁿ) ≈ expected
+            γ = Δt / (100 + Δt)
+            ok &= radiate(nudged, φᵇ, φ₁, φ₂, φ₁ⁿ) ≈ (1 - γ) * expected + γ * φᵉˣᵗ
+        else           # phase speed into the domain or zero: inflow, imposed exterior value
+            ok &= radiate(free, φᵇ, φ₁, φ₂, φ₁ⁿ) == φᵉˣᵗ
+        end
+    end
 
-    return reduces && !isapprox(tilted, normal; rtol = 1e-6)
+    straight = radiate(free, 0.5, 0.8, 0.3, 0.9)
+    tilted   = radiate(free, 0.5, 0.8, 0.3, 0.9; δᵇ = (0.2, 0.1), δ₁ = (0.25, 0.15))
+    return ok && !isapprox(tilted, straight; rtol = 1e-6)
+end
+
+# A tangential velocity radiates with the phase speed of the adjacent normal velocity: here the tangential
+# velocity itself is steady, so it only radiates when the phase speed comes from the normal velocity.
+function test_oblique_tangential_uses_normal_phase_speed()
+    grid = RectilinearGrid(size = (4, 3, 1), x = (0, 1), y = (0, 1), z = (0, 1), topology = (Open, Periodic, Bounded))
+    Nx = grid.Nx
+    clock = (; time = 0.0, stage = 1, last_stage_Δt = 10.0, iteration = 1)
+    φᵇ, φ₁, φ₂ = 0.2, 0.9, 0.5
+
+    function boundary_value_after_step(weight)
+        scheme = ObliqueRadiation(inflow_timescale = Inf, phase_speed_weight = weight)
+        along = ValueBoundaryCondition(0; scheme)
+        across = NormalFlowBoundaryCondition(0)
+        u = XFaceField(grid; boundary_conditions = FieldBoundaryConditions(grid, (Face(), Center(), Center()); east = across, west = across))
+        v = YFaceField(grid; boundary_conditions = FieldBoundaryConditions(grid, (Center(), Face(), Center()); east = along, west = along))
+        fields = (; u, v)
+
+        set!(v, 0)
+        interior(v)[Nx, :, 1] .= φ₁
+        interior(v)[Nx - 1, :, 1] .= φ₂
+        v[Nx + 1, 1:3, 1] .= φᵇ
+
+        # The normal velocity next to the boundary was 0, is now -1, and is -2 one cell further in: its phase speed
+        # points out of the domain
+        cache_boundary_condition!(v.boundary_conditions.east, East(), v, clock, fields)
+        interior(u)[Nx, :, 1] .= -1
+        interior(u)[Nx - 1, :, 1] .= -2
+        step_boundary_condition!(v.boundary_conditions.east, East(), v, clock, fields, 10.0)
+
+        return Array(v[Nx + 1, 1:3, 1])
+    end
+
+    own     = boundary_value_after_step(1)
+    coupled = boundary_value_after_step(0.3)
+
+    return all(own .== φᵇ) && all(φᵇ .< coupled .< φ₁)
+end
+
+# The start-of-step phase-speed averages are the latest averages of the previous step, whatever the time stepper.
+function test_oblique_phase_speed_averages_advance(timestepper)
+    grid = RectilinearGrid(size = (24, 4, 1), x = (0, 1), y = (0, 1), z = (0, 1), topology = (Open, Periodic, Bounded))
+    bc = ValueBoundaryCondition(0; scheme = ObliqueRadiation())
+    model = HydrostaticFreeSurfaceModel(grid; timestepper,
+                                        velocities = PrescribedVelocityFields(u = 1),
+                                        tracer_advection = Centered(),
+                                        buoyancy = nothing, tracers = :c,
+                                        boundary_conditions = (; c = FieldBoundaryConditions(east = bc, west = bc)))
+    set!(model, c = (x, y, z) -> exp(-((x - 0.6)^2 + (y - 0.3)^2) / 0.02))
+
+    scheme = model.tracers.c.boundary_conditions.east.classification.scheme
+    c⁰, cˡ = scheme.phase_speeds[3], scheme.phase_speeds[6]
+
+    time_step!(model, 0.01)
+    latest = Array(cˡ)
+
+    time_step!(model, 0.01)
+    return all(latest .> 0) && Array(c⁰) == latest
+end
+
+# The next step's interior reference is the value this step radiated from: changing the interior after the step,
+# as the barotropic correction of the velocities does, changes neither the normal nor the tangential boundary value
+# of the next step.
+function test_oblique_reference_is_unaffected_by_later_corrections()
+    grid = RectilinearGrid(size = (4, 3, 1), x = (0, 1), y = (0, 1), z = (0, 1), topology = (Open, Periodic, Bounded))
+    Nx = grid.Nx
+    clock = (; time = 0.0, stage = 1, last_stage_Δt = 10.0, iteration = 1)
+
+    function boundary_values_after_two_steps(correction)
+        across = NormalFlowBoundaryCondition(0; scheme = ObliqueRadiation(inflow_timescale = Inf))
+        along  = ValueBoundaryCondition(0; scheme = ObliqueRadiation(inflow_timescale = Inf))
+        u = XFaceField(grid; boundary_conditions = FieldBoundaryConditions(grid, (Face(), Center(), Center()); east = across, west = across))
+        v = YFaceField(grid; boundary_conditions = FieldBoundaryConditions(grid, (Center(), Face(), Center()); east = along, west = along))
+        fields = (; u, v)
+
+        set!(u, 0)
+        set!(v, 0)
+        u[Nx + 1, 1:3, 1] .= 0.3
+        v[Nx + 1, 1:3, 1] .= 0.2
+
+        for n in 1:2
+            cache_boundary_condition!(u.boundary_conditions.east, East(), u, clock, fields)
+            cache_boundary_condition!(v.boundary_conditions.east, East(), v, clock, fields)
+
+            # Both steps see the same interior, which radiates out through the boundary
+            interior(u)[Nx, :, 1] .= -1
+            interior(u)[Nx - 1, :, 1] .= -2
+            interior(v)[Nx, :, 1] .= 0.9
+            interior(v)[Nx - 1, :, 1] .= 0.5
+            step_boundary_condition!(u.boundary_conditions.east, East(), u, clock, fields, 10.0)
+            step_boundary_condition!(v.boundary_conditions.east, East(), v, clock, fields, 10.0)
+
+            interior(u)[Nx, :, 1] .+= correction
+            interior(v)[Nx, :, 1] .+= correction
+        end
+
+        return Array(u[Nx + 1, 1:3, 1]), Array(v[Nx + 1, 1:3, 1])
+    end
+
+    uᵇ, vᵇ = boundary_values_after_two_steps(0)
+    uᶜ, vᶜ = boundary_values_after_two_steps(0.5)
+
+    return all(uᵇ .!= 0.3) && all(vᵇ .!= 0.2) && uᵇ == uᶜ && vᵇ == vᶜ
 end
 
 # Mirroring the initial tracer and the tangential velocity mirrors the solution.
@@ -560,6 +676,50 @@ function test_oblique_radiation_mirror_symmetry()
     c_mirrored = tracer_after_outflow(-0.5, (x, y, z) -> c₀(x, 1 - y, z))
 
     return c ≈ reverse(c_mirrored, dims = 2)
+end
+
+# The same symmetry for a flow leaving through open boundaries whose tangential velocity radiates with the normal
+# velocity's phase speed: mirroring the initial flow along the boundaries, with the velocity along them reversed,
+# mirrors the solution. `normal` is the direction across the open boundaries.
+function test_oblique_tangential_mirror_symmetry(normal)
+    across = NormalFlowBoundaryCondition(0; scheme = ObliqueRadiation())
+    along  = ValueBoundaryCondition(0; scheme = ObliqueRadiation())
+
+    if normal === :x
+        topology = (Open, Periodic, Bounded)
+        boundary_conditions = (u = FieldBoundaryConditions(east = across, west = across),
+                               v = FieldBoundaryConditions(east = along, west = along))
+    else
+        topology = (Periodic, Open, Bounded)
+        boundary_conditions = (u = FieldBoundaryConditions(north = along, south = along),
+                               v = FieldBoundaryConditions(north = across, south = across))
+    end
+
+    grid = RectilinearGrid(size = (16, 16, 1), x = (0, 1), y = (0, 1), z = (0, 1); topology)
+
+    function velocities_after_outflow(u₀, v₀)
+        model = HydrostaticFreeSurfaceModel(grid; momentum_advection = Centered(), free_surface = nothing,
+                                            buoyancy = nothing, tracers = (), boundary_conditions)
+        set!(model, u = u₀, v = v₀)
+        for _ in 1:60 # long enough for the bump to reach the open boundary
+            time_step!(model, 0.005)
+        end
+        return Array(interior(model.velocities.u, :, :, 1)), Array(interior(model.velocities.v, :, :, 1))
+    end
+
+    # A bump carried out through the far boundary, and its mirror image along the boundaries. It is periodic
+    # along them, because the mirror of the face at t = 0 is the face at t = 1, which is the same face.
+    bump(n, t) = exp(-(n - 0.6)^2 / 0.02 + 4 * (cos(2π * (t - 0.3)) - 1))
+    if normal === :x
+        u, v   = velocities_after_outflow((x, y, z) -> 1 + bump(x, y),     (x, y, z) ->  bump(x, y))
+        uᵐ, vᵐ = velocities_after_outflow((x, y, z) -> 1 + bump(x, 1 - y), (x, y, z) -> -bump(x, 1 - y))
+        # v lives on periodic y faces: the mirror of face j is face Ny + 2 - j, and face 1 maps to itself
+        return u ≈ reverse(uᵐ, dims = 2) && v ≈ -circshift(reverse(vᵐ, dims = 2), (0, 1))
+    else
+        u, v   = velocities_after_outflow((x, y, z) ->  bump(y, x),     (x, y, z) -> 1 + bump(y, x))
+        uᵐ, vᵐ = velocities_after_outflow((x, y, z) -> -bump(y, 1 - x), (x, y, z) -> 1 + bump(y, 1 - x))
+        return u ≈ -circshift(reverse(uᵐ, dims = 1), (1, 0)) && v ≈ reverse(vᵐ, dims = 1)
+    end
 end
 
 #####
@@ -813,12 +973,22 @@ end
         @test test_gravity_wave_pairing()
     end
 
-    @testset "ObliqueRadiation reduces to NormalRadiation at normal incidence" begin
-        @test test_oblique_reduces_to_normal()
+    @testset "ObliqueRadiation update and inflow nudging" begin
+        @test test_oblique_radiation_update()
+    end
+
+    @testset "ObliqueRadiation radiates tangential velocity with the normal phase speed" begin
+        @test test_oblique_tangential_uses_normal_phase_speed()
+        @test test_oblique_reference_is_unaffected_by_later_corrections()
     end
 
     @testset "ObliqueRadiation is mirror-symmetric along the boundary" begin
         @test test_oblique_radiation_mirror_symmetry()
+        @test test_oblique_phase_speed_averages_advance(:QuasiAdamsBashforth2)
+        @test test_oblique_phase_speed_averages_advance(:SplitRungeKutta3)
+        @test test_oblique_tangential_mirror_symmetry(:x)
+        @test test_oblique_tangential_mirror_symmetry(:y)
+        @test occursin("phase_speed_weight", sprint(show, ObliqueRadiation()))
     end
 
     @testset "Equilibrium tidal body force" begin
