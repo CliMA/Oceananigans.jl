@@ -1535,8 +1535,8 @@ end
 # This test verifies that checkpointing in the middle of a time-averaging window
 # produces the exact same result as a continuous (uninterrupted) run.
 #
-# With AveragedTimeInterval(1.0, window=0.5) and Δt=0.1:
-# - Output is written every 1.0 time units
+# With AveragedTimeInterval(1.0, window=0.5) or AveragedSpecifiedTimes([1.0, 2.0], window=0.5) and Δt=0.1:
+# - Output is written at time 1.0
 # - Each output is the time-average over the preceding 0.5 time window
 # - The first averaging window spans time 0.5 → 1.0 (iterations 5-10)
 #
@@ -1555,7 +1555,7 @@ end
 #    continues to iteration 10
 #
 # At iteration 10, the test verifies:
-# - Both runs completed exactly 1 averaging window (actuations == 1)
+# - Both runs have the same averaging and output schedule state
 # - The final time-averaged results are identical (wta_A.result ≈ wta_B.result)
 #
 # If the WindowedTimeAverage state isn't properly checkpointed/restored, the restored
@@ -1635,6 +1635,7 @@ function test_windowed_time_average_continuation_correctness(arch, WriterType, s
     wta_B = simulation_B_new.output_writers[:averaged].outputs[output_key]
 
     @test next_actuation_time(wta_A.schedule) == next_actuation_time(wta_B.schedule)
+    @test simulation_A.output_writers[:averaged].schedule.actuations == simulation_B_new.output_writers[:averaged].schedule.actuations
 
     # The accumulated averages should be identical
     @test all(Array(wta_A.result) .≈ Array(wta_B.result))
