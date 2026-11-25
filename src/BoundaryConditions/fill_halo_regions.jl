@@ -43,6 +43,9 @@ const NoBCs = Union{Nothing, Missing, Tuple{Vararg{Nothing}}}
 # Whether the halo of `bc` is filled given the `fill_normal_flow_bcs` flag
 @inline fills_halo(bc, fill_normal_flow_bcs) = true
 
+# Periodic and multi-region halos hold other cells of the domain; `only_connected_halos` fills only these
+@inline fills_connected_halo(bc, only_connected_halos) = !only_connected_halos | (bc isa Union{PBC, MCBC})
+
 # Work done on `c` before the filling kernel is launched
 @inline prepare_halo_fill!(bc, c, grid, loc) = nothing
 
@@ -73,8 +76,10 @@ const ArgumentFreeClassification = Union{Value{Nothing}, Gradient, NormalFlow{No
 # Converting `args` for the device can cost more than filling the halos
 @inline halo_fill_args(bcs, args) = needs_halo_fill_args(bcs) ? args : ()
 
-@inline function fill_halo_event!(c, kernel!, bcs::Tuple{Any, Any}, loc, grid, args...; fill_normal_flow_bcs=true, kwargs...)
-    if fills_halo(bcs[1], fill_normal_flow_bcs) | fills_halo(bcs[2], fill_normal_flow_bcs)
+@inline function fill_halo_event!(c, kernel!, bcs::Tuple{Any, Any}, loc, grid, args...;
+                                  fill_normal_flow_bcs=true, only_connected_halos=false, kwargs...)
+    if (fills_halo(bcs[1], fill_normal_flow_bcs) | fills_halo(bcs[2], fill_normal_flow_bcs)) &
+       fills_connected_halo(bcs[1], only_connected_halos)
         prepare_halo_fill!(bcs[1], c, grid, loc)
         prepare_halo_fill!(bcs[2], c, grid, loc)
         kernel!(c, bcs[1], bcs[2], loc, grid, halo_fill_args(bcs, args))
@@ -82,16 +87,18 @@ const ArgumentFreeClassification = Union{Value{Nothing}, Gradient, NormalFlow{No
     return nothing
 end
 
-@inline function fill_halo_event!(c, kernel!, bcs::Tuple{Any}, loc, grid, args...; fill_normal_flow_bcs=true, kwargs...)
-    if fills_halo(bcs[1], fill_normal_flow_bcs)
+@inline function fill_halo_event!(c, kernel!, bcs::Tuple{Any}, loc, grid, args...;
+                                  fill_normal_flow_bcs=true, only_connected_halos=false, kwargs...)
+    if fills_halo(bcs[1], fill_normal_flow_bcs) & fills_connected_halo(bcs[1], only_connected_halos)
         prepare_halo_fill!(bcs[1], c, grid, loc)
         kernel!(c, bcs[1], loc, grid, halo_fill_args(bcs, args))
     end
     return nothing
 end
 
-@inline function fill_halo_event!(c, kernel!, bc, loc, grid, args...; fill_normal_flow_bcs=true, kwargs...)
-    if fills_halo(bc, fill_normal_flow_bcs)
+@inline function fill_halo_event!(c, kernel!, bc, loc, grid, args...;
+                                  fill_normal_flow_bcs=true, only_connected_halos=false, kwargs...)
+    if fills_halo(bc, fill_normal_flow_bcs) & fills_connected_halo(bc, only_connected_halos)
         prepare_halo_fill!(bc, c, grid, loc)
         kernel!(c, bc, loc, grid, halo_fill_args(bc, args))
     end
