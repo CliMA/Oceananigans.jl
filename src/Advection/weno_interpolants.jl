@@ -26,12 +26,12 @@ calculation in the `VectorInvariant` advection formulation.
 
 Smoothness polynomials different from reconstructing polynomials can be specified _only_ for functional reconstructions:
 ```julia
-_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, reconstruced_function::F, bias, smoothness_stencil, args...) where F<:Function
+biased_interpolate_xᶠᶜᶜ(i, j, k, grid, scheme, bias, reconstructed_function::F, smoothness_stencil, args...) where F<:Function
 ```
 
 For scalar reconstructions
 ```julia
-_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, bias, reconstruced_field::F) where F<:AbstractField
+biased_interpolate_xᶠᶜᶜ(i, j, k, grid, scheme, bias, reconstructed_field::F) where F<:AbstractField
 ```
 the smoothness is _always_ diagnosed from the reconstructing polynomials of `reconstructed_field`
 
@@ -464,8 +464,8 @@ end
 @inline      weno_anchor(::WENO{N}, S) where N = @inbounds S[N]
 @inline weno_differences(::WENO{N}, S) where N = @inbounds ntuple(i -> S[i+1] - S[i], Val(2N - 2))
 
-@inline function upwind_stencil(i, j, k, grid, ::WENO{N}, bias, dir, ℓ, ψ, args...) where N
-    S = stencil_nodes(i, j, k, grid, Val(N), dir, ℓ, ψ, args...)
+@inline function upwind_stencil(i, j, k, grid, scheme::WENO, bias, dir, ℓ, ψ, args...)
+    S = stencil_nodes(i, j, k, grid, scheme, dir, ℓ, ψ, args...)
     return ifelse(bias == LeftBias, S, reverse(S))
 end
 

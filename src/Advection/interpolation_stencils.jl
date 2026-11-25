@@ -1,4 +1,4 @@
-using Oceananigans.Grids: inactive_cell
+using Oceananigans.Grids: inactive_node
 
 #####
 ##### Reconstruction stencils: the 2N nodes about a point along one direction, continued beyond boundaries
@@ -11,10 +11,10 @@ using Oceananigans.Grids: inactive_cell
 @inline stencil_value(i, j, k, grid, ψ, args...)           = @inbounds ψ[i, j, k]
 @inline stencil_value(i, j, k, grid, ψ::Callable, args...) = ψ(i, j, k, grid, args...)
 
-# A node has data when the cell between it and the point is active
-@inline function has_data(node, grid, dir, ℓ, beyond_point)
-    cell = ifelse((ℓ isa Face) & beyond_point, node .- unit_vector(dir), node)
-    return !inactive_cell(cell..., grid)
+# A node at `ℓ = (ℓx, ℓy, ℓz)` has data when it is active, with the cell between it and the point standing for it along `dir`
+@inline function has_data(node, grid, dir::Val{d}, ℓ, beyond_point) where d
+    cell = ifelse((ℓ[d] isa Face) & beyond_point, node .- unit_vector(dir), node)
+    return !inactive_node(cell..., grid, Base.setindex(ℓ, Center(), d)...)
 end
 
 """
@@ -73,26 +73,45 @@ end
 end
 
 # A two-node stencil reads the two nodes next to the point
-@inline stencil_nodes(i, j, k, grid, ::AbstractAdvectionScheme{1}, dir, ℓ, ψ, args...) =ntuple(n -> stencil_value(((i, j, k) .+ (n - 2) .* unit_vector(dir))..., grid, ψ, args...), Val(2))
+@inline function stencil_nodes(i, j, k, grid, ::AbstractAdvectionScheme{1}, dir, ℓ, ψ, args...)
+    i⁻, j⁻, k⁻ = (i, j, k) .- unit_vector(dir)
+    return stencil_value(i⁻, j⁻, k⁻, grid, ψ, args...), stencil_value(i, j, k, grid, ψ, args...)
+end
 
 # The reconstruction of `Centered` (`:symmetric`) or `UpwindBiased` (`:left`, `:right`) from the nodes `S`, with coefficients of type `FT`
-@generated linear_reconstruction(S::NTuple{M}, ::Type{FT}, ::Val{shift}) where {M, FT, shift} = :($(Expr(:meta, :inline)); @inbounds @muladd $(calc_reconstruction_stencil(FT, M ÷ 2, shift, :stencil)))
+@generated function linear_reconstruction(S::NTuple{M}, ::Type{FT}, ::Val{shift}) where {M, FT, shift}
+    reconstruction = calc_reconstruction_stencil(FT, M ÷ 2, shift, :stencil)
+    return quote
+        $(Expr(:meta, :inline))
+        @inbounds @muladd $reconstruction
+    end
+end
 
 #####
-##### Interpolations along one direction: to a Face from Center nodes (ᶠ), to a Center from Face nodes (ᶜ)
+##### Interpolations along one direction to the location in their name, e.g. `biased_interpolate_xᶠᶠᶜ` reconstructs at
+##### (Face, Face, Center) from the nodes at (Center, Face, Center)
 #####
 
-for (d, ξ) in enumerate((:x, :y, :z)), (ℓ, shift) in ((Center(), 0), (Face(), 1))
-    code      = ntuple(n -> n == d ? (ℓ isa Center ? :ᶠ : :ᶜ) : :ᵃ, 3)
-    biased    = Symbol(:biased_interpolate_, ξ, code...)
-    symmetric = Symbol(:symmetric_interpolate_, ξ, code...)
-    point     = ntuple(n -> n == d ? :($((:i, :j, :k)[n]) + $shift) : (:i, :j, :k)[n], 3)
+const XFG = Union{<:XFlatGrid, <:ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:XFlatGrid}}
+const YFG = Union{<:YFlatGrid, <:ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:YFlatGrid}}
+const ZFG = Union{<:ZFlatGrid, <:ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:ZFlatGrid}}
 
-    @eval begin
-        @inline $biased(i, j, k, grid, scheme, bias, ψ, args...) = biased_interpolate($(point...), grid, scheme, bias, $(Val(d)), $ℓ, ψ, args...)
-        @inline $symmetric(i, j, k, grid, scheme, ψ, args...)    = symmetric_interpolate($(point...), grid, scheme, $(Val(d)), $ℓ, ψ, args...)
+for (d, ξ, FlatGrid) in zip(1:3, (:x, :y, :z), (:XFG, :YFG, :ZFG))
+    for ℓ in Iterators.product((Center(), Face()), (Center(), Face()), (Center(), Face()))
+        target    = Base.setindex(ℓ, ℓ[d] isa Center ? Face() : Center(), d)
+        code      = map(L -> L isa Center ? :ᶜ : :ᶠ, target)
+        biased    = Symbol(:biased_interpolate_, ξ, code...)
+        symmetric = Symbol(:symmetric_interpolate_, ξ, code...)
+        shift     = ℓ[d] isa Face ? 1 : 0
+        point     = Base.setindex((:i, :j, :k), :($((:i, :j, :k)[d]) + $shift), d)
 
-        @inline $(Symbol(:_, biased))(i, j, k, grid, scheme, args...)    = $biased(i, j, k, grid, scheme, args...)
-        @inline $(Symbol(:_, symmetric))(i, j, k, grid, scheme, args...) = $symmetric(i, j, k, grid, scheme, args...)
+        @eval begin
+            @inline $biased(i, j, k, grid, scheme, bias, ψ, args...) = biased_interpolate($(point...), grid, scheme, bias, $(Val(d)), $ℓ, ψ, args...)
+            @inline $symmetric(i, j, k, grid, scheme, ψ, args...)    = symmetric_interpolate($(point...), grid, scheme, $(Val(d)), $ℓ, ψ, args...)
+
+            # A Flat direction has a single node
+            @inline $biased(i, j, k, grid::$FlatGrid, scheme, bias, ψ, args...) = stencil_value(i, j, k, grid, ψ, args...)
+            @inline $symmetric(i, j, k, grid::$FlatGrid, scheme, ψ, args...)    = stencil_value(i, j, k, grid, ψ, args...)
+        end
     end
 end

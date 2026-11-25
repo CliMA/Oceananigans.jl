@@ -214,7 +214,6 @@ function WENOVectorInvariant(FT::DataType = Oceananigans.defaults.FloatType;
                              divergence_order = nothing,
                              kinetic_energy_gradient_order = nothing,
                              time_discretization = ExplicitTimeDiscretization(),
-                             buffer_scheme = DecreasingOrderAdvectionScheme(boundary_scheme = UpwindBiased(FT; order=1)),
                              weno_kw...)
 
     if isnothing(order) # apply global defaults
@@ -229,10 +228,10 @@ function WENOVectorInvariant(FT::DataType = Oceananigans.defaults.FloatType;
         kinetic_energy_gradient_order = nothing_to_default(kinetic_energy_gradient_order, default = order)
     end
 
-    vorticity_scheme               = WENO(FT; order=vorticity_order, buffer_scheme, weno_kw...)
-    vertical_advection_scheme      = WENO(FT; order=vertical_order, buffer_scheme, time_discretization, weno_kw...)
-    kinetic_energy_gradient_scheme = WENO(FT; order=kinetic_energy_gradient_order, buffer_scheme, weno_kw...)
-    divergence_scheme              = WENO(FT; order=divergence_order, buffer_scheme, weno_kw...)
+    vorticity_scheme               = WENO(FT; order=vorticity_order, weno_kw...)
+    vertical_advection_scheme      = WENO(FT; order=vertical_order, time_discretization, weno_kw...)
+    kinetic_energy_gradient_scheme = WENO(FT; order=kinetic_energy_gradient_order, weno_kw...)
+    divergence_scheme              = WENO(FT; order=divergence_order, weno_kw...)
 
     default_upwinding = OnlySelfUpwinding(cross_scheme = divergence_scheme)
     upwinding = nothing_to_default(upwinding; default = default_upwinding)
@@ -295,13 +294,6 @@ end
 @inline U_dot_∇v(i, j, k, grid, scheme::VectorInvariant, U) = horizontal_advection_V(i, j, k, grid, scheme, U.u, U.v) +
                                                                 vertical_advection_V(i, j, k, grid, scheme, U) +
                                                                     bernoulli_head_V(i, j, k, grid, scheme, U.u, U.v)
-
-# A VectorInvariant interpolates with the reconstruction scheme it is given
-for bias in (:_biased, :_symmetric), dir in (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :yᵃᶜᵃ)
-    interp_func = Symbol(bias, :_interpolate_, dir)
-    @eval @inline $interp_func(i, j, k, grid, ::VectorInvariant, interp_scheme::AbstractAdvectionScheme, args...) =
-                      $interp_func(i, j, k, grid, interp_scheme, args...)
-end
 
 #####
 #####  Vertical advection + Kinetic Energy gradient. 3 Formulations:
@@ -396,7 +388,7 @@ end
     Sζ = scheme.vorticity_stencil
 
     @inbounds v̂ = ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, v) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
-    ζᴿ = _biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, scheme.vorticity_scheme, bias(v̂), ζ₃ᶠᶠᶜ, Sζ, u, v)
+    ζᴿ = biased_interpolate_yᶠᶜᶜ(i, j, k, grid, scheme.vorticity_scheme, bias(v̂), ζ₃ᶠᶠᶜ, Sζ, u, v)
 
     return - v̂ * ζᴿ
 end
@@ -406,7 +398,7 @@ end
     Sζ = scheme.vorticity_stencil
 
     @inbounds û = ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, u) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
-    ζᴿ = _biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, scheme.vorticity_scheme, bias(û), ζ₃ᶠᶠᶜ, Sζ, u, v)
+    ζᴿ = biased_interpolate_xᶜᶠᶜ(i, j, k, grid, scheme.vorticity_scheme, bias(û), ζ₃ᶠᶠᶜ, Sζ, u, v)
 
     return + û * ζᴿ
 end
@@ -421,12 +413,12 @@ end
 
 @inline function upwinded_vorticityᶠᶜᶜ(i, j, k, grid, scheme, u, v)
     v̂ = ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, v) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
-    return _biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, scheme.vorticity_scheme.scheme, bias(v̂), ζ₃ᶠᶠᶜ, scheme.vorticity_stencil, u, v)
+    return biased_interpolate_yᶠᶜᶜ(i, j, k, grid, scheme.vorticity_scheme.scheme, bias(v̂), ζ₃ᶠᶠᶜ, scheme.vorticity_stencil, u, v)
 end
 
 @inline function upwinded_vorticityᶜᶠᶜ(i, j, k, grid, scheme, u, v)
     û = ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, u) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
-    return _biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, scheme.vorticity_scheme.scheme, bias(û), ζ₃ᶠᶠᶜ, scheme.vorticity_stencil, u, v)
+    return biased_interpolate_xᶜᶠᶜ(i, j, k, grid, scheme.vorticity_scheme.scheme, bias(û), ζ₃ᶠᶠᶜ, scheme.vorticity_stencil, u, v)
 end
 
 @inline Δx_v_ζᶜᶠᶜ(i, j, k, grid, scheme, u, v) = Δx_qᶜᶠᶜ(i, j, k, grid, v) * upwinded_vorticityᶜᶠᶜ(i, j, k, grid, scheme, u, v)
@@ -465,6 +457,5 @@ end
 
 const AS = AbstractSmoothnessStencil
 
-# To adapt passing smoothness stencils to upwind biased schemes and centered schemes (not WENO)
-@inline symmetric_interpolate(i, j, k, grid, s::Centered, dir, ℓ, f::Callable, ::AS, args...) = symmetric_interpolate(i, j, k, grid, s, dir, ℓ, f, args...)
-@inline biased_interpolate(i, j, k, grid, s::UpwindBiased, bias, dir, ℓ, f::Callable, ::AS, args...) = biased_interpolate(i, j, k, grid, s, bias, dir, ℓ, f, args...)
+# Schemes other than WENO reconstruct without a smoothness stencil
+@inline stencil_value(i, j, k, grid, ψ::Callable, ::AS, args...) = ψ(i, j, k, grid, args...)

@@ -25,8 +25,8 @@ using Oceananigans.Operators: δxᶜᶜᶜ, δxᶠᶠᶜ, δyᶜᶜᶜ, δyᶠ�
     cross_scheme = scheme.upwinding.cross_scheme
 
     @inbounds û = u[i, j, k]
-    δvˢ = _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, cross_scheme, δy_V_plus_∂t_σ, u, v)
-    δuᴿ =    _biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.divergence_scheme, bias(û), δx_U, δU_stencil, u, v)
+    δvˢ = symmetric_interpolate_xᶠᶜᶜ(i, j, k, grid, cross_scheme, δy_V_plus_∂t_σ, u, v)
+    δuᴿ =    biased_interpolate_xᶠᶜᶜ(i, j, k, grid, scheme.divergence_scheme, bias(û), δx_U, δU_stencil, u, v)
 
     return û * (δvˢ + δuᴿ)
 end
@@ -37,8 +37,8 @@ end
     cross_scheme = scheme.upwinding.cross_scheme
 
     @inbounds v̂ = v[i, j, k]
-    δuˢ = _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, cross_scheme, δx_U_plus_∂t_σ, u, v)
-    δvᴿ =    _biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.divergence_scheme, bias(v̂), δy_V, δV_stencil, u, v)
+    δuˢ = symmetric_interpolate_yᶜᶠᶜ(i, j, k, grid, cross_scheme, δx_U_plus_∂t_σ, u, v)
+    δvᴿ =    biased_interpolate_yᶜᶠᶜ(i, j, k, grid, scheme.divergence_scheme, bias(v̂), δy_V, δV_stencil, u, v)
 
     return v̂ * (δuˢ + δvᴿ)
 end
@@ -61,14 +61,14 @@ end
 @inline self_upwinding_flux_Wv(i, j, k, grid, scheme, vertical_scheme, td, W, v) = vertical_flux_Wv(i, j, k, grid, vertical_scheme, W, v)
 
 @inline function self_upwinding_flux_Wu(i, j, k, grid, scheme, vertical_scheme::UpwindScheme, ::ETD, W, u)
-    w̃  = _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.upwinding.cross_scheme, Az_qᶜᶜᶠ, W)
-    uᴿ = _biased_interpolate_zᵃᵃᶠ(i, j, k, grid, vertical_scheme, bias(w̃), u)
+    w̃  = symmetric_interpolate_xᶠᶜᶠ(i, j, k, grid, scheme.upwinding.cross_scheme, Az_qᶜᶜᶠ, W)
+    uᴿ = biased_interpolate_zᶠᶜᶠ(i, j, k, grid, vertical_scheme, bias(w̃), u)
     return conditional_flux(i, j, k, grid, Face(), Center(), Face(), zero(grid), w̃ * uᴿ)
 end
 
 @inline function self_upwinding_flux_Wv(i, j, k, grid, scheme, vertical_scheme::UpwindScheme, ::ETD, W, v)
-    w̃  = _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.upwinding.cross_scheme, Az_qᶜᶜᶠ, W)
-    vᴿ = _biased_interpolate_zᵃᵃᶠ(i, j, k, grid, vertical_scheme, bias(w̃), v)
+    w̃  = symmetric_interpolate_yᶜᶠᶠ(i, j, k, grid, scheme.upwinding.cross_scheme, Az_qᶜᶜᶠ, W)
+    vᴿ = biased_interpolate_zᶜᶠᶠ(i, j, k, grid, vertical_scheme, bias(w̃), v)
     return conditional_flux(i, j, k, grid, Center(), Face(), Face(), zero(grid), w̃ * vᴿ)
 end
 
@@ -94,8 +94,8 @@ end
     δu²_stencil  = scheme.upwinding.δu²_stencil
     cross_scheme = scheme.upwinding.cross_scheme
 
-    δKvˢ = _symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, cross_scheme, δx_v², u, v)
-    δKuᴿ =    _biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.kinetic_energy_gradient_scheme, bias(û), δx_u², δu²_stencil, u, v)
+    δKvˢ = symmetric_interpolate_yᶠᶜᶜ(i, j, k, grid, cross_scheme, δx_v², u, v)
+    δKuᴿ =    biased_interpolate_xᶠᶜᶜ(i, j, k, grid, scheme.kinetic_energy_gradient_scheme, bias(û), δx_u², δu²_stencil, u, v)
 
     return (δKuᴿ + δKvˢ) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
 end
@@ -107,8 +107,8 @@ end
     δv²_stencil  = scheme.upwinding.δv²_stencil
     cross_scheme = scheme.upwinding.cross_scheme
 
-    δKuˢ = _symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, cross_scheme, δy_u², u, v)
-    δKvᴿ =    _biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.kinetic_energy_gradient_scheme, bias(v̂), δy_v², δv²_stencil, u, v)
+    δKuˢ = symmetric_interpolate_xᶜᶠᶜ(i, j, k, grid, cross_scheme, δy_u², u, v)
+    δKvᴿ =    biased_interpolate_yᶜᶠᶜ(i, j, k, grid, scheme.kinetic_energy_gradient_scheme, bias(v̂), δy_v², δv²_stencil, u, v)
 
     return (δKvᴿ + δKuˢ) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
 end

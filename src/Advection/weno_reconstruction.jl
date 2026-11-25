@@ -2,16 +2,16 @@
 ##### Weighted Essentially Non-Oscillatory (WENO) advection scheme
 #####
 
-struct WENO{N, FT, WCT, TD, PP, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N, FT, TD}
+struct WENO{N, FT, WCT, TD, PP, EX, SI} <: AbstractUpwindBiasedAdvectionScheme{N, FT, TD}
     bounds :: PP
-    buffer_scheme :: CA
+    extrapolation :: EX
     advecting_velocity_scheme :: SI
     time_discretization :: TD
-    function WENO{N, FT, WCT}(bounds::PP, buffer_scheme::CA,
+    function WENO{N, FT, WCT}(bounds::PP, extrapolation::EX,
                               advecting_velocity_scheme :: SI,
-                              time_discretization :: TD) where {N, FT, WCT, PP, CA, SI, TD}
+                              time_discretization :: TD) where {N, FT, WCT, PP, EX, SI, TD}
 
-        return new{N, FT, WCT, TD, PP, CA, SI}(bounds, buffer_scheme, advecting_velocity_scheme, time_discretization)
+        return new{N, FT, WCT, TD, PP, EX, SI}(bounds, extrapolation, advecting_velocity_scheme, time_discretization)
     end
 end
 
@@ -31,9 +31,8 @@ Keyword arguments
                         Default: `Nothing` (deferred; a architecture-dependent default is assigned in
                         `materialize_advection`)
 - `order`: The order of the WENO advection scheme. Default: 5.
-- `buffer_scheme`: The reconstruction used in a cell whose stencil does not fit, i.e. against a boundary. With a
-                   `DecreasingOrderAdvectionScheme` the chain steps the order down by two until third order and then
-                   reaches for its `boundary_scheme`. Default: `DecreasingOrderAdvectionScheme(boundary_scheme = Centered(FT; order=2))`.
+- `extrapolation`: The ghosts that replace the stencil nodes without data beyond a boundary, `MinmodExtrapolation()` or
+                   `VanLeerExtrapolation()`. Default: `MinmodExtrapolation()`.
 - `bounds` (experimental): A tuple `(cᵐⁱⁿ, cᵐᵃˣ)` switching on the maximum-principle-satisfying limiter of
                            [Zhang and Shu (2010)](@cite ZhangShu2010), which rescales the reconstruction of
                            every cell towards the cell mean so that the advective update stays within `bounds`.
@@ -55,8 +54,7 @@ julia> using Oceananigans
 
 julia> WENO()
 WENO{3, Float64, Nothing}(order=5)
-├── buffer_scheme: WENO{2, Float64, Nothing}(order=3)
-│   └── buffer_scheme: Centered(order=2)
+├── extrapolation: MinmodExtrapolation()
 └── advecting_velocity_scheme: Centered(order=2)
 ```
 
@@ -66,31 +64,23 @@ yet minimally-dissipative advection scheme):
 ```jldoctest weno
 julia> WENO(order=9)
 WENO{5, Float64, Nothing}(order=9)
-├── buffer_scheme: WENO{4, Float64, Nothing}(order=7)
-│   └── buffer_scheme: WENO{3, Float64, Nothing}(order=5)
-│       └── buffer_scheme: WENO{2, Float64, Nothing}(order=3)
-│           └── buffer_scheme: Centered(order=2)
+├── extrapolation: MinmodExtrapolation()
 └── advecting_velocity_scheme: Centered(order=2)
 ```
 
-To terminate the chain in a boundary reconstruction other than the default:
+To continue the stencil beyond boundaries with van Leer slopes:
 
 ```jldoctest weno
-julia> WENO(order=7, buffer_scheme=DecreasingOrderAdvectionScheme(boundary_scheme=UpwindBiased(order=1)))
+julia> WENO(order=7, extrapolation=VanLeerExtrapolation())
 WENO{4, Float64, Nothing}(order=7)
-├── buffer_scheme: WENO{3, Float64, Nothing}(order=5)
-│   └── buffer_scheme: WENO{2, Float64, Nothing}(order=3)
-│       └── buffer_scheme: UpwindBiased(order=1)
+├── extrapolation: VanLeerExtrapolation()
 └── advecting_velocity_scheme: Centered(order=2)
 ```
 
 ```jldoctest weno
 julia> WENO(order=9, bounds=(0, 1))
 WENO{5, Float64, Nothing}(order=9, bounds=(0.0, 1.0))
-├── buffer_scheme: WENO{4, Float64, Nothing}(order=7, bounds=(0.0, 1.0))
-│   └── buffer_scheme: WENO{3, Float64, Nothing}(order=5, bounds=(0.0, 1.0))
-│       └── buffer_scheme: WENO{2, Float64, Nothing}(order=3, bounds=(0.0, 1.0))
-│           └── buffer_scheme: Centered(order=2)
+├── extrapolation: MinmodExtrapolation()
 └── advecting_velocity_scheme: Centered(order=2)
 ```
 
@@ -98,8 +88,7 @@ To build a WENO scheme that uses approximate division on a GPU to execute faster
 ```jldoctest weno
 julia> WENO(;weight_computation=Oceananigans.Utils.BackendOptimizedDivision)
 WENO{3, Float64, Oceananigans.Utils.BackendOptimizedDivision}(order=5)
-├── buffer_scheme: WENO{2, Float64, Oceananigans.Utils.BackendOptimizedDivision}(order=3)
-│   └── buffer_scheme: Centered(order=2)
+├── extrapolation: MinmodExtrapolation()
 └── advecting_velocity_scheme: Centered(order=2)
 ```
 
@@ -111,7 +100,7 @@ References
 function WENO(FT::DataType=Oceananigans.defaults.FloatType;
               weight_computation::DataType=Nothing,
               order = 5,
-              buffer_scheme = DecreasingOrderAdvectionScheme(boundary_scheme = Centered(FT; order=2)),
+              extrapolation = MinmodExtrapolation(),
               time_discretization = ExplicitTimeDiscretization(),
               bounds = nothing,
               maximum_courant_number = 5//18)
@@ -123,19 +112,15 @@ function WENO(FT::DataType=Oceananigans.defaults.FloatType;
 
     if order < 3
         # WENO(order=1) is equivalent to UpwindBiased(order=1)
-        return UpwindBiased(FT; order=1)
+        return UpwindBiased(FT; order=1, extrapolation)
     else
         advecting_velocity_scheme = Centered(FT; order=2)
-
-        if buffer_scheme isa DecreasingOrderAdvectionScheme
-            buffer_scheme = order ≤ 3 ? buffer_scheme.boundary_scheme : WENO(FT; order=order-2, bounds, maximum_courant_number, weight_computation, buffer_scheme)
-        end
 
         N = Int((order + 1) ÷ 2)
         preserved_bounds = isnothing(bounds) ? nothing :
             BoundsPreservation(convert(FT, bounds[1]), convert(FT, bounds[2]), convert(FT, maximum_courant_number), nothing)
 
-        return WENO{N, FT, weight_computation}(preserved_bounds, buffer_scheme, advecting_velocity_scheme, time_discretization)
+        return WENO{N, FT, weight_computation}(preserved_bounds, extrapolation, advecting_velocity_scheme, time_discretization)
     end
 end
 
@@ -146,27 +131,19 @@ Base.summary(a::WENO{N, FT, WCT, TD, PP}) where {N, FT, WCT, TD, PP} = string("W
 
 function Base.show(io::IO, a::WENO)
     print(io, summary(a), '\n')
-
-    # Print buffer scheme tree recursively
-    if !isnothing(a.buffer_scheme)
-        print_buffer_scheme_tree(io, a.buffer_scheme, "", false)
-        println(io)
-    else
-        print(io, "├── buffer_scheme: ", summary(a.buffer_scheme), '\n')
-    end
-
+    print(io, "├── extrapolation: ", summary(a.extrapolation), '\n')
     print(io, "└── advecting_velocity_scheme: ", summary(a.advecting_velocity_scheme))
 end
 
 Adapt.adapt_structure(to, scheme::WENO{N, FT, WCT}) where {N, FT, WCT} =
      WENO{N, FT, WCT}(Adapt.adapt(to, scheme.bounds),
-                      Adapt.adapt(to, scheme.buffer_scheme),
+                      Adapt.adapt(to, scheme.extrapolation),
                       Adapt.adapt(to, scheme.advecting_velocity_scheme),
                       Adapt.adapt(to, scheme.time_discretization))
 
 Architectures.on_architecture(to, scheme::WENO{N, FT, WCT}) where {N, FT, WCT} =
     WENO{N, FT, WCT}(on_architecture(to, scheme.bounds),
-                     on_architecture(to, scheme.buffer_scheme),
+                     on_architecture(to, scheme.extrapolation),
                      on_architecture(to, scheme.advecting_velocity_scheme),
                      on_architecture(to, scheme.time_discretization))
 
