@@ -133,6 +133,41 @@ function test_recycled_inflow_model(arch, FT)
     return nothing
 end
 
+function test_recycled_inflow_hydrostatic_model(arch, FT)
+    N = 8
+    grid = RectilinearGrid(arch, FT; size = (2N, N, N), x = (0, 2N), y = (0, N), z = (0, N), topology = (Open, Periodic, Bounded))
+    Hx, Hy, Hz = halo_size(grid)
+
+    # 10% above the transport of the recycled plane, so the target has to shift the inflow
+    Q = 11 * boundary_total_area(:west, grid) / 10
+    recycling(; kwargs...) = TurbulenceRecycling(FT; recycling_distance = N, kwargs...)
+
+    u_bcs = FieldBoundaryConditions(west = NormalFlowBoundaryCondition(0; scheme = recycling(target_transport = Q)),
+                                    east = NormalFlowBoundaryCondition(1))
+    c_bcs = FieldBoundaryConditions(west = ValueBoundaryCondition(1; scheme = recycling(damping = (y, z, t) -> z / N)))
+
+    model = HydrostaticFreeSurfaceModel(grid; tracers = :c, buoyancy = nothing, boundary_conditions = (u = u_bcs, c = c_bcs))
+
+    set!(model, u = (x, y, z) -> 1 + sin(2π * y / N) * sin(π * z / N) / 10,
+                c = (x, y, z) -> sin(2π * x / N) + cos(2π * y / N))
+
+    for _ in 1:3
+        time_step!(model, FT(1 / 20))
+    end
+
+    u = model.velocities.u
+    c = model.tracers.c
+
+    west_transport = Field(Integral(view(u, 1, :, :), dims = (2, 3)))
+    @test Array(interior(west_transport))[1, 1, 1] ≈ Q
+
+    z = reshape(Array(znodes(grid, Center())), 1, N)
+    c_halo = Array(parent(c))[Hx, (1:N) .+ Hy, (1:N) .+ Hz]
+    @test c_halo ≈ 1 .+ z ./ N .* Array(interior(c))[N, :, :]
+
+    return nothing
+end
+
 @testset "Turbulence recycling [$(summary(arch)), $FT]" for arch in archs, FT in float_types
     @testset "Recycled plane on the $side boundary, placed by $placement" for side in (:west, :east, :south, :north, :bottom, :top),
                                                                               placement in (:recycling_distance, :recycling_index)
@@ -149,4 +184,5 @@ end
     end
 
     test_recycled_inflow_model(arch, FT)
+    test_recycled_inflow_hydrostatic_model(arch, FT)
 end
