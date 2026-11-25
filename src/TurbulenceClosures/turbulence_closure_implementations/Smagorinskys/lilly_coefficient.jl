@@ -121,10 +121,10 @@ Return the stability function
 
 when ``N^2 > 0``, and 1 otherwise.
 """
-@inline function stability(N²::FT, Σ²::FT, cᵇ::FT) where FT
-    N²⁺ = max(zero(FT), N²) # clip
-    ς² = one(FT) - min(one(FT), cᵇ * N²⁺ / Σ²)
-    return ifelse(Σ²==0, zero(FT), sqrt(ς²))
+@inline function stability(N², Σ², cᵇ)
+    N²⁺ = max(zero(N²), N²) # clip
+    ς² = 1 - min(1, cᵇ * N²⁺ / Σ²)
+    return ifelse(Σ²==0, zero(ς²), sqrt(ς²))
 end
 
 @inline function square_smagorinsky_coefficient(i, j, k, grid, closure::SmagorinskyLilly,

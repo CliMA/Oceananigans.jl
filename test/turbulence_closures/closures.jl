@@ -427,6 +427,20 @@ end
             end
         end
 
+        @testset "SmagorinskyLilly($closure_FT) on a $grid_FT grid" for (closure_FT, grid_FT) in ((Float64, Float32), (Float32, Float64))
+            grid = RectilinearGrid(grid_FT; size=(2, 2, 2), extent=(1, 1, 1))
+
+            function eddy_viscosity(closure)
+                model = NonhydrostaticModel(grid; closure, buoyancy=BuoyancyTracer(), tracers=:b)
+                set!(model, u=(x, y, z) -> z, b=(x, y, z) -> z / 10)
+                return interior(model.closure_fields.νₑ)
+            end
+
+            νₑ = eddy_viscosity(SmagorinskyLilly(closure_FT))
+            @test νₑ ≈ eddy_viscosity(SmagorinskyLilly(grid_FT)) rtol=sqrt(eps(Float32))
+            @test maximum(νₑ) > 0
+        end
+
         c = Center()
         f = Face()
         ri_based = @test_logs (:warn, r"^RiBasedVerticalDiffusivity is an experimental turbulence closure") RiBasedVerticalDiffusivity()
