@@ -13,6 +13,7 @@ using Oceananigans.BoundaryConditions: BoundaryConditions, DefaultBoundaryCondit
                                        fill_halo_regions!
 using Oceananigans.BuoyancyFormulations: BuoyancyForce, BuoyancyTracer, SalinitySeawaterBuoyancy, SeawaterBuoyancy,
                                          TemperatureSeawaterBuoyancy, top_buoyancy_flux, ∂z_b
+using Oceananigans.DistributedComputations: DistributedGrid
 using Oceananigans.Fields: CenterField, XFaceField, YFaceField, ZFaceField, ZeroField
 using Oceananigans.Forcings: surface_radiative_buoyancy_flux, transmitted_fraction, transmitted_fraction_derivative,
                              transmitted_thickness
