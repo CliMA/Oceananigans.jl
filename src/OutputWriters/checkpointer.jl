@@ -365,9 +365,9 @@ function Oceananigans.restore_prognostic_state!(restored::NonCheckpointingOutput
         end
 
         averaged_outputs = [output for output in values(restored.outputs)
-                            if output isa WindowedTimeAverage]
+                            if output isa IntervalWindowedTimeAverage]
         if !isempty(averaged_outputs)
-            first_average = first(averaged_outputs)::WindowedTimeAverage
+            first_average = first(averaged_outputs)::IntervalWindowedTimeAverage
             restored.schedule.first_actuation_time = first_average.schedule.first_actuation_time
             restored.schedule.actuations = first_average.schedule.actuations
         end

@@ -10,6 +10,7 @@ using Oceananigans.TurbulenceClosures.Smagorinskys: Smagorinsky,
 using Oceananigans.Models.ShallowWaterModels: ShallowWaterScalarDiffusivity
 using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: ForwardBackwardScheme
 using Oceananigans.Grids: MutableVerticalDiscretization
+using Oceananigans.OutputWriters: AveragedSpecifiedTimes, next_actuation_time
 
 import Oceananigans.Biogeochemistry: update_biogeochemical_state!
 
@@ -1559,7 +1560,7 @@ end
 #
 # If the WindowedTimeAverage state isn't properly checkpointed/restored, the restored
 # simulation would lose the partial accumulated average and produce incorrect output.
-function test_windowed_time_average_continuation_correctness(arch, WriterType)
+function test_windowed_time_average_continuation_correctness(arch, WriterType, schedule)
     Nx, Ny, Nz = 8, 8, 8
     Lx, Ly, Lz = 1, 1, 1
     Δt = 0.1
@@ -1584,8 +1585,8 @@ function test_windowed_time_average_continuation_correctness(arch, WriterType)
 
     simulation_A = Simulation(model_A; Δt=Δt, stop_iteration=10, verbose=false)
 
-    simulation_A.output_writers[:averaged] = WriterType(model_A, model_A.velocities,
-                                                       schedule = AveragedTimeInterval(1.0, window=0.5),
+    simulation_A.output_writers[:averaged] = WriterType(model_A, model_A.velocities;
+                                                       schedule,
                                                        filename = "$(prefix_A)$(ext)",
                                                        overwrite_files = true)
 
@@ -1601,8 +1602,8 @@ function test_windowed_time_average_continuation_correctness(arch, WriterType)
     simulation_B.output_writers[:checkpointer] = Checkpointer(model_B,
                                                               schedule = IterationInterval(7),
                                                               prefix = prefix_B)
-    simulation_B.output_writers[:averaged] = WriterType(model_B, model_B.velocities,
-                                                        schedule = AveragedTimeInterval(1.0, window=0.5),
+    simulation_B.output_writers[:averaged] = WriterType(model_B, model_B.velocities;
+                                                        schedule,
                                                         filename = "$(prefix_B)$(ext)",
                                                         overwrite_files = true)
 
@@ -1621,8 +1622,8 @@ function test_windowed_time_average_continuation_correctness(arch, WriterType)
     simulation_B_new.output_writers[:checkpointer] = Checkpointer(model_B_new,
                                                                   schedule = IterationInterval(7),
                                                                   prefix = prefix_B)
-    simulation_B_new.output_writers[:averaged] = WriterType(model_B_new, model_B_new.velocities,
-                                                            schedule = AveragedTimeInterval(1.0, window=0.5),
+    simulation_B_new.output_writers[:averaged] = WriterType(model_B_new, model_B_new.velocities;
+                                                            schedule,
                                                             filename = "$(prefix_B)_restored$(ext)",
                                                             overwrite_files = true)
 
@@ -1633,9 +1634,7 @@ function test_windowed_time_average_continuation_correctness(arch, WriterType)
     wta_A = simulation_A.output_writers[:averaged].outputs[output_key]
     wta_B = simulation_B_new.output_writers[:averaged].outputs[output_key]
 
-    # Both should have completed exactly 1 averaging window
-    @test wta_A.schedule.actuations == 1
-    @test wta_B.schedule.actuations == 1
+    @test next_actuation_time(wta_A.schedule) == next_actuation_time(wta_B.schedule)
 
     # The accumulated averages should be identical
     @test all(Array(wta_A.result) .≈ Array(wta_B.result))
@@ -2534,9 +2533,11 @@ for arch in archs
         end
     end
 
-    for WriterType in (JLD2Writer, NetCDFWriter)
-        @testset "WindowedTimeAverage continuation correctness [$WriterType] [$(typeof(arch))]" begin
-            test_windowed_time_average_continuation_correctness(arch, WriterType)
+    for WriterType in (JLD2Writer, NetCDFWriter),
+        schedule in (AveragedTimeInterval(1.0, window=0.5), AveragedSpecifiedTimes([1.0, 2.0], window=0.5))
+
+        @testset "WindowedTimeAverage continuation correctness [$WriterType, $(nameof(typeof(schedule)))] [$(typeof(arch))]" begin
+            test_windowed_time_average_continuation_correctness(arch, WriterType, schedule)
         end
     end
 
