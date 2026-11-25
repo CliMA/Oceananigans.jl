@@ -1,6 +1,7 @@
 include(joinpath(@__DIR__, "..", "setup", "reactant_test_utils.jl"))
 
 using CUDA
+using KernelAbstractions: get_backend
 using Statistics: mean
 using Oceananigans.OutputReaders: cpu_interpolating_time_indices, Clamp, Cyclical, update_field_time_series!, InMemory,
                                   TimeSeriesInterpolation
@@ -9,6 +10,27 @@ using Oceananigans.Units: Time
 arch = ReactantState()
 
 ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
+
+# A vertical discretization that holds a struct beside its coordinate arrays, as Breeze's
+# terrain-following discretization holds its decay formulation
+struct DecayFormulation{FT}
+    scale :: FT
+end
+
+struct StructuredVerticalDiscretization{C, D, E, F, FM} <: Oceananigans.Grids.AbstractVerticalCoordinate
+    cᵃᵃᶠ :: C
+    cᵃᵃᶜ :: D
+    Δᵃᵃᶠ :: E
+    Δᵃᵃᶜ :: F
+    formulation :: FM
+end
+
+Adapt.adapt_structure(to, z::StructuredVerticalDiscretization) =
+    StructuredVerticalDiscretization(Adapt.adapt(to, z.cᵃᵃᶠ),
+                                     Adapt.adapt(to, z.cᵃᵃᶜ),
+                                     Adapt.adapt(to, z.Δᵃᵃᶠ),
+                                     Adapt.adapt(to, z.Δᵃᵃᶜ),
+                                     Adapt.adapt(to, z.formulation))
 
 @testset "Reactant unit tests" begin
     @testset "Checkbounds = auto" begin
@@ -116,7 +138,7 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
 
         for name in propertynames(llg)
             p = getproperty(llg, name)
-            if !(name ∈ (:architecture, :z))
+            if !(name ∈ (:architecture, :z, :south_pole, :north_pole))
                 @test (p isa Number) || (p isa StaticStridesOffsetArray{FT, <:Any, <:Any, <:Any, <:Reactant.AbstractConcreteArray})
             end
         end
@@ -131,7 +153,7 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
 
         for name in propertynames(constant_llg)
             p = getproperty(constant_llg, name)
-            if !(name ∈ (:architecture, :z))
+            if !(name ∈ (:architecture, :z, :south_pole, :north_pole))
                 @test (p isa Number) || (p isa StaticStridesOffsetArray{FT, <:Any, <:Any, <:Any, <:Array})
             end
         end
@@ -236,6 +258,16 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
         @test minimum_zspacing(grid) ≈ minimum(zspacings(grid))
     end
 
+    @testset "KernelFunctionOperation as a kernel argument on LatitudeLongitudeGrid" begin
+        grid = LatitudeLongitudeGrid(arch; size=(4, 4, 2), longitude=(0, 1), latitude=(0, 1), z=(-1, 0))
+        c = CenterField(grid)
+        out = CenterField(grid)
+        set!(c, 1)
+
+        @jit compute_doubled!(out, c)
+        @test all(Array(interior(out)) .== 2)
+    end
+
     @testset "Field reductions on LatitudeLongitudeGrid" begin
         grid = LatitudeLongitudeGrid(arch;
                                      size = (10, 10, 10),
@@ -304,6 +336,33 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
         @test Array(interior(u)) == repeat(column, outer=(4, 4, 1))
     end
 
+    @testset "Indexing fields with a traced element type" begin
+        grid = RectilinearGrid(arch; size = (4, 4, 4), extent = (1, 1, 1))
+        u = CenterField(grid)
+        values = reshape(collect(1.0:64.0), 4, 4, 4)
+        set!(u, values)
+
+        # Fields allocated inside a compiled function have a traced element type. Indexing them must not
+        # be ambiguous with Reactant's methods for arrays of traced numbers, and must drop the index along
+        # reduced dimensions.
+        function index_traced_fields!(u)
+            full = CenterField(u.grid)
+            interior(full) .= interior(u)
+            column = Field{Nothing, Nothing, Center}(u.grid)
+            interior(column) .= 3
+            @allowscalar begin
+                column[1, 1, 2] = 2 * column[3, 4, 2]
+                u[1, 1, 1] = full[2, 2, 1] + column[2, 3, 2]
+            end
+            return nothing
+        end
+
+        compiled_index_traced_fields! = @compile sync=true index_traced_fields!(u)
+        compiled_index_traced_fields!(u)
+
+        @test Array(interior(u))[1, 1, 1] ≈ values[2, 2, 1] + 6
+    end
+
     @testset "LatitudeLongitudeGrid with a non-static vertical coordinate" begin
         # `on_architecture(::ReactantState, ::LatitudeLongitudeGrid)` rebuilds the grid field by
         # field. Vertical coordinates other than `StaticVerticalDiscretization` used to hit a
@@ -333,6 +392,32 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
 
         cd = Field(c * d)
         @test all(≈(value_c * value_d), Array(interior(cd)))
+
+        Δz = Field(zspacings(grid, Center(), Center(), Center()))
+        @test all(≈(1 / Nz), Array(interior(Δz)))
+    end
+
+    @testset "Tracing a RectilinearGrid whose vertical discretization holds a struct" begin
+        Nz = 4
+        z = collect(range(-1, 0, length = Nz + 1))
+        static = RectilinearGrid(arch; size = (2, 2, Nz), x = (0, 1), y = (0, 1), z,
+                                 topology = (Periodic, Periodic, Bounded))
+
+        zˢ = StructuredVerticalDiscretization(static.z.cᵃᵃᶠ, static.z.cᵃᵃᶜ, static.z.Δᵃᵃᶠ, static.z.Δᵃᵃᶜ,
+                                              DecayFormulation(0.5))
+
+        grid = RectilinearGrid{Periodic, Periodic, Bounded}(arch,
+                                                            static.Nx, static.Ny, static.Nz,
+                                                            static.Hx, static.Hy, static.Hz,
+                                                            static.Lx, static.Ly, static.Lz,
+                                                            static.Δxᶠᵃᵃ, static.Δxᶜᵃᵃ, static.xᶠᵃᵃ, static.xᶜᵃᵃ,
+                                                            static.Δyᵃᶠᵃ, static.Δyᵃᶜᵃ, static.yᵃᶠᵃ, static.yᵃᶜᵃ,
+                                                            zˢ,
+                                                            static.Δx⁻¹ᶠᵃᵃ, static.Δx⁻¹ᶜᵃᵃ, static.Δy⁻¹ᵃᶠᵃ, static.Δy⁻¹ᵃᶜᵃ)
+
+        # Any kernel launch traces the grid's type, which promoted the grid's float type over `eltype`
+        # of the formulation, `Any`
+        @test minimum_zspacing(grid) ≈ 1 / Nz
 
         Δz = Field(zspacings(grid, Center(), Center(), Center()))
         @test all(≈(1 / Nz), Array(interior(Δz)))
@@ -472,6 +557,26 @@ end
     @test maximum(δρᵢ) == maximum(Array(interior(δρᵢ)))
 end
 
+@testset "Fields allocated inside a compiled function on a lat-lon grid" begin
+    # `c = λ`, so a polar halo (the zonal mean) differs from a zero-gradient one
+    doubled(c) = parent(compute!(Field(2c)))
+
+    for latitude in ((30, 40), (0, 90), (-90, 0), (-90, 90))
+        kw = (; size=(8, 8, 4), longitude=(0, 360), latitude, z=(0, 1000))
+        cpu_grid = LatitudeLongitudeGrid(CPU(); kw...)
+        grid = LatitudeLongitudeGrid(ReactantState(); kw...)
+        pole(reaches) = reaches ? Oceananigans.Grids.Pole() : nothing
+        @test (grid.south_pole, grid.north_pole) === (cpu_grid.south_pole, cpu_grid.north_pole) ===
+              (pole(latitude[1] == -90), pole(latitude[2] == 90))
+
+        cpu_c = CenterField(cpu_grid)
+        c = CenterField(grid)
+        set!(cpu_c, (λ, φ, z) -> λ)
+        set!(c, (λ, φ, z) -> λ)
+        @test Array(@jit doubled(c)) ≈ Array(doubled(cpu_c))
+    end
+end
+
 # A field set from another one on a different grid is interpolated on the CPU, with the source's halos
 # filled: the cells next to a boundary read them
 @testset "set! between ReactantState fields on different grids" begin
@@ -502,6 +607,28 @@ end
     end
 end
 
+# Without host copies, reducing or broadcasting over a node view reads device arrays element by element: a
+# scalar-indexing error
+@testset "Node accessors of ReactantState grids return host arrays" begin
+    latlon_grid(arch) = LatitudeLongitudeGrid(arch; size=(16, 16, 4), longitude=(-100, -90), latitude=(30, 40), z=(0, 1000))
+    stretched_grid(arch) = RectilinearGrid(arch; size=(4, 4, 4), x=[0, 1, 3, 6, 10], y=[0, 2, 3, 7, 8], z=[0, 1, 3, 6, 10])
+
+    reactant_latlon, cpu_latlon = latlon_grid(ReactantState()), latlon_grid(CPU())
+    reactant_stretched, cpu_stretched = stretched_grid(ReactantState()), stretched_grid(CPU())
+
+    for ℓ in (Center(), Face()), with_halos in (false, true)
+        @test xnodes(reactant_latlon, ℓ, ℓ; with_halos) ≈ xnodes(cpu_latlon, ℓ, ℓ; with_halos)
+        @test ynodes(reactant_latlon, ℓ; with_halos) ≈ ynodes(cpu_latlon, ℓ; with_halos)
+        @test extrema(λnodes(reactant_latlon, ℓ; with_halos)) == extrema(λnodes(cpu_latlon, ℓ; with_halos))
+        @test extrema(φnodes(reactant_latlon, ℓ; with_halos)) == extrema(φnodes(cpu_latlon, ℓ; with_halos))
+        @test extrema(znodes(reactant_latlon, ℓ; with_halos)) == extrema(znodes(cpu_latlon, ℓ; with_halos))
+
+        @test extrema(xnodes(reactant_stretched, ℓ; with_halos)) == extrema(xnodes(cpu_stretched, ℓ; with_halos))
+        @test extrema(ynodes(reactant_stretched, ℓ; with_halos)) == extrema(ynodes(cpu_stretched, ℓ; with_halos))
+        @test extrema(znodes(reactant_stretched, ℓ; with_halos)) == extrema(znodes(cpu_stretched, ℓ; with_halos))
+    end
+end
+
 @testset "Updating a FieldTimeSeries whose window holds every snapshot, at a traced time" begin
     times = [0.0, 1.0, 2.0, 3.0]
     grid = RectilinearGrid(ReactantState(); size = (2, 2, 2), extent = (1, 1, 1))
@@ -527,6 +654,32 @@ end
     @test all(Array(interior(interpolated)) .≈ 2)
 end
 
+@kernel function _bracket!(low, high, column, z, N)
+    n = @index(Global, Linear)
+    i₁, i₂ = Oceananigans.Fields.index_binary_search(column, z[n], N)
+    @inbounds low[n] = i₁
+    @inbounds high[n] = i₂
+end
+
+bracket!(low, high, column, z) = _bracket!(get_backend(low), 16)(low, high, column, z, length(column); ndrange=length(low))
+
+# A search with an early `return` inside its loop cannot be raised ("cannot raise op to stablehlo")
+@testset "index_binary_search inside a raised kernel" begin
+    column = Float32.(cumsum(1:16))
+    midpoints = (column[1:end-1] .+ column[2:end]) ./ 2
+    points = vcat(column, midpoints, column[1] - 1, column[end] + 1)
+
+    low = Reactant.to_rarray(zeros(Int, length(points)))
+    high = Reactant.to_rarray(zeros(Int, length(points)))
+    reactant_column, reactant_points = Reactant.to_rarray(column), Reactant.to_rarray(points)
+    raised_bracket! = @compile raise_first=true raise=true bracket!(low, high, reactant_column, reactant_points)
+    raised_bracket!(low, high, reactant_column, reactant_points)
+
+    expected = [Oceananigans.Fields.index_binary_search(column, z, length(column)) for z in points]
+    @test Array(low) == first.(expected)
+    @test Array(high) == last.(expected)
+end
+
 @kernel function _store_adaptive_Δt!(c, td)
     i, j, k = @index(Global, NTuple)
     @inbounds c[i, j, k] = td.Δt
@@ -537,6 +690,32 @@ function store_adaptive_Δt!(c, td, Δt)
     grid = c.grid
     launch!(architecture(grid), grid, :xyz, _store_adaptive_Δt!, c, td)
     return nothing
+end
+
+@kernel function _add_constant_fields!(c, zero_field, one_field)
+    i, j, k = @index(Global, NTuple)
+    @inbounds c[i, j, k] = c[i, j, k] + zero_field[i, j, k] + one_field[i, j, k]
+end
+
+# `eltype(grid)` is traced inside a compiled function: the ZeroField and OneField built from it hold the plain type
+function add_constant_fields!(c)
+    grid = c.grid
+    FT = eltype(grid)
+    launch!(architecture(grid), grid, :xyz, _add_constant_fields!, c, ZeroField(FT), Oceananigans.Fields.OneField(FT))
+    return nothing
+end
+
+@testset "ZeroField and OneField of a traced element type in a kernel" begin
+    @test ZeroField(Reactant.TracedRNumber{Float64}) isa ZeroField{Float64, 3}
+    @test Oceananigans.Fields.OneField(Reactant.TracedRNumber{Float32}) isa Oceananigans.Fields.OneField{Float32, 3}
+    @test ZeroField(Float64) isa ZeroField{Float64, 3}
+
+    grid = LatitudeLongitudeGrid(ReactantState(); size = (4, 4, 2), longitude = (0, 40), latitude = (20, 50), z = (0, 1000))
+    c = CenterField(grid)
+    set!(c, 2)
+    compiled_add! = @compile raise_first=true raise=true add_constant_fields!(c)
+    compiled_add!(c)
+    @test all(Array(interior(c)) .== 3)
 end
 
 # A traced Δt held by AdaptiveVerticallyImplicitDiscretization must be adapted when it is passed to a kernel

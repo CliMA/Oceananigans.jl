@@ -35,12 +35,20 @@ on RectilinearGrid, LatitudeLongitudeGrid, ConformalCubedSphereGrid, TripolarGri
 ### Imports
 
 - Source code: explicit imports (checked by tests)
+- **Never write `import` in `src/` or `ext/`** — not to extend functions (`import Oceananigans.Fields: set!`),
+  not to bring in a module (`import Dates`), not to alias one (`import Oceananigans.Utils as UT`).
+  Bring names in with `using Module: Module, name` (or `using Module: Module as M`), and extend with the
+  qualified name: `Module.function_name(...) = ...` or `function Module.function_name() ... end`
+  (e.g. `Fields.set!(f::MyField, a) = ...`, `Base.:+(a::ZeroField, b::AbstractField) = b`,
+  `@binary Base.:*`, `CUDA.@device_override @inline function KernelAbstractions.__validindex(...)`)
 - Examples/docs: rely on `using Oceananigans`; never explicitly import exported names
 
 ### Docstrings
 
-- Use DocStringExtensions.jl with `$(TYPEDSIGNATURES)` when the signature does not include
-  default values for args and/or kwargs.
+- Use `$(TYPEDSIGNATURES)` when the signature has no default values, and `$(SIGNATURES)` when it does.
+  Import both from `Oceananigans.Utils`, not DocStringExtensions: they show defaults with DocStringExtensions
+  v0.10 and fall back to plain signatures with v0.9. Write the signature by hand only when the
+  generated one would mislead, e.g. when it would drop a type the method dispatches on.
 - **ALWAYS `jldoctest` blocks, NEVER plain `julia` blocks** — doctests are tested; plain blocks rot
 - Include `# output` with verifiable output; prefer `show` methods over boolean comparisons
 - Use unicode for math (`Δt`, `η`, `ρ`), not LaTeX — LaTeX doesn't render in the REPL

@@ -41,8 +41,6 @@ Adapt.adapt_structure(to, dbd::DroguedParticleDynamics) =
 
 @inline (::DroguedParticleDynamics)(args...) = nothing
 
-const DroguedParticles = LagrangianParticles{<:Any, <:Any, <:Any, <:DroguedParticleDynamics}
-
 # Sorting and removal reorder particle properties, but not the depths of drogued particles
 validate_reordering(dynamics, sorting, removal) = nothing
 
@@ -51,33 +49,5 @@ function validate_reordering(::DroguedParticleDynamics, sorting, removal)
     throw(ArgumentError("DroguedParticleDynamics does not support sorting or AbsorbingBoundary conditions."))
 end
 
-function advect_lagrangian_particles!(particles::DroguedParticles, model, Δt)
-    grid = model.grid
-    arch = architecture(grid)
-    Np = length(particles)
-    Np == 0 && return nothing
-
-    launch!(arch, grid, KernelParameters(1:Np),
-            _advect_drogued_particles!,
-            particles.properties, particles.boundary_conditions, model.grid, Δt, total_velocities(model),
-            particles.dynamics.depths)
-
-    return nothing
-end
-
-@kernel function _advect_drogued_particles!(properties, boundary_conditions, grid, Δt, velocities, depths)
-    p = @index(Global)
-
-    @inbounds begin
-        x = properties.x[p]
-        y = properties.y[p]
-        z = depths[p]
-    end
-
-    (x⁺, y⁺, _), _ = advect_particle((x, y, z), properties, p, boundary_conditions, grid, Δt, velocities)
-
-    @inbounds begin
-        properties.x[p] = x⁺
-        properties.y[p] = y⁺
-    end
-end
+# Drogued particles are advected horizontally with the velocity at their `depths`
+drogue_depths(dynamics::DroguedParticleDynamics) = dynamics.depths

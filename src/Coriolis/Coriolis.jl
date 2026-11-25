@@ -10,13 +10,15 @@ using Printf: @sprintf
 using Adapt: Adapt
 using Oceananigans: Oceananigans
 using Oceananigans.Grids: AbstractGrid, Center, Face, ynode, znode
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Operators: ℑxᶜᵃᵃ, ℑxᶠᵃᵃ,
                               ℑyᵃᶜᵃ, ℑyᵃᶠᵃ,
                               ℑzᵃᵃᶜ, ℑzᵃᵃᶠ,
                               ℑxyᶜᶠᵃ, ℑxyᶠᶜᵃ, ℑxzᶜᵃᶠ,
                               Ay⁻¹ᶠᶜᶜ, Ax⁻¹ᶜᶠᶜ,
-                              Ax_qᶠᶜᶜ, Ay_qᶜᶠᶜ
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+                              Ax_qᶠᶜᶜ, Ay_qᶜᶠᶜ,
+                              vorticity_flux_xᶠᶜᶜ, vorticity_flux_yᶜᶠᶜ
+using Oceananigans.Utils: SIGNATURES
 
 """
     AbstractRotation{S}

@@ -141,6 +141,51 @@ function can_isolate_decoupled_rows(arch, FT, Nx, Ny, Nz; garbage_end = :bottom)
     return all(isfinite, ϕ[remaining]) && ϕ[remaining] ≈ expected_solution[remaining]
 end
 
+function factorized_solve_reproduces_solve(arch, FT, Nx, Ny, Nz; tridiagonal_direction = ZDirection())
+    ArrayType = array_type(arch)
+    grid = RectilinearGrid(arch, FT, size=(Nx, Ny, Nz), extent=(1, 1, 1))
+
+    a = ArrayType(rand(FT, Nx, Ny, Nz))
+    b = ArrayType(3 .+ rand(FT, Nx, Ny, Nz)) # +3 to ensure diagonal dominance.
+    c = ArrayType(rand(FT, Nx, Ny, Nz))
+
+    solver = BatchedTridiagonalSolver(grid; lower_diagonal=a, diagonal=b, upper_diagonal=c, tridiagonal_direction)
+    factorized_solver = BatchedTridiagonalSolver(grid; lower_diagonal=a, diagonal=b, upper_diagonal=c,
+                                                 tridiagonal_direction, factorized=true)
+    compute_factorization!(factorized_solver)
+
+    same = true
+
+    # Several right-hand sides with one factorization
+    for _ in 1:3
+        f = ArrayType(rand(FT, Nx, Ny, Nz))
+
+        ϕ = zeros(arch, FT, Nx, Ny, Nz)
+        solve!(ϕ, solver, f)
+
+        ψ = zeros(arch, FT, Nx, Ny, Nz)
+        solve!(ψ, factorized_solver, f)
+
+        # In place: the right-hand side is the solution array
+        χ = copy(f)
+        solve!(χ, factorized_solver, χ)
+
+        same &= Array(ϕ) == Array(ψ) == Array(χ)
+    end
+
+    # Changed coefficients: refactor, then the solution matches the new system
+    b .+= 1
+    compute_factorization!(factorized_solver)
+    f = ArrayType(rand(FT, Nx, Ny, Nz))
+    ϕ = zeros(arch, FT, Nx, Ny, Nz)
+    ψ = zeros(arch, FT, Nx, Ny, Nz)
+    solve!(ϕ, solver, f)
+    solve!(ψ, factorized_solver, f)
+    same &= Array(ϕ) == Array(ψ)
+
+    return same
+end
+
 @testset "Batched tridiagonal solvers" begin
     @testset "Batched tridiagonal solver [$arch]" for arch in archs
         for Nx in [3, 8], Ny in [5, 16], Nz in [8, 11]
@@ -159,6 +204,13 @@ end
 
         for FT in float_types, Nx in [3, 8], Ny in [5, 16], Nz in [8, 11], garbage_end in (:bottom, :top)
             @test can_isolate_decoupled_rows(arch, FT, Nx, Ny, Nz; garbage_end)
+        end
+
+        @test_throws ArgumentError compute_factorization!(BatchedTridiagonalSolver(RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 1, 1));
+                                                                                   lower_diagonal=zeros(1), diagonal=ones(2), upper_diagonal=zeros(1)))
+
+        for FT in float_types, tridiagonal_direction in (XDirection(), YDirection(), ZDirection())
+            @test factorized_solve_reproduces_solve(arch, FT, 5, 6, 7; tridiagonal_direction)
         end
     end
 end

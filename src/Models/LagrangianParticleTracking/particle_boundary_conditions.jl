@@ -203,8 +203,16 @@ absorbed_flags(removal::ParticleRemoval) = removal.absorbed
 @inline record_absorption!(::Nothing, p, absorbed) = nothing
 @inline record_absorption!(absorbed_flags, p, absorbed) = @inbounds absorbed_flags[p] = absorbed
 
-prepare_removal!(::Nothing, Np) = nothing
-prepare_removal!(removal::ParticleRemoval, Np) = resize!(removal.absorbed, Np)
+@inline previously_absorbed(::Nothing, p) = false
+@inline previously_absorbed(absorbed_flags, p) = @inbounds absorbed_flags[p]
+
+reset_absorption!(::Nothing, Np) = nothing
+
+function reset_absorption!(removal::ParticleRemoval, Np)
+    resize!(removal.absorbed, Np)
+    fill!(removal.absorbed, false)
+    return nothing
+end
 
 @kernel function _flag_kept_particles!(kept, absorbed)
     p = @index(Global)
@@ -223,8 +231,8 @@ remove_absorbed_particles!(particles, grid) = nothing
 """
 $(TYPEDSIGNATURES)
 
-Remove the `particles` that were absorbed at an [`AbsorbingBoundary`](@ref) during the most recent
-advection. The remaining particles keep their order.
+Remove the `particles` that were absorbed at an [`AbsorbingBoundary`](@ref) during the current
+time step. The remaining particles keep their order, and per-particle tendencies is compacted with them.
 """
 function remove_absorbed_particles!(particles::LagrangianParticles, grid)
     removal = particles.removal
@@ -250,6 +258,7 @@ function remove_absorbed_particles!(particles::LagrangianParticles, grid)
     end
 
     resize!(properties, Nkept)
+    compact_particle_tendencies!(particles.tendencies, removal, grid, Np, Nkept)
 
     return nothing
 end

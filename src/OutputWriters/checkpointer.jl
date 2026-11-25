@@ -16,13 +16,7 @@ mutable struct Checkpointer{T} <: AbstractOutputWriter
 end
 
 """
-    Checkpointer(model;
-                 schedule,
-                 dir = ".",
-                 prefix = "checkpoint",
-                 overwrite_files = false,
-                 verbose = false,
-                 cleanup = false)
+$(SIGNATURES)
 
 Construct a `Checkpointer` that checkpoints the `model` to a JLD2 file on `schedule.`
 The `model.clock.iteration` is included in the filename to distinguish between multiple checkpoint files.
@@ -58,6 +52,7 @@ function Checkpointer(model; schedule,
                       verbose = false,
                       cleanup = false)
 
+    dir, prefix = splitdir(joinpath(dir, prefix))
     mkpath(dir)
     filename = with_architecture_suffix(architecture(model), string(prefix, ".jld2"), ".jld2")
     prefix = String(chop(filename, tail=length(".jld2")))
@@ -230,7 +225,7 @@ function load_nested_data(obj)
 end
 
 """
-    load_checkpoint_state(filepath; base_path="simulation")
+$(SIGNATURES)
 
 Load checkpoint data from a JLD2 file and return it as a nested NamedTuple.
 """
@@ -451,7 +446,7 @@ Oceananigans.restore_prognostic_state!(::Symbol, from::Symbol) = from
 #####
 
 """
-    checkpoint(simulation; filepath=nothing)
+$(SIGNATURES)
 
 Manually checkpoint `simulation` state to a JLD2 file.
 

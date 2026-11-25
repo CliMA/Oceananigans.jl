@@ -63,12 +63,7 @@ struct VectorInvariant{N, FT, TD, Z, ZS, V, K, D, U} <: AbstractAdvectionScheme{
 end
 
 """
-    VectorInvariant(; vorticity_scheme = EnstrophyConserving(),
-                      vorticity_stencil = VelocityStencil(),
-                      vertical_advection_scheme = EnergyConserving(),
-                      divergence_scheme = vertical_advection_scheme,
-                      kinetic_energy_gradient_scheme = divergence_scheme,
-                      upwinding = OnlySelfUpwinding(; cross_scheme = divergence_scheme))
+$(SIGNATURES)
 
 Return a vector-invariant momentum advection scheme.
 
@@ -189,16 +184,7 @@ end
 nothing_to_default(user_value; default=nothing) = isnothing(user_value) ? default : user_value
 
 """
-    WENOVectorInvariant(FT = Float64;
-                        upwinding = nothing,
-                        vorticity_stencil = VelocityStencil(),
-                        order = nothing,
-                        vorticity_order = nothing,
-                        vertical_order = nothing,
-                        divergence_order = nothing,
-                        kinetic_energy_gradient_order = nothing,
-                        buffer_scheme = DecreasingOrderAdvectionScheme(boundary_scheme = UpwindBiased(FT; order=1)),
-                        weno_kw...)
+$(SIGNATURES)
 
 Return a vector-invariant weighted essentially non-oscillatory (WENO) scheme.
 See [`VectorInvariant`](@ref) and [`WENO`](@ref) for kwargs definitions.
@@ -394,6 +380,10 @@ end
 @inline horizontal_advection_U(i, j, k, grid, ::VectorInvariantEnergyConserving, u, v) = - ℑyᵃᶜᵃ(i, j, k, grid, ζ_ℑx_vᶠᶠᵃ, u, v) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
 @inline horizontal_advection_V(i, j, k, grid, ::VectorInvariantEnergyConserving, u, v) = + ℑxᶜᵃᵃ(i, j, k, grid, ζ_ℑy_uᶠᶠᵃ, u, v) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
 
+# With partial cells Δz varies horizontally, so the flux uses transports and q = ζ / h to stay energy-neutral
+@inline horizontal_advection_U(i, j, k, grid::PCBIBG, ::VectorInvariantEnergyConserving, u, v) = - vorticity_flux_xᶠᶜᶜ(i, j, k, grid, v, ζ₃ᶠᶠᶜ, u, v)
+@inline horizontal_advection_V(i, j, k, grid::PCBIBG, ::VectorInvariantEnergyConserving, u, v) = + vorticity_flux_yᶜᶠᶜ(i, j, k, grid, u, ζ₃ᶠᶠᶜ, u, v)
+
 @inline horizontal_advection_U(i, j, k, grid, ::VectorInvariantEnstrophyConserving, u, v) = - ℑyᵃᶜᵃ(i, j, k, grid, ζ₃ᶠᶠᶜ, u, v) * ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, v) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
 @inline horizontal_advection_V(i, j, k, grid, ::VectorInvariantEnstrophyConserving, u, v) = + ℑxᶜᵃᵃ(i, j, k, grid, ζ₃ᶠᶠᶜ, u, v) * ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, u) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
 
@@ -476,12 +466,12 @@ end
 const AS = AbstractSmoothnessStencil
 
 # To adapt passing smoothness stencils to upwind biased schemes and centered schemes (not WENO)
+@inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, s::Centered, f::Callable, ::AS, args...) = symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, s, f, args...)
+@inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, s::Centered, f::Callable, ::AS, args...) = symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, s, f, args...)
+@inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, s::Centered, f::Callable, ::AS, args...) = symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, s, f, args...)
+
 for b in advection_buffers, FT in fully_supported_float_types
     @eval begin
-        @inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, s::Centered{$b, $FT}, f::Callable, ::AS, args...) = symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, s, f, args...)
-        @inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, s::Centered{$b, $FT}, f::Callable, ::AS, args...) = symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, s, f, args...)
-        @inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, s::Centered{$b, $FT}, f::Callable, ::AS, args...) = symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, s, f, args...)
-
         @inline biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s::UpwindBiased{$b, $FT}, bias, f::Callable, ::AS, args...) = biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s, bias, f, args...)
         @inline biased_interpolate_yᵃᶠᵃ(i, j, k, grid, s::UpwindBiased{$b, $FT}, bias, f::Callable, ::AS, args...) = biased_interpolate_yᵃᶠᵃ(i, j, k, grid, s, bias, f, args...)
         @inline biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s::UpwindBiased{$b, $FT}, bias, f::Callable, ::AS, args...) = biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s, bias, f, args...)

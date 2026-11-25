@@ -10,7 +10,7 @@ using Oceananigans.Fields: Fields, interpolate, interpolator, _interpolate, Fixe
                            FractionalIndices, instantiated_location, flatten_node, mapped_data
 using Oceananigans.Grids: _node
 using Oceananigans.Units: Time
-using Oceananigans.Utils: period_to_seconds, seconds_to_nanosecond, time_difference_seconds
+using Oceananigans.Utils: period_to_seconds, seconds_to_nanosecond, time_difference_in_seconds
 
 @inline interp_time(t₁, t₂, θ) = t₂ * θ + t₁ * (1 - θ)
 
@@ -100,7 +100,7 @@ end
     ñ, n₁, n₂ = find_time_index(times, folded_t)
 
     cycling = folded_t > tᴺ # we are _between_ tᴺ and t¹ + T
-    θ = time_difference_seconds(folded_t, tᴺ) / time_difference_seconds(add_years(t¹, P), tᴺ)
+    θ = time_difference_in_seconds(folded_t, tᴺ) / time_difference_in_seconds(add_years(t¹, P), tᴺ)
     cycled_indices   = (θ, Nt, 1)
     uncycled_indices = (ñ, n₁, n₂)
 
@@ -141,8 +141,8 @@ end
         t₂ = times[n₂]
     end
 
-    δt_t1 = time_difference_seconds(t, t₁)
-    δt_12 = time_difference_seconds(t₂, t₁)
+    δt_t1 = time_difference_in_seconds(t, t₁)
+    δt_12 = time_difference_in_seconds(t₂, t₁)
     ñ = δt_t1 / δt_12
     ñ = ifelse(n₂ == n₁, zero(ñ), ñ)
 
@@ -160,8 +160,8 @@ end
         t₂ = times[n₂]
     end
 
-    δt_t1 = time_difference_seconds(t, t₁)
-    δt_12 = time_difference_seconds(t₂, t₁)
+    δt_t1 = time_difference_in_seconds(t, t₁)
+    δt_12 = time_difference_in_seconds(t₂, t₁)
     ñ = δt_t1 / δt_12
     ñ = ifelse(n₂ == n₁, zero(ñ), ñ)
 
@@ -243,6 +243,8 @@ end
 
 BoundaryConditions.regularize_boundary_condition(f::YFTS, grid, loc, dim, args...) =
     BoundaryConditions.xz_reduced_condition(f, Val(dim))
+
+BoundaryConditions.regularize_boundary_condition(f::FTS0, grid, loc, dim, args...) = f
 
 # West - east and south - north boundary conditions, only the last index is valid (the first one is either i or j)
 @inline BoundaryConditions.getbc(f::ZFTS, ::Int, k::Int, grid::AbstractGrid, clock, args...) = @inbounds f[1, 1, k, Time(clock.time)]
@@ -468,7 +470,7 @@ function update_field_time_series!(fts::PartlyInMemoryFTS, first_time::Time, las
     Nt = length(fts.times)
 
     min(n₂, Nt) - n₁ < Nm ||
-        throw(ArgumentError("times $(first_time.time) to $(last_time.time) span time indices $n₁ to $n₂, " *
+        throw(ArgumentError("$(summary(fts)): times $(first_time.time) to $(last_time.time) span time indices $n₁ to $n₂, " *
                             "more than the $Nm held in memory; increase `time_indices_in_memory`."))
 
     return update_field_time_series!(fts, n₁, n₂)

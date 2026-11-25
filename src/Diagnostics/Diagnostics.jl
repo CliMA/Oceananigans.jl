@@ -2,9 +2,8 @@ module Diagnostics
 
 export StateChecker, CFL, AdvectiveCFL, DiffusiveCFL
 
-using DocStringExtensions: TYPEDSIGNATURES
-
 using Oceananigans: Oceananigans, AbstractDiagnostic, fields, run_diagnostic!
+using Oceananigans.Utils: SIGNATURES, TYPEDSIGNATURES
 
 function cell_diffusion_timescale end
 

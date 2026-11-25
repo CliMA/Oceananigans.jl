@@ -1,15 +1,13 @@
 module OceananigansReactantExt
 
-using Reactant
-using Oceananigans
-using OffsetArrays
-using OffsetArrays: AbstractOffsetArray
+using Reactant: Reactant
+using Reactant.ReactantCore: ReactantCore
+using Oceananigans: Oceananigans
+using Oceananigans.Advection: VectorInvariant
+using Oceananigans.Grids: LatitudeLongitudeGrid, RectilinearGrid
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Utils: StaticStridesOffsetArray
-
-using Oceananigans: Distributed, DistributedComputations, ReactantState, CPU,
-                    OrthogonalSphericalShellGrids
-using Oceananigans.Architectures: on_architecture
-using Oceananigans.Grids: Bounded, Periodic
+using OffsetArrays: OffsetArrays, AbstractOffsetArray
 
 deconcretize(obj) = obj # fallback
 deconcretize(a::AbstractOffsetArray) = StaticStridesOffsetArray(Array(parent(a)), OffsetArrays.offsets(a)...)
@@ -55,13 +53,14 @@ ConstructionBase.constructorof(::Type{<:VectorInvariant{N, FT, TD}}) where {N, F
 
 # https://github.com/CliMA/Oceananigans.jl/blob/da9959f3e5d8ee7cf2fb42b74ecc892874ec1687/src/AbstractOperations/conditional_operations.jl#L8
 Base.@nospecializeinfer function Reactant.traced_type_inner(
-    @nospecialize(OA::Type{Oceananigans.AbstractOperations.ConditionalOperation{LX, LY, LZ, F, C, O, G, M, T}}),
+    @nospecialize(OA::Type{<:Oceananigans.AbstractOperations.ConditionalOperation}),
     seen,
     mode::Reactant.TraceMode,
     @nospecialize(track_numbers::Type),
     @nospecialize(sharding),
     @nospecialize(runtime)
-) where {LX, LY, LZ, F, C, O, G, M, T}
+)
+    LX, LY, LZ, F, C, O, G, M = OA.parameters
     LX2 = Reactant.traced_type_inner(LX, seen, mode, track_numbers, sharding, runtime)
     LY2 = Reactant.traced_type_inner(LY, seen, mode, track_numbers, sharding, runtime)
     LZ2 = Reactant.traced_type_inner(LZ, seen, mode, track_numbers, sharding, runtime)
@@ -76,13 +75,14 @@ end
 
 # https://github.com/CliMA/Oceananigans.jl/blob/c29939097a8d2f42966e930f2f2605803bf5d44c/src/AbstractOperations/binary_operations.jl#L5
 Base.@nospecializeinfer function Reactant.traced_type_inner(
-    @nospecialize(OA::Type{Oceananigans.AbstractOperations.BinaryOperation{LX, LY, LZ, O, A, B, IA, IB, G, T}}),
+    @nospecialize(OA::Type{<:Oceananigans.AbstractOperations.BinaryOperation}),
     seen,
     mode::Reactant.TraceMode,
     @nospecialize(track_numbers::Type),
     @nospecialize(sharding),
     @nospecialize(runtime)
-) where {LX, LY, LZ, O, A, B, IA, IB, G, T}
+)
+    LX, LY, LZ, O, A, B, IA, IB, G = OA.parameters
     LX2 = Reactant.traced_type_inner(LX, seen, mode, track_numbers, sharding, runtime)
     LY2 = Reactant.traced_type_inner(LY, seen, mode, track_numbers, sharding, runtime)
     LZ2 = Reactant.traced_type_inner(LZ, seen, mode, track_numbers, sharding, runtime)
@@ -102,32 +102,34 @@ end
 # https://github.com/CliMA/Oceananigans.jl/blob/da9959f3e5d8ee7cf2fb42b74ecc892874ec1687/src/AbstractOperations/kernel_function_operation.jl#L3
 # struct KernelFunctionOperation{LX, LY, LZ, G, T, K, D} <: AbstractOperation{LX, LY, LZ, G, T}
 Base.@nospecializeinfer function Reactant.traced_type_inner(
-        @nospecialize(OA::Type{Oceananigans.AbstractOperations.KernelFunctionOperation{LX, LY, LZ, G, T, K, D}}),
+    @nospecialize(OA::Type{<:Oceananigans.AbstractOperations.KernelFunctionOperation}),
     seen,
     mode::Reactant.TraceMode,
     @nospecialize(track_numbers::Type),
     @nospecialize(sharding),
     @nospecialize(runtime)
-) where {LX, LY, LZ, G, T, K, D}
+)
+    LX, LY, LZ, G, T, K, D = OA.parameters
     LX2 = Reactant.traced_type_inner(LX, seen, mode, track_numbers, sharding, runtime)
     LY2 = Reactant.traced_type_inner(LY, seen, mode, track_numbers, sharding, runtime)
     LZ2 = Reactant.traced_type_inner(LZ, seen, mode, track_numbers, sharding, runtime)
     G2 = Reactant.traced_type_inner(G, seen, mode, track_numbers, sharding, runtime)
     K2 = Reactant.traced_type_inner(K, seen, mode, track_numbers, sharding, runtime)
     D2 = Reactant.traced_type_inner(D, seen, mode, track_numbers, sharding, runtime)
-    T2 = eltype(G2)
+    T2 = Reactant.traced_type_inner(T, seen, mode, track_numbers, sharding, runtime)
     return Oceananigans.AbstractOperations.KernelFunctionOperation{LX2, LY2, LZ2, G2, T2, K2, D2}
 end
 
 # https://github.com/CliMA/Oceananigans.jl/blob/d9b3b142d8252e8e11382d1b3118ac2a092b38a2/src/Grids/orthogonal_spherical_shell_grid.jl#L14
 Base.@nospecializeinfer function Reactant.traced_type_inner(
-    @nospecialize(OA::Type{Oceananigans.Grids.OrthogonalSphericalShellGrid{FT, TX, TY, TZ, Z, Map, CC, FC, CF, FF, Arch, rFT, SZ}}),
+    @nospecialize(OA::Type{<:Oceananigans.Grids.OrthogonalSphericalShellGrid}),
     seen,
     mode::Reactant.TraceMode,
     @nospecialize(track_numbers::Type),
     @nospecialize(sharding),
     @nospecialize(runtime)
-) where {FT, TX, TY, TZ, Z, Map, CC, FC, CF, FF, Arch, rFT, SZ}
+)
+    FT, TX, TY, TZ, Z, Map, CC, FC, CF, FF, Arch, rFT, SZ = OA.parameters
     FT2 = Reactant.traced_type_inner(FT, seen, mode, track_numbers, sharding, runtime)
     TX2 = Reactant.traced_type_inner(TX, seen, mode, track_numbers, sharding, runtime)
     TY2 = Reactant.traced_type_inner(TY, seen, mode, track_numbers, sharding, runtime)
@@ -166,13 +168,14 @@ end
 
 # https://github.com/CliMA/Oceananigans.jl/blob/d9b3b142d8252e8e11382d1b3118ac2a092b38a2/src/ImmersedBoundaries/immersed_boundary_grid.jl#L8
 Base.@nospecializeinfer function Reactant.traced_type_inner(
-    @nospecialize(OA::Type{ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, S, Arch}}),
+    @nospecialize(OA::Type{<:ImmersedBoundaryGrid}),
     seen,
     mode::Reactant.TraceMode,
     @nospecialize(track_numbers::Type),
     @nospecialize(sharding),
     @nospecialize(runtime)
-) where {FT, TX, TY, TZ, G, I, M, S, Arch}
+)
+    _, TX, TY, TZ, G, I, M, S, Arch = OA.parameters
     TX2 = Reactant.traced_type_inner(TX, seen, mode, track_numbers, sharding, runtime)
     TY2 = Reactant.traced_type_inner(TY, seen, mode, track_numbers, sharding, runtime)
     TZ2 = Reactant.traced_type_inner(TZ, seen, mode, track_numbers, sharding, runtime)
@@ -192,14 +195,15 @@ end
     ) = Reactant.make_tracer_via_immutable_constructor(seen, prev, args...; kwargs...)
 
 Base.@nospecializeinfer function Reactant.traced_type_inner(
-    @nospecialize(OA::Type{LatitudeLongitudeGrid{FT, TX, TY, TZ, Z, DXF, DXC, XF, XC, DYF, DYC, YF, YC,
-                                                 DXCC, DXFC, DXCF, DXFF, DYFC, DYCF, Arch, I, SZ}}),
+    @nospecialize(OA::Type{<:LatitudeLongitudeGrid}),
     seen,
     mode::Reactant.TraceMode,
     @nospecialize(track_numbers::Type),
     @nospecialize(sharding),
     @nospecialize(runtime)
-) where {FT, TX, TY, TZ, Z, DXF, DXC, XF, XC, DYF, DYC, YF, YC, DXCC, DXFC, DXCF, DXFF, DYFC, DYCF, Arch, I, SZ}
+)
+    FT, TX, TY, TZ, Z, DXF, DXC, XF, XC, DYF, DYC, YF, YC,
+        DXCC, DXFC, DXCF, DXFF, DYFC, DYCF, Arch, I, SZ, SP, NP = OA.parameters
     TX2 = Reactant.traced_type_inner(TX, seen, mode, track_numbers, sharding, runtime)
     TY2 = Reactant.traced_type_inner(TY, seen, mode, track_numbers, sharding, runtime)
     TZ2 = Reactant.traced_type_inner(TZ, seen, mode, track_numbers, sharding, runtime)
@@ -230,20 +234,34 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
     end
 
     res = Oceananigans.Grids.LatitudeLongitudeGrid{FT2, TX2, TY2, TZ2, Z2, DXF2, DXC2, XF2, XC2, DYF2, DYC2, YF2, YC2,
-                                                   DXCC2, DXFC2, DXCF2, DXFF2, DYFC2, DYCF2, Arch, I2, SZ}
+                                                   DXCC2, DXFC2, DXCF2, DXFF2, DYFC2, DYCF2, Arch, I2, SZ, SP, NP}
 
     return res
 end
 
+# The grid's float type promoted over every element type a vertical discretization holds, so that the
+# grid's float type is traced whenever its coordinates are. A `StaticVerticalDiscretization` holds arrays
+# and numbers; a discretization that also holds a struct, as Breeze's terrain-following one holds its
+# decay formulation, is entered field by field, since `eltype` of a struct type is `Any`.
+function promote_over_vertical_discretization(FT, @nospecialize(P::Type))
+    P === Nothing && return FT
+    P <: Union{AbstractArray, Number} && return Reactant.promote_traced_type(FT, eltype(P))
+    P isa DataType || return FT
+    for Q in Base.fieldtypes(P)
+        FT = promote_over_vertical_discretization(FT, Q)
+    end
+    return FT
+end
+
 Base.@nospecializeinfer function Reactant.traced_type_inner(
-        @nospecialize(OA::Type{RectilinearGrid{FT, TX, TY, TZ, CZ, DXF, DXC, XF, XC, DYF, DYC, YF, YC, Arch, SZ}}),
+        @nospecialize(OA::Type{<:RectilinearGrid}),
         seen,
         mode::Reactant.TraceMode,
         @nospecialize(track_numbers::Type),
         @nospecialize(sharding),
         @nospecialize(runtime)
-    ) where {FT, TX, TY, TZ, CZ, DXF, DXC, XF, XC, DYF, DYC, YF, YC, Arch, SZ}
-
+    )
+    FT, TX, TY, TZ, CZ, DXF, DXC, XF, XC, DYF, DYC, YF, YC, Arch, SZ = OA.parameters
     TX2 = Reactant.traced_type_inner(TX, seen, mode, track_numbers, sharding, runtime)
     TY2 = Reactant.traced_type_inner(TY, seen, mode, track_numbers, sharding, runtime)
     TZ2 = Reactant.traced_type_inner(TZ, seen, mode, track_numbers, sharding, runtime)
@@ -265,13 +283,7 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
         FT2 = Reactant.promote_traced_type(FT2, eltype(NF))
     end
 
-    # Also promote over the vertical discretization's data:
-    if CZ2 !== Nothing
-        for P in Base.fieldtypes(CZ2)
-            P === Nothing && continue
-            FT2 = Reactant.promote_traced_type(FT2, eltype(P))
-        end
-    end
+    FT2 = promote_over_vertical_discretization(FT2, CZ2)
 
     res = Oceananigans.Grids.RectilinearGrid{FT2, TX2, TY2, TZ2, CZ2, DXF2, DXC2, XF2, XC2, DYF2, DYC2, YF2, YC2, Arch, SZ}
 
@@ -303,14 +315,14 @@ function evalcond(c, i, j, k)
     Oceananigans.AbstractOperations.evaluate_condition(c.condition, i, j, k, c.grid, c)
 end
 
-@inline function Reactant.TracedUtils.broadcast_to_size(c::Oceananigans.AbstractOperations.ConditionalOperation, rsize)
+@inline function Reactant.broadcast_to_size(c::Oceananigans.AbstractOperations.ConditionalOperation, rsize)
     if c == rsize
-        return Reactant.TracedUtils.materialize_traced_array(c)
+        return ReactantCore.materialize_traced_array(c)
     end
     return c
 end
 
-@inline function Reactant.TracedUtils.materialize_traced_array(c::Oceananigans.AbstractOperations.ConditionalOperation)
+@inline function ReactantCore.materialize_traced_array(c::Oceananigans.AbstractOperations.ConditionalOperation)
     N = ndims(c)
     axes2 = ntuple(Val(N)) do i
         reshape(Base.OneTo(size(c, i)), (ntuple(Val(N)) do j
@@ -327,7 +339,7 @@ end
     if conds isa Bool
       conds = Reactant.Ops.fill(conds, size(c))
     else
-      conds = Reactant.TracedUtils.materialize_traced_array(conds)
+      conds = ReactantCore.materialize_traced_array(conds)
     end
 
     @assert size(conds) == size(c)
@@ -348,7 +360,7 @@ end
     return Reactant.Ops.select(
                 conds,
                 tvals,
-                Reactant.TracedUtils.broadcast_to_size(mask, size(c))
+                Reactant.broadcast_to_size(mask, size(c))
     )
 end
 
@@ -356,7 +368,7 @@ function eval_kernel_function(kfo, i, j, k)
     return kfo.kernel_function(i, j, k, kfo.grid, kfo.arguments...)
 end
 
-@inline function Reactant.TracedUtils.materialize_traced_array(c::Oceananigans.AbstractOperations.KernelFunctionOperation)
+@inline function ReactantCore.materialize_traced_array(c::Oceananigans.AbstractOperations.KernelFunctionOperation)
     N = ndims(c)
     axes2 = ntuple(Val(N)) do i
         reshape(Base.OneTo(size(c, i)), (ntuple(Val(N)) do j
@@ -384,9 +396,9 @@ end
     return tvals
 end
 
-@inline function Reactant.TracedUtils.broadcast_to_size(c::Oceananigans.AbstractOperations.KernelFunctionOperation, rsize)
+@inline function Reactant.broadcast_to_size(c::Oceananigans.AbstractOperations.KernelFunctionOperation, rsize)
     if c == rsize
-        return Reactant.TracedUtils.materialize_traced_array(c)
+        return ReactantCore.materialize_traced_array(c)
     end
     return c
 end

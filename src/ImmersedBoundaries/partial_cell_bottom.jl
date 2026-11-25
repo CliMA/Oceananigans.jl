@@ -1,9 +1,8 @@
 using Oceananigans.Fields: Field, fill_halo_regions!, set!
 using Oceananigans.Grids: Grids, AbstractStaticGrid, constructor_arguments
-using Oceananigans.Utils: KernelParameters, prettysummary
-
 using Oceananigans.Operators: Δrᶜᶜᶜ, Δrᶜᶜᶠ, Δrᶜᶠᶜ, Δrᶜᶠᶠ, Δrᶠᶜᶜ, Δrᶠᶜᶠ, Δrᶠᶠᶜ, Δrᶠᶠᶠ, Δr⁻¹ᶜᶜᶜ, Δr⁻¹ᶜᶜᶠ, Δr⁻¹ᶜᶠᶜ,
                               Δr⁻¹ᶜᶠᶠ, Δr⁻¹ᶠᶜᶜ, Δr⁻¹ᶠᶜᶠ, Δr⁻¹ᶠᶠᶜ, Δr⁻¹ᶠᶠᶠ
+using Oceananigans.Utils: KernelParameters, prettysummary
 
 #####
 ##### PartialCellVerticalBoundaries
@@ -76,7 +75,7 @@ function Base.show(io::IO, ib::PartialCellVerticalBoundaries)
 end
 
 """
-    PartialCellVerticalBoundaries(; bottom_height=nothing, top_height=nothing, minimum_fractional_cell_height=0.2)
+$(SIGNATURES)
 
 Return `PartialCellVerticalBoundaries` representing an immersed boundary with "partial"
 bottom cells. That is, the height of the bottommost cell in each column is reduced
@@ -117,7 +116,7 @@ function PartialCellVerticalBoundaries(; bottom_height=nothing, top_height=nothi
 end
 
 """
-    PartialCellBottom(bottom_height; minimum_fractional_cell_height=0.2)
+$(SIGNATURES)
 
 Return a [`PartialCellVerticalBoundaries`](@ref) without an immersed top, bounded below by `bottom_height`.
 """
@@ -177,8 +176,11 @@ compute_partial_cell_reciprocal_spacings!(::Nothing, ::Nothing, ibg, s, face_off
     i, j = @index(Global, NTuple)
     k = @inbounds unsafe_trunc(Int, s[i, j, 1])
 
+    # Fully immersed columns have k = 0 or Nz + 1, and their face reciprocal is never read
+    kᶠ = clamp(k + face_offset, 1, size(ibg, 3) + 1)
+
     @inbounds Δr⁻¹ᶜᶜᶜ[i, j, 1] = 1 / Δrᶜᶜᶜ(i, j, k, ibg)
-    @inbounds Δr⁻¹ᶜᶜᶠ[i, j, 1] = 1 / Δrᶜᶜᶠ(i, j, k + face_offset, ibg)
+    @inbounds Δr⁻¹ᶜᶜᶠ[i, j, 1] = 1 / Δrᶜᶜᶠ(i, j, kᶠ, ibg)
 end
 
 @kernel function _compute_numerical_heights!(bottom, top, grid, ib::PartialCellVerticalBoundaries)

@@ -10,7 +10,6 @@ export at_minimum, at_maximum
 
 using Adapt: Adapt, adapt
 using Base: @propagate_inbounds
-using DocStringExtensions: TYPEDSIGNATURES
 
 using Oceananigans: Oceananigans, location
 using Oceananigans.Architectures: Architectures, architecture, on_architecture
@@ -18,6 +17,7 @@ using Oceananigans.BoundaryConditions: BoundaryConditions, fill_halo_regions!
 using Oceananigans.Fields: Fields, AbstractField, compute_at!, fieldify_function, indices, instantiated_location
 using Oceananigans.Grids: Grids, Center, Face, unwrapped_eltype
 using Oceananigans.Operators: interpolation_operator
+using Oceananigans.Utils: SIGNATURES, TYPEDSIGNATURES
 
 #####
 ##### Basic functionality
@@ -108,18 +108,9 @@ end
 Base.:^(a::Irrational{:ℯ}, b::AbstractField) = ^(instantiated_location(b), a, b)
 Base.:^(a::Irrational{:ℯ}, b::ConstantField) = ConstantField(a ^ b.constant)
 
-@multiary +
+@multiary Base.:+
 
-# For unknown reasons, the operator definition macros @binary and @multiary fail to work
-# properly for :*. We thus manually define :* for fields.
-import Base: *
-
-eval(define_binary_operator(:*))
-push!(operators, :*)
-push!(binary_operators, :*)
-
-eval(define_multiary_operator(:*))
-push!(operators, :*)
-push!(multiary_operators, :*)
+@binary Base.:*
+@multiary Base.:*
 
 end # module

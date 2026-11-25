@@ -165,6 +165,42 @@ end
     end
 end
 
+@testset "Reactant Simulation: a compiled run! takes the stop_iteration set after compiling" begin
+    @info "Testing one compiled run! called with different stop_iterations..."
+    rectilinear_kw = (; size=(8, 8, 4), halo=(3, 3, 3), x=(0, 1), y=(0, 1), z=(0, 1))
+    chunks = (2, 0, 3)
+
+    for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
+        model_kw = (; free_surface=ExplicitFreeSurface(gravitational_acceleration=1), timestepper)
+        model = HydrostaticFreeSurfaceModel(RectilinearGrid(CPU(); rectilinear_kw...); model_kw...)
+        r_model = HydrostaticFreeSurfaceModel(RectilinearGrid(ReactantState(); rectilinear_kw...); model_kw...)
+
+        ui = randn(size(model.velocities.u)...)
+        set!(model, u=ui)
+        set!(r_model, u=ui)
+
+        # Each compiled call starts afresh: an Adams-Bashforth run takes a forward-Euler first step
+        Δt = 1e-3
+        euler = timestepper == :QuasiAdamsBashforth2
+        for n in chunks, step in 1:n
+            step == 1 && euler ? time_step!(model, Δt; euler) : time_step!(model, Δt)
+        end
+
+        # Binomial checkpointing makes stop_iteration a device number, an input of the program
+        automatic_differentiation = (; checkpointing=Reactant.Binomial(2))
+        r_simulation = Simulation(r_model; Δt, stop_iteration=first(chunks), verbose=false, automatic_differentiation)
+        @test r_simulation.stop_iteration isa ConcreteRNumber{Int}
+        compiled_run! = @compile run!(r_simulation)
+        for n in chunks
+            r_simulation.stop_iteration = n
+            compiled_run!(r_simulation)
+        end
+
+        @test iteration(r_simulation) == sum(chunks)
+        @test Array(interior(r_model.velocities.u)) ≈ Array(interior(model.velocities.u))
+    end
+end
+
 @testset "Reactant Simulation: stop_time and TimeInterval" begin
     @info "Testing stop_time and TimeInterval conversion on a Reactant Simulation..."
     Nx, Ny, Nz = (10, 10, 10)
@@ -388,6 +424,23 @@ end
         AutomaticDifferentiation(checkpointing=Reactant.Binomial(2))
     @test_throws ArgumentError Simulation(r_model; Δt, stop_iteration, verbose=false, automatic_differentiation=(; checkpointing=2))
     @test_throws ArgumentError Simulation(r_model; Δt, stop_iteration, verbose=false, automatic_differentiation=(; checkpointing=true))
+
+    # Binomial checkpointing holds stop_iteration as a device number; the others as an Int, which
+    # setproperty! keeps, and a negative count is refused either way.
+    binomial_simulation = Simulation(r_model; Δt, stop_iteration, verbose=false, automatic_differentiation=(; checkpointing=Reactant.Binomial(2)))
+    @test binomial_simulation.stop_iteration isa ConcreteRNumber{Int}
+    binomial_simulation.stop_iteration = 3
+    @test binomial_simulation.stop_iteration isa ConcreteRNumber{Int}
+    @test Reactant.to_number(binomial_simulation.stop_iteration) == 3
+    @test_throws ArgumentError binomial_simulation.stop_iteration = -1
+
+    for checkpointing in (false, Reactant.Periodic(2))
+        static_simulation = Simulation(r_model; Δt, stop_iteration, verbose=false, automatic_differentiation=(; checkpointing))
+        @test static_simulation.stop_iteration === stop_iteration
+        static_simulation.stop_iteration = 3
+        @test static_simulation.stop_iteration === 3
+        @test_throws ArgumentError static_simulation.stop_iteration = -1
+    end
 
     # The forward program does not depend on the options.
     simulation = Simulation(model; Δt, stop_iteration, verbose=false)

@@ -16,13 +16,7 @@ struct WENO{N, FT, WCT, TD, PP, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N
 end
 
 """
-    WENO([FT=Oceananigans.defaults.FloatType;]
-         weight_computation=Nothing,
-         order = 5,
-         buffer_scheme = DecreasingOrderAdvectionScheme(boundary_scheme = Centered(FT; order=2)),
-         time_discretization = ExplicitTimeDiscretization(),
-         bounds = nothing,
-         maximum_courant_number = 5//18)
+$(SIGNATURES)
 
 Construct a weighted essentially non-oscillatory advection scheme of order `order` with precision `FT`.
 
