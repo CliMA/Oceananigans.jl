@@ -172,9 +172,7 @@ end
 end
 
 @testset "MetalGPU: FieldTimeSeries in kernels" begin
-    times = [0, 1hour, 3hours]
-
-    function stepped_tracer(arch)
+    function stepped_tracer(arch, times)
         grid = RectilinearGrid(arch; size=(4, 4, 4), x=(0, 1000), y=(0, 1000), z=(-100, 0),
                                topology=(Periodic, Periodic, Bounded))
 
@@ -203,7 +201,9 @@ end
         return Array(interior(model.tracers.c))
     end
 
-    @test stepped_tracer(GPU(Metal.MetalBackend())) ≈ stepped_tracer(CPU())
+    @testset "times = $times" for times in ([0, 1hour, 3hours], 0:1hour:2hours)
+        @test stepped_tracer(GPU(Metal.MetalBackend()), times) ≈ stepped_tracer(CPU(), times)
+    end
 
     # https://github.com/CliMA/Oceananigans.jl/issues/6572
     grid = RectilinearGrid(GPU(Metal.MetalBackend()); size=(4, 4, 1), extent=(1, 1, 1))

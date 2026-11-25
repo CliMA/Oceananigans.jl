@@ -8,6 +8,7 @@ export
     architecture, child_architecture, on_architecture
 
 using Adapt: Adapt
+using Base: TwicePrecision
 using DocStringExtensions: TYPEDSIGNATURES # Architectures loads before Oceananigans.Utils.TYPEDSIGNATURES
 using KernelAbstractions: KernelAbstractions as KA
 using OffsetArrays: OffsetArrays, AbstractOffsetArray
@@ -152,6 +153,12 @@ unified_array(::GPU, a) = a
 struct Float32Adaptor end
 
 Adapt.adapt_storage(::Float32Adaptor, x::Float64) = Float32(x)
+
+function Adapt.adapt_structure(::Float32Adaptor, r::StepRangeLen{Float64})
+    ref = convert(TwicePrecision{Float32}, r.ref)
+    step = convert(TwicePrecision{Float32}, r.step)
+    return StepRangeLen{Float32}(ref, step, r.len, r.offset)
+end
 
 # Convert arguments to device-compatible types
 @inline convert_to_device(arch, args)  = args
