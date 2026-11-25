@@ -4,7 +4,7 @@ using Oceananigans.Advection: div_Uc, materialize_advection
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.ImmersedBoundaries: TopLoad, bottom_height_interior, immersed_cell, mask_immersed_field!
 using Oceananigans.Models: top_load_potential
-using Oceananigans.Grids: znode, column_depthᶠᶜᵃ, static_column_depthᶠᶜᵃ, static_column_depthᶜᶜᵃ
+using Oceananigans.Grids: inactive_node, znode, column_depthᶠᶜᵃ, static_column_depthᶠᶜᵃ, static_column_depthᶜᶜᵃ
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: immersed_top_advective_form_correctionᶜᶜᶜ, compute_w_from_continuity!,
                                                         update_zstar_scaling!
 using Oceananigans.TurbulenceClosures: z_top, z_bottom, depthᶜᶜᶠ, height_above_bottomᶜᶜᶠ, wall_vertical_distanceᶜᶜᶠ
@@ -399,6 +399,27 @@ function test_immersed_top_zstar_rest_state(FT, arch)
     return nothing
 end
 
+@inline inactive_free_surface_x_face(i, j, k, grid) = inactive_node(i, j, grid.Nz+1, grid, Face(), Center(), Face())
+@inline inactive_free_surface_y_face(i, j, k, grid) = inactive_node(i, j, grid.Nz+1, grid, Center(), Face(), Face())
+
+function test_immersed_top_free_surface_faces(FT, arch)
+    underlying_grid = RectilinearGrid(arch, FT; size=(4, 4, 10), extent=(1, 1, 1), topology=(Bounded, Bounded, Bounded))
+
+    # Dry 2×2 block in the corner, symmetric under x ↔ y; all other columns are wet beneath the top
+    top(x, y) = ifelse((x < 1/2) & (y < 1/2), -1, -1/2)
+
+    for VerticalBoundaries in (GridFittedVerticalBoundaries, PartialCellVerticalBoundaries)
+        ibg = ImmersedBoundaryGrid(underlying_grid, VerticalBoundaries(bottom_height=-1, top_height=top))
+        X = immersed_top_values(inactive_free_surface_x_face, ibg)[:, :, 1]
+        Y = immersed_top_values(inactive_free_surface_y_face, ibg)[:, :, 1]
+        @test all(Y[1:2, 2] .> 0)
+        @test !any(Y[:, 3:4] .> 0) && !any(Y[3:4, :] .> 0)
+        @test Y == permutedims(X)
+    end
+
+    return nothing
+end
+
 @testset "Immersed top dynamics" begin
     for arch in archs, FT in float_types
         @testset "Wall distances [$FT, $(typeof(arch))]"                       test_immersed_top_wall_distances(FT, arch)
@@ -412,5 +433,6 @@ end
         @testset "Top load potential [$FT, $(typeof(arch))]"                   test_immersed_top_load_potential(FT, arch)
         @testset "Rest state beneath a loaded immersed top [$FT, $(typeof(arch))]" test_immersed_top_rest_state(FT, arch)
         @testset "z★ rest state beneath a loaded immersed top [$FT, $(typeof(arch))]" test_immersed_top_zstar_rest_state(FT, arch)
+        @testset "Free surface faces beneath an immersed top [$FT, $(typeof(arch))]" test_immersed_top_free_surface_faces(FT, arch)
     end
 end
