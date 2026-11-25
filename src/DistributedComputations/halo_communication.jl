@@ -4,7 +4,8 @@ using Oceananigans.BoundaryConditions:
     DistributedFillHalo,
     fill_halo_event!,
     fill_halo_regions!,
-    get_boundary_kernels
+    get_boundary_kernels,
+    update_boundary_time_series!
 using Oceananigans.Fields: instantiated_location
 
 #####
@@ -43,15 +44,17 @@ end
 ##### Filling halos for halo communication boundary conditions
 #####
 
-BoundaryConditions.fill_halo_regions!(field::DistributedField, args::Vararg{Any, N}; kwargs...) where N =
-    fill_halo_regions!(field.data,
-                       field.boundary_conditions,
-                       field.indices,
-                       instantiated_location(field),
-                       field.grid,
-                       field.communication_buffers,
-                       args...;
-                       kwargs...)
+function BoundaryConditions.fill_halo_regions!(field::DistributedField, args::Vararg{Any, N}; kwargs...) where N
+    update_boundary_time_series!(field.boundary_conditions, args...)
+    return fill_halo_regions!(field.data,
+                              field.boundary_conditions,
+                              field.indices,
+                              instantiated_location(field),
+                              field.grid,
+                              field.communication_buffers,
+                              args...;
+                              kwargs...)
+end
 
 # Sometimes we want to fill halo using `adapted` arguments, where the grid has
 # been stripped from the architecture. For this reason we pass it explicitly
