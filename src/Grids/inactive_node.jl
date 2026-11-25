@@ -4,26 +4,21 @@ const f = Face()
 
 using ReactantCore: ReactantCore
 
+# The halo layers beyond a side that belong to the domain: the first one beyond an `Open` side
+@inline left_domain_halo(::Type{<:TwoSided{Open}})         = 1
+@inline left_domain_halo(topology)                         = 0
+@inline right_domain_halo(::Type{<:TwoSided{<:Any, Open}}) = 1
+@inline right_domain_halo(topology)                        = 0
+
 function build_condition(Topo, side, dim, array::Bool)
-    if Topo == :Bounded
-        if array
-            return :((ReactantCore.materialize_traced_array($side) .< 1) .| (ReactantCore.materialize_traced_array($side) .> grid.$dim))
-        else
-            return :(($side < 1) | ($side > grid.$dim))
-        end
-    elseif Topo == :(TwoSided{<:Union{Connected, Open}, Closed})
-        if array
-            return :((ReactantCore.materialize_traced_array($side) .> grid.$dim))
-        else
-            return :(($side > grid.$dim))
-        end
-    else # LeftClosedTopology
-        if array
-            return :((ReactantCore.materialize_traced_array($side) .< 1))
-        else
-            return :(($side < 1))
-        end
-    end
+    T     = :(topology(grid, $(findfirst(==(side), (:i, :j, :k)))))
+    n     = array ? :(ReactantCore.materialize_traced_array($side)) : side
+    left  = array ? :($n .< 1 - left_domain_halo($T))          : :($n < 1 - left_domain_halo($T))
+    right = array ? :($n .> grid.$dim + right_domain_halo($T)) : :($n > grid.$dim + right_domain_halo($T))
+
+    Topo == :BoundaryTopology      && return array ? :($left .| $right) : :($left | $right)
+    Topo == :RightBoundaryTopology && return right
+    return left
 end
 
 #####
@@ -35,18 +30,18 @@ $(TYPEDSIGNATURES)
 
 Return `true` when the tracer cell at `i, j, k` is "external" to the domain boundary.
 
-`inactive_cell`s include the halo cells beyond the `Closed` sides of directions whose sides are `Closed`, `Open` or `Connected`,
+`inactive_cell`s include the halo cells beyond `Closed` sides, the halo cells past the first one beyond `Open` sides,
 and cells within an immersed boundary.
 Cells that are staggered with respect to tracer cells and which lie _on_ the boundary are considered active.
 """
 @inline inactive_cell(i, j, k, grid) = false
 @inline active_cell(i, j, k, grid) = !inactive_cell(i, j, k, grid)
 
-# Closed on the left, open, connected or folded on the right
-const LeftClosedTopology = TwoSided{Closed, <:Union{Open, CommunicatingSide, CenterFolded, FaceFolded}}
+const RightBoundaryTopology = TwoSided{Connected, <:BoundarySide}
+const LeftBoundaryTopology  = TwoSided{<:BoundarySide, <:Union{CommunicatingSide, CenterFolded, FaceFolded}}
 
 # Metaprogramming over the permutations of directions bounded on both sides, on the right, and on the left
-Topos = (:Bounded, :(TwoSided{<:Union{Connected, Open}, Closed}), :LeftClosedTopology)
+Topos = (:BoundaryTopology, :RightBoundaryTopology, :LeftBoundaryTopology)
 
 for PrimaryTopo in Topos
 
