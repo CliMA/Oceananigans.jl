@@ -13,7 +13,7 @@ using Oceananigans.Utils: sum_of_velocities
 @inline momentum_advection_and_coriolis_u(i, j, k, grid, advection, coriolis, U) = U_dot_∇u(i, j, k, grid, advection, U) + x_f_cross_U(i, j, k, grid, coriolis, U)
 @inline momentum_advection_and_coriolis_v(i, j, k, grid, advection, coriolis, U) = U_dot_∇v(i, j, k, grid, advection, U) + y_f_cross_U(i, j, k, grid, coriolis, U)
 
-# Coriolis right after the vorticity term reuses its velocity interpolations before the kinetic energy and vertical terms
+# Coriolis next to the vorticity term reuses its velocity interpolations
 @inline function momentum_advection_and_coriolis_u(i, j, k, grid, advection::VectorInvariant, coriolis, U)
     𝒜ʰ = horizontal_advection_U(i, j, k, grid, advection, U.u, U.v)
     ℱ  = x_f_cross_U(i, j, k, grid, coriolis, U)

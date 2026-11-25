@@ -82,7 +82,7 @@ function regularize_boundary_condition(bc::RBC, grid, loc, dim, args...)
 end
 
 #####
-##### The halo fill leaves the exterior state in place; a boundary-normal velocity's state is extended to the halo faces in the domain
+##### The halo fill keeps the exterior state; a normal velocity also fills the halo faces in the domain
 #####
 
 @inline   _fill_west_halo!(j, k, grid, c, ::RVBC, loc, args...) = nothing

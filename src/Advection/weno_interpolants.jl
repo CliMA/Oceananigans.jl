@@ -452,7 +452,7 @@ The ``α`` values are normalized before returning
     return α .* Σα⁻¹
 end
 
-# For stencils like `VelocityStencil` that passes two different smoothness fields, we average both δˢ
+# `VelocityStencil`: the smoothness of both u and v
 @inline function biased_weno_weights((δᵤ, δᵥ)::Tuple{Tuple, Tuple}, grid, scheme::WENO{N, FT}, args...) where {N, FT}
     β = beta_sum(scheme, beta_loop(scheme, δᵤ), beta_loop(scheme, δᵥ))
     τ = global_smoothness_indicator(Val(N), β)
@@ -465,11 +465,11 @@ end
 @inline weno_differences(::WENO{N}, S) where N = @inbounds ntuple(i -> S[i+1] - S[i], Val(2N - 2))
 
 @inline function upwind_stencil(i, j, k, grid, scheme::WENO, bias, dir, ℓ, ψ, args...)
-    S = stencil_nodes(i, j, k, grid, scheme, dir, ℓ, ψ, args...)
+    S = stencil_values(i, j, k, grid, scheme, dir, ℓ, ψ, args...)
     return ifelse(bias == LeftBias, S, reverse(S))
 end
 
-# Different smoothness treatment
+# The differences that set the weights
 @inline smoothness_differences(i, j, k, grid, scheme, bias, dir, ℓ, ::AbstractSmoothnessStencil, args...) =  nothing
 @inline smoothness_differences(i, j, k, grid, scheme, bias, dir, ℓ,    stencil::FunctionStencil, args...) =  weno_differences(scheme, upwind_stencil(i, j, k, grid, scheme, bias, dir, ℓ, stencil.func, args...))
 @inline smoothness_differences(i, j, k, grid, scheme, bias, dir, ℓ,     ::VelocityStencil, u, v, args...) = (weno_differences(scheme, upwind_stencil(i, j, k, grid, scheme, bias, dir, ℓ, ℑyᵃᶠᵃ, u)),

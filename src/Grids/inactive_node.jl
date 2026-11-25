@@ -4,7 +4,7 @@ const f = Face()
 
 using ReactantCore: ReactantCore
 
-# The halo layers beyond a side that belong to the domain: the first one beyond an `Open` side
+# Halo layers that belong to the domain: one beyond an `Open` side
 @inline left_domain_halo(::Type{<:TwoSided{Open}})         = 1
 @inline left_domain_halo(topology)                         = 0
 @inline right_domain_halo(::Type{<:TwoSided{<:Any, Open}}) = 1

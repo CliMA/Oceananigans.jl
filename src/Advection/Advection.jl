@@ -11,7 +11,7 @@ export
     advective_tracer_flux_y,
     advective_tracer_flux_z,
 
-    Centered, UpwindBiased, WENO, MinmodExtrapolation, VanLeerExtrapolation,
+    Centered, UpwindBiased, WENO, MinmodExtrapolation, VanLeerExtrapolation, ContinuedExtrapolation,
     VectorInvariant, WENOVectorInvariant,
     FluxFormAdvection,
     AdaptiveImplicitVerticalAdvection,

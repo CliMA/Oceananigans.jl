@@ -48,6 +48,6 @@ const AUAS = AbstractUpwindBiasedAdvectionScheme
 @inline symmetric_interpolate(i, j, k, grid, scheme::AUAS, dir, ℓ, args...) = symmetric_interpolate(i, j, k, grid, scheme.advecting_velocity_scheme, dir, ℓ, args...)
 
 @inline function biased_interpolate(i, j, k, grid, scheme::UpwindBiased{<:Any, FT}, bias, dir, ℓ, ψ, args...) where FT
-    S = stencil_nodes(i, j, k, grid, scheme, dir, ℓ, ψ, args...)
+    S = stencil_values(i, j, k, grid, scheme, dir, ℓ, ψ, args...)
     return ifelse(bias == LeftBias, linear_reconstruction(S, FT, Val(:left)), linear_reconstruction(S, FT, Val(:right)))
 end

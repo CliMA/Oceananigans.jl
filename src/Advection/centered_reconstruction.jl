@@ -36,6 +36,6 @@ const ACAS = AbstractCenteredAdvectionScheme
 @inline biased_interpolate(i, j, k, grid, scheme::ACAS, bias, dir, ℓ, args...) = symmetric_interpolate(i, j, k, grid, scheme, dir, ℓ, args...)
 
 @inline function symmetric_interpolate(i, j, k, grid, scheme::Centered, dir, ℓ, ψ, args...)
-    S = stencil_nodes(i, j, k, grid, scheme, dir, ℓ, ψ, args...)
+    S = stencil_values(i, j, k, grid, scheme, dir, ℓ, ψ, args...)
     return linear_reconstruction(S, typeof(zero(grid)), Val(:symmetric))
 end

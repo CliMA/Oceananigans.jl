@@ -1,7 +1,7 @@
 using Oceananigans.Grids: inactive_node
 
 #####
-##### Reconstruction stencils: the 2N nodes about a point along one direction, continued beyond boundaries
+##### Stencils of 2N nodes along one direction, with ghosts beyond the data
 #####
 
 @inline unit_vector(::Val{1}) = (1, 0, 0)
@@ -11,74 +11,89 @@ using Oceananigans.Grids: inactive_node
 @inline stencil_value(i, j, k, grid, ψ, args...)           = @inbounds ψ[i, j, k]
 @inline stencil_value(i, j, k, grid, ψ::Callable, args...) = ψ(i, j, k, grid, args...)
 
-# A node at `ℓ = (ℓx, ℓy, ℓz)` has data when it is active, with the cell between it and the point standing for it along `dir`
 @inline function has_data(node, grid, dir::Val{d}, ℓ, beyond_point) where d
-    cell = ifelse((ℓ[d] isa Face) & beyond_point, node .- unit_vector(dir), node)
-    return !inactive_node(cell..., grid, Base.setindex(ℓ, Center(), d)...)
+    cell_towards_point = ifelse((ℓ[d] isa Face) & beyond_point, node .- unit_vector(dir), node)
+    return !inactive_node(cell_towards_point..., grid, Base.setindex(ℓ, Center(), d)...)
 end
 
 """
     MinmodExtrapolation()
 
-Ghosts beyond a boundary that continue the stencil nodes with data by the minmod of the two differences at their end.
+Ghosts that continue the data with the minmod of its last two differences.
 """
 struct MinmodExtrapolation end
 
 """
     VanLeerExtrapolation()
 
-Ghosts beyond a boundary that continue the stencil nodes with data by the van Leer mean `2ab / (a + b)` of the two
-differences `a` and `b` at their end, or by zero when `a` and `b` differ in sign.
+Ghosts that continue the data with the van Leer mean `2ab / (a + b)` of its last two differences `a` and `b`.
 """
 struct VanLeerExtrapolation end
 
-Base.summary(::MinmodExtrapolation)  = "MinmodExtrapolation()"
-Base.summary(::VanLeerExtrapolation) = "VanLeerExtrapolation()"
+"""
+    ContinuedExtrapolation()
 
-@inline limited_slope(::MinmodExtrapolation,  a, b) = ifelse(a * b > 0, ifelse(abs(a) < abs(b), a, b), zero(a))
-@inline limited_slope(::VanLeerExtrapolation, a, b) = ifelse(a * b > 0, 2a * b / (a + b), zero(a))
+Ghosts that continue the data with its last value.
+"""
+struct ContinuedExtrapolation end
 
-# The slope that continues the nodes `S` beyond the end `n` of the nodes with data, which continue `available` nodes past `n`
-# in the direction `s`: the limited slope of the two differences there, the one difference, or none
-@inline function boundary_slope(extrapolation, S::NTuple{M}, n, s, available) where M
-    δ₁ = S[n]                  - S[clamp(n + s, 1, M)]
-    δ₂ = S[clamp(n + s, 1, M)] - S[clamp(n + 2s, 1, M)]
-    return ifelse(available ≥ 2, limited_slope(extrapolation, δ₁, δ₂), ifelse(available == 1, δ₁, zero(δ₁)))
+Base.summary(::MinmodExtrapolation)    = "MinmodExtrapolation()"
+Base.summary(::VanLeerExtrapolation)   = "VanLeerExtrapolation()"
+Base.summary(::ContinuedExtrapolation) = "ContinuedExtrapolation()"
+
+@inline limited_slope(::MinmodExtrapolation,    a, b) = ifelse(a * b > 0, ifelse(abs(a) < abs(b), a, b), zero(a))
+@inline limited_slope(::VanLeerExtrapolation,   a, b) = ifelse(a * b > 0, 2a * b / (a + b), zero(a))
+@inline limited_slope(::ContinuedExtrapolation, a, b) = zero(a)
+
+# The data at the three nodes with data nearest the boundary, outermost first, and the number of nodes with data
+@inline function data_at_boundary_nodes(S::NTuple{M}, D) where M
+    N = M ÷ 2
+    S₀, S₁, S₂ = S[N], S[N + 1], S[N + 2]
+    joined, count = true, 1
+    for n in N-1:-1:1
+        joined &= D[n]
+        count  += joined
+        S₀, S₁, S₂ = ifelse(joined, (S[n], S₀, S₁), (S₀, S₁, S₂))
+    end
+    return (S₀, S₁, S₂), count
 end
 
-# The 2N nodes i - N to i + N - 1 along `dir` about the point between nodes N and N + 1. Beyond the nodes with data next to the
-# point they continue the end node by the limited slope there; a point with data on one side only reads the node next to it on
-# that side everywhere, and a point with no data on either side reads its nodes as they are.
-@inline function stencil_nodes(i, j, k, grid, scheme::AbstractAdvectionScheme{N}, dir, ℓ, ψ, args...) where N
+@inline function boundary_slope(extrapolation, S₀, S₁, S₂, data_length)
+    δ₁, δ₂ = S₀ - S₁, S₁ - S₂
+    slope  = limited_slope(extrapolation, δ₁, ifelse(data_length ≥ 3, δ₂, δ₁))
+    return ifelse(data_length ≥ 2, slope, zero(slope))
+end
+
+# The values at the 2N nodes about the point between nodes N and N + 1
+@inline function stencil_values(i, j, k, grid, scheme::AbstractAdvectionScheme{N}, dir, ℓ, ψ, args...) where N
     node(n) = (i, j, k) .+ (n - N - 1) .* unit_vector(dir)
     S = ntuple(n -> stencil_value(node(n)..., grid, ψ, args...),    Val(2N))
     D = ntuple(n -> has_data(node(n),         grid, dir, ℓ, n > N), Val(2N))
 
-    # the nodes with data next to the point
-    first = max(0,      ntuple(n -> ifelse(D[n], 0, n), Val(N))...) + 1
-    last  = min(2N + 1, ntuple(n -> ifelse(D[N + n], 2N + 1, N + n), Val(N))...) - 1
+    S⁻, N⁻ = data_at_boundary_nodes(S, D)
+    S⁺, N⁺ = data_at_boundary_nodes(reverse(S), reverse(D))
 
-    slope⁻ = boundary_slope(scheme.extrapolation, S, first, +1, last - first)
-    slope⁺ = boundary_slope(scheme.extrapolation, S, last,  -1, last - first)
+    slope⁻ = boundary_slope(scheme.extrapolation, S⁻..., N⁻ + N⁺)
+    slope⁺ = boundary_slope(scheme.extrapolation, S⁺..., N⁻ + N⁺)
 
-    continued = ntuple(Val(2N)) do n
-        ifelse(n < first, S[first] + (first - n) * slope⁻,
-        ifelse(n > last,  S[last]  + (n - last)  * slope⁺, S[n]))
+    first,  last  = N + 1 - N⁻, N + N⁺
+    first′, last′ = convert(eltype(S), first), convert(eltype(S), last)
+    ghosted = ntuple(Val(2N)) do n
+        ifelse(n < first, S⁻[1] + (first′ - n) * slope⁻,
+        ifelse(n > last,  S⁺[1] + (n - last′)  * slope⁺, S[n]))
     end
 
-    wall      = ifelse(D[N], S[N], S[N + 1])
-    one_sided = ntuple(n -> wall, Val(2N))
+    wall_value = ifelse(D[N], S[N], S[N + 1])
+    at_wall    = ntuple(n -> wall_value, Val(2N))
 
-    return ifelse(D[N] & D[N + 1], continued, ifelse(D[N] | D[N + 1], one_sided, S))
+    return ifelse(D[N] & D[N + 1], ghosted, ifelse(D[N] | D[N + 1], at_wall, S))
 end
 
-# A two-node stencil reads the two nodes next to the point
-@inline function stencil_nodes(i, j, k, grid, ::AbstractAdvectionScheme{1}, dir, ℓ, ψ, args...)
+@inline function stencil_values(i, j, k, grid, ::AbstractAdvectionScheme{1}, dir, ℓ, ψ, args...)
     i⁻, j⁻, k⁻ = (i, j, k) .- unit_vector(dir)
     return stencil_value(i⁻, j⁻, k⁻, grid, ψ, args...), stencil_value(i, j, k, grid, ψ, args...)
 end
 
-# The reconstruction of `Centered` (`:symmetric`) or `UpwindBiased` (`:left`, `:right`) from the nodes `S`, with coefficients of type `FT`
 @generated function linear_reconstruction(S::NTuple{M}, ::Type{FT}, ::Val{shift}) where {M, FT, shift}
     reconstruction = calc_reconstruction_stencil(FT, M ÷ 2, shift, :stencil)
     return quote
@@ -88,8 +103,7 @@ end
 end
 
 #####
-##### Interpolations along one direction to the location in their name, e.g. `biased_interpolate_xᶠᶠᶜ` reconstructs at
-##### (Face, Face, Center) from the nodes at (Center, Face, Center)
+##### Interpolations named by the location they reconstruct at
 #####
 
 const XFG = Union{<:XFlatGrid, <:ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:XFlatGrid}}

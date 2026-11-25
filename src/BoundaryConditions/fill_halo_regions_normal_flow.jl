@@ -1,4 +1,4 @@
-# Normal-flow boundary fill: set the boundary-face value, and extend it to the halo faces that belong to the domain
+# The boundary value, also on the halo faces that belong to the domain
 @inline   _fill_west_halo!(j, k, grid, c, bc::NFBC, loc, args...) = @inbounds c[1 - left_domain_halo(topology(grid, 1)), j, k]            = c[1, j, k]           = getbc(bc, j, k, grid, args...)
 @inline   _fill_east_halo!(j, k, grid, c, bc::NFBC, loc, args...) = @inbounds c[grid.Nx + 1 + right_domain_halo(topology(grid, 1)), j, k] = c[grid.Nx + 1, j, k] = getbc(bc, j, k, grid, args...)
 @inline  _fill_south_halo!(i, k, grid, c, bc::NFBC, loc, args...) = @inbounds c[i, 1 - left_domain_halo(topology(grid, 2)), k]            = c[i, 1, k]           = getbc(bc, i, k, grid, args...)

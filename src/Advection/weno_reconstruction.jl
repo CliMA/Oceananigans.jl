@@ -31,8 +31,8 @@ Keyword arguments
                         Default: `Nothing` (deferred; a architecture-dependent default is assigned in
                         `materialize_advection`)
 - `order`: The order of the WENO advection scheme. Default: 5.
-- `extrapolation`: The ghosts that replace the stencil nodes without data beyond a boundary, `MinmodExtrapolation()` or
-                   `VanLeerExtrapolation()`. Default: `MinmodExtrapolation()`.
+- `extrapolation`: The ghosts beyond boundaries: `MinmodExtrapolation()`, `VanLeerExtrapolation()` or `ContinuedExtrapolation()`.
+                   Default: `MinmodExtrapolation()`.
 - `bounds` (experimental): A tuple `(cᵐⁱⁿ, cᵐᵃˣ)` switching on the maximum-principle-satisfying limiter of
                            [Zhang and Shu (2010)](@cite ZhangShu2010), which rescales the reconstruction of
                            every cell towards the cell mean so that the advective update stays within `bounds`.
