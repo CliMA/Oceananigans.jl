@@ -1,6 +1,6 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
-using Oceananigans.Advection: div_Uc, materialize_advection, update_advection!, bounds_preserving_limiter, update_bounds_preserving_limiter!
+using Oceananigans.Advection: div_Uc, materialize_advection, update_advection!, bounds_preserving_limiter, update_tracer_advection!
 using Oceananigans.TimeSteppers: AdaptiveVerticallyImplicitDiscretization
 using Oceananigans.Operators: Vᶜᶜᶜ
 using Random
@@ -182,7 +182,7 @@ end
     set!(U.w, (x, y, z) -> -1.5 * sin(π * z)) # |w| Δt / Δz reaches 1.2, above cfl = 0.5
     foreach(fill_halo_regions!, U)
 
-    update_bounds_preserving_limiter!(bounded, grid, c)
+    update_tracer_advection!(bounded, (; grid), c)
 
     max_difference = 0.0
     for k in 1:N, j in 1:8, i in 1:8
