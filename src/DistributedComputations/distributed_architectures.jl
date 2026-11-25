@@ -350,21 +350,6 @@ Architectures.cpu_architecture(arch::Distributed{A, S}) where {A, S} =
                    arch.field_count,
                    nothing) # No devices on the CPU
 
-# Fields of architectures sharing `field_count` (e.g. `twin_grid`s) get distinct tags, as long as all ranks create them in the same order
-next_field_tag!(arch::Distributed) = Threads.atomic_add!(arch.field_count, UInt64(1))
-
-# Bring every rank's tag counter to the largest one. Called after a step where ranks may create different
-# fields that never exchange halos (e.g. reductions over a boundary only some ranks own), so that the fields
-# all ranks create afterwards get matching tags again.
-synchronize_field_tags!(arch) = nothing
-synchronize_field_tags!(arch::Distributed) = synchronize_field_tags!(arch.communicator, arch.field_count)
-synchronize_field_tags!(communicator, field_count) = nothing # e.g. Reactant meshes
-
-function synchronize_field_tags!(communicator::MPI.Comm, field_count)
-    field_count[] = MPI.Allreduce(field_count[], max, communicator)
-    return nothing
-end
-
 # Fail loudly instead of hanging in the first halo exchange: called where all ranks meet, e.g. `initialize!(::Simulation)`
 check_field_tags(arch) = nothing
 check_field_tags(arch::Distributed) = check_field_tags(arch.communicator, arch.field_count[])
@@ -372,8 +357,7 @@ check_field_tags(communicator, field_count) = nothing # e.g. Reactant meshes
 
 function check_field_tags(communicator::MPI.Comm, field_count)
     MPI.Allreduce(field_count, min, communicator) == MPI.Allreduce(field_count, max, communicator) ||
-        throw(ArgumentError("MPI ranks created different numbers of distributed fields, so their halo exchanges would never match. " *
-                            "All ranks must create the same distributed fields, in the same order."))
+        throw(ArgumentError("MPI ranks exchanged the halos of different numbers of distributed fields, so their halo exchanges would never match."))
     return nothing
 end
 
