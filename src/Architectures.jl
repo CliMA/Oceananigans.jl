@@ -155,7 +155,7 @@ struct Float32Adaptor end
 Adapt.adapt_storage(::Float32Adaptor, x::Float64) = Float32(x)
 
 function Adapt.adapt_structure(::Float32Adaptor, r::StepRangeLen{Float64})
-    ref = convert(TwicePrecision{Float32}, r.ref)
+    ref  = convert(TwicePrecision{Float32}, r.ref)
     step = convert(TwicePrecision{Float32}, r.step)
     return StepRangeLen{Float32}(ref, step, r.len, r.offset)
 end
