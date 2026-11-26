@@ -85,7 +85,6 @@ explicit_ssprk3_step_free_surface!(free_surface, model, Δt) =
     launch!(model.architecture, model.grid, :xy,
             _explicit_ssprk3_step_free_surface!, free_surface.displacement, Δt, model.timestepper.coefficients[model.clock.stage],
             model.timestepper.Gⁿ.η, model.timestepper.Ψ⁻.η, size(model.grid, 3))
-        
 explicit_ab2_step_free_surface!(free_surface, model, Δt) =
     launch!(model.architecture, model.grid, :xy,
             _explicit_ab2_step_free_surface!, free_surface.displacement, Δt, model.timestepper.χ,
