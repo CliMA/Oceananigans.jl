@@ -2,10 +2,10 @@ using Oceananigans: fields, TracerTendencyCallsite
 using Oceananigans.Advection: Centered, _advective_tracer_flux_x, _advective_tracer_flux_y
 using Oceananigans.Fields: OneField
 using Oceananigans.Grids: immersed_inactive_node, static_column_depthᶜᶜᵃ
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: ZStarCoordinate, tracer_advecting_velocities
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: ZStarCoordinate
 using Oceananigans.Operators: Azᶜᶜᶜ, Δrᶜᶜᶜ, Ax_qᶠᶜᶜ, Ay_qᶜᶠᶜ
 using Oceananigans.Simulations: Simulations, Callback, add_callback!
-using Oceananigans.TurbulenceClosures: _diffusive_flux_x, _diffusive_flux_y, closure_required_tracers
+using Oceananigans.TurbulenceClosures: _diffusive_flux_x, _diffusive_flux_y, closure_required_tracers, tracer_advecting_velocities
 
 """
     YinYangConservationFixer(model::HydrostaticFreeSurfaceModel)

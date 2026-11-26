@@ -22,7 +22,8 @@ using Oceananigans.Operators: Δzᶜᶜᶜ, Δzᶜᶠᶠ, Δzᶠᶜᶠ, Δz⁻¹
 using Oceananigans.TimeSteppers: TimeSteppers, time_discretization
 using Oceananigans.TurbulenceClosures: TurbulenceClosures, AbstractScalarDiffusivity, VerticalFormulation,
                                        VerticallyImplicitTimeDiscretization, buoyancy_force, buoyancy_tracers,
-                                       dissipation, getclosure, shear_production, with_penetrative_radiation
+                                       dissipation, getclosure, shear_production, tracer_advecting_velocities,
+                                       with_penetrative_radiation
 using Oceananigans.Utils: Utils, f32_safe_cbrt, launch!, named_tuple, prettysummary, SIGNATURES, TYPEDSIGNATURES
 
 const c = Center()

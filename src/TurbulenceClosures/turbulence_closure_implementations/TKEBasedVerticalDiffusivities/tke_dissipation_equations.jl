@@ -80,13 +80,13 @@ function time_step_tke_dissipation_equations!(model, Δt)
                        model.closure_fields, Val(e_index),
                        model.clock,
                        fields(model),
-                       Δτ, model.advection.e, model.transport_velocities, nothing, model.forcing.e)
+                       Δτ, model.advection.e, tracer_advecting_velocities(model, Val(:e)), nothing, model.forcing.e)
 
         implicit_step!(ϵ, implicit_solver, closure,
                        model.closure_fields, Val(ϵ_index),
                        model.clock,
                        fields(model),
-                       Δτ, model.advection.ϵ, model.transport_velocities, nothing, model.forcing.ϵ)
+                       Δτ, model.advection.ϵ, tracer_advecting_velocities(model, Val(:ϵ)), nothing, model.forcing.ϵ)
     end
 
     return nothing
