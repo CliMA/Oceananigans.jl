@@ -18,6 +18,11 @@ using Oceananigans.Grids: inactive_node
     return !inactive_node(i + c * di, j + c * dj, k + c * dk, grid, Base.setindex(ℓ, Center(), d)...)
 end
 
+# Every node along a Periodic direction has data when the grid is not immersed
+@inline has_data(i, j, k, grid::AbstractUnderlyingGrid{<:Any, Periodic, <:Any, <:Any}, ::Val{1}, ℓ, o) = true
+@inline has_data(i, j, k, grid::AbstractUnderlyingGrid{<:Any, <:Any, Periodic, <:Any}, ::Val{2}, ℓ, o) = true
+@inline has_data(i, j, k, grid::AbstractUnderlyingGrid{<:Any, <:Any, <:Any, Periodic}, ::Val{3}, ℓ, o) = true
+
 """
     MinmodExtrapolation()
 
@@ -78,14 +83,13 @@ end
 # The data at the three nodes with data nearest the boundary, outermost first, and the number of nodes with data
 @inline function data_at_boundary_nodes(S::NTuple{M}, D) where M
     N = M ÷ 2
-    S₀, S₁, S₂ = S[N], S[N + 1], S[N + 2]
     χ, m = true, 1
     for n in N-1:-1:1
         χ &= D[n]
         m += χ
-        S₀, S₁, S₂ = ifelse(χ, (S[n], S₀, S₁), (S₀, S₁, S₂))
     end
-    return (S₀, S₁, S₂), m
+    n = N + 1 - m
+    return (S[n], S[n + 1], S[n + 2]), m
 end
 
 @inline function boundary_slope(extrapolation, S₀, S₁, S₂, data_length)
