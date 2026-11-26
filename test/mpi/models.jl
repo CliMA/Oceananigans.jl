@@ -472,13 +472,23 @@ function test_halo_communication_after_asynchronous_fill(child_arch)
     return nothing
 end
 
-# Halo tags count the distributed fields: a rank creating an extra one is an error at `run!`, not a hang in the first exchange
+# A field takes its halo tag on its first exchange, so a field that only one rank creates (and never exchanges)
+# leaves the other fields' tags alone: the simulation runs and later halo exchanges still match up.
 function test_mismatched_field_creation(child_arch)
     arch = Distributed(child_arch; partition=Partition(2, 2))
     grid = RectilinearGrid(arch; topology=(Periodic, Periodic, Periodic), size=(8, 8, 4), extent=(1, 2, 3))
     simulation = Simulation(NonhydrostaticModel(grid); Δt=1, stop_iteration=1, verbose=false)
     arch.local_rank == 0 && CenterField(grid)
-    @test_throws ArgumentError run!(simulation)
+    run!(simulation)
+    @test iteration(simulation) == 1
+
+    # A field every rank creates afterwards gets its west halo from the west neighbour
+    c = CenterField(grid)
+    set!(c, arch.local_rank)
+    fill_halo_regions!(c)
+    Hx, Hy, Hz = halo_size(grid)
+    west_halo = Array(parent(c))[1:Hx, Hy+1:end-Hy, Hz+1:end-Hz]
+    @test all(west_halo .== arch.connectivity.west)
     return nothing
 end
 
