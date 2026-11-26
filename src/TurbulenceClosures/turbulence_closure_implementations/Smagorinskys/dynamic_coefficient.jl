@@ -39,10 +39,11 @@ may be used as a performance optimization for cases where dynamic coefficient co
 Test filter
 ===========
 
-The test filter applies the weights (¼, ½, ¼) along each direction, which makes it twice as wide as the
-grid spacing. It is not applied across the boundaries of the domain: next to a boundary the flow is filtered
-only along the directions parallel to it, and the ratio of the test filter width to the grid filter width is
-reduced accordingly, from 2 to 2^(2/3) next to one boundary of a three-dimensional domain.
+The test filter applies the weights (¼, ½, ¼) along each direction. Its width is that of the box filter with
+the same second moment (Lund, 1997), which is √6 times the grid spacing. It is not applied across the
+boundaries of the domain: next to a boundary the flow is filtered only along the directions parallel to it,
+and the ratio of the test filter width to the grid filter width is reduced accordingly, from √6 to 6^(1/3)
+next to one boundary of a three-dimensional domain.
 
 Multi-stage timestepper compatibility
 =====================================
@@ -107,6 +108,9 @@ References
 
 Bou-Zeid, Elie, Meneveau, Charles, and Parlange, Marc. (2005) A scale-dependent Lagrangian dynamic model for
 large eddy simulation of complex turbulent flows, Physics of Fluids, **17**, 025105.
+
+Lund, Thomas S. (1997) On the use of discrete filters for large eddy simulation, Annual Research Briefs,
+Center for Turbulence Research, 83–95.
 """
 function DynamicSmagorinsky(time_discretization = ExplicitTimeDiscretization(),
                             FT = Oceananigans.defaults.FloatType;
