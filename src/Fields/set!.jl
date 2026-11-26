@@ -1,7 +1,7 @@
 using KernelAbstractions: @kernel, @index
 
-using Oceananigans.Grids: node_names
 using Oceananigans.Architectures: cpu_architecture, GPU, CPU, ReactantState
+using Oceananigans.Grids: node_names
 
 #####
 ##### Utilities

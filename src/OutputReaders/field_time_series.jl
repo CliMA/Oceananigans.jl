@@ -434,7 +434,7 @@ time_indices_length(backend::PartlyInMemory, times) = length(backend)
 time_indices_length(::OnDisk, times) = nothing
 
 """
-$(MethodSignatures(; defaults = true))
+$(SIGNATURES)
 
 Construct a `FieldTimeSeries` on `loc`ation of `grid` and at `times`.
 
@@ -756,7 +756,7 @@ function manually_reconstruct_rectilinear_grid(grid, file, architecture)
 end
 
 """
-$(MethodSignatures(; defaults = true))
+$(SIGNATURES)
 
 Return a `FieldTimeSeries` containing a time-series of the field `name`
 load from JLD2 output located at `path`.
@@ -1096,7 +1096,7 @@ function BoundaryConditions.fill_halo_regions!(fts::InMemoryFTS)
     partitioned_indices = collect(Iterators.partition(time_indices(fts), MAX_FTS_TUPLE_SIZE))
     Ni = length(partitioned_indices)
 
-    asyncmap(1:Ni) do i
+    for i in 1:Ni
         indices = partitioned_indices[i]
         fts_tuple = Tuple(fts[n] for n in indices)
         fill_halo_regions!(fts_tuple)

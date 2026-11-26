@@ -1046,4 +1046,35 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
             @test all(c[i, j, Nz+1] ≈ 2 * (j + 0.5) for i in 1:Nx, j in 1:Ny)
         end
     end
+
+    # A condition reduced in every direction also matches the types reduced in x and z,
+    # but holds one point, so it is read there on every boundary rather than at y index j.
+    @testset "Fields and FieldTimeSeries reduced in every direction read their one point on x and z boundaries [$(summary(arch))]" for arch in archs
+        for Nz in (1, 5)
+            Nx, Ny = 3, 4
+            grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(1, 1, 1), topology=(Bounded, Bounded, Bounded))
+
+            condition = Field{Nothing, Nothing, Nothing}(grid)
+            set!(condition, 3)
+
+            times = [0.0, 1.0]
+            series = FieldTimeSeries{Nothing, Nothing, Nothing}(grid, times)
+            for n in eachindex(times)
+                interior(series, 1, 1, 1, n) .= times[n] + 1
+            end
+
+            for (bc, value) in ((condition, 3), (series, 1.5))
+                bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center());
+                                              east = ValueBoundaryCondition(bc),
+                                              top = ValueBoundaryCondition(bc))
+                c = CenterField(grid; boundary_conditions=bcs)
+                fill_halo_regions!(c, Clock(time=0.5), (; c))
+
+                # The interior is zero, so the halo is twice the boundary value
+                c = on_architecture(CPU(), c)
+                @test all(c[Nx+1, j, k] ≈ 2value for j in 1:Ny, k in 1:Nz)
+                @test all(c[i, j, Nz+1] ≈ 2value for i in 1:Nx, j in 1:Ny)
+            end
+        end
+    end
 end

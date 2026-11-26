@@ -82,7 +82,7 @@ fig
 # the tidal velocity and tidal forcing amplitudes are related via:
 #
 # ```math
-# U_2 = \frac{ω_2}{ω_2^2 - f^2} F_0
+# U_2 = \frac{ω_2}{f^2 - ω_2^2} F_0
 # ```
 #
 # Now we have a way to find the tidal forcing amplitude that corresponds to a given
@@ -99,7 +99,7 @@ T₂ = 12.421hours
 ω₂ = 2π / T₂
 ϵ = 0.1
 U₂ = ϵ * ω₂ * σ
-F₀ = U₂ * (ω₂^2 - f^2) / ω₂
+F₀ = U₂ * (f^2 - ω₂^2) / ω₂
 
 @inline tidal_forcing(x, z, t, p) = p.F₀ * sin(p.ω₂ * t)
 u_forcing = Forcing(tidal_forcing, parameters=(; F₀, ω₂))

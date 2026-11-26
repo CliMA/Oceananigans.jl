@@ -1,5 +1,4 @@
-import Dates
-using Dates: AbstractTime, Period, Nanosecond
+using Dates: Dates, AbstractTime, Period, Nanosecond
 
 # For Oceananigans clocks based on calendar values (e.g. DateTime or TimeDate),
 # time-stepping in Oceananigans advances prognostic variables using a real-valued

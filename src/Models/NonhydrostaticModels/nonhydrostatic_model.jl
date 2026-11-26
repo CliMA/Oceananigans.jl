@@ -12,7 +12,7 @@ using Oceananigans.Grids: architecture, topology
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models: AbstractModel, extract_boundary_conditions, materialize_free_surface, materialize_tracers,
                            timestepper_name, total_velocities, validate_model_halo, validate_tracer_advection
-using Oceananigans.Solvers: FFTBasedPoissonSolver
+using Oceananigans.Solvers: FFTBasedPoissonSolver, ConjugateGradientPoissonSolver
 using Oceananigans.TimeSteppers: AbstractLagrangianParticles, Clock, TimeStepper, materialize_clock!,
                                  materialize_lagrangian_particles,
                                  time_discretization, update_state!
@@ -60,7 +60,7 @@ end
 supported_timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
 """
-$(MethodSignatures(; defaults = true))
+$(SIGNATURES)
 
 Construct a model for a non-hydrostatic, incompressible fluid on `grid`, using the Boussinesq
 approximation when `buoyancy != nothing`. By default, all Bounded directions are rigid and impenetrable.
@@ -306,6 +306,17 @@ function build_nonhydrostatic_model(grid, ::Val{tracer_names}, timestepper,
 
     if isnothing(pressure_solver)
         pressure_solver = nonhydrostatic_pressure_solver(grid, free_surface)
+    end
+
+    if pressure_solver isa ConjugateGradientPoissonSolver && !isnothing(free_surface)
+        top_bc = nonhydrostatic_pressure.boundary_conditions.top
+        preconditioner = free_surface_preconditioner(pressure_solver.conjugate_gradient_solver.preconditioner, free_surface)
+        pressure_solver = ConjugateGradientPoissonSolver(grid;
+                            preconditioner,
+                            reltol = pressure_solver.conjugate_gradient_solver.reltol,
+                            abstol = pressure_solver.conjugate_gradient_solver.abstol,
+                            maxiter = pressure_solver.conjugate_gradient_solver.maxiter,
+                            top_bc = top_bc)
     end
 
     # Materialize background fields

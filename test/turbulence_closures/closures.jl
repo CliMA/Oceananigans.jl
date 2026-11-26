@@ -10,7 +10,7 @@ using Oceananigans.Solvers: get_coefficient
 using Oceananigans.TimeSteppers: implicit_step!
 using Oceananigans.TurbulenceClosures: VerticallyImplicitDiffusionLowerDiagonal,
                                        VerticallyImplicitDiffusionDiagonal,
-                                       VerticallyImplicitDiffusionUpperDiagonal
+                                       VerticallyImplicitDiffusionUpperDiagonal, implicit_diffusion_solver
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity, RiBasedVerticalDiffusivity, DiscreteDiffusionFunction,
                                        viscosity_location, diffusivity_location,
                                        required_halo_size_x, required_halo_size_y, required_halo_size_z,
@@ -427,6 +427,22 @@ end
             end
         end
 
+        mixed_float_types = ((Float64, Float32), (Float32, Float64))
+
+        @testset "SmagorinskyLilly($closure_FT) on $grid_FT [$(typeof(arch))]" for arch in archs, (closure_FT, grid_FT) in mixed_float_types
+            grid =RectilinearGrid(arch, grid_FT; size=(2, 2, 2), extent=(1, 1, 1))
+
+            function eddy_viscosity(closure)
+                model = NonhydrostaticModel(grid; closure, buoyancy=BuoyancyTracer(), tracers=:b)
+                set!(model, u=(x, y, z) -> z, b=(x, y, z) -> z / 10)
+                return Array(interior(model.closure_fields.νₑ))
+            end
+
+            νₑ = eddy_viscosity(SmagorinskyLilly(closure_FT))
+            @test νₑ ≈ eddy_viscosity(SmagorinskyLilly(grid_FT)) rtol=sqrt(eps(Float32))
+            @test all(0 .< νₑ .< eddy_viscosity(SmagorinskyLilly(closure_FT, Cb=0)))
+        end
+
         c = Center()
         f = Face()
         ri_based = @test_logs (:warn, r"^RiBasedVerticalDiffusivity is an experimental turbulence closure") RiBasedVerticalDiffusivity()
@@ -566,6 +582,22 @@ end
             set!(model, u = (x, y, z) -> randn())
             νₑ = Array(interior(model.closure_fields.νₑ))
             @test any(νₑ .> 0)
+        end
+    end
+
+    @testset "Dynamic Smagorinsky strain-rate magnitude" begin
+        for arch in archs
+            # For u = γz, ΣᵢⱼΣᵢⱼ = γ²/2, so that the strain-rate magnitude |S| equals γ.
+            γ = 2.0
+            grid = RectilinearGrid(arch, size=(4, 4, 8), extent=(1, 1, 1), topology=(Periodic, Periodic, Bounded))
+            model = NonhydrostaticModel(grid, closure=DynamicSmagorinsky(averaging=LagrangianAveraging()))
+            set!(model, u = (x, y, z) -> γ * z)
+
+            Σ = interior(model.closure_fields.Σ, :, :, 3:6)
+            Σ̄ = interior(model.closure_fields.Σ̄, :, :, 3:6)
+
+            @test all(Σ .≈ γ)
+            @test all(Σ̄ .≈ γ)
         end
     end
 
@@ -871,6 +903,16 @@ end
                 @test maximum(abs, u¹ .- factor .* u⁰) < 1e-10 * maximum(abs, u⁰)
             end
         end
+    end
+
+    @testset "Vertically-implicit diffusion of w with a nonzero top face velocity [$(typeof(arch))]" for arch in archs
+        grid = RectilinearGrid(arch, size=4, z=(0, 1), topology=(Flat, Flat, Bounded))
+        VITD = VerticallyImplicitTimeDiscretization()
+        w = ZFaceField(grid)
+        set!(w, z -> z) # ∂z² w = 0 with w = 1 on the top face, as under a free surface or an open top
+        w⁰ = Array(interior(w))
+        implicit_step!(w, implicit_diffusion_solver(VITD, grid), VerticalScalarDiffusivity(VITD; ν=1), nothing, nothing, Clock(grid), (;), 1)
+        @test Array(interior(w)) ≈ w⁰
     end
 
     @testset "Vertically-implicit diffusion beneath an immersed bottom" begin

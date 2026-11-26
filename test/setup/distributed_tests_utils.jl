@@ -11,7 +11,7 @@ if !@isdefined(_DISTRIBUTED_TESTS_UTILS_LOADED)
 const _DISTRIBUTED_TESTS_UTILS_LOADED = true
 
 # Mask the singularity of the grid in a region of `radius` degrees around the singularities
-function analytical_immersed_tripolar_grid(underlying_grid::TripolarGrid; radius = 5) # degrees
+function analytical_immersed_tripolar_grid(underlying_grid::TripolarGrid; radius = 5, active_cells_map = false) # degrees
     λp = underlying_grid.conformal_mapping.first_pole_longitude
     φp = underlying_grid.conformal_mapping.north_poles_latitude
     φm = underlying_grid.conformal_mapping.southernmost_latitude
@@ -29,15 +29,15 @@ function analytical_immersed_tripolar_grid(underlying_grid::TripolarGrid; radius
                           ((abs(λ - λp - 180) < radius) & (abs(φp - φ) < radius)) |
                           ((abs(λ - λp - 360) < radius) & (abs(φp - φ) < radius)) | (φ < φm + radius) ? 0 : - Lz
 
-    grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height))
+    grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height); active_cells_map)
 
     return grid
 end
 
 # Run the distributed grid simulation and save down reconstructed results
-function run_distributed_tripolar_grid(arch, filename; fold_topology, pivot)
+function run_distributed_tripolar_grid(arch, filename; fold_topology, pivot, active_cells_map = false)
     grid  = TripolarGrid(arch; size = (40, 40, 1), z = (-1000, 0), halo = (5, 5, 5), fold_topology, pivot)
-    grid  = analytical_immersed_tripolar_grid(grid)
+    grid  = analytical_immersed_tripolar_grid(grid; active_cells_map)
     model = run_distributed_simulation(grid)
 
     η = reconstruct_global_field(model.free_surface.displacement)
