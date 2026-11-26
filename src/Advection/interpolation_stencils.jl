@@ -83,13 +83,14 @@ end
 # The data at the three nodes with data nearest the boundary, outermost first, and the number of nodes with data
 @inline function data_at_boundary_nodes(S::NTuple{M}, D) where M
     N = M ÷ 2
+    S₀, S₁, S₂ = S[N], S[N + 1], S[N + 2]
     χ, m = true, 1
     for n in N-1:-1:1
         χ &= D[n]
         m += χ
+        S₀, S₁, S₂ = ifelse(χ, (S[n], S₀, S₁), (S₀, S₁, S₂))
     end
-    n = N + 1 - m
-    return (S[n], S[n + 1], S[n + 2]), m
+    return (S₀, S₁, S₂), m
 end
 
 @inline function boundary_slope(extrapolation, S₀, S₁, S₂, data_length)
