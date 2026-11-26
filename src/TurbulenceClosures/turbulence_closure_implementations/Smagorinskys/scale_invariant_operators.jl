@@ -1,7 +1,7 @@
-using Oceananigans.TurbulenceClosures: Σ₁₁, Σ₂₂, Σ₃₃, Σ₁₂, Σ₁₃, Σ₂₃
-using Oceananigans.TurbulenceClosures: tr_Σ², Σ₁₂², Σ₁₃², Σ₂₃²
 using Oceananigans.Grids: BoundarySide, BoundaryTopology, Flat, TwoSided, XFlatGrid, YFlatGrid, ZFlatGrid, topology
-using Oceananigans.Operators: identity1, volume, V⁻¹, ∂xᶜᶜᶜ, ∂xᶠᶜᶠ, ∂xᶠᶠᶜ, ∂yᶜᶜᶜ, ∂yᶜᶠᶠ, ∂yᶠᶠᶜ, ∂zᶜᶜᶜ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ
+using Oceananigans.Operators: ℑᵃᵃᵃ, volume, V⁻¹, ∂xᶜᶜᶜ, ∂xᶠᶜᶠ, ∂xᶠᶠᶜ, ∂yᶜᶜᶜ, ∂yᶜᶠᶠ, ∂yᶠᶠᶜ, ∂zᶜᶜᶜ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ
+using Oceananigans.TurbulenceClosures: Σ₁₁, Σ₂₂, Σ₃₃, Σ₁₂, Σ₁₃, Σ₂₃,
+                                       tr_Σ², Σ₁₂², Σ₁₃², Σ₂₃²
 
 #####
 ##### Double dot product of strain on cell edges (currently unused)
@@ -114,10 +114,10 @@ end
 @inline filterᶜᶠᶜ(i, j, k, grid, f::F, args...) where F<:Function = filter_xᶜᵃᵃ(i, j, k, grid, filter_yᵃᶠᵃ, filter_zᵃᵃᶜ, f, args...)
 @inline filterᶜᶜᶠ(i, j, k, grid, f::F, args...) where F<:Function = filter_xᶜᵃᵃ(i, j, k, grid, filter_yᵃᶜᵃ, filter_zᵃᵃᶠ, f, args...)
 
-@inline filterᶜᶜᶜ(i, j, k, grid, c::AbstractArray) = filterᶜᶜᶜ(i, j, k, grid, identity1, c)
-@inline filterᶠᶜᶜ(i, j, k, grid, u::AbstractArray) = filterᶠᶜᶜ(i, j, k, grid, identity1, u)
-@inline filterᶜᶠᶜ(i, j, k, grid, v::AbstractArray) = filterᶜᶠᶜ(i, j, k, grid, identity1, v)
-@inline filterᶜᶜᶠ(i, j, k, grid, w::AbstractArray) = filterᶜᶜᶠ(i, j, k, grid, identity1, w)
+@inline filterᶜᶜᶜ(i, j, k, grid, c::AbstractArray) = filterᶜᶜᶜ(i, j, k, grid, ℑᵃᵃᵃ, c)
+@inline filterᶠᶜᶜ(i, j, k, grid, u::AbstractArray) = filterᶠᶜᶜ(i, j, k, grid, ℑᵃᵃᵃ, u)
+@inline filterᶜᶠᶜ(i, j, k, grid, v::AbstractArray) = filterᶜᶠᶜ(i, j, k, grid, ℑᵃᵃᵃ, v)
+@inline filterᶜᶜᶠ(i, j, k, grid, w::AbstractArray) = filterᶜᶜᶠ(i, j, k, grid, ℑᵃᵃᵃ, w)
 
 #####
 ##### Velocity gradients

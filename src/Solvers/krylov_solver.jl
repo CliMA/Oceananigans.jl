@@ -115,7 +115,7 @@ Architectures.architecture(solver::KrylovSolver) = solver.architecture
 Base.summary(solver::KrylovSolver) = "KrylovSolver"
 
 """
-$(MethodSignatures(; defaults = true))
+$(SIGNATURES)
 
 Construct a Krylov subspace solver for implicit linear systems defined by `linear_operator`,
 using the structure of a reference field `template_field`.

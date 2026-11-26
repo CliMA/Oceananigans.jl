@@ -19,10 +19,26 @@ export interpolator, _interpolate
 export ϕ₁, ϕ₂, ϕ₃, ϕ₄, ϕ₅, ϕ₆, ϕ₇, ϕ₈
 
 using Adapt: Adapt
-using DocStringExtensions: MethodSignatures, TYPEDSIGNATURES
+using DocStringExtensions: DocStringExtensions
 using KernelAbstractions: KernelAbstractions
 using Oceananigans: Oceananigans
 using Oceananigans.Architectures: Architectures
+
+# Docstring signatures that also show default argument values with DocStringExtensions v0.10, where
+# `MethodSignatures` and `TypedMethodSignatures` take a `defaults` keyword. In v0.9 they are empty structs,
+# so there we fall back to the plain signatures. Modules take `SIGNATURES` and `TYPEDSIGNATURES` from here,
+# not from DocStringExtensions.
+const SIGNATURES = if hasmethod(DocStringExtensions.MethodSignatures, Tuple{}, (:defaults,))
+    DocStringExtensions.MethodSignatures(; defaults = true)
+else
+    DocStringExtensions.SIGNATURES
+end
+
+const TYPEDSIGNATURES = if hasmethod(DocStringExtensions.TypedMethodSignatures, Tuple{}, (:defaults,))
+    DocStringExtensions.TypedMethodSignatures(; defaults = true)
+else
+    DocStringExtensions.TYPEDSIGNATURES
+end
 
 #####
 ##### Misc. small utils
