@@ -132,3 +132,65 @@ function HydrostaticFreeSurfaceModels.compute_transport_velocities!(model, free_
 
     return nothing
 end
+
+#####
+##### Correction of the radiating open boundary columns
+#####
+
+"""
+$(TYPEDSIGNATURES)
+
+Project the boundary-normal velocity columns of radiating open boundaries back onto the barotropic transport.
+Radiation schemes step each level on its own, so after the boundary step these columns no longer integrate to
+`U` and `V`. Other boundaries and the interior already satisfy the correction and are left untouched.
+"""
+function radiating_boundary_split_explicit_corrector!(u, v, free_surface)
+    U, V = free_surface.barotropic_velocities
+    correct_boundary_columns!(u.boundary_conditions.west,  West(),  u, U)
+    correct_boundary_columns!(u.boundary_conditions.east,  East(),  u, U)
+    correct_boundary_columns!(v.boundary_conditions.south, South(), v, V)
+    correct_boundary_columns!(v.boundary_conditions.north, North(), v, V)
+    return nothing
+end
+
+correct_boundary_columns!(bc, side, velocity, transport) = nothing
+
+correct_boundary_columns!(::RNFBC, ::West,  u, U) = launch!(architecture(u.grid), u.grid, (size(u.grid, 2),), _correct_x_boundary_columns!, u, U, u.grid, 1)
+correct_boundary_columns!(::RNFBC, ::East,  u, U) = launch!(architecture(u.grid), u.grid, (size(u.grid, 2),), _correct_x_boundary_columns!, u, U, u.grid, size(u.grid, 1) + 1)
+correct_boundary_columns!(::RNFBC, ::South, v, V) = launch!(architecture(v.grid), v.grid, (size(v.grid, 1),), _correct_y_boundary_columns!, v, V, v.grid, 1)
+correct_boundary_columns!(::RNFBC, ::North, v, V) = launch!(architecture(v.grid), v.grid, (size(v.grid, 1),), _correct_y_boundary_columns!, v, V, v.grid, size(v.grid, 2) + 1)
+
+@inline peripheral_or_inactiveᶠᶜᶜ(i, j, k, grid) = immersed_peripheral_node(i, j, k, grid, Face(), Center(), Center()) | immersed_inactive_node(i, j, k, grid, Face(), Center(), Center())
+@inline peripheral_or_inactiveᶜᶠᶜ(i, j, k, grid) = immersed_peripheral_node(i, j, k, grid, Center(), Face(), Center()) | immersed_inactive_node(i, j, k, grid, Center(), Face(), Center())
+
+@kernel function _correct_x_boundary_columns!(u, U, grid, i)
+    j = @index(Global, Linear)
+    Hᶠᶜ = column_depthᶠᶜᵃ(i, j, grid)
+
+    ∫u = zero(grid)
+    for k in 1:grid.Nz
+        @inbounds ∫u += ifelse(peripheral_or_inactiveᶠᶜᶜ(i, j, k, grid), zero(grid), Δzᶠᶜᶜ(i, j, k, grid) * u[i, j, k])
+    end
+
+    δu = @inbounds ifelse(Hᶠᶜ == 0, zero(grid), (U[i, j, 1] - ∫u) / Hᶠᶜ)
+
+    for k in 1:grid.Nz
+        @inbounds u[i, j, k] = ifelse(peripheral_or_inactiveᶠᶜᶜ(i, j, k, grid), zero(grid), u[i, j, k] + δu)
+    end
+end
+
+@kernel function _correct_y_boundary_columns!(v, V, grid, j)
+    i = @index(Global, Linear)
+    Hᶜᶠ = column_depthᶜᶠᵃ(i, j, grid)
+
+    ∫v = zero(grid)
+    for k in 1:grid.Nz
+        @inbounds ∫v += ifelse(peripheral_or_inactiveᶜᶠᶜ(i, j, k, grid), zero(grid), Δzᶜᶠᶜ(i, j, k, grid) * v[i, j, k])
+    end
+
+    δv = @inbounds ifelse(Hᶜᶠ == 0, zero(grid), (V[i, j, 1] - ∫v) / Hᶜᶠ)
+
+    for k in 1:grid.Nz
+        @inbounds v[i, j, k] = ifelse(peripheral_or_inactiveᶜᶠᶜ(i, j, k, grid), zero(grid), v[i, j, k] + δv)
+    end
+end

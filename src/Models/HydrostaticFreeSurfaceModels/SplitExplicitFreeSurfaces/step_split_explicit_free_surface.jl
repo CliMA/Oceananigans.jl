@@ -11,6 +11,19 @@ using Oceananigans.DistributedComputations: maybe_distributed_fill_halo_regions!
     return (field_args..., f.communication_buffers, convert_to_device(arch, args)...)
 end
 
+# Fill-halos counterparts of `∂xᵣTᶠᶜᶠ`, `∂yᵣTᶜᶠᶠ`, `δxTᶜᵃᵃ` and `δyTᵃᶜᵃ`, with the same immersed-boundary masking
+@inline masked_∂xᵣᶠᶜᶠ(i, j, k, grid, args...) = ∂xᵣᶠᶜᶠ(i, j, k, grid, args...)
+@inline masked_∂yᵣᶜᶠᶠ(i, j, k, grid, args...) = ∂yᵣᶜᶠᶠ(i, j, k, grid, args...)
+@inline masked_δxᶜᵃᵃ(i, j, k, grid, args...) = δxᶜᵃᵃ(i, j, k, grid, args...)
+@inline masked_δyᵃᶜᵃ(i, j, k, grid, args...) = δyᵃᶜᵃ(i, j, k, grid, args...)
+
+@inline masked_∂xᵣᶠᶜᶠ(i, j, k, ibg::IBG, args...) = ifelse(inactive_node(i, j, k, ibg, Center(), Center(), Face()) | inactive_node(i-1, j, k, ibg, Center(), Center(), Face()),
+                                                           zero(ibg), ∂xᵣᶠᶜᶠ(i, j, k, ibg.underlying_grid, args...))
+@inline masked_∂yᵣᶜᶠᶠ(i, j, k, ibg::IBG, args...) = ifelse(inactive_node(i, j, k, ibg, Center(), Center(), Face()) | inactive_node(i, j-1, k, ibg, Center(), Center(), Face()),
+                                                           zero(ibg), ∂yᵣᶜᶠᶠ(i, j, k, ibg.underlying_grid, args...))
+@inline masked_δxᶜᵃᵃ(i, j, k, ibg::IBG, args...) = δxᶜᵃᵃ(i, j, k, ibg.underlying_grid, conditional_uᶠᶜᶜ, args...)
+@inline masked_δyᵃᶜᵃ(i, j, k, ibg::IBG, args...) = δyᵃᶜᵃ(i, j, k, ibg.underlying_grid, conditional_vᶜᶠᶜ, args...)
+
 # Selection between topology-aware and non-aware operators depending on
 # whether we fill halos or not in between substeps.
 #
@@ -20,14 +33,14 @@ end
 # filled_halos = Val(true): halos ARE filled each substep (fill_halos mode).
 #   → Use non-topology-aware operators because halo data is always fresh.
 @inline x_derivative_operator(::Val{false}) = ∂xᵣTᶠᶜᶠ
-@inline x_derivative_operator(::Val{true})  = ∂xᵣᶠᶜᶠ
+@inline x_derivative_operator(::Val{true})  = masked_∂xᵣᶠᶜᶠ
 @inline y_derivative_operator(::Val{false}) = ∂yᵣTᶜᶠᶠ
-@inline y_derivative_operator(::Val{true})  = ∂yᵣᶜᶠᶠ
+@inline y_derivative_operator(::Val{true})  = masked_∂yᵣᶜᶠᶠ
 
 @inline x_difference_operator(::Val{false}) = δxTᶜᵃᵃ
-@inline x_difference_operator(::Val{true})  = δxᶜᶜᶜ
+@inline x_difference_operator(::Val{true})  = masked_δxᶜᵃᵃ
 @inline y_difference_operator(::Val{false}) = δyTᵃᶜᵃ
-@inline y_difference_operator(::Val{true})  = δyᶜᶜᶜ
+@inline y_difference_operator(::Val{true})  = masked_δyᵃᶜᵃ
 
 @inline x_column_depth(i, j, k, grid, ::Val{false}, η) = column_depthTᶠᶜᵃ(i, j, k, grid, η)
 @inline x_column_depth(i, j, k, grid, ::Val{true},  η) =  column_depthᶠᶜᵃ(i, j, k, grid, η)
