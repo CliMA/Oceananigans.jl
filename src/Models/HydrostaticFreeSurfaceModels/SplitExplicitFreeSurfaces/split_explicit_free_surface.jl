@@ -116,6 +116,9 @@ Keyword Arguments
               timestep. Note that some averaging functions do not require substepping until `2Δt`.
               The number of substeps is reduced automatically to the last index of `averaging_kernel`
               for which `averaging_kernel > 0`.
+              The boundary conditions of `U`, `V` and `η` are read at the substep times, so a
+              `FieldTimeSeries` in them must hold at least 3 records in memory, and more if its records
+              are closer together than `2Δt`.
 
 - `cfl`: If set then the number of `substeps` are computed based on the advective timescale imposed from
          the barotropic gravity-wave speed that corresponds to depth `grid.Lz`. If `fixed_Δt` is provided,
@@ -252,6 +255,17 @@ Base.@constprop :aggressive function HydrostaticFreeSurfaceModels.hydrostatic_te
     return merge((u=u, v=v, U=U, V=V), tracers)
 end
 
+validate_barotropic_time_series(fts) = nothing
+
+function validate_barotropic_time_series(fts::PartlyInMemoryFTS)
+    Nm = length(fts.backend)
+    Nm < min(3, length(fts.times)) &&
+        throw(ArgumentError("A `FieldTimeSeries` in the boundary conditions of `U`, `V` or `η` holds $Nm records in memory, " *
+                            "but the barotropic substeps read it past the end of the time step and need at least 3, " *
+                            "and more if its records are closer together than 2Δt."))
+    return nothing
+end
+
 const ConnectedTopology = Union{TwoSided{Connected}, TwoSided{<:Any, Connected}}
 
 # Internal function for HydrostaticFreeSurfaceModel
@@ -276,6 +290,7 @@ function HydrostaticFreeSurfaceModels.materialize_free_surface(free_surface::Spl
     # The barotropic fields live on `maybe_extended_grid`, whose halos size the exterior states of their open boundaries
     barotropic_names = filter(∈((:U, :V, :η)), keys(bcs))
     bcs = regularize_field_boundary_conditions(bcs[barotropic_names], maybe_extended_grid, keys(bcs))
+    strategy isa ExtendedHalos || foreach(validate_barotropic_time_series, extract_field_time_series(bcs))
 
     η = free_surface_displacement_field(velocities, free_surface, maybe_extended_grid; boundary_conditions = get(bcs, :η, nothing))
     η̅ = free_surface_displacement_field(velocities, free_surface, maybe_extended_grid)
