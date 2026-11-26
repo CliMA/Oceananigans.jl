@@ -81,17 +81,17 @@ function compute_closure_fields!(closure_fields_tuple, closure_tuple::Tuple, arg
     return nothing
 end
 
-step_closure_prognostics!(::Tuple{}, ::Tuple{}, args...) = nothing
+TimeSteppers.step_closure_prognostics!(::Tuple{}, ::Tuple{}, args...) = nothing
 
-function step_closure_prognostics!(closure_fields_tuple, closure_tuple::Tuple, args...)
+function TimeSteppers.step_closure_prognostics!(closure_fields_tuple, closure_tuple::Tuple, args...)
     step_closure_prognostics!(first(closure_fields_tuple), first(closure_tuple), args...)
     step_closure_prognostics!(Base.tail(closure_fields_tuple), Base.tail(closure_tuple), args...)
     return nothing
 end
 
-reset!(::Tuple{}, ::Tuple{}) = nothing
+TimeSteppers.reset!(::Tuple{}, ::Tuple{}) = nothing
 
-function reset!(closure_fields_tuple, closure_tuple::Tuple)
+function TimeSteppers.reset!(closure_fields_tuple, closure_tuple::Tuple)
     reset!(first(closure_fields_tuple), first(closure_tuple))
     reset!(Base.tail(closure_fields_tuple), Base.tail(closure_tuple))
     return nothing
@@ -105,9 +105,9 @@ function add_closure_specific_boundary_conditions(closure_tuple::Tuple, bcs, arg
     return bcs
 end
 
-required_halo_size_x(closure_tuple::Tuple) = maximum(map(required_halo_size_x, closure_tuple))
-required_halo_size_y(closure_tuple::Tuple) = maximum(map(required_halo_size_y, closure_tuple))
-required_halo_size_z(closure_tuple::Tuple) = maximum(map(required_halo_size_z, closure_tuple))
+Grids.required_halo_size_x(closure_tuple::Tuple) = maximum(map(required_halo_size_x, closure_tuple))
+Grids.required_halo_size_y(closure_tuple::Tuple) = maximum(map(required_halo_size_y, closure_tuple))
+Grids.required_halo_size_z(closure_tuple::Tuple) = maximum(map(required_halo_size_z, closure_tuple))
 
 #####
 ##### Compiler-inferrable time_discretization for tuples

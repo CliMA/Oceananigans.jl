@@ -50,7 +50,8 @@ rotation tensor are:
 
 where `slope² = slope_x² + slope_y²`.
 
-The slopes are tapered using the `slope_limiter.max_slope`, i.e., the tapering factor is
+The slopes are tapered following [Gerdes et al. (1991)](@cite Gerdes1991) using the
+`slope_limiter.max_slope`, i.e., the tapering factor is
 `min(1, slope_limiter.max_slope² / slope²)`, where `slope² = slope_x² + slope_y²`
 that multiplies all components of the isopycnal slope tensor.
 

@@ -22,17 +22,13 @@ using MPI
 MPI.Init(threadlevel=:multiple)
 
 using Oceananigans.BoundaryConditions: fill_halo_regions!, DCBC
-using Oceananigans.DistributedComputations: Distributed, index2rank, cpu_architecture, child_architecture, reconstruct_global_grid,
+using Oceananigans.Architectures: cpu_architecture
+using Oceananigans.DistributedComputations: Distributed, index2rank, child_architecture, reconstruct_global_grid,
                                             synchronize_communication!
 using Oceananigans.Fields: AbstractField, interior, dot!
 using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary, bottom_height_interior
 using Oceananigans.Solvers: ZeroMeanGaugeCondition
-using Oceananigans.Grids:
-    architecture,
-    halo_size,
-    interior_indices,
-    left_halo_indices, right_halo_indices,
-    underlying_left_halo_indices, underlying_right_halo_indices
+using Oceananigans.Grids: architecture, halo_size, interior_indices, FaceExtendedTopology
 
 #####
 ##### Viewing halos
@@ -40,6 +36,13 @@ using Oceananigans.Grids:
 
 instantiate(T::Type) = T()
 instantiate(t) = t
+
+left_halo_indices(loc, topo, N, H) = 1-H:0
+left_halo_indices(::Nothing, topo, N, H) = 1:0
+
+right_halo_indices(loc, topo, N, H) = N+1:N+H
+right_halo_indices(::Face, ::FaceExtendedTopology, N, H) = N+2:N+1+H
+right_halo_indices(::Nothing, topo, N, H) = 1:0
 
 west_halo(f::AbstractField{LX, LY, LZ}; include_corners=true) where {LX, LY, LZ} =
     include_corners ? view(f.data, left_halo_indices(instantiate(LX), instantiate(topology(f, 1)), f.grid.Nx, f.grid.Hx), :, :) :
@@ -469,13 +472,23 @@ function test_halo_communication_after_asynchronous_fill(child_arch)
     return nothing
 end
 
-# Halo tags count the distributed fields: a rank creating an extra one is an error at `run!`, not a hang in the first exchange
+# A field takes its halo tag on its first exchange, so a field that only one rank creates (and never exchanges)
+# leaves the other fields' tags alone: the simulation runs and later halo exchanges still match up.
 function test_mismatched_field_creation(child_arch)
     arch = Distributed(child_arch; partition=Partition(2, 2))
     grid = RectilinearGrid(arch; topology=(Periodic, Periodic, Periodic), size=(8, 8, 4), extent=(1, 2, 3))
     simulation = Simulation(NonhydrostaticModel(grid); Δt=1, stop_iteration=1, verbose=false)
     arch.local_rank == 0 && CenterField(grid)
-    @test_throws ArgumentError run!(simulation)
+    run!(simulation)
+    @test iteration(simulation) == 1
+
+    # A field every rank creates afterwards gets its west halo from the west neighbour
+    c = CenterField(grid)
+    set!(c, arch.local_rank)
+    fill_halo_regions!(c)
+    Hx, Hy, Hz = halo_size(grid)
+    west_halo = Array(parent(c))[1:Hx, Hy+1:end-Hy, Hz+1:end-Hz]
+    @test all(west_halo .== arch.connectivity.west)
     return nothing
 end
 
@@ -590,6 +603,33 @@ end
         @test minimum_zspacing(osg) == minimum_zspacing(gosg)
     end
 
+    @testset "on_architecture(::ImmersedBoundaryGrid) on distributed grids" begin
+        child_arch = get(ENV, "TEST_ARCHITECTURE", "CPU") == "GPU" ? GPU() : CPU()
+
+        # Middle ranks of `Partition(1, 4)`, and every rank of a y-periodic grid, are `FullyConnected` in y
+        arch = Distributed(child_arch; partition=Partition(1, 4))
+
+        underlying_grids = (RectilinearGrid(arch, size=(8, 16, 4), x=(0, 1), y=(0, 1), z=(-1, 0)),
+                            TripolarGrid(arch, size=(8, 16, 4), z=(-1, 0)))
+
+        bottoms = (GridFittedBottom((x, y) -> -1/2), PartialCellBottom((x, y) -> -1/2))
+
+        for underlying_grid in underlying_grids, bottom in bottoms
+            grid = ImmersedBoundaryGrid(underlying_grid, bottom; active_cells_map=true)
+
+            for new_arch in (CPU(), cpu_architecture(arch))
+                cpu_grid = on_architecture(new_arch, grid)
+                cpu_bottom_height = bottom_height_interior(cpu_grid.immersed_boundary.bottom_height)
+                bottom_height = bottom_height_interior(grid.immersed_boundary.bottom_height)
+
+                @test child_architecture(architecture(cpu_grid)) == CPU()
+                @test nameof(typeof(cpu_grid.immersed_boundary)) == nameof(typeof(bottom))
+                @test on_architecture(CPU(), cpu_bottom_height) == on_architecture(CPU(), bottom_height)
+                @test on_architecture(CPU(), cpu_grid.interior_active_cells) == on_architecture(CPU(), grid.interior_active_cells)
+            end
+        end
+    end
+
     @testset "reconstruct_global_grid(::ImmersedBoundaryGrid)" begin
         @info "Testing reconstruct_global_grid for ImmersedBoundaryGrid…"
         child_arch = get(ENV, "TEST_ARCHITECTURE", "CPU") == "GPU" ? GPU() : CPU()
@@ -680,6 +720,10 @@ end
             # regardless of the local block size N.
             @test mean(c) == (1 + 2 + 3 + 4) / 4
 
+            # Partial reductions too must divide by the global point count along the reduced dims.
+            @test @allowscalar mean(c; dims=(1, 2))[1, 1, 1] == (1 + 2 + 3 + 4) / 4
+            @test @allowscalar Field(Average(c, dims=(1, 2)))[1, 1, 1] == (1 + 2 + 3 + 4) / 4
+
             # The in-place counterparts used by ConjugateGradientSolver also reduce across ranks
             r = zeros(grid, 1)
             @test Array(dot!(r, c, c))[1] == (1^2 + 2^2 + 3^2 + 4^2) * N
@@ -692,6 +736,10 @@ end
             gauge(c, d)
             @test all(Array(interior(c)) .== arch.local_rank + 1 - 5/2)
             @test all(Array(interior(d)) .== 2 * (arch.local_rank + 1) - 5)
+
+            cx = CenterField(grid)
+            set!(cx, (x, y, z) -> x)
+            @test Array(interior(mean(cx; dims=2))) ≈ Array(interior(cx))[:, 1:1, :]
         end
     end
 

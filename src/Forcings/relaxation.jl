@@ -1,11 +1,11 @@
 using Oceananigans: instantiated_location
-using Oceananigans.Grids: _node, node, xnodes, ynodes, Face, Center
-using Oceananigans.Fields: AbstractField, Field, FunctionField, compute!, show_location
 using Oceananigans.AbstractOperations: Average
-using Oceananigans.OutputReaders: interpolate
+using Oceananigans.Fields: AbstractField, Field, FunctionField, compute!, show_location
+using Oceananigans.Grids: _node, node, xnodes, ynodes, Face, Center
 using Oceananigans.Operators: ℑxᶜᵃᵃ, ℑyᵃᶜᵃ, active_weighted_ℑxyᶠᶜᶜ, active_weighted_ℑxyᶜᶠᶜ
-using Oceananigans.Utils: prettysummary
-using DocStringExtensions: TYPEDEF, TYPEDFIELDS, TYPEDSIGNATURES
+using Oceananigans.OutputReaders: interpolate
+using Oceananigans.Utils: prettysummary, TYPEDSIGNATURES
+using DocStringExtensions: TYPEDEF, TYPEDFIELDS
 
 @inline zerofunction(args...) = 0
 @inline onefunction(args...) = 1
@@ -38,7 +38,7 @@ struct Relaxation{R, F, M, T, L, Tr}
 end
 
 """
-    Relaxation(; rate, mask=onefunction, target=zerofunction, transform=nothing)
+$(SIGNATURES)
 
 Returns a `Forcing` that restores a field to `target(X..., t)`
 at the specified `rate`, in the region `mask(X...)`.
@@ -119,7 +119,7 @@ apply_transform(::Val{S}, field) where S =
   throw(ArgumentError("unknown transform :$S; supported: :horizontal_average"))
 
 # Note `F<:AbstractArray` (not `F<:AbstractField`): `Adapt.adapt_structure(to, ::Field) = adapt(to, f.data)`
-# unwraps Field to its underlying OffsetArray on GPU, so an `<:AbstractField` constraint here
+# unwraps Field to its underlying StaticStridesOffsetArray on GPU, so an `<:AbstractField` constraint here
 # would prevent kernel dispatch on the device and the compiler would emit a MethodError.
 @inline function (r::Relaxation{R, F})(i, j, k, grid, clock, model_fields) where {R, F<:AbstractArray}
     ϕ  = @inbounds r.relaxed[i, j, k]
@@ -304,8 +304,13 @@ $(TYPEDSIGNATURES)
 Rate for `Relaxation` that nudges toward `target` at `inflow_rate` where the local horizontal
 normal velocity indicates inflow through the domain boundary in direction `D` (one of
 `:west`, `:east`, `:south`, `:north`), and at `outflow_rate` where it indicates outflow,
-following the ROMS/Marchesiello-et-al.-2001 nudging-layer convention. See [`Relaxation`](@ref)
-for the role of `mask` in shaping the nudging spatially.
+following the nudging-layer convention of ROMS ([Marchesiello et al., 2001](@cite marchesiello.ea2001)).
+See [`Relaxation`](@ref) for the role of `mask` in shaping the nudging spatially.
+
+References
+==========
+* Marchesiello, P., McWilliams, J. C., & Shchepetkin, A. (2001). "Open boundary conditions
+  for long-term integration of regional oceanic models." Ocean Modelling, 3(1-2), 1-20.
 
 Example
 =======

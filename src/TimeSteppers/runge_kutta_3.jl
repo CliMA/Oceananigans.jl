@@ -1,5 +1,5 @@
-import Oceananigans: prognostic_state, restore_prognostic_state!
-using Oceananigans.Utils: time_difference_seconds
+using Oceananigans: prognostic_state, restore_prognostic_state!
+using Oceananigans.Utils: time_difference_in_seconds
 
 """
     RungeKutta3TimeStepper{FT, TG} <: AbstractTimeStepper
@@ -24,10 +24,7 @@ struct RungeKutta3TimeStepper{FT, TG, TI} <: AbstractTimeStepper
 end
 
 """
-    RungeKutta3TimeStepper(grid, prognostic_fields;
-                           implicit_solver = nothing,
-                           Gⁿ = map(similar, prognostic_fields),
-                           G⁻ = map(similar, prognostic_fields))
+$(SIGNATURES)
 
 Return a 3rd-order Runge-Kutta timestepper (`RungeKutta3TimeStepper`) on `grid`
 and with `prognostic_fields`. The tendency fields `Gⁿ` and `G⁻`, typically equal
@@ -53,15 +50,20 @@ The state at the first substep is taken to be the one that corresponds to
 the ``n``-th timestep, `U¹ = Uⁿ`, and the state after the third substep is
 then the state at `Uⁿ⁺¹ = U⁴`.
 
+Unlike [Le and Moin (1991)](@cite LeMoin1991), who use Crank–Nicolson for the implicit terms,
+vertically-implicit terms (diffusion, implicit vertical advection, and implicit flux boundary conditions)
+are treated with backward Euler over each substep `Δτ = Δt * (γᵐ + ζᵐ)`, so the implicit part
+is first-order accurate in time.
+
 References
 ==========
 Le, H. and Moin, P. (1991). An improvement of fractional step methods for the incompressible
     Navier–Stokes equations. Journal of Computational Physics, 92, 369–379.
 """
 function RungeKutta3TimeStepper(grid, prognostic_fields;
-                                                  implicit_solver::TI = nothing,
-                                                  Gⁿ::TG = map(similar, prognostic_fields),
-                                                  G⁻     = map(similar, prognostic_fields)) where {TI, TG}
+                                implicit_solver::TI = nothing,
+                                Gⁿ::TG = map(similar, prognostic_fields),
+                                G⁻     = map(similar, prognostic_fields)) where {TI, TG}
 
     γ¹ = 8 // 15
     γ² = 5 // 12
@@ -80,7 +82,7 @@ end
 #####
 
 """
-    time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbacks=[])
+$(SIGNATURES)
 
 Step forward `model` one time step `Δt` with a 3rd-order Runge-Kutta method.
 
@@ -93,7 +95,11 @@ Each stage performs the following:
    - Applies model-specific corrections (e.g., pressure correction for `NonhydrostaticModel`)
 2. Cache the current tendencies in `G⁻`.
 3. Update the model state (fill halos, compute diagnostics).
-4. Step Lagrangian particles.
+
+Lagrangian particles are advanced at the beginning of each stage, before `rk3_substep!`,
+with the same low-storage scheme, `X += Δt * (γⁿ * Uⁿ + ζⁿ * U⁻)`, where `Uⁿ` is the
+particle velocity at the beginning of the stage and `U⁻` is the particle velocity at the
+beginning of the previous stage. See `substep_lagrangian_particles!`.
 
 The RK3 coefficients are `γ¹ = 8/15`, `γ² = 5/12`, `γ³ = 3/4`, `ζ² = -17/60`, `ζ³ = -5/12`.
 The effective substep sizes are `γ¹ * Δt`, `(γ² + ζ²) * Δt`, and `(γ³ + ζ³) * Δt`.
@@ -130,8 +136,9 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     # First stage
     #
 
+    cache_boundary_conditions!(model)
+    substep_lagrangian_particles!(model, kernel_Δt, 1)
     rk3_substep!(model, kernel_Δt, γ¹, nothing, callbacks)
-    step_lagrangian_particles!(model, kernel_first_stage_Δt)
     cache_previous_tendencies!(model)
 
     tick_stage!(model.clock, first_stage_Δt)
@@ -144,8 +151,9 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     # Second stage
     #
 
+    cache_boundary_conditions!(model)
+    substep_lagrangian_particles!(model, kernel_Δt, 2)
     rk3_substep!(model, kernel_Δt, γ², ζ², callbacks)
-    step_lagrangian_particles!(model, kernel_second_stage_Δt)
     cache_previous_tendencies!(model)
 
     tick_stage!(model.clock, second_stage_Δt)
@@ -158,14 +166,15 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     # Third stage
     #
 
+    cache_boundary_conditions!(model)
+    substep_lagrangian_particles!(model, kernel_Δt, 3)
     rk3_substep!(model, kernel_Δt, γ³, ζ³, callbacks)
-    step_lagrangian_particles!(model, kernel_third_stage_Δt)
     cache_previous_tendencies!(model)
 
     # Correct the third stage Δt to reduce floating point error accumulation.
     # This matters especially for Float32 (e.g., Metal GPU).
-    # Use time_difference_seconds for DateTime compatibility.
-    corrected_third_stage_Δt = time_difference_seconds(tⁿ⁺¹, model.clock.time)
+    # Use time_difference_in_seconds for DateTime compatibility.
+    corrected_third_stage_Δt = time_difference_in_seconds(tⁿ⁺¹, model.clock.time)
     tick_stage!(model.clock, corrected_third_stage_Δt, Δt)
 
     step_closure_prognostics!(model, kernel_third_stage_Δt)
@@ -186,6 +195,7 @@ function maybe_prepare_first_time_step!(model::AbstractModel{<:RungeKutta3TimeSt
         model.clock.last_Δt = Δt
         model.clock.last_stage_Δt = stage_Δt(Δt, γ¹, nothing)
         reconcile_state!(model)
+        initialize_boundary_conditions!(model)
         update_state!(model, callbacks)
     end
     return nothing

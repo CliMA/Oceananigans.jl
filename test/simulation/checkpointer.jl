@@ -4,11 +4,14 @@ using Glob
 using NCDatasets
 
 using Oceananigans: prognostic_state, restore_prognostic_state!, prognostic_fields
+using Oceananigans.Biogeochemistry: AbstractBiogeochemistry
 using Oceananigans.TurbulenceClosures.Smagorinskys: Smagorinsky,
     DirectionallyAveragedDynamicSmagorinsky, LagrangianAveragedDynamicSmagorinsky
 using Oceananigans.Models.ShallowWaterModels: ShallowWaterScalarDiffusivity
 using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: ForwardBackwardScheme
 using Oceananigans.Grids: MutableVerticalDiscretization
+
+import Oceananigans.Biogeochemistry: update_biogeochemical_state!
 
 pickup_log = (:info, r"^Picking up simulation from checkpoint file .+\.jld2; last modified \(UTC\): ")
 checkpointing_log = (:info, r"^Checkpointing done: time=.+, size=.+$")
@@ -837,6 +840,95 @@ function test_checkpointing_auxiliary_fields(arch)
     test_model_equality(new_model, ref_model)
 
     rm.(glob("$(prefix)_iteration*.jld2"), force=true)
+
+    return nothing
+end
+
+function stateless_auxiliary_fields_simulation(arch, Model, dir)
+    grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+    clock = Clock(grid)
+    c = CenterField(grid)
+
+    auxiliary_fields = (operation = 2c,
+                        function_field = FunctionField{Center, Center, Center}((x, y, z, t) -> t, grid; clock))
+
+    model = Model(grid; clock, auxiliary_fields)
+    simulation = Simulation(model; Δt=0.1, stop_iteration=5, verbose=false)
+    simulation.output_writers[:checkpointer] = Checkpointer(model; schedule=IterationInterval(5), dir)
+    return simulation
+end
+
+function test_checkpointing_stateless_auxiliary_fields(arch, Model)
+    dir = mktempdir()
+
+    simulation = stateless_auxiliary_fields_simulation(arch, Model, dir)
+    @test_nowarn run!(simulation)
+
+    # Operations and FunctionFields are computed on the fly, so they add nothing to checkpoints
+    @test prognostic_state(simulation.model.auxiliary_fields) == (operation = nothing, function_field = nothing)
+
+    restored_simulation = stateless_auxiliary_fields_simulation(arch, Model, dir)
+    @test_logs pickup_log set!(restored_simulation; checkpoint=:latest)
+    @test iteration(restored_simulation) == 5
+
+    rm(dir; recursive=true)
+
+    return nothing
+end
+
+# A stand-in for a sediment model: `sediment` evolves with the model but is not a tracer,
+# so the biogeochemistry checkpoints it by extending `prognostic_state`
+struct SedimentBiogeochemistry{S} <: AbstractBiogeochemistry
+    sediment :: S
+end
+
+function update_biogeochemical_state!(bgc::SedimentBiogeochemistry, model)
+    interior(bgc.sediment) .+= 1
+    return nothing
+end
+
+Oceananigans.prognostic_state(bgc::SedimentBiogeochemistry) = (; sediment = prognostic_state(bgc.sediment))
+
+function Oceananigans.restore_prognostic_state!(bgc::SedimentBiogeochemistry, from)
+    restore_prognostic_state!(bgc.sediment, from.sediment)
+    return bgc
+end
+
+Oceananigans.restore_prognostic_state!(::SedimentBiogeochemistry, ::Nothing) = nothing
+
+# Most biogeochemical models keep all of their state in `model.tracers`
+struct StatelessBiogeochemistry <: AbstractBiogeochemistry end
+
+function sediment_simulation(arch, Model, dir)
+    grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+    biogeochemistry = SedimentBiogeochemistry(Field{Center, Center, Nothing}(grid))
+    model = Model(grid; biogeochemistry)
+    simulation = Simulation(model; Δt=0.1, stop_iteration=5, verbose=false)
+    simulation.output_writers[:checkpointer] = Checkpointer(model; schedule=IterationInterval(5), dir)
+    return simulation
+end
+
+function test_checkpointing_biogeochemistry(arch, Model)
+    dir = mktempdir()
+
+    simulation = sediment_simulation(arch, Model, dir)
+    @test_nowarn run!(simulation)
+    sediment = Array(interior(simulation.model.biogeochemistry.sediment))
+
+    restored_simulation = sediment_simulation(arch, Model, dir)
+    fresh_sediment = Array(interior(restored_simulation.model.biogeochemistry.sediment))
+    @test fresh_sediment != sediment
+
+    @test_logs pickup_log set!(restored_simulation; checkpoint=:latest)
+    restored_sediment = Array(interior(restored_simulation.model.biogeochemistry.sediment))
+    @test restored_sediment == sediment
+
+    # Biogeochemistry without state of its own adds nothing to checkpoints
+    grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+    stateless_model = Model(grid; biogeochemistry=StatelessBiogeochemistry())
+    @test isnothing(prognostic_state(stateless_model).biogeochemistry)
+
+    rm(dir; recursive=true)
 
     return nothing
 end
@@ -1751,6 +1843,29 @@ function test_checkpoint_missing_file_warning(arch)
     return nothing
 end
 
+function test_pickup_with_directory_in_prefix(arch)
+    grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
+    directory = mktempdir()
+    prefix = joinpath(directory, "directory_in_prefix")
+
+    function checkpointed_simulation(stop_iteration)
+        simulation = Simulation(NonhydrostaticModel(grid); Δt=1, stop_iteration, verbose=false)
+        simulation.output_writers[:checkpointer] = Checkpointer(simulation.model; schedule=IterationInterval(2), prefix)
+        return simulation
+    end
+
+    run!(checkpointed_simulation(4))
+    @test isfile(joinpath(directory, "directory_in_prefix_iteration4.jld2"))
+
+    simulation = checkpointed_simulation(6)
+    @test_logs pickup_log set!(simulation; checkpoint=:latest)
+    @test iteration(simulation) == 4
+
+    rm(directory; recursive=true)
+
+    return nothing
+end
+
 function test_pickup_mode_selection_and_default(arch)
     N = 4
     L = 1
@@ -2047,7 +2162,7 @@ function test_open_boundary_condition_scheme_checkpointing(arch, timestepper, sc
     Δt = 0.5
 
     function make_simulation(stop_iteration)
-        grid = RectilinearGrid(arch, topology=(Bounded, Bounded, Bounded), size=(Nx, Ny, Nz), extent=(10, 10, 10))
+        grid = RectilinearGrid(arch, topology=(Open, Bounded, Bounded), size=(Nx, Ny, Nz), extent=(10, 10, 10))
         obc = NormalFlowBoundaryCondition(0.1, scheme=scheme)
         u_bcs = FieldBoundaryConditions(west=obc, east=obc)
         reservoir = ValueBoundaryCondition(1, scheme=Oceananigans.BoundaryConditions.TracerReservoir(inflow_length_scale=1))
@@ -2340,6 +2455,18 @@ for arch in archs
         test_checkpointing_auxiliary_fields(arch)
     end
 
+    for Model in (NonhydrostaticModel, HydrostaticFreeSurfaceModel)
+        @testset "Stateless auxiliary fields checkpointing [$(nameof(Model))] [$(typeof(arch))]" begin
+            test_checkpointing_stateless_auxiliary_fields(arch, Model)
+        end
+    end
+
+    for Model in (NonhydrostaticModel, HydrostaticFreeSurfaceModel)
+        @testset "Biogeochemistry checkpointing [$(nameof(Model))] [$(typeof(arch))]" begin
+            test_checkpointing_biogeochemistry(arch, Model)
+        end
+    end
+
     for FT in (Float64, Float32)
         @testset "Closure fields checkpointing [$(typeof(arch)), $FT]" begin
             test_checkpointing_closure_fields(arch, FT)
@@ -2437,6 +2564,7 @@ for arch in archs
     @testset "Edge cases [$(typeof(arch))]" begin
         test_checkpoint_empty_tracers(arch)
         test_checkpoint_missing_file_warning(arch)
+        test_pickup_with_directory_in_prefix(arch)
         test_pickup_mode_selection_and_default(arch)
     end
 

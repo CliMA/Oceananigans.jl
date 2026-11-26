@@ -4,14 +4,17 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/" # Location of package manifests
     schedule:
-      interval: "weekly"
+      interval: "cron"
+      cronjob: "0 9 * * 1,3,5" # Monday, Wednesday and Friday at 09:00 UTC
   - package-ecosystem: "julia"
     directories:
       - "/"
-      - "/benchmark"
+      - "/benchmarking"
+      - "/docs"
       - "/test"
     schedule:
-      interval: "weekly"
+      interval: "cron"
+      cronjob: "0 9 * * 1,3,5" # Monday, Wednesday and Friday at 09:00 UTC
     ignore:
       - dependency-name: "Oceananigans"
     groups:

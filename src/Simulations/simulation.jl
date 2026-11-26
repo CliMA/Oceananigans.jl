@@ -9,6 +9,9 @@ using Oceananigans.Utils: period_to_seconds, prettytime
 
 default_progress(simulation) = nothing
 
+# The `stop_time` of a calendar clock that never stops
+const max_datetime = Dates.DateTime(9999, 12, 31, 23, 59, 59, 999)
+
 """
     AutomaticDifferentiation(; checkpointing, track_numbers = false, mincut = true)
 
@@ -27,6 +30,10 @@ steps, and only take effect under differentiation: the forward program is the sa
 - `checkpointing` (required): `false` stores every step's state for the reverse sweep;
   `Reactant.Periodic(n)` stores a checkpoint every `n` steps and recomputes the steps in between;
   `Reactant.Binomial(budget)` keeps at most `budget` checkpoints, placed by the revolve algorithm.
+  It also decides how the `Simulation` holds `stop_iteration`: binomial checkpointing
+  differentiates a loop whose step count is known only at run time, so with it `stop_iteration`
+  is a device number that a compiled `run!` reads at each call; with `false` or `Periodic` it is
+  an `Int`, a constant of the compiled program.
 
 Note that "checkpointing" here is the recomputation strategy of reverse-mode differentiation.
 Saving the state of a simulation to disk so it can be restarted is done by the [`Checkpointer`](@ref).
@@ -56,10 +63,10 @@ Base.show(io::IO, ad::AutomaticDifferentiation) =
               ", mincut=", ad.mincut,
               ", checkpointing=", ad.checkpointing, ")")
 
-mutable struct Simulation{ML, DT, ST, DI, OW, CB, FT, BL, AD}
+mutable struct Simulation{ML, DT, SI, ST, DI, OW, CB, FT, BL, AD}
     model :: ML
     Δt :: DT
-    stop_iteration :: FT
+    stop_iteration :: SI
     stop_time :: ST
     wall_time_limit :: FT
     diagnostics :: DI
@@ -75,15 +82,7 @@ mutable struct Simulation{ML, DT, ST, DI, OW, CB, FT, BL, AD}
 end
 
 """
-    Simulation(model;
-               Δt,
-               verbose = true,
-               stop_iteration = Inf,
-               stop_time = Inf,
-               wall_time_limit = Inf,
-               align_time_step = true,
-               minimum_relative_step = 0,
-               automatic_differentiation = nothing)
+$(SIGNATURES)
 
 Construct a `Simulation` for a `model` with time step `Δt`.
 
@@ -159,6 +158,11 @@ function Simulation(model;
    end
    Δt = Δt isa Number ? TT(Δt) : Δt
    stop_time = stop_time isa Number ? TT(stop_time) : stop_time
+   if model.clock.time isa AbstractTime && stop_time isa Number
+       isinf(stop_time) || throw(ArgumentError(string("stop_time must be a date for a model with a ",
+                                                      typeof(model.clock.time), " clock, not ", stop_time)))
+       stop_time = max_datetime
+   end
 
    return Simulation(model,
                      Δt,
@@ -232,7 +236,7 @@ Return the current simulation iteration.
 Oceananigans.Solvers.iteration(sim::Simulation) = iteration(sim.model)
 
 """
-    prettytime(sim::Simulation, longform=true)
+$(SIGNATURES)
 
 Return `sim.model.clock.time` as a prettily formatted string."
 
@@ -251,19 +255,11 @@ run_wall_time(sim::Simulation) = prettytime(sim.run_wall_time)
 $(TYPEDSIGNATURES)
 
 Reset `sim`ulation, `model.clock`, and `model.timestepper` to their initial state.
+The stop criteria `stop_iteration`, `stop_time`, and `wall_time_limit` are kept.
+`t_init` is the time the clock returns to; it is required for a calendar clock, which has no zero.
 """
-function Oceananigans.TimeSteppers.reset!(sim::Simulation)
-    reset_clock!(sim.model)
-    sim.stop_iteration = Inf
-
-    if sim.stop_time isa Number
-        sim.stop_time = Inf
-    elseif sim.stop_time isa AbstractTime
-        max_datetime = Dates.DateTime(9999, 12, 31, 23, 59, 59, 999)
-        sim.stop_time = max_datetime
-    end
-
-    sim.wall_time_limit = Inf
+function Oceananigans.TimeSteppers.reset!(sim::Simulation; t_init = nothing)
+    reset_clock!(sim.model, t_init)
     sim.run_wall_time = 0.0
     sim.initialized = false
     sim.running = true
@@ -275,9 +271,11 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Reset `model.clock` to its initial state.
+Reset `model.clock` to its initial state, at `t_init` when given.
 """
 reset_clock!(model::AbstractModel) = reset!(model.clock)
+reset_clock!(model::AbstractModel, t_init) = reset!(model.clock, t_init)
+reset_clock!(model::AbstractModel, ::Nothing) = reset_clock!(model)
 
 #####
 ##### Default stop criteria callback functions

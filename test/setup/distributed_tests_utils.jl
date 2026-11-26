@@ -1,19 +1,17 @@
+using Oceananigans
+using Test
 using JLD2
 using MPI
 using Oceananigans.DistributedComputations: reconstruct_global_field, reconstruct_global_grid
 using Oceananigans.Units
 using Oceananigans.TimeSteppers: first_time_step!
-
-
-include(joinpath(@__DIR__, "dependencies_for_runtests.jl"))
-
-using Oceananigans.BoundaryConditions: UPivot, TPivot, FPivot
+using Oceananigans.BoundaryConditions: fill_halo_regions!, UPivot, TPivot, FPivot
 
 if !@isdefined(_DISTRIBUTED_TESTS_UTILS_LOADED)
 const _DISTRIBUTED_TESTS_UTILS_LOADED = true
 
 # Mask the singularity of the grid in a region of `radius` degrees around the singularities
-function analytical_immersed_tripolar_grid(underlying_grid::TripolarGrid; radius = 5) # degrees
+function analytical_immersed_tripolar_grid(underlying_grid::TripolarGrid; radius = 5, active_cells_map = false) # degrees
     λp = underlying_grid.conformal_mapping.first_pole_longitude
     φp = underlying_grid.conformal_mapping.north_poles_latitude
     φm = underlying_grid.conformal_mapping.southernmost_latitude
@@ -23,7 +21,7 @@ function analytical_immersed_tripolar_grid(underlying_grid::TripolarGrid; radius
     # We need a bottom height field that ``masks'' the singularities.
     # Note: For the test to pass we also need to mask the southernmost row near φm.
     # We use φ < φm + radius (not just φ < φm) to also immerse the southernmost row on
-    # RightFaceFolded grids, for which φm sits at the cell face and j=1 centers
+    # FaceFolded grids, for which φm sits at the cell face and j=1 centers
     # are slightly north of φm.
     # TODO: Investigate why masking near φm is necessary. Shouldn't the no-flux south
     # BC already make the south halo behave as if everything south was immersed?
@@ -31,15 +29,15 @@ function analytical_immersed_tripolar_grid(underlying_grid::TripolarGrid; radius
                           ((abs(λ - λp - 180) < radius) & (abs(φp - φ) < radius)) |
                           ((abs(λ - λp - 360) < radius) & (abs(φp - φ) < radius)) | (φ < φm + radius) ? 0 : - Lz
 
-    grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height))
+    grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height); active_cells_map)
 
     return grid
 end
 
 # Run the distributed grid simulation and save down reconstructed results
-function run_distributed_tripolar_grid(arch, filename; fold_topology, pivot)
+function run_distributed_tripolar_grid(arch, filename; fold_topology, pivot, active_cells_map = false)
     grid  = TripolarGrid(arch; size = (40, 40, 1), z = (-1000, 0), halo = (5, 5, 5), fold_topology, pivot)
-    grid  = analytical_immersed_tripolar_grid(grid)
+    grid  = analytical_immersed_tripolar_grid(grid; active_cells_map)
     model = run_distributed_simulation(grid)
 
     η = reconstruct_global_field(model.free_surface.displacement)

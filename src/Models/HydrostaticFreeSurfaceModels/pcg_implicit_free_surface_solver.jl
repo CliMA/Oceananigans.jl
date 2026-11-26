@@ -1,11 +1,10 @@
-using Oceananigans.Operators: Azᶜᶜᶜ, Azᶜᶜᶠ, Δx_qᶜᶠᶜ, Δxᶜᶠᵃ, Δx⁻¹ᶠᶜᶠ, Δy_qᶠᶜᶜ, Δyᶠᶜᵃ, Δy⁻¹ᶜᶠᶠ,
-    δxᶜᵃᵃ, δxᶜᶜᶜ, δyᵃᶜᵃ, δyᶜᶜᶜ, δxᶠᶜᶠ, δyᶜᶠᶠ
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+using Oceananigans.Architectures: architecture
 using Oceananigans.DistributedComputations: DistributedGrid
-using Oceananigans.Grids: isrectilinear, halo_size
-
-using Oceananigans.Solvers: Solvers, solve!, ConjugateGradientSolver
-import Oceananigans.Architectures: architecture
+using Oceananigans.Grids: halo_size, isrectilinear
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+using Oceananigans.Operators: Azᶜᶜᶜ, Azᶜᶜᶠ, Δx_qᶜᶠᶜ, Δxᶜᶠᵃ, Δx⁻¹ᶠᶜᶠ, Δy_qᶠᶜᶜ, Δyᶠᶜᵃ, Δy⁻¹ᶜᶠᶠ, δxᶜᵃᵃ, δxᶜᶜᶜ, δxᶠᶜᶠ,
+                              δyᵃᶜᵃ, δyᶜᶜᶜ, δyᶜᶠᶠ
+using Oceananigans.Solvers: Solvers, ConjugateGradientSolver, solve!
 
 """
     struct PCGImplicitFreeSurfaceSolver{V, S, R}
@@ -20,7 +19,7 @@ struct PCGImplicitFreeSurfaceSolver{V, S, R}
     right_hand_side :: R
 end
 
-architecture(solver::PCGImplicitFreeSurfaceSolver) =
+Architectures.architecture(solver::PCGImplicitFreeSurfaceSolver) =
     architecture(solver.preconditioned_conjugate_gradient_solver)
 
 # The assumption is that the horizontal spacings do not depend on the z-direction
@@ -189,19 +188,19 @@ Add  `- H⁻¹ ∇H ⋅ ∇ηⁿ` to the right-hand-side.
     poisson_solver = preconditioner.fft_poisson_solver
     arch = architecture(poisson_solver)
     grid = preconditioner.three_dimensional_grid
-    Az = grid.Δxᶜᵃᵃ * grid.Δyᵃᶜᵃ # assume horizontal regularity
-    Lz = grid.Lz
+    Az⁻¹ = grid.Δx⁻¹ᶜᵃᵃ * grid.Δy⁻¹ᵃᶜᵃ # assume horizontal regularity
+    Lz   = grid.Lz
 
     launch!(arch, grid, :xy,
             fft_preconditioner_right_hand_side!,
-            poisson_solver.storage, r, grid, Az, Lz)
+            poisson_solver.storage, r, grid, Az⁻¹, Lz)
 
     return solve!(P_r, preconditioner, poisson_solver.storage, g, Δt)
 end
 
-@kernel function fft_preconditioner_right_hand_side!(fft_rhs, pcg_rhs, grid, Az, Lz)
+@kernel function fft_preconditioner_right_hand_side!(fft_rhs, pcg_rhs, grid, Az⁻¹, Lz)
     i, j = @index(Global, NTuple)
-    @inbounds fft_rhs[i, j, 1] = pcg_rhs[i, j, grid.Nz+1] / (Lz * Az)
+    @inbounds fft_rhs[i, j, 1] = pcg_rhs[i, j, grid.Nz+1] * Az⁻¹ / Lz
 end
 
 # TODO: make it so adding this term:
@@ -213,7 +212,7 @@ end
 @inline ∇H_∇η(i, j, k, grid, η) = zero(grid) # fallback
 @inline depth(i, j, k, grid) = grid.Lz
 
-const GFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:GridFittedBottom}
+const GFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:GridFittedVerticalBoundaries}
 
 # Assumes surface is z=0:
 @inline depth(i, j, k, ibg::GFBIBG) = @inbounds max(zero(eltype(ibg)), min(ibg.Lz, -ibg.immersed_boundary.bottom[i, j]))
@@ -267,7 +266,7 @@ function diagonally_dominant_inverse_precondition!(P_r, r, ∫ᶻ_Axᶠᶜᶜ, �
     launch!(arch, grid, :xy, _diagonally_dominant_inverse_precondition!,
             P_r, grid, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
 
-    return nothing
+    return P_r
 end
 
 # Kernels that calculate coefficients for the preconditioner
@@ -283,7 +282,7 @@ end
                                           Azᶜᶜᶜ(i, j, 1, grid) / (g * Δt^2)
 
 @inline heuristic_inverse_times_residuals(i, j, r, grid, g, Δt, ax, ay) =
-    @inbounds 1 / Ac(i, j, grid, g, Δt, ax, ay) * (r[i, j, 1] - 2 * Ax⁻(i, j, grid, ax) / (Ac(i-1, j, grid, g, Δt, ax, ay) + Ac(i, j, grid, g, Δt, ax, ay)) * r[i-1, j, grid.Nz+1] -
+    @inbounds 1 / Ac(i, j, grid, g, Δt, ax, ay) * (r[i, j, grid.Nz+1] - 2 * Ax⁻(i, j, grid, ax) / (Ac(i-1, j, grid, g, Δt, ax, ay) + Ac(i, j, grid, g, Δt, ax, ay)) * r[i-1, j, grid.Nz+1] -
                                                                 2 * Ax⁺(i, j, grid, ax) / (Ac(i+1, j, grid, g, Δt, ax, ay) + Ac(i, j, grid, g, Δt, ax, ay)) * r[i+1, j, grid.Nz+1] -
                                                                 2 * Ay⁻(i, j, grid, ay) / (Ac(i, j-1, grid, g, Δt, ax, ay) + Ac(i, j, grid, g, Δt, ax, ay)) * r[i, j-1, grid.Nz+1] -
                                                                 2 * Ay⁺(i, j, grid, ay) / (Ac(i, j+1, grid, g, Δt, ax, ay) + Ac(i, j, grid, g, Δt, ax, ay)) * r[i, j+1, grid.Nz+1])

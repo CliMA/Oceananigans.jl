@@ -3,22 +3,30 @@ using Adapt: Adapt
 struct CommunicationState{R, E, M}
     pending_messages :: Threads.Atomic{UInt64}
     requests :: R # one [send, recv] pair per active side, `nothing` for the inactive ones
-    tag :: UInt64
+    tag :: Base.RefValue{Union{Nothing, UInt64}} # `nothing` until the first halo exchange
     pack_event :: E
     mailbox :: M # to the progress worker, or `nothing`
 end
 
 # CommunicationState only lives on host, so never needs to be converted
 Adapt.adapt_structure(to, cs::CommunicationState) = nothing
-on_architecture(arch, cs::CommunicationState) = cs
+Architectures.on_architecture(arch, cs::CommunicationState) = cs
 
 communication_state(arch, sides...) = nothing
 
 function communication_state(arch::Distributed, west, east, south, north, southwest, southeast, northwest, northeast)
     sides = (; west, east, south, north, southwest, southeast, northwest, northeast)
-    tag = UInt64(mod(next_field_tag!(arch), MPI.tag_ub() ÷ halo_tag_slots))
+    tag = Ref{Union{Nothing, UInt64}}(nothing)
     pack_event = new_event(arch)
     return CommunicationState(Threads.Atomic{UInt64}(0), map(side_requests, sides), tag, pack_event, progress_mailbox(pack_event))
+end
+
+function field_tag!(arch, state)
+    if isnothing(state.tag[])
+        field_count = Threads.atomic_add!(arch.field_count, UInt64(1))
+        state.tag[] = UInt64(mod(field_count, MPI.tag_ub() ÷ halo_tag_slots))
+    end
+    return state.tag[]::UInt64
 end
 
 side_requests(::Nothing) = nothing

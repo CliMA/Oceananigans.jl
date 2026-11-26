@@ -14,6 +14,11 @@ Permute `i` such that, for example, `i ∈ 1:N` becomes
 for `N=8` and `N=9` respectively.
 
 See equation (20) of [Makhoul80](@citet).
+
+References
+==========
+* Makhoul, J. (1980). "A fast cosine transform in one and two dimensions." IEEE Transactions on
+  Acoustics, Speech, and Signal Processing, 28, 27-34.
 """
 @inline permute_index(i, N)::Int = ifelse(isodd(i),
                                           i ÷ 2 + 1,
@@ -32,6 +37,11 @@ for example, `i ∈ 1:N` becomes
 for `N=8` and `N=9` respectively.
 
 See equation (20) of [Makhoul80](@citet).
+
+References
+==========
+* Makhoul, J. (1980). "A fast cosine transform in one and two dimensions." IEEE Transactions on
+  Acoustics, Speech, and Signal Processing, 28, 27-34.
 """
 @inline unpermute_index(i, N) = ifelse(i <= (N + 1) ÷ 2, 2i-1, 2(N-i+1))
 

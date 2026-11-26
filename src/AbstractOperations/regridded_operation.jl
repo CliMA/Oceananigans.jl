@@ -45,7 +45,7 @@ end
 @inline Base.getindex(operation::RegriddedOperation, i, j, k) =
     @inbounds operation.destination[i, j, k]
 
-indices(operation::RegriddedOperation) = indices(operation.destination)
+Fields.indices(operation::RegriddedOperation) = indices(operation.destination)
 
 function Adapt.adapt_structure(to,
                                operation::RegriddedOperation{LX, LY, LZ, G, T}) where {LX, LY, LZ, G, T}

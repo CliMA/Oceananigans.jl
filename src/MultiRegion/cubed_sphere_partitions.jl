@@ -9,7 +9,7 @@ struct CubedSpherePartition{M, P} <: AbstractPartition
 end
 
 """
-    CubedSpherePartition(; R = 1)
+$(SIGNATURES)
 
 Return a cubed sphere partition with `R` partitions in each horizontal dimension of each
 panel of the sphere.
@@ -83,7 +83,7 @@ end
 #####
 
 # A cubed sphere panel grid is an OSSG grid that is fully connected in xy
-const SpherePanelGrid = OrthogonalSphericalShellGrid{<:Any, FullyConnected, FullyConnected}
+const SpherePanelGrid = OrthogonalSphericalShellGrid{<:Any, TwoSided{Connected, Connected}, TwoSided{Connected, Connected}}
 
 for vel in (:u, :v), dir in (:east, :west, :north, :south)
     @eval $(Symbol(:replace_, dir, :_, vel, :_halos!))(u, buff, N, H, conn; signed=true) = nothing

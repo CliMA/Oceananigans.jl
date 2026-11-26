@@ -1,4 +1,7 @@
-using Oceananigans.Architectures: child_architecture
+using Oceananigans.Architectures: child_architecture, ReactantState
+
+# Architectures whose FFT libraries provide no real-to-real transforms, so DCTs are built from FFTs [Makhoul80](@citet)
+const FFTBasedDCTArchitecture = Union{GPU, ReactantState}
 
 abstract type AbstractTransformDirection end
 
@@ -31,7 +34,7 @@ $(TYPEDSIGNATURES)
 `FFTW.REDFT01` needs to be normalized by 1/2N.
 See: http://www.fftw.org/fftw3_doc/1d-Real_002deven-DFTs-_0028DCTs_0029.html#g_t1d-Real_002deven-DFTs-_0028DCTs_0029
 """
-normalization_factor(::CPU, ::Bounded, ::Backward, N) = 1 / 2N
+normalization_factor(::CPU, ::BoundaryTopology, ::Backward, N) = 1 / 2N
 
 #####
 ##### Twiddle factors
@@ -42,16 +45,21 @@ twiddle_factors(arch, grid, dim) = nothing
 """
 $(TYPEDSIGNATURES)
 
-Twiddle factors are needed to perform DCTs on the GPU. See equations (19a) and (22) of [Makhoul80](@citet)
+Twiddle factors are needed to perform DCTs with FFTs. See equations (19a) and (22) of [Makhoul80](@citet)
 for the forward and backward twiddle factors respectively.
+
+References
+==========
+* Makhoul, J. (1980). "A fast cosine transform in one and two dimensions." IEEE Transactions on
+  Acoustics, Speech, and Signal Processing, 28, 27-34.
 """
-function twiddle_factors(arch::GPU, grid, dims)
+function twiddle_factors(arch::FFTBasedDCTArchitecture, grid, dims)
     # We only perform 1D DCTs.
     length(dims) > 1 && return nothing
     dim = dims[1]
 
     topo = topology(grid)
-    topo[dim] != Bounded && return nothing
+    topo[dim] <: BoundaryTopology || return nothing
 
     Ns = size(grid)
     N = Ns[dim]
@@ -95,7 +103,7 @@ function DiscreteTransform(plan, direction, grid, dims)
     # Always transpose for dim-2 GPU transforms: reshape to (Ny, Nx, Nz) so the
     # FFT operates along contiguous dim 1. cuFFT decomposes strided dim-2 FFTs
     # into many small kernels (one per z-level); permutedims + dim-1 is 3.4× faster.
-    transpose = arch isa GPU && dims == [2] ? (2, 1, 3) : nothing
+    transpose = arch isa FFTBasedDCTArchitecture && dims == [2] ? (2, 1, 3) : nothing
 
     topos = [topology(grid)[d]() for d in dims]
     topos = length(topos) == 1 ? topos[1] : topos
@@ -137,7 +145,7 @@ end
 
 maybe_permute_indices!(A, B, arch, grid, dim, dim_topo) = nothing
 
-function maybe_permute_indices!(A, B, arch::GPU, grid, dim, ::Bounded)
+function maybe_permute_indices!(A, B, arch::FFTBasedDCTArchitecture, grid, dim, ::BoundaryTopology)
     permute_indices!(B, A, arch, grid, dim)
     copyto!(A, B)
     return nothing
@@ -145,7 +153,7 @@ end
 
 maybe_unpermute_indices!(A, B, arch, grid, dim, dim_topo) = nothing
 
-function maybe_unpermute_indices!(A, B, arch::GPU, grid, dim, ::Bounded)
+function maybe_unpermute_indices!(A, B, arch::FFTBasedDCTArchitecture, grid, dim, ::BoundaryTopology)
     unpermute_indices!(B, A, arch, grid, dim)
     copyto!(A, B)
     @. A = real(A)

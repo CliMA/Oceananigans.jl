@@ -54,13 +54,16 @@ export ∂xᵣTᶠᶜᶠ, ∂yᵣTᶜᶠᶠ
 export intrinsic_vector, extrinsic_vector
 
 # Variable grid operators
-export σⁿ, σ⁻, ∂t_σ
+export σⁿ, σ⁻, σ⁻¹ⁿ, ∂t_σ
+
+# Energy-conserving vorticity flux
+export vorticity_flux_xᶠᶜᶜ, vorticity_flux_yᶜᶠᶜ
 
 using Oceananigans.Grids: LatitudeLongitudeGrid, LLGOTF, XRegLLGOTF, YRegLLGOTF,
-    OrthogonalSphericalShellGrid, RectilinearGrid, XRegularLLG, XRegularRG, YRegularLLG,
-    YRegularRG, ZRegOrthogonalSphericalShellGrid, ZRegularLLG, ZRegularRG, AbstractGrid,
-    Center, Face, flip_location
-using DocStringExtensions: TYPEDSIGNATURES
+                          OrthogonalSphericalShellGrid, RectilinearGrid, XRegularLLG, XRegularRG, YRegularLLG,
+                          YRegularRG, ZRegOrthogonalSphericalShellGrid, ZRegularLLG, ZRegularRG, AbstractGrid,
+                          Center, Face, flip_location
+using Oceananigans.Utils: TYPEDSIGNATURES
 
 #####
 ##### Convenient aliases
@@ -97,15 +100,18 @@ include("difference_operators.jl")
 include("interpolation_operators.jl")
 include("interpolation_utils.jl")
 
-include("reciprocal_metric_operators.jl")
 include("spacings_and_areas_and_volumes.jl")
+include("reciprocal_metric_operators.jl")
 include("products_between_fields_and_grid_metrics.jl")
 
 include("derivative_operators.jl")
 include("constant_r_derivative_operators.jl")
+include("reconstruction_coefficients.jl")
+include("high_order_operators.jl")
 include("divergence_operators.jl")
 include("topology_aware_operators.jl")
 include("vorticity_operators.jl")
+include("vorticity_flux_operators.jl")
 include("laplacian_operators.jl")
 
 include("time_variable_grid_operators.jl")

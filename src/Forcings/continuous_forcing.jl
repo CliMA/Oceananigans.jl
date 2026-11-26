@@ -1,6 +1,6 @@
+using Oceananigans.Fields: show_location
 using Oceananigans.Grids: node
 using Oceananigans.Operators: index_and_interp_dependencies
-using Oceananigans.Fields: show_location
 using Oceananigans.Utils: user_function_arguments, tupleit, prettysummary
 
 """
@@ -43,7 +43,7 @@ struct ContinuousForcing{LX, LY, LZ, P, F, D, I, ℑ}
 end
 
 """
-    ContinuousForcing(func; parameters=nothing, field_dependencies=())
+$(SIGNATURES)
 
 Construct a "continuous form" forcing with optional `parameters` and optional
 `field_dependencies` on other fields in a model.

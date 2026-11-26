@@ -1,12 +1,10 @@
-using Oceananigans.BoundaryConditions: BoundaryCondition, NormalFlow, has_target_transport, FieldBoundaryConditions
+using Oceananigans.BoundaryConditions: BoundaryCondition, FieldBoundaryConditions, NormalFlow, has_target_transport
 using Oceananigans.Fields: Field
-using ..Models: west_transport, east_transport, south_transport,
-                north_transport, bottom_transport, top_transport,
-                get_west_area, get_east_area, get_south_area,
-                get_north_area, get_bottom_area, get_top_area,
-                update_open_boundary_transport!,
-                apply_targeted_left_boundary_correction!,
-                apply_targeted_right_boundary_correction!
+
+using ..Models: apply_targeted_left_boundary_correction!, apply_targeted_right_boundary_correction!, bottom_transport,
+                east_transport, get_bottom_area, get_east_area, get_north_area, get_south_area, get_top_area,
+                get_west_area, north_transport, south_transport, top_transport, update_open_boundary_transport!,
+                west_transport
 
 const OBC = BoundaryCondition{<:NormalFlow}
 

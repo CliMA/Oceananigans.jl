@@ -55,7 +55,7 @@ end
 ##### MultiaryOperation construction
 #####
 
-indices(Π::MultiaryOperation) = construct_regionally(intersect_indices, location(Π), Π.args...)
+Fields.indices(Π::MultiaryOperation) = intersect_indices(location(Π), Π.args...)
 
 function _multiary_operation(L::Tuple{LX, LY, LZ}, op, args, Largs, grid) where {LX, LY, LZ}
     args = map(validate_operand, args)
@@ -103,7 +103,8 @@ function define_multiary_operator(op)
             c::Union{Function, Number, Oceananigans.Fields.AbstractField},
             d::Union{Function, Number, Oceananigans.Fields.AbstractField}...) = $op((Lop[1](), Lop[2](), Lop[3]()), a, b, c, d...)
 
-        $op(a::Oceananigans.Fields.AbstractField,
+        # Excluding 2D fields avoids ambiguities with LinearAlgebra's matrix methods for `*`
+        $op(a::Union{Oceananigans.Fields.Abstract3DField, Oceananigans.Fields.Abstract4DField},
             b::Union{Function, Number, Oceananigans.Fields.AbstractField},
             c::Union{Function, Number, Oceananigans.Fields.AbstractField},
             d::Union{Function, Number, Oceananigans.Fields.AbstractField}...) = $op(Oceananigans.Fields.instantiated_location(a), a, b, c, d...)
@@ -118,7 +119,7 @@ into a multiary operator on `Oceananigans.Fields` for use in `AbstractOperations
 
 Note that a multiary operator:
   * is a function with two or more arguments: for example, `+(x, y, z)` is a multiary function;
-  * must be imported to be extended if part of `Base`: use `import Base: op; @multiary op`;
+  * must be qualified to be extended if part of `Base`: use `@multiary Base.op` (or `@multiary Base.:op` for operators);
   * can only be called on `Oceananigans.Field`s if the "location" is noted explicitly; see example.
 
 Example
@@ -187,7 +188,7 @@ end
 ##### Nested computations
 #####
 
-function compute_at!(Π::MultiaryOperation, time)
+function Fields.compute_at!(Π::MultiaryOperation, time)
     for a in Π.args
         compute_at!(a, time)
     end

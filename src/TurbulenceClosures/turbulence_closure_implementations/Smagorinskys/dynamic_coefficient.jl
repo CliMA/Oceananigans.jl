@@ -1,9 +1,8 @@
+using Oceananigans: prognostic_state, restore_prognostic_state!
 using Oceananigans.Architectures: architecture
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields: CenterField, Field, compute!, interpolate, xnode, ynode, znode
 using Statistics: mean
-
-import Oceananigans: prognostic_state, restore_prognostic_state!
 
 mutable struct DynamicCoefficient{A, FT, S}
     averaging :: A
@@ -21,11 +20,7 @@ const DynamicSmagorinsky = Union{
 }
 
 """
-    DynamicSmagorinsky([time_discretization=ExplicitTimeDiscretization(), FT=Float64;]
-                       averaging = LagrangianAveraging(),
-                       Pr = 1,
-                       schedule = IterationInterval(1),
-                       minimum_numerator = 1e-32)
+$(SIGNATURES)
 
 Returns a `Smagorinsky`-type closure with dynamic computation of the Smagorinsky coefficient
 according to the scale invariant procedure described by [Bou-Zeid et al. (2005)](@cite BouZeid05).
@@ -133,7 +128,7 @@ tupleit(a::Number) = tuple(a)
 tupleit(a::Tuple) = a
 
 """
-    DynamicCoefficient([FT=Oceananigans.defaults.FloatType;] averaging, schedule=IterationInterval(1), minimum_numerator=1e-32)
+$(SIGNATURES)
 
 When used with `Smagorinsky`, it calculates the Smagorinsky coefficient dynamically from the flow
 according to the scale invariant procedure described by [Bou-Zeid et al. (2005)](@cite BouZeid05).
@@ -203,6 +198,9 @@ See also [`DynamicSmagorinsky`](@ref).
 References
 ==========
 
+Bou-Zeid, Elie, Meneveau, Charles, and Parlange, Marc. (2005) A scale-dependent Lagrangian dynamic model for
+large eddy simulation of complex turbulent flows, Physics of Fluids, **17**, 025105.
+
 Chen, Bicheng, Yang, Di, Meneveau, Charles and Chamecki, Marcelo. (2016) Effects of swell on
 transport and dispersion of oil plumes within the ocean mixed layer, Journal of Geophysical
 Research: Oceans, 121(5), pp.3564-3578.
@@ -257,12 +255,13 @@ end
     return 𝒥ᴸᴹ_ijk / 𝒥ᴹᴹ_ijk * (𝒥ᴹᴹ_ijk > 0)
 end
 
+# Here Σ is the strain-rate magnitude √(2ΣᵢⱼΣᵢⱼ), and Σ̄ is its test-filtered counterpart
 @kernel function _compute_Σ!(Σ, grid, u, v, w)
     i, j, k = @index(Global, NTuple)
 
     @inbounds begin
         Σsq = ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w)
-        Σ[i, j, k] = sqrt(Σsq)
+        Σ[i, j, k] = sqrt(2Σsq)
     end
 end
 
@@ -271,7 +270,7 @@ end
 
     @inbounds begin
         Σ̄sq = Σ̄ᵢⱼΣ̄ᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w)
-        Σ̄[i, j, k] = sqrt(Σ̄sq)
+        Σ̄[i, j, k] = sqrt(2Σ̄sq)
     end
 end
 
@@ -373,8 +372,7 @@ const c = Center()
         # Compute time scale
         𝒥ᴸᴹ𝒥ᴹᴹ = 𝒥ᴸᴹ⁻ᵢⱼₖ * 𝒥ᴹᴹ⁻ᵢⱼₖ
 
-        T⁻ = convert(FT, 1.5) * Δᶠ(i, j, k, grid) / √(∜(𝒥ᴸᴹ𝒥ᴹᴹ))
-        τ = Δt / T⁻
+        τ = Δt * √(∜(𝒥ᴸᴹ𝒥ᴹᴹ)) * Δᶠ⁻¹(i, j, k, grid) / convert(FT, 1.5)
         ϵ = τ / (1 + τ)
 
         # Compute interpolation
@@ -412,7 +410,7 @@ const c = Center()
     end
 end
 
-function initialize_closure_fields!(closure_fields, closure::LagrangianAveragedDynamicSmagorinsky, model)
+function TurbulenceClosures.initialize_closure_fields!(closure_fields, closure::LagrangianAveragedDynamicSmagorinsky, model)
     grid = model.grid
     arch = architecture(grid)
     clock = model.clock
@@ -444,7 +442,7 @@ function initialize_closure_fields!(closure_fields, closure::LagrangianAveragedD
     return nothing
 end
 
-function step_closure_prognostics!(closure_fields, closure::LagrangianAveragedDynamicSmagorinsky, model, Δt)
+function TurbulenceClosures.step_closure_prognostics!(closure_fields, closure::LagrangianAveragedDynamicSmagorinsky, model, Δt)
     grid = model.grid
     arch = architecture(grid)
     clock = model.clock
@@ -454,6 +452,10 @@ function step_closure_prognostics!(closure_fields, closure::LagrangianAveragedDy
     time_to_compute = isnothing(cˢ.schedule) || (cˢ.schedule(model) && clock.stage == 1)
 
     if time_to_compute
+        # This runs before `update_state!`, so that velocity halos may still hold
+        # the predictor velocity from before the pressure correction.
+        fill_halo_regions!(model.velocities, clock, Oceananigans.fields(model))
+
         Σ = closure_fields.Σ
         Σ̄ = closure_fields.Σ̄
         launch!(arch, grid, :xyz, _compute_Σ!, Σ, grid, u, v, w)
@@ -510,18 +512,18 @@ end
 const DirectionallyAveragedSmagorinskyFields = NamedTuple{(:νₑ, :Σ, :Σ̄, :LM, :MM, :𝒥ᴸᴹ, :𝒥ᴹᴹ)}
 const LagrangianAveragedSmagorinskyFields = NamedTuple{(:νₑ, :Σ, :Σ̄, :𝒥ᴸᴹ, :𝒥ᴹᴹ, :𝒥ᴸᴹ⁻, :𝒥ᴹᴹ⁻, :previous_compute_time)}
 
-function prognostic_state(cf::DirectionallyAveragedSmagorinskyFields)
+function Oceananigans.prognostic_state(cf::DirectionallyAveragedSmagorinskyFields)
     return (𝒥ᴸᴹ = prognostic_state(cf.𝒥ᴸᴹ),
             𝒥ᴹᴹ = prognostic_state(cf.𝒥ᴹᴹ))
 end
 
-function restore_prognostic_state!(restored::DirectionallyAveragedSmagorinskyFields, from)
+function Oceananigans.restore_prognostic_state!(restored::DirectionallyAveragedSmagorinskyFields, from)
     restore_prognostic_state!(restored.𝒥ᴸᴹ, from.𝒥ᴸᴹ)
     restore_prognostic_state!(restored.𝒥ᴹᴹ, from.𝒥ᴹᴹ)
     return restored
 end
 
-function prognostic_state(cf::LagrangianAveragedSmagorinskyFields)
+function Oceananigans.prognostic_state(cf::LagrangianAveragedSmagorinskyFields)
     return (𝒥ᴸᴹ = prognostic_state(cf.𝒥ᴸᴹ),
             𝒥ᴹᴹ = prognostic_state(cf.𝒥ᴹᴹ),
             𝒥ᴸᴹ⁻ = prognostic_state(cf.𝒥ᴸᴹ⁻),
@@ -529,7 +531,7 @@ function prognostic_state(cf::LagrangianAveragedSmagorinskyFields)
             previous_compute_time = cf.previous_compute_time[])
 end
 
-function restore_prognostic_state!(restored::LagrangianAveragedSmagorinskyFields, from)
+function Oceananigans.restore_prognostic_state!(restored::LagrangianAveragedSmagorinskyFields, from)
     restore_prognostic_state!(restored.𝒥ᴸᴹ, from.𝒥ᴸᴹ)
     restore_prognostic_state!(restored.𝒥ᴹᴹ, from.𝒥ᴹᴹ)
     restore_prognostic_state!(restored.𝒥ᴸᴹ⁻, from.𝒥ᴸᴹ⁻)
@@ -538,5 +540,5 @@ function restore_prognostic_state!(restored::LagrangianAveragedSmagorinskyFields
     return restored
 end
 
-restore_prognostic_state!(::DirectionallyAveragedSmagorinskyFields, ::Nothing) = nothing
-restore_prognostic_state!(::LagrangianAveragedSmagorinskyFields, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::DirectionallyAveragedSmagorinskyFields, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::LagrangianAveragedSmagorinskyFields, ::Nothing) = nothing

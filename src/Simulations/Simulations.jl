@@ -8,17 +8,17 @@ export
     run!,
     Callback,
     add_callback!,
+    add_conservation_fixer!,
     TimeDerivativeCallback,
     iteration
 
-using DocStringExtensions: TYPEDSIGNATURES
 using OrderedCollections: OrderedDict
 
 using Oceananigans: Oceananigans, AbstractDiagnostic, AbstractOutputWriter
 using Oceananigans.Advection: Advection
 using Oceananigans.OutputWriters: OutputWriters, Checkpointer, checkpoint
 using Oceananigans.TimeSteppers: TimeSteppers
-using Oceananigans.Utils: Utils, IterationInterval, ordered_dict_show
+using Oceananigans.Utils: Utils, IterationInterval, ordered_dict_show, SIGNATURES, TYPEDSIGNATURES
 
 # To be extended in the `Models` module
 timestepper(model) = nothing

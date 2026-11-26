@@ -79,7 +79,7 @@ end
 function zstar_test_topologies(arch)
     if arch isa Distributed
         # tests become too long because we test too many architectures,
-        # given that `FullyConnected` acts as a `Periodic` we don't need
+        # given that a direction connected on both sides acts as `Periodic` we don't need
         # to test different topologies
         return [(Bounded, Bounded, Bounded)]
     else

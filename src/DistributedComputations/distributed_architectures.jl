@@ -1,9 +1,7 @@
-using Oceananigans.Architectures
-using Oceananigans.Grids: topology
-
-import Oceananigans.Architectures: device, device!, cpu_architecture, on_architecture, array_type, child_architecture, convert_to_device
-import Oceananigans.Grids: zeros
-import Oceananigans.Utils: sync_device!
+using Oceananigans.Architectures: Architectures, array_type, child_architecture, convert_to_device,
+                                  device, device!, on_architecture
+using Oceananigans.Grids: Grids, topology, zeros
+using Oceananigans.Utils: Utils, sync_device!
 
 #####
 ##### Partitioning
@@ -210,11 +208,7 @@ end
 #####
 
 """
-    Distributed(child_architecture = CPU();
-                partition = nothing,
-                devices = nothing,
-                communicator = nothing,
-                synchronized_communication = false)
+$(SIGNATURES)
 
 Return a distributed architecture that uses MPI for communications.
 
@@ -247,12 +241,18 @@ Keyword arguments
                                 Default: `false`, specifying the use of asynchronous algorithms where supported,
                                 which may result in faster time-to-solution.
 """
-function Distributed(child_architecture = CPU();
-                     partition = nothing,
-                     devices = nothing,
-                     communicator = nothing,
-                     synchronized_communication = false,
-                     field_count = Threads.Atomic{UInt64}(0))
+function Distributed(child_architecture = CPU(); kwargs...)
+    arch = distributed_architecture(child_architecture; kwargs...)
+    validate_distributed_configuration(arch)
+    return arch
+end
+
+function distributed_architecture(child_architecture;
+                                  partition = nothing,
+                                  devices = nothing,
+                                  communicator = nothing,
+                                  synchronized_communication = false,
+                                  field_count = Threads.Atomic{UInt64}(0))
 
     if !(MPI.Initialized())
         @info "MPI has not been initialized, so we are calling MPI.Init()."
@@ -319,13 +319,12 @@ const AsynchronousDistributed = Distributed{<:Any, false}
 
 ranks(arch::Distributed) = ranks(arch.partition)
 
-child_architecture(arch::Distributed) = arch.child_architecture
-device(arch::Distributed)             = device(child_architecture(arch))
-
-zeros(arch::Distributed, FT, N...)         = zeros(child_architecture(arch), FT, N...)
-array_type(arch::Distributed)              = array_type(child_architecture(arch))
-sync_device!(arch::Distributed)            = sync_device!(arch.child_architecture)
-convert_to_device(arch::Distributed, arg)  = convert_to_device(child_architecture(arch), arg)
+Architectures.child_architecture(arch::Distributed)     = arch.child_architecture
+Architectures.device(arch::Distributed)                 = device(child_architecture(arch))
+Architectures.array_type(arch::Distributed)             = array_type(child_architecture(arch))
+Architectures.convert_to_device(arch::Distributed, arg) = convert_to_device(child_architecture(arch), arg)
+Grids.zeros(arch::Distributed, FT, N...) = zeros(child_architecture(arch), FT, N...)
+Utils.sync_device!(arch::Distributed)    = sync_device!(arch.child_architecture)
 
 # Switch to a synchronized architecture
 synchronized(arch) = arch
@@ -339,8 +338,8 @@ synchronized(arch::Distributed) = Distributed{true}(child_architecture(arch),
                                                     arch.field_count,
                                                     arch.devices)
 
-cpu_architecture(arch::DistributedCPU) = arch
-cpu_architecture(arch::Distributed{A, S}) where {A, S} =
+Architectures.cpu_architecture(arch::DistributedCPU) = arch
+Architectures.cpu_architecture(arch::Distributed{A, S}) where {A, S} =
     Distributed{S}(CPU(),
                    arch.partition,
                    arch.ranks,
@@ -351,9 +350,6 @@ cpu_architecture(arch::Distributed{A, S}) where {A, S} =
                    arch.field_count,
                    nothing) # No devices on the CPU
 
-# Fields of architectures sharing `field_count` (e.g. `twin_grid`s) get distinct tags, as long as all ranks create them in the same order
-next_field_tag!(arch::Distributed) = Threads.atomic_add!(arch.field_count, UInt64(1))
-
 # Fail loudly instead of hanging in the first halo exchange: called where all ranks meet, e.g. `initialize!(::Simulation)`
 check_field_tags(arch) = nothing
 check_field_tags(arch::Distributed) = check_field_tags(arch.communicator, arch.field_count[])
@@ -361,8 +357,7 @@ check_field_tags(communicator, field_count) = nothing # e.g. Reactant meshes
 
 function check_field_tags(communicator::MPI.Comm, field_count)
     MPI.Allreduce(field_count, min, communicator) == MPI.Allreduce(field_count, max, communicator) ||
-        throw(ArgumentError("MPI ranks created different numbers of distributed fields, so their halo exchanges would never match. " *
-                            "All ranks must create the same distributed fields, in the same order."))
+        throw(ArgumentError("MPI ranks exchanged the halos of different numbers of distributed fields, so their halo exchanges would never match."))
     return nothing
 end
 
@@ -405,8 +400,8 @@ Generate a `NeighboringRanks` object that holds the MPI ranks of the neighboring
 NeighboringRanks(; east, west, north, south, southwest, southeast, northwest, northeast) =
     NeighboringRanks(east, west, north, south, southwest, southeast, northwest, northeast)
 
-# The "Periodic" topologies are `Periodic`, `FullyConnected` and `RightConnected`
-# The "Bounded" topologies are `Bounded` and `LeftConnected`
+# The "Periodic" topologies are `Periodic` and those connected on the right
+# The "Bounded" topologies are those bounded on the right
 function increment_index(i, R)
     R == 1 && return nothing
     if i+1 > R

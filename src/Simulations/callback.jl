@@ -43,8 +43,7 @@ Oceananigans.initialize!(func, sim) = nothing
 finalize!(func, sim) = nothing
 
 """
-    Callback(func, schedule=IterationInterval(1);
-             parameters=nothing, callsite=TimeStepCallsite())
+$(SIGNATURES)
 
 Return `Callback` that executes `func` on `schedule`
 at the `callsite` with optional `parameters`. By default,
@@ -60,6 +59,9 @@ The `callsite` determines where `Callback` is executed. The possible values for
 
 * `TendencyCallsite()`: after tendencies are calculated, but before taking
   a time-step (useful for modifying tendency calculations).
+
+* `TracerTendencyCallsite()`: after the tracer tendencies are calculated, which
+  `HydrostaticFreeSurfaceModel` does later in each substep than the momentum tendencies.
 
 * `UpdateStateCallsite()`: within `update_state!`, after auxiliary variables have
   been computed (for multi-stage time-steppers, `update_state!` may be called multiple
@@ -94,7 +96,7 @@ Callback(wta::WindowedTimeAverage, schedule; kw...) =
 const TimeDerivativeCallback = Callback{<:Any, <:TimeDerivative}
 
 """
-    TimeDerivativeCallback(operand, model=nothing; schedule=IterationInterval(1))
+$(SIGNATURES)
 
 Return a [`Callback`](@ref) that updates a [`TimeDerivative`](@ref) of `operand` on
 `schedule`, so that the derivative is differenced over the interval between actuations.
@@ -179,6 +181,15 @@ function add_callback!(simulation, func, schedule = IterationInterval(1);
 end
 
 validate_schedule(func, schedule) = schedule
+
+"""
+    add_conservation_fixer!(simulation)
+
+Add the conservation fixer of `simulation.model.grid`, if the grid has one, as the callback
+`simulation.callbacks[:conservation_fixer]`; calling it again replaces that callback.
+"""
+add_conservation_fixer!(simulation) = add_conservation_fixer!(simulation, simulation.model.grid)
+add_conservation_fixer!(simulation, grid) = nothing
 
 Oceananigans.prognostic_state(::Function) = nothing
 

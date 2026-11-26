@@ -1,14 +1,14 @@
-import Oceananigans: tupleit
+using Oceananigans: tupleit
 
 #####
 ##### Some utilities for tupling
 #####
 
-tupleit(::Nothing) = ()
-tupleit(t::NamedTuple) = t
-tupleit(t::Tuple) = t
-tupleit(nt) = tuple(nt)
-tupleit(nt::Vector) = tuple(nt...)
+Oceananigans.tupleit(::Nothing) = ()
+Oceananigans.tupleit(t::NamedTuple) = t
+Oceananigans.tupleit(t::Tuple) = t
+Oceananigans.tupleit(nt) = tuple(nt)
+Oceananigans.tupleit(nt::Vector) = tuple(nt...)
 
 parenttuple(obj) = Tuple(f.data.parent for f in obj)
 
@@ -48,6 +48,14 @@ Call `f(Val(n), Val(name))` for each property `name` of `nt`, where `n` is the p
 @inline function _foreach_name(f::F, ::Val{n}, val_name, val_names...) where {F, n}
     f(Val(n), val_name)
     return _foreach_name(f, Val(n + 1), val_names...)
+end
+
+# Call `f(x, args...; kwargs...)` for each element `x` of the tuple `t`, unrolled so that `t` may be heterogeneous
+@inline foreach_element(f, ::Tuple{}, args...; kwargs...) = nothing
+
+@inline function foreach_element(f::F, t::Tuple, args::Vararg{Any, N}; kwargs...) where {F, N}
+    f(first(t), args...; kwargs...)
+    return foreach_element(f, Base.tail(t), args...; kwargs...)
 end
 
 @inline datatuple(obj::Nothing) = nothing

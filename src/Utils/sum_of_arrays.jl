@@ -1,7 +1,6 @@
 using Base: @propagate_inbounds
 
-import Adapt: adapt_structure
-import Base: getindex
+using Adapt: adapt_structure
 
 """
     SumOfArrays{N, F}
@@ -13,22 +12,22 @@ struct SumOfArrays{N, F}
     SumOfArrays{N}(arrays...) where N = new{N, typeof(arrays)}(arrays)
 end
 
-@propagate_inbounds function getindex(s::SumOfArrays{N}, i...) where N
+@propagate_inbounds function Base.getindex(s::SumOfArrays{N}, i...) where N
     first = getindex(SumOfArrays{3}(s.arrays[1], s.arrays[2], s.arrays[3]), i...)
     last = getindex(SumOfArrays{N - 3}(s.arrays[4:N]...), i...)
     return first + last
 end
 
-@propagate_inbounds getindex(s::SumOfArrays{1}, i...) = getindex(s.arrays[1], i...)
-@propagate_inbounds getindex(s::SumOfArrays{2}, i...) = getindex(s.arrays[1], i...) + getindex(s.arrays[2], i...)
+@propagate_inbounds Base.getindex(s::SumOfArrays{1}, i...) = getindex(s.arrays[1], i...)
+@propagate_inbounds Base.getindex(s::SumOfArrays{2}, i...) = getindex(s.arrays[1], i...) + getindex(s.arrays[2], i...)
 
-@propagate_inbounds getindex(s::SumOfArrays{3}, i...) =
+@propagate_inbounds Base.getindex(s::SumOfArrays{3}, i...) =
     getindex(s.arrays[1], i...) + getindex(s.arrays[2], i...) + getindex(s.arrays[3], i...)
 
-@propagate_inbounds getindex(s::SumOfArrays{4}, i...) =
+@propagate_inbounds Base.getindex(s::SumOfArrays{4}, i...) =
     getindex(s.arrays[1], i...) + getindex(s.arrays[2], i...) + getindex(s.arrays[3], i...) + getindex(s.arrays[4], i...)
 
-adapt_structure(to, sum::SumOfArrays{N}) where N = SumOfArrays{N}(map(Base.Fix1(adapt_structure, to), sum.arrays)...)
+Adapt.adapt_structure(to, sum::SumOfArrays{N}) where N = SumOfArrays{N}(map(Base.Fix1(adapt_structure, to), sum.arrays)...)
 
 # Convenience constructors for velocities with components (u, v, w) that
 # throw away the `nothing` values. We assume that we pass at least one valid velocity field.

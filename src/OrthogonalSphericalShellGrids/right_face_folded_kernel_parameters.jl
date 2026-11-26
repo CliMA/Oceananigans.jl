@@ -1,13 +1,13 @@
-using Oceananigans.Utils: Utils
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaries
+using Oceananigans.Utils: Utils
 
 #####
-##### `RightFaceFolded` topologies have prognostic values at Ny+1 for `Face` fields in y
-##### This file extends all kernel parameters to Ny + 1 for `RightFaceFolded` topologies so that
+##### `FaceFolded` north sides have prognostic values at Ny+1 for `Face` fields in y
+##### This file extends all kernel parameters to Ny + 1 for `FaceFolded` north sides so that
 ##### the extra row in y is correctly computed
 #####
                                     #  FT     TX     TY
-const RFTRG = TripolarGridOfSomeKind{<:Any, <:Any, <:RightFaceFolded}
+const RFTRG = TripolarGridOfSomeKind{<:Any, <:Any, <:TwoSided{Closed, FaceFolded}}
 
 # Kernels are typically launched
 # - grid dependent parameters (`surface_kernel_parameters(grid)`, `volume_kernel_parameters(grid)`, `horizontally_extended_interior_kernel_parameters(grid)`, `buffer_surface_kernel_parameters(grid)`...)
@@ -20,8 +20,8 @@ const RFTRG = TripolarGridOfSomeKind{<:Any, <:Any, <:RightFaceFolded}
 # - `horizontally_extended_interior_kernel_parameters`
 # do not need any change because they cover `-H+2:N+H-1` where H is 1-larger in the y-direction for RFTRG
 
-# TODO: fix also the "buffer" kernel parameters functions to allow asynchronous distributed RFTRG
-# TODO: fix also the "buffer" active cells map to allow for distributed asynchronous RFTRG
+# On asynchronous distributed grids, the buffer kernel parameters and the split active cells maps
+# are built from `worksize`, so they also cover the extra row on the fold rank
 
 #####
 ##### Covers the symbols kernel parameters as well as

@@ -1,5 +1,4 @@
 using Oceananigans
-using Oceananigans.Grids: RightConnected
 using Oceananigans.OrthogonalSphericalShellGrids: RotatedLatitudeLongitudeGrid
 using Oceananigans.OrthogonalSphericalShellGrids: rotate_coordinates
 using Oceananigans.Units

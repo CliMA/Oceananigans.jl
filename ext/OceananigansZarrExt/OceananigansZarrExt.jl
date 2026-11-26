@@ -9,29 +9,29 @@ Extension that adds Zarr read/write support to Oceananigans.jl via [Zarr.jl](htt
 """
 module OceananigansZarrExt
 
-import Zarr
+using Zarr: Zarr
 using OrderedCollections: OrderedDict
 
 using Dates: Dates, AbstractTime, UTC, now, DateTime
 using Oceananigans: Oceananigans, AbstractModel, initialize!
-using Oceananigans.Architectures: Architectures, CPU, GPU, architecture
+using Oceananigans.Architectures: Architectures, CPU, GPU, architecture, child_architecture
+using Oceananigans.DistributedComputations:
+    Distributed, DistributedGrid, global_barrier, mpi_rank, mpi_initialized,
+    global_communicator, concatenate_local_sizes
 using Oceananigans.Fields: AbstractField, location, indices, interior
 using Oceananigans.Grids:
-    OrthogonalSphericalShellGrid, Center, Face, grid,
+    OrthogonalSphericalShellGrid, Center, Face, TwoSided, grid,
     constructor_arguments, generate_coordinate, grid,
-    AbstractVerticalCoordinate
+    validate_topology, AbstractVerticalCoordinate
 using Oceananigans.ImmersedBoundaries:
     ImmersedBoundaryGrid,
     GridFittedBoundary,
     GridFittedBottom,
     PartialCellBottom
+using Oceananigans.Models: LagrangianParticles
 using Oceananigans.OrthogonalSphericalShellGrids:
     Tripolar, LatitudeLongitudeRotation,
     conformal_mapping_info
-using Oceananigans.Models: LagrangianParticles
-using Oceananigans.DistributedComputations:
-    Distributed, DistributedGrid, global_barrier, mpi_rank, mpi_initialized,
-    global_communicator, concatenate_local_sizes
 using Oceananigans.OutputReaders:
     auto_extension
 using Oceananigans.OutputWriters:
@@ -71,7 +71,7 @@ using Oceananigans.OutputWriters:
 using Oceananigans.Utils:
     materialize_schedule,
     versioninfo_with_gpu, oceananigans_versioninfo,
-    prettykeys
+    prettykeys, time_difference_in_seconds, SIGNATURES
 
 const c = Center()
 const f = Face()

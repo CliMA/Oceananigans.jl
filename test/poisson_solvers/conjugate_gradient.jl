@@ -1,7 +1,7 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_poisson_solvers.jl"))
 
-using Oceananigans.Solvers: fft_poisson_solver, ConjugateGradientPoissonSolver, DiagonallyDominantPreconditioner, ColumnwiseTridiagonalPreconditioner, iteration, VolumeInverseNorm,
+using Oceananigans.Solvers: fft_poisson_solver, ConjugateGradientPoissonSolver, FourierTridiagonalPoissonSolver, DiagonallyDominantPreconditioner, ColumnwiseTridiagonalPreconditioner, iteration, VolumeInverseNorm,
                             ZeroMeanGaugeCondition
 using Oceananigans.Models.NonhydrostaticModels: compute_pressure_correction!, solve_for_pressure!
 using Oceananigans.Operators: V⁻¹ᶜᶜᶜ
@@ -273,6 +273,38 @@ function test_zero_mean_gauge_condition(arch)
     return nothing
 end
 
+function test_free_surface_solution(arch)
+    z = [-1 + (k / 8)^1.3 for k in 0:8]
+    underlying_grid = RectilinearGrid(arch, size=(8, 8, 8), x=(0, 1), y=(0, 1), z=z, topology=(Periodic, Bounded, Bounded))
+    bump(x, y) = -0.8 + 0.3 * exp(-((x - 0.5)^2 + (y - 0.5)^2) / 0.02)
+    immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bump))
+
+    u₀(x, y, z) = sin(2π * x) * y * (1 - y)
+    maxiter = 100
+
+    function free_surface_model(grid, pressure_solver)
+        model = NonhydrostaticModel(grid; pressure_solver, free_surface=ImplicitFreeSurface(gravitational_acceleration=1))
+        set!(model, u=u₀)
+        time_step!(model, 0.01)
+        return model
+    end
+
+    direct_model = free_surface_model(underlying_grid, nothing)
+
+    preconditioner = FourierTridiagonalPoissonSolver(underlying_grid)
+    solver = ConjugateGradientPoissonSolver(underlying_grid; preconditioner, reltol=1e-12, abstol=0, maxiter)
+    cg_model = free_surface_model(underlying_grid, solver)
+
+    @test iteration(cg_model.pressure_solver) < maxiter
+    @test Array(interior(cg_model.velocities.w)) ≈ Array(interior(direct_model.velocities.w))
+    @test Array(interior(cg_model.free_surface.displacement)) ≈ Array(interior(direct_model.free_surface.displacement))
+
+    immersed_model = free_surface_model(immersed_grid, ConjugateGradientPoissonSolver(immersed_grid; maxiter))
+    @test iteration(immersed_model.pressure_solver) < maxiter
+
+    return nothing
+end
+
 function size_and_extent_from_topo(N, topo)
     contains_flat = any(t -> t == Flat, topo)
     if contains_flat
@@ -351,9 +383,13 @@ end
             end
         end
 
+        open_underlying_grids = Dict("regular grid"   => RectilinearGrid(arch, topology = (Open, Periodic, Bounded), size=(8, 4, 8), halo=(4, 4, 4), extent = (1, 1, 1)),
+                                     "stretched grid" => RectilinearGrid(arch, topology = (Open, Bounded, Bounded), size=(8, 4, 8), halo=(4, 4, 4),
+                                                                         x = (0, 1), y = (0, 1), z = -1:0.125:0))
+
         @testset "Conjugate gradient solver with ImmersedBoundaryGrid, a GridFittedBottom and open boundary conditions [$(typeof(arch))]" begin
             bottom = GridFittedBottom(-0.6)
-            for (underlying_grid_name, underlying_grid) in underlying_grids
+            for (underlying_grid_name, underlying_grid) in open_underlying_grids
                 @info "  Testing $underlying_grid_name with different bottom types and open boundary conditions [$(typeof(arch))]..."
                 @test test_cgsolver_with_immersed_boundary_and_open_boundaries(underlying_grid, DiagonallyDominantPreconditioner(), bottom)
                 @test test_cgsolver_with_immersed_boundary_and_open_boundaries(underlying_grid, fft_poisson_solver(underlying_grid), bottom)
@@ -362,7 +398,7 @@ end
 
         @testset "Conjugate gradient solver with ImmersedBoundaryGrid, a PartialCellBottom and open boundary conditions [$(typeof(arch))]" begin
             bottom = PartialCellBottom(-0.5)
-            for (underlying_grid_name, underlying_grid) in underlying_grids
+            for (underlying_grid_name, underlying_grid) in open_underlying_grids
                 @test test_cgsolver_with_immersed_boundary_and_open_boundaries(underlying_grid, DiagonallyDominantPreconditioner(), bottom)
                 @test test_cgsolver_with_immersed_boundary_and_open_boundaries(underlying_grid, fft_poisson_solver(underlying_grid), bottom)
             end
@@ -371,7 +407,7 @@ end
         @testset "Conjugate gradient solver with ImmersedBoundaryGrid, a sinusoidal GridFittedBottom and open boundary conditions [$(typeof(arch))]" begin
             sinusoidal_bottom(x, y) = -0.8 + 0.1 * sin(2π * x) * cos(2π * y)
             bottom = GridFittedBottom(sinusoidal_bottom)
-            for (underlying_grid_name, underlying_grid) in underlying_grids
+            for (underlying_grid_name, underlying_grid) in open_underlying_grids
                 @test test_cgsolver_with_immersed_boundary_and_open_boundaries(underlying_grid, DiagonallyDominantPreconditioner(), bottom)
                 @test test_cgsolver_with_immersed_boundary_and_open_boundaries(underlying_grid, fft_poisson_solver(underlying_grid), bottom)
             end
@@ -427,6 +463,10 @@ end
 
         @testset "Zero-mean gauge condition [$(typeof(arch))]" begin
             test_zero_mean_gauge_condition(arch)
+        end
+
+        @testset "Conjugate gradient solver with an implicit free surface [$(typeof(arch))]" begin
+            test_free_surface_solution(arch)
         end
 
         @testset "PCG volume-independent convergence [$(typeof(arch))]" begin
