@@ -15,13 +15,13 @@ using Oceananigans.Fields: Field, instantiated_location
 using Oceananigans.Grids: Center, Connected, Face, Open, TwoSided, column_depthᶜᶠᵃ, column_depthᶠᶜᵃ, topology
 using Oceananigans.ImmersedBoundaries: column_depthTᶜᶠᵃ, column_depthTᶠᶜᵃ, column_depthᶜᶠᵃ, column_depthᶠᶜᵃ,
                                        mask_immersed_field!
-using Oceananigans.Models: update_model_field_time_series!
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModels,
                                                         AbstractFreeSurface,
                                                         free_surface_displacement_field,
                                                         update_vertical_velocities!
 using Oceananigans.Operators: Az⁻¹ᶜᶜᶠ, Δx_qᶜᶠᶠ, Δxᶜᶠᵃ, Δy_qᶠᶜᶠ, Δyᶠᶜᵃ, Δzᶜᶠᶜ, Δzᶠᶜᶜ, δxTᶜᵃᵃ, δxᶜᶜᶜ, δyTᵃᶜᵃ, δyᶜᶜᶜ,
                               ∂xᵣTᶠᶜᶠ, ∂xᵣᶠᶜᶠ, ∂yᵣTᶜᶠᶠ, ∂yᵣᶜᶠᶠ
+using Oceananigans.OutputReaders: extract_field_time_series, update_field_time_series!
 using Oceananigans.Units: Time
 using Oceananigans.Utils: Utils, @apply_regionally, KernelParameters, add_time_interval, configure_kernel, launch!, SIGNATURES, TYPEDSIGNATURES
 
