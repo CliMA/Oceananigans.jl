@@ -6,7 +6,7 @@ using Adapt: Adapt, adapt
 
 using Oceananigans: Oceananigans
 using Oceananigans.Architectures: Architectures, on_architecture
-using Oceananigans.BoundaryConditions: BoundaryConditions, IMEXTimeDiscretization, needs_implicit_solver
+using Oceananigans.BoundaryConditions: BoundaryConditions, needs_implicit_solver
 using Oceananigans.BuoyancyFormulations: BuoyancyForce, BuoyancyTracerFormulation, SeawaterBuoyancy,
                                          get_temperature_and_salinity, thermal_expansionᶜᶜᶠ
 using Oceananigans.Fields: field, location
@@ -15,7 +15,7 @@ using Oceananigans.Operators: ∂zᶜᶜᶜ
 using Oceananigans.OutputReaders: FlavorOfFTS
 using Oceananigans.Units: Time
 using Oceananigans.Utils: named_tuple, SIGNATURES, TYPEDSIGNATURES
-using Oceananigans.Utils: ExplicitTimeDiscretization
+using Oceananigans.Utils: ExplicitTimeDiscretization, IMEXTimeDiscretization
 
 include("multiple_forcings.jl")
 include("continuous_forcing.jl")

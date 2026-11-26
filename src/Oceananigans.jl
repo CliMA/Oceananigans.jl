@@ -42,7 +42,7 @@ export
     # Boundary conditions
     BoundaryCondition,
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, NormalFlowBoundaryCondition, GravityWaveRadiationBoundaryCondition,
-    IMEXTimeDiscretization, IMEXFluxBoundaryCondition,
+    IMEXFluxBoundaryCondition,
     PerturbationAdvection, BalancedTransport, GravityWaveRadiation, NormalRadiation, SurfaceWaveRadiation,
     TidalHarmonics, tidal_forcing, tidal_boundary_conditions, tidal_atlas_constants,
     FieldBoundaryConditions,
@@ -81,6 +81,7 @@ export
     TKEDissipationVerticalDiffusivity,
     RiBasedVerticalDiffusivity,
     ExplicitTimeDiscretization,
+    IMEXTimeDiscretization,
     VerticallyImplicitTimeDiscretization,
     AdaptiveVerticallyImplicitDiscretization,
     viscosity, diffusivity,
