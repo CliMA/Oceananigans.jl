@@ -11,7 +11,7 @@ export
     advective_tracer_flux_y,
     advective_tracer_flux_z,
 
-    Centered, UpwindBiased, WENO, MinmodExtrapolation, VanLeerExtrapolation, LinearExtrapolation, ContinuedExtrapolation,
+    Centered, UpwindBiased, WENO, MinmodExtrapolation, VanLeerExtrapolation, LinearExtrapolation, ContinuedExtrapolation, BottomExtrapolation,
     VectorInvariant, WENOVectorInvariant,
     FluxFormAdvection,
     AdaptiveImplicitVerticalAdvection,
@@ -28,7 +28,7 @@ using Oceananigans.Architectures: Architectures, architecture, on_architecture, 
 using Oceananigans.Grids: Grids, AbstractGrid, Center, Face, Flat, with_halo, horizontally_extended_interior_kernel_parameters,
                           required_halo_size_x, required_halo_size_y, required_halo_size_z,
                           XFlatGrid, YFlatGrid, ZFlatGrid
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, PCBIBG
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, AGFBIBG, PCBIBG, bottom_cell
 using Oceananigans.Operators: flux_div_xyᶜᶜᶜ, ∂t_σ, Ax_qᶠᶜᶜ, Axᶠᶜᶜ, Ay_qᶜᶠᶜ, Ayᶜᶠᶜ, Az_qᶜᶜᶠ,
                               Azᶜᶜᶜ, Azᶜᶜᶠ, Az⁻¹ᶜᶠᶜ, Az⁻¹ᶠᶜᶜ, V⁻¹ᶜᶜᶠ, V⁻¹ᶜᶠᶜ, V⁻¹ᶠᶜᶜ,
                               Δx_qᶜᶠᶜ, Δx⁻¹ᶠᶜᶜ, Δy_qᶠᶜᶜ, Δy⁻¹ᶜᶠᶜ,

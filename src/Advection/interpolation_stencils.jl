@@ -11,9 +11,11 @@ using Oceananigans.Grids: inactive_node
 @inline stencil_value(i, j, k, grid, ψ, args...)           = @inbounds ψ[i, j, k]
 @inline stencil_value(i, j, k, grid, ψ::Callable, args...) = ψ(i, j, k, grid, args...)
 
-@inline function has_data(node, grid, dir::Val{d}, ℓ, beyond_point) where d
-    cell_towards_point = ifelse((ℓ[d] isa Face) & beyond_point, node .- unit_vector(dir), node)
-    return !inactive_node(cell_towards_point..., grid, Base.setindex(ℓ, Center(), d)...)
+# The node o places from (i, j, k) along `dir` has data when its cell is active, or at a Face location the cell towards (i, j, k)
+@inline function has_data(i, j, k, grid, dir::Val{d}, ℓ, o) where d
+    di, dj, dk = unit_vector(dir)
+    c = o - ((ℓ[d] isa Face) & (o ≥ 0))
+    return !inactive_node(i + c * di, j + c * dj, k + c * dk, grid, Base.setindex(ℓ, Center(), d)...)
 end
 
 """
@@ -44,63 +46,92 @@ Ghosts that continue the data with its last value.
 """
 struct ContinuedExtrapolation end
 
+"""
+    BottomExtrapolation()
+
+Ghosts under an immersed bottom take the value of the bottom cell of their own column; other ghosts continue the data with its last
+value.
+"""
+struct BottomExtrapolation end
+
 Base.summary(::MinmodExtrapolation)    = "MinmodExtrapolation()"
 Base.summary(::VanLeerExtrapolation)   = "VanLeerExtrapolation()"
 Base.summary(::LinearExtrapolation)    = "LinearExtrapolation()"
 Base.summary(::ContinuedExtrapolation) = "ContinuedExtrapolation()"
+Base.summary(::BottomExtrapolation)    = "BottomExtrapolation()"
 
 @inline limited_slope(::MinmodExtrapolation,    a, b) = ifelse(a * b > 0, ifelse(abs(a) < abs(b), a, b), zero(a))
 @inline limited_slope(::VanLeerExtrapolation,   a, b) = ifelse(a * b > 0, 2a * b / (a + b), zero(a))
 @inline limited_slope(::LinearExtrapolation,    a, b) = a
 @inline limited_slope(::ContinuedExtrapolation, a, b) = zero(a)
+@inline limited_slope(::BottomExtrapolation,    a, b) = zero(a)
+
+@inline ghost_value(i, j, k, grid, extrapolation, g, ℓ, ψ, args...) = g
+
+@inline function ghost_value(i, j, k, grid::AGFBIBG, ::BottomExtrapolation, g, ::Tuple{Center, Center, Center}, ψ, args...)
+    kᵇ = bottom_cell(i, j, grid.underlying_grid, grid.immersed_boundary)
+    Nz = size(grid, 3)
+    ψᵇ = stencil_value(i, j, min(kᵇ, Nz), grid, ψ, args...)
+    return ifelse((k < kᵇ) & (kᵇ ≤ Nz), ψᵇ, g)
+end
 
 # The data at the three nodes with data nearest the boundary, outermost first, and the number of nodes with data
 @inline function data_at_boundary_nodes(S::NTuple{M}, D) where M
     N = M ÷ 2
     S₀, S₁, S₂ = S[N], S[N + 1], S[N + 2]
-    joined, count = true, 1
+    χ, m = true, 1
     for n in N-1:-1:1
-        joined &= D[n]
-        count  += joined
-        S₀, S₁, S₂ = ifelse(joined, (S[n], S₀, S₁), (S₀, S₁, S₂))
+        χ &= D[n]
+        m += χ
+        S₀, S₁, S₂ = ifelse(χ, (S[n], S₀, S₁), (S₀, S₁, S₂))
     end
-    return (S₀, S₁, S₂), count
+    return (S₀, S₁, S₂), m
 end
 
 @inline function boundary_slope(extrapolation, S₀, S₁, S₂, data_length)
     δ₁, δ₂ = S₀ - S₁, S₁ - S₂
-    slope  = limited_slope(extrapolation, δ₁, ifelse(data_length ≥ 3, δ₂, δ₁))
-    return ifelse(data_length ≥ 2, slope, zero(slope))
+    s = limited_slope(extrapolation, δ₁, ifelse(data_length ≥ 3, δ₂, δ₁))
+    return ifelse(data_length ≥ 2, s, zero(s))
 end
 
-# The values at the 2N nodes about the point between nodes N and N + 1
+# The values at the 2N nodes along `dir`, node N + 1 at (i, j, k), about the location between nodes N and N + 1
 @inline function stencil_values(i, j, k, grid, scheme::AbstractAdvectionScheme{N}, dir, ℓ, ψ, args...) where N
-    node(n) = (i, j, k) .+ (n - N - 1) .* unit_vector(dir)
-    S = ntuple(n -> stencil_value(node(n)..., grid, ψ, args...),    Val(2N))
-    D = ntuple(n -> has_data(node(n),         grid, dir, ℓ, n > N), Val(2N))
+    di, dj, dk = unit_vector(dir)
+
+    S = ntuple(Val(2N)) do n
+        @inline
+        o = n - N - 1
+        stencil_value(i + o * di, j + o * dj, k + o * dk, grid, ψ, args...)
+    end
+
+    D = ntuple(@inline(n -> has_data(i, j, k, grid, dir, ℓ, n - N - 1)), Val(2N))
 
     S⁻, N⁻ = data_at_boundary_nodes(S, D)
     S⁺, N⁺ = data_at_boundary_nodes(reverse(S), reverse(D))
 
-    slope⁻ = boundary_slope(scheme.extrapolation, S⁻..., N⁻ + N⁺)
-    slope⁺ = boundary_slope(scheme.extrapolation, S⁺..., N⁻ + N⁺)
+    s⁻ = boundary_slope(scheme.extrapolation, S⁻..., N⁻ + N⁺)
+    s⁺ = boundary_slope(scheme.extrapolation, S⁺..., N⁻ + N⁺)
 
-    first,  last  = N + 1 - N⁻, N + N⁺
-    first′, last′ = convert(eltype(S), first), convert(eltype(S), last)
-    ghosted = ntuple(Val(2N)) do n
-        ifelse(n < first, S⁻[1] + (first′ - n) * slope⁻,
-        ifelse(n > last,  S⁺[1] + (n - last′)  * slope⁺, S[n]))
+    FT = eltype(S)
+    n⁻, n⁺ = N + 1 - N⁻, N + N⁺
+
+    G = ntuple(Val(2N)) do n
+        @inline
+        o = n - N - 1
+        iₙ, jₙ, kₙ = i + o * di, j + o * dj, k + o * dk
+        g⁻ = ghost_value(iₙ, jₙ, kₙ, grid, scheme.extrapolation, S⁻[1] + (convert(FT, n⁻) - n) * s⁻, ℓ, ψ, args...)
+        g⁺ = ghost_value(iₙ, jₙ, kₙ, grid, scheme.extrapolation, S⁺[1] + (n - convert(FT, n⁺)) * s⁺, ℓ, ψ, args...)
+        ifelse(n < n⁻, g⁻, ifelse(n > n⁺, g⁺, S[n]))
     end
 
-    wall_value = ifelse(D[N], S[N], S[N + 1])
-    at_wall    = ntuple(n -> wall_value, Val(2N))
+    Sᴮ = ifelse(D[N], S[N], S[N + 1])
 
-    return ifelse(D[N] & D[N + 1], ghosted, ifelse(D[N] | D[N + 1], at_wall, S))
+    return ifelse(D[N] & D[N + 1], G, ifelse(D[N] | D[N + 1], ntuple(@inline(n -> Sᴮ), Val(2N)), S))
 end
 
 @inline function stencil_values(i, j, k, grid, ::AbstractAdvectionScheme{1}, dir, ℓ, ψ, args...)
-    i⁻, j⁻, k⁻ = (i, j, k) .- unit_vector(dir)
-    return stencil_value(i⁻, j⁻, k⁻, grid, ψ, args...), stencil_value(i, j, k, grid, ψ, args...)
+    di, dj, dk = unit_vector(dir)
+    return stencil_value(i - di, j - dj, k - dk, grid, ψ, args...), stencil_value(i, j, k, grid, ψ, args...)
 end
 
 @generated function linear_reconstruction(S::NTuple{M}, ::Type{FT}, ::Val{shift}) where {M, FT, shift}
@@ -121,16 +152,16 @@ const ZFG = Union{<:ZFlatGrid, <:ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any
 
 for (d, ξ, FlatGrid) in zip(1:3, (:x, :y, :z), (:XFG, :YFG, :ZFG))
     for ℓ in Iterators.product((Center(), Face()), (Center(), Face()), (Center(), Face()))
-        target    = Base.setindex(ℓ, ℓ[d] isa Center ? Face() : Center(), d)
-        code      = map(L -> L isa Center ? :ᶜ : :ᶠ, target)
-        biased    = Symbol(:biased_interpolate_, ξ, code...)
-        symmetric = Symbol(:symmetric_interpolate_, ξ, code...)
-        shift     = ℓ[d] isa Face ? 1 : 0
-        point     = Base.setindex((:i, :j, :k), :($((:i, :j, :k)[d]) + $shift), d)
+        target       = Base.setindex(ℓ, ℓ[d] isa Center ? Face() : Center(), d)
+        superscripts = map(L -> L isa Center ? :ᶜ : :ᶠ, target)
+        biased       = Symbol(:biased_interpolate_, ξ, superscripts...)
+        symmetric    = Symbol(:symmetric_interpolate_, ξ, superscripts...)
+        shift        = ℓ[d] isa Face ? 1 : 0
+        indices      = Base.setindex((:i, :j, :k), :($((:i, :j, :k)[d]) + $shift), d)
 
         @eval begin
-            @inline $biased(i, j, k, grid, scheme, bias, ψ, args...) = biased_interpolate($(point...), grid, scheme, bias, $(Val(d)), $ℓ, ψ, args...)
-            @inline $symmetric(i, j, k, grid, scheme, ψ, args...)    = symmetric_interpolate($(point...), grid, scheme, $(Val(d)), $ℓ, ψ, args...)
+            @inline $biased(i, j, k, grid, scheme, bias, ψ, args...) = biased_interpolate($(indices...), grid, scheme, bias, $(Val(d)), $ℓ, ψ, args...)
+            @inline $symmetric(i, j, k, grid, scheme, ψ, args...)    = symmetric_interpolate($(indices...), grid, scheme, $(Val(d)), $ℓ, ψ, args...)
 
             # A Flat direction has a single node
             @inline $biased(i, j, k, grid::$FlatGrid, scheme, bias, ψ, args...) = stencil_value(i, j, k, grid, ψ, args...)
