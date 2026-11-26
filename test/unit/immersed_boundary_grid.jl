@@ -234,6 +234,20 @@ function test_partial_cell_bottom_face_spacings(FT, arch)
     return nothing
 end
 
+# One level has a one-cell vertical halo; the second column is fully immersed
+function test_single_level_partial_cells(FT, arch)
+    underlying_grid = RectilinearGrid(arch, FT, size=(2, 1, 1), x=(0, 1), y=(0, 1), z=(-1, 0))
+
+    bottom_grid = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(FT[-0.5; 0;;]))
+    top_grid    = ImmersedBoundaryGrid(underlying_grid, PartialCellVerticalBoundaries(top_height=FT[-0.5; -1;;]))
+
+    for grid in (bottom_grid, top_grid)
+        @test Array(interior(Field(zspacings(grid, Center(), Center(), Center()))))[1, 1, 1] ≈ 1/2
+    end
+
+    return nothing
+end
+
 #####
 ##### Active cell and volume tests
 #####
@@ -568,6 +582,7 @@ end
                     test_partial_cell_bottom_grid_spacings(FT, arch; mutable_grid)
                 end
                 test_partial_cell_bottom_face_spacings(FT, arch)
+                test_single_level_partial_cells(FT, arch)
 
                 for boundary_type in (GridFittedBottom, PartialCellBottom)
                     test_immersed_volume_calculation(FT, arch, boundary_type)
