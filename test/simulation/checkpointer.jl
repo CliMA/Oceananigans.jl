@@ -1647,6 +1647,47 @@ function test_windowed_time_average_continuation_correctness(arch, WriterType, s
     return nothing
 end
 
+# Checkpoint mid-window with specified times [1, 2], pick up with [1, 2, 3]:
+# the restored writer must write only the completed average at t = 2.
+function test_extended_averaged_specified_times_pickup(arch, WriterType)
+    dir = mktempdir()
+    ext = WriterType == JLD2Writer ? ".jld2" : ".nc"
+    output_key = WriterType == JLD2Writer ? :u : "u"
+    u_init(x, y, z) = sin(2π * x) * cos(2π * y)
+
+    function averaged_simulation(times, stop_iteration, filename)
+        grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+        model = NonhydrostaticModel(grid)
+        set!(model, u=u_init, v=0.1)
+        simulation = Simulation(model; Δt=0.1, stop_iteration, verbose=false)
+        simulation.output_writers[:checkpointer] = Checkpointer(model; schedule=IterationInterval(17), dir, prefix="checkpoint")
+        simulation.output_writers[:averaged] = WriterType(model, model.velocities; dir, filename,
+                                                          schedule = AveragedSpecifiedTimes(times, window=0.5),
+                                                          overwrite_files = true)
+        return simulation
+    end
+
+    continuous = averaged_simulation([1.0, 2.0, 3.0], 22, "continuous$ext")
+    run!(continuous)
+
+    interrupted = averaged_simulation([1.0, 2.0], 17, "interrupted$ext")
+    run!(interrupted)
+
+    restored = averaged_simulation([1.0, 2.0, 3.0], 22, "restored$ext")
+    @test_logs pickup_log set!(restored; checkpoint=:latest)
+    @test_nowarn run!(restored)
+
+    @test part_file_times(joinpath(dir, "continuous$ext")) ≈ [0, 1, 2]
+    @test part_file_times(joinpath(dir, "restored$ext")) ≈ [2]
+
+    wta_continuous = continuous.output_writers[:averaged].outputs[output_key]
+    wta_restored = restored.output_writers[:averaged].outputs[output_key]
+    @test Array(wta_continuous.result) ≈ Array(wta_restored.result)
+
+    rm(dir; recursive=true)
+    return nothing
+end
+
 function test_changed_averaged_time_interval(arch)
     prefix = "changed_averaged_time_interval_$(typeof(arch))"
     partial_file = "$(prefix)_partial.jld2"
@@ -2539,6 +2580,12 @@ for arch in archs
 
         @testset "WindowedTimeAverage continuation correctness [$WriterType, $(nameof(typeof(schedule)))] [$(typeof(arch))]" begin
             test_windowed_time_average_continuation_correctness(arch, WriterType, schedule)
+        end
+    end
+
+    for WriterType in (JLD2Writer, NetCDFWriter)
+        @testset "AveragedSpecifiedTimes extended between runs [$WriterType] [$(typeof(arch))]" begin
+            test_extended_averaged_specified_times_pickup(arch, WriterType)
         end
     end
 
