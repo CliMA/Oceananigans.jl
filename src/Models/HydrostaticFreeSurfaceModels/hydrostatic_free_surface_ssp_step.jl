@@ -34,7 +34,7 @@ function TimeSteppers.ssp_substep!(model::HydrostaticFreeSurfaceModel, Δt, a, b
     step_free_surface!(free_surface, model, timestepper, Δt)
 
     @apply_regionally begin
-        ssp_blend_velocities!(model.velocities, model, a, b, stage_Δt)
+        ssp_blend_velocities!(model.velocities, model, a, b)
         mask_immersed_horizontal_velocities!(model.velocities)
         compute_transport_velocities!(model, free_surface)
     end
@@ -48,6 +48,10 @@ function TimeSteppers.ssp_substep!(model::HydrostaticFreeSurfaceModel, Δt, a, b
     @apply_regionally begin
         rk_substep_grid!(grid, model, model.vertical_coordinate, Δt)
         correct_barotropic_mode!(model, Δt)
+
+        # The open boundary conditions are treated with a Backward Euler each stage, not an SSP treatment
+        step_boundary_conditions!((u, v), model.clock, fields(model), stage_Δt)
+        correct_radiating_boundary_columns!(model, free_surface)
         ssp_substep_tracers!(model.tracers, model, Δt, a, b)
         step_boundary_conditions!(model.tracers, model.clock, fields(model), stage_Δt)
     end
@@ -81,14 +85,13 @@ function ssp_euler_substep_velocities!(velocities, model, Δt)
     return nothing
 end
 
-function ssp_blend_velocities!(velocities, model, a, b, stage_Δt)
+function ssp_blend_velocities!(velocities, model, a, b)
     grid = model.grid
     u, v = velocities.u, velocities.v
     Ψ⁻   = model.timestepper.Ψ⁻
 
     launch!(architecture(grid), grid, :xyz, _ssp_blend_field!, u, Ψ⁻.u, a, b; exclude_periphery=true)
     launch!(architecture(grid), grid, :xyz, _ssp_blend_field!, v, Ψ⁻.v, a, b; exclude_periphery=true)
-    step_boundary_conditions!(velocities, model.clock, fields(model), stage_Δt)
 
     return nothing
 end
