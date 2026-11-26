@@ -1,6 +1,7 @@
 using Oceananigans.Architectures: architecture
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields: CenterField, Field, compute!, interpolate, xnode, ynode, znode
+using Oceananigans.Utils: KernelParameters
 using Statistics: mean
 
 using Oceananigans: prognostic_state, restore_prognostic_state!
@@ -274,6 +275,17 @@ end
     end
 end
 
+function strain_rate_kernel_parameters(grid)
+    Nx, Ny, Nz = size(grid)
+    Tx, Ty, Tz = topology(grid)
+
+    ii = ifelse(Tx == Flat, 1:Nx, 0:Nx+1)
+    jj = ifelse(Ty == Flat, 1:Ny, 0:Ny+1)
+    kk = ifelse(Tz == Flat, 1:Nz, 0:Nz+1)
+
+    return KernelParameters(ii, jj, kk)
+end
+
 @kernel function _compute_Σ̄!(Σ̄, grid, u, v, w)
     i, j, k = @index(Global, NTuple)
 
@@ -326,11 +338,8 @@ function compute_coefficient_fields!(closure_fields, closure::DirectionallyAvera
     if cˢ.schedule(model)
         Σ = closure_fields.Σ
         Σ̄ = closure_fields.Σ̄
-        launch!(arch, grid, :xyz, _compute_Σ!, Σ, grid, velocities...)
+        launch!(arch, grid, strain_rate_kernel_parameters(grid), _compute_Σ!, Σ, grid, velocities...)
         launch!(arch, grid, :xyz, _compute_Σ̄!, Σ̄, grid, velocities...)
-
-        # The test filter reads Σ in neighboring cells, including across rank boundaries.
-        fill_halo_regions!(Σ)
 
         LM = closure_fields.LM
         MM = closure_fields.MM
@@ -429,11 +438,8 @@ function TurbulenceClosures.initialize_closure_fields!(closure_fields, closure::
 
     Σ = closure_fields.Σ
     Σ̄ = closure_fields.Σ̄
-    launch!(arch, grid, :xyz, _compute_Σ!, Σ, grid, u, v, w)
+    launch!(arch, grid, strain_rate_kernel_parameters(grid), _compute_Σ!, Σ, grid, u, v, w)
     launch!(arch, grid, :xyz, _compute_Σ̄!, Σ̄, grid, u, v, w)
-
-    # The test filter reads Σ in neighboring cells, including across rank boundaries.
-    fill_halo_regions!(Σ)
 
     𝒥ᴸᴹ  = closure_fields.𝒥ᴸᴹ
     𝒥ᴹᴹ  = closure_fields.𝒥ᴹᴹ
@@ -466,11 +472,8 @@ function TurbulenceClosures.step_closure_prognostics!(closure_fields, closure::L
 
         Σ = closure_fields.Σ
         Σ̄ = closure_fields.Σ̄
-        launch!(arch, grid, :xyz, _compute_Σ!, Σ, grid, u, v, w)
+        launch!(arch, grid, strain_rate_kernel_parameters(grid), _compute_Σ!, Σ, grid, u, v, w)
         launch!(arch, grid, :xyz, _compute_Σ̄!, Σ̄, grid, u, v, w)
-
-        # The test filter reads Σ in neighboring cells, including across rank boundaries.
-        fill_halo_regions!(Σ)
 
         parent(closure_fields.𝒥ᴸᴹ⁻) .= parent(closure_fields.𝒥ᴸᴹ)
         parent(closure_fields.𝒥ᴹᴹ⁻) .= parent(closure_fields.𝒥ᴹᴹ)
