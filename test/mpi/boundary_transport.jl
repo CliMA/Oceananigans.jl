@@ -4,7 +4,7 @@ MPI.Init(threadlevel=:multiple)
 
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
-using Oceananigans.DistributedComputations: Distributed, Partition
+using Oceananigans.DistributedComputations: Distributed, Partition, check_field_tags
 using Oceananigans.BoundaryConditions: BalancedTransport, NormalFlow
 using Oceananigans.Models: enforce_net_zero_transport!
 
@@ -42,6 +42,8 @@ imposed(value) = value == 0 ? NormalFlowBoundaryCondition(value) : balanced(valu
 
         model = NonhydrostaticModel(grid; boundary_conditions, timestepper = :RungeKutta3)
         u, v, w = model.velocities
+
+        check_field_tags(arch)
 
         net_inflow = (west - east) * Ly * Lz + (south - north) * Lx * Lz
         area = 2 * Ly * Lz + (south != 0 ? 2 * Lx * Lz : 0)
