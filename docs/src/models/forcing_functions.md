@@ -233,10 +233,10 @@ model.forcing.w
 
 # output
 Relaxation{Float64} at (Center, Center, Face)
-├──    rate: 0.001
+├── rate: 0.001
 ├── relaxed: 1×1×2 Field{Center, Center, Face} on RectilinearGrid on CPU
-├──    mask: 1
-└──  target: 0
+├── mask: 1
+└── target: 0
 ```
 
 The constructor for `Relaxation` accepts the keyword arguments `mask`, and `target`,
@@ -296,10 +296,10 @@ model.forcing.u
 
 # output
 Relaxation{Float64} at (Face, Center, Center)
-├──    rate: 0.01
+├── rate: 0.01
 ├── relaxed: 1×1×1 Field{Face, Center, Center} on RectilinearGrid on CPU
-├──    mask: exp(-(z + 1.0)^2 / (2 * 0.1^2))
-└──  target: 0
+├── mask: exp(-(z + 1.0)^2 / (2 * 0.1^2))
+└── target: 0
 ```
 
 ```jldoctest sponge_layer
@@ -307,10 +307,10 @@ model.forcing.T
 
 # output
 Relaxation{Float64} at (Center, Center, Center)
-├──    rate: 0.01
+├── rate: 0.01
 ├── relaxed: 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
-├──    mask: exp(-(z + 1.0)^2 / (2 * 0.1^2))
-└──  target: 20.0 + 0.001 * z
+├── mask: exp(-(z + 1.0)^2 / (2 * 0.1^2))
+└── target: 20.0 + 0.001 * z
 ```
 
 ### `FieldTimeSeries` target
@@ -419,10 +419,10 @@ model.forcing.age[2]
 
 # output
 Relaxation{Float64} at (Center, Center, Center)
-├──                rate: 1000.0
-├──             relaxed: 1×1×8 Field{Center, Center, Center} on RectilinearGrid on CPU
-├──                mask: 1×1×8 Field{Center, Center, Center} on RectilinearGrid on CPU
-├──              target: 0
+├── rate: 1000.0
+├── relaxed: 1×1×8 Field{Center, Center, Center} on RectilinearGrid on CPU
+├── mask: 1×1×8 Field{Center, Center, Center} on RectilinearGrid on CPU
+├── target: 0
 └── time_discretization: IMEXTimeDiscretization
 ```
 

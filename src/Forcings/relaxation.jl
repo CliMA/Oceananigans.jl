@@ -88,8 +88,8 @@ damping = Relaxation(rate = 1/3600)
 
 # output
 Relaxation{Float64}
-├──   rate: 0.0002777777777777778
-├──   mask: 1
+├── rate: 0.0002777777777777778
+├── mask: 1
 └── target: 0
 ```
 
@@ -110,8 +110,8 @@ bottom_sponge_layer = Relaxation(; rate = 1/60,
 
 # output
 Relaxation{Float64}
-├──   rate: 0.016666666666666666
-├──   mask: exp(-(z + 100.0)^2 / (2 * 25.0^2))
+├── rate: 0.016666666666666666
+├── mask: exp(-(z + 100.0)^2 / (2 * 25.0^2))
 └── target: 20.0 + 0.001 * z
 ```
 
@@ -122,9 +122,9 @@ reset = Relaxation(rate = 1e3, time_discretization = IMEXTimeDiscretization())
 
 # output
 Relaxation{Float64}
-├──                rate: 1000.0
-├──                mask: 1
-├──              target: 0
+├── rate: 1000.0
+├── mask: 1
+├── target: 0
 └── time_discretization: IMEXTimeDiscretization
 ```
 """
@@ -318,10 +318,9 @@ function Base.show(io::IO, relaxation::Relaxation)
     push!(rows, "target" => summary(relaxation.target))
     isnothing(relaxation.transform) || push!(rows, "transform" => string(relaxation.transform))
     relaxation isa IMEXRelaxation && push!(rows, "time_discretization" => summary(relaxation.time_discretization))
-    width = maximum(length(first(r)) for r in rows)
     for (i, (key, value)) in enumerate(rows)
         prefix = i == length(rows) ? "└── " : "├── "
-        print(io, "\n", prefix, lpad(key, width), ": ", value)
+        print(io, "\n", prefix, key, ": ", value)
     end
 end
 
