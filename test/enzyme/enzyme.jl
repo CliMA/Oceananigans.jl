@@ -27,10 +27,10 @@ function set_diffusivity!(model, diffusivity)
 end
 
 function set_initial_condition!(model, amplitude)
-    amplitude = Ref(amplitude)
+    amplitude_ref = Ref(amplitude)
 
     # This has a "width" of 0.1
-    cᵢ(x, y, z) = amplitude[] * exp(-z^2 / 0.02 - (x^2 + y^2) / 0.05)
+    cᵢ(x, y, z) = amplitude_ref[] * exp(-z^2 / 0.02 - (x^2 + y^2) / 0.05)
     set!(model, c=cᵢ)
 
     return nothing
@@ -91,8 +91,8 @@ end
 
 function set_initial_condition_via_launch!(model_tracer, amplitude)
     # Set initial condition
-    amplitude = Ref(amplitude)
-    cᵢ(x, y, z) = amplitude[]
+    amplitude_ref = Ref(amplitude)
+    cᵢ(x, y, z) = amplitude_ref[]
 
     temp = Base.broadcasted(Base.identity, FunctionField((Center, Center, Center), cᵢ, model_tracer.grid))
 
@@ -149,9 +149,8 @@ end
     model = HydrostaticFreeSurfaceModel(grid; tracers=:c)
     model_tracer = model.tracers.c
 
-    amplitude = 1.0
-    amplitude = Ref(amplitude)
-    cᵢ(x, y, z) = amplitude[]
+    amplitude_ref = Ref(1.0)
+    cᵢ(x, y, z) = amplitude_ref[]
     temp = Base.broadcasted(Base.identity, FunctionField((Center, Center, Center), cᵢ, model_tracer.grid))
 
     temp = convert(Base.Broadcast.Broadcasted{Nothing}, temp)
