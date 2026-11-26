@@ -1,0 +1,48 @@
+name: Report failures on main
+
+# Buildkite reports each build as a commit status. When a build of a commit on main fails in steps that passed on
+# the previous commit, open an issue and comment on the pull request that the commit merged.
+on: status
+
+permissions:
+  contents: read
+  statuses: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  report:
+    if: >-
+      github.event.state == 'failure' &&
+      contains(fromJSON('["buildkite/oceananigans", "buildkite/oceananigans-distributed"]'), github.event.context)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      SHA: ${{ github.event.sha }}
+      CONTEXT: ${{ github.event.context }}
+      BUILD_URL: ${{ github.event.target_url }}
+    steps:
+      - name: Open an issue and comment on the pull request
+        run: |
+          failed_steps() {
+            gh api "repos/$GH_REPO/commits/$1/status?per_page=100" \
+              --jq ".statuses[] | select(.state == \"failure\" and (.context | startswith(\"$CONTEXT/\"))) | .context" | sort
+          }
+
+          # Builds of pull requests report on commits that main does not contain
+          [[ "$(gh api "repos/$GH_REPO/compare/$SHA...main" --jq .status)" =~ ^(ahead|identical)$ ]] || exit 0
+
+          parent=$(gh api "repos/$GH_REPO/commits/$SHA" --jq '.parents[0].sha')
+          steps=$(comm -23 <(failed_steps "$SHA") <(failed_steps "$parent") | sed "s|^$CONTEXT/|- |")
+          [[ -n "$steps" ]] || exit 0
+
+          pr=$(gh api "repos/$GH_REPO/commits/$SHA/pulls" --jq "map(select(.merge_commit_sha == \"$SHA\"))[0].number // empty")
+
+          title="main fails on Buildkite (${CONTEXT#buildkite/}) at ${SHA:0:9}"
+          body=$(printf 'Build %s fails on main at %s%s, in steps that passed on the previous commit:\n\n%s' \
+                        "$BUILD_URL" "$SHA" "${pr:+, the merge of #$pr}" "$steps")
+          issue=$(gh issue create --title "$title" --body "$body")
+
+          [[ -z "$pr" ]] || gh pr comment "$pr" --body "$(printf 'main fails after merging this pull request: %s\n\n%s' "$issue" "$steps")"

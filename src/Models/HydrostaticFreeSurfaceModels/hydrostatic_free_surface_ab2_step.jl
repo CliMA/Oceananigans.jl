@@ -29,7 +29,8 @@ The order of operations for explicit free surfaces is:
 5. Advance grid scaling (for z-star coordinates)
 6. Advance velocities using AB2
 7. Correct barotropic mode
-8. Advance tracers using AB2
+8. Step open boundary conditions of the corrected velocities and correct the radiated boundary columns
+9. Advance tracers using AB2
 """
 function hydrostatic_ab2_step!(model, free_surface, grid, Δt, callbacks)
     FT = eltype(grid)
@@ -63,6 +64,12 @@ function hydrostatic_ab2_step!(model, free_surface, grid, Δt, callbacks)
 
         # Correct the barotropic mode and advance tracers
         correct_barotropic_mode!(model, Δt)
+
+        # Open boundaries see the corrected velocity, which the interior keeps
+        step_boundary_conditions!((u, v), model.clock, fields(model), Δt)
+
+        # Bring the radiated boundary columns back onto the barotropic transport
+        correct_radiating_boundary_columns!(model, free_surface)
         ab2_step_tracers!(model.tracers, model, Δt, χ)
     end
 
@@ -87,6 +94,8 @@ function hydrostatic_ab2_step!(model, free_surface::ImplicitFreeSurface, grid, �
     FT = eltype(grid)
     χ  = convert(FT, model.timestepper.χ)
 
+    u, v, _ = model.velocities
+
     @apply_regionally begin
         update_transport_velocities!(model.transport_velocities, model.velocities, model.free_surface)
 
@@ -95,6 +104,7 @@ function hydrostatic_ab2_step!(model, free_surface::ImplicitFreeSurface, grid, �
 
         # Finally Substep! Advance grid, tracers, (predictor) momentum
         ab2_step_velocities!(model.velocities, model, Δt, χ)
+        step_boundary_conditions!((u, v), model.clock, fields(model), Δt)
     end
 
     # Enforce targeted open boundary transports on the predictor velocity, before the
@@ -110,7 +120,6 @@ function hydrostatic_ab2_step!(model, free_surface::ImplicitFreeSurface, grid, �
         mask_immersed_horizontal_velocities!(model.velocities)
     end
 
-    u, v, _ = model.velocities
     fill_halo_regions!((u, v), model.clock, fields(model))
 
     @apply_regionally begin
@@ -166,7 +175,6 @@ function ab2_step_velocities!(velocities, model, Δt, χ)
     implicit_ab2_step_velocity!(model, Δt, Val(:u))
     implicit_ab2_step_velocity!(model, Δt, Val(:v))
     add_barotropic_acceleration!(velocities, model.grid, model.free_surface, ηⁿ, -Δt)
-    step_boundary_conditions!(velocities, model.clock, fields(model), Δt)
 
     return nothing
 end

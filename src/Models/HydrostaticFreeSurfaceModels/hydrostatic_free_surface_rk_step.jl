@@ -26,7 +26,8 @@ The order of operations for explicit free surfaces is:
 5. Advance grid scaling (for z-star coordinates)
 6. Advance velocities
 7. Correct barotropic mode to reconcile baroclinic and barotropic velocities
-8. Advance tracers
+8. Step open boundary conditions of the corrected velocities and correct the radiated boundary columns
+9. Advance tracers
 """
 @inline function TimeSteppers.rk_substep!(model, free_surface, grid, Δτ, callbacks)
     @apply_regionally begin
@@ -54,6 +55,12 @@ The order of operations for explicit free surfaces is:
         rk_substep_grid!(grid, model, model.vertical_coordinate, Δτ)
 
         correct_barotropic_mode!(model, Δτ)
+
+        # Open boundaries see the corrected velocity, which the interior keeps
+        step_boundary_conditions!((u, v), model.clock, fields(model), Δτ)
+
+        # Bring the radiated boundary columns back onto the barotropic transport
+        correct_radiating_boundary_columns!(model, free_surface)
         rk_substep_tracers!(model.tracers, model, Δτ)
     end
 
@@ -75,6 +82,8 @@ For implicit free surfaces, a predictor-corrector approach is used:
 """
 @inline function TimeSteppers.rk_substep!(model, free_surface::ImplicitFreeSurface, grid, Δτ, callbacks)
 
+    u, v, _ = model.velocities
+
     @apply_regionally begin
         update_transport_velocities!(model.transport_velocities, model.velocities, free_surface)
 
@@ -83,6 +92,7 @@ For implicit free surfaces, a predictor-corrector approach is used:
 
         # Finally Substep! Advance grid, tracers, (predictor) momentum
         rk_substep_velocities!(model.velocities, model, Δτ)
+        step_boundary_conditions!((u, v), model.clock, fields(model), Δτ)
     end
 
     # Enforce targeted open boundary transports on the predictor velocity, before the
@@ -99,7 +109,6 @@ For implicit free surfaces, a predictor-corrector approach is used:
     end
 
     # Fill velocity halos
-    u, v, _ = model.velocities
     fill_halo_regions!((u, v), model.clock, fields(model))
 
     @apply_regionally begin
@@ -156,7 +165,6 @@ function rk_substep_velocities!(velocities, model, Δt)
     implicit_substep_velocity!(model, Δt, Val(:u))
     implicit_substep_velocity!(model, Δt, Val(:v))
     add_barotropic_acceleration!(velocities, model.grid, model.free_surface, ηⁿ, -Δt)
-    step_boundary_conditions!(velocities, model.clock, fields(model), Δt)
 
     return nothing
 end
