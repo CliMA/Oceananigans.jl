@@ -7,7 +7,7 @@ using KernelAbstractions: @index, @kernel, @localmem, @synchronize, StaticSize
 
 using Oceananigans: Oceananigans
 using Oceananigans.Architectures: architecture, convert_to_device, device
-using Oceananigans.BoundaryConditions: FieldBoundaryConditions, SurfaceWaveRadiationBoundaryCondition,
+using Oceananigans.BoundaryConditions: East, FieldBoundaryConditions, North, RNFBC, South, SurfaceWaveRadiationBoundaryCondition, West,
                                        cache_boundary_conditions!, fill_halo_regions!, gravity_wave_boundary_condition,
                                        regularize_field_boundary_conditions, step_boundary_conditions!
 using Oceananigans.DistributedComputations: DistributedComputations, @root, DistributedGrid, all_reduce
