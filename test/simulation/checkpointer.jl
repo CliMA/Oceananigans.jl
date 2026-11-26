@@ -1408,6 +1408,32 @@ function test_stateful_schedule_checkpointing(arch, schedule_type)
     return nothing
 end
 
+function test_changed_specified_times_pickup(arch)
+    dir = mktempdir()
+
+    function recording_simulation(times, stop_time)
+        grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+        simulation = Simulation(NonhydrostaticModel(grid); Δt=0.25, stop_time, verbose=false)
+        simulation.output_writers[:checkpointer] = Checkpointer(simulation.model; schedule=TimeInterval(2), dir, prefix="checkpoint")
+        actuation_times = Float64[]
+        simulation.callbacks[:record] = Callback(sim -> push!(actuation_times, time(sim)), SpecifiedTimes(times...))
+        return simulation, actuation_times
+    end
+
+    simulation, _ = recording_simulation([1, 3, 4], 2)
+    run!(simulation)
+
+    # Drop the time that was already reached before the checkpoint
+    restored, actuation_times = recording_simulation([3, 4], 4)
+    @test_logs pickup_log set!(restored; checkpoint=:latest)
+    run!(restored)
+
+    @test actuation_times == [3, 4]
+
+    rm(dir; recursive=true)
+    return nothing
+end
+
 mutable struct ActuationCounter <: Function
     actuations :: Int
 end
@@ -2522,6 +2548,10 @@ for arch in archs
         @testset "Stateful schedule checkpointing [$schedule_type] [$(typeof(arch))]" begin
             test_stateful_schedule_checkpointing(arch, schedule_type)
         end
+    end
+
+    @testset "SpecifiedTimes changed between runs [$(typeof(arch))]" begin
+        test_changed_specified_times_pickup(arch)
     end
 
     @testset "Stateful callback checkpointing [$(typeof(arch))]" begin
