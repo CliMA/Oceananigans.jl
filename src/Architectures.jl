@@ -148,7 +148,7 @@ unified_array(::GPU, a) = a
 """
     Float32Adaptor
 
-`Adapt` adaptor that converts every `Float64` in a structure to `Float32`.
+`Adapt` adaptor that converts `Float64` numbers and ranges to `Float32`.
 """
 struct Float32Adaptor end
 

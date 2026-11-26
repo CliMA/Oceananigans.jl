@@ -90,24 +90,24 @@ end
             return (; hydrostatic, nonhydrostatic)
         end
 
-        @info "  Testing that Float64 model components are converted to Float32 for kernels..."
-        for model in models(Float64)
+        @testset "Float32Adaptor converts Float64 model components" for model in models(Float64)
             components = merge(kernel_visible_components(model), (; boundary_conditions=field_boundary_conditions(model)))
             unconverted = [name for (name, c) in pairs(components) if has_float64(typeof(adapt(Float32Adaptor(), c)))]
             @test isempty(unconverted)
         end
 
-        @info "  Testing that Float32 model kernels compute in Float32..."
-        compiled_before = cpu_kernel_specializations()
-        for model in models(Float32)
-            run!(Simulation(model, Δt=60f0, stop_iteration=2, verbose=false))
+        @testset "Float32 model kernels compute in Float32" begin
+            compiled_before = cpu_kernel_specializations()
+            for model in models(Float32)
+                run!(Simulation(model, Δt=60f0, stop_iteration=2, verbose=false))
+            end
+            leaks = Dict{Symbol, Vector{Any}}()
+            for mi in setdiff(cpu_kernel_specializations(), compiled_before)
+                sites = float64_ssa_sites(mi)
+                isempty(sites) || append!(get!(leaks, mi.def.name, Any[]), sites)
+            end
+            @test isempty(leaks)
         end
-        leaks = Dict{Symbol, Vector{Any}}()
-        for mi in setdiff(cpu_kernel_specializations(), compiled_before)
-            sites = float64_ssa_sites(mi)
-            isempty(sites) || append!(get!(leaks, mi.def.name, Any[]), sites)
-        end
-        @test isempty(leaks)
     finally
         Oceananigans.defaults.FloatType = Float64
     end
