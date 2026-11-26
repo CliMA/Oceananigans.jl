@@ -9,12 +9,12 @@ Extension that adds Zarr read/write support to Oceananigans.jl via [Zarr.jl](htt
 """
 module OceananigansZarrExt
 
-import Zarr
+using Zarr: Zarr
 using OrderedCollections: OrderedDict
 
 using Dates: Dates, AbstractTime, UTC, now, DateTime
 using Oceananigans: Oceananigans, AbstractModel, initialize!
-using Oceananigans.Architectures: Architectures, CPU, GPU, architecture
+using Oceananigans.Architectures: Architectures, CPU, GPU, architecture, child_architecture
 using Oceananigans.DistributedComputations:
     Distributed, DistributedGrid, global_barrier, mpi_rank, mpi_initialized,
     global_communicator, concatenate_local_sizes

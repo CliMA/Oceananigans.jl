@@ -216,6 +216,53 @@ tripolar_immersed_on_architecture_script(fold_topology, pivot) = """
     run_mpi_script(tripolar_immersed_on_architecture_script(fold_topology, pivot), 4)
 end
 
+# Every rank must create the same fields in a reduction, also the rank of the fold, otherwise the next halo
+# exchange never completes.
+tripolar_immersed_reduction_script(fold_topology, pivot) = """
+    using MPI
+    MPI.Init(threadlevel=:multiple)
+    using Test
+
+    include($(repr(distributed_tests_utils)))
+
+    using Oceananigans.DistributedComputations: check_field_tags
+
+    Nx, Ny = 20, 40
+    bottom_height = [j > Ny ÷ 4 ? -1000 : 0 for i in 1:Nx, j in 1:Ny]
+
+    function immersed_tripolar_grid(arch)
+        grid = TripolarGrid(arch; size = (Nx, Ny, 4), z = (-1000, 0), halo = (3, 3, 3), fold_topology = $fold_topology, pivot = $pivot)
+        return ImmersedBoundaryGrid(grid, GridFittedBottom(bottom_height))
+    end
+
+    arch = Distributed(CPU(), partition=Partition(1, 4))
+    grid = immersed_tripolar_grid(arch)
+    serial_grid = immersed_tripolar_grid(CPU())
+
+    c  = Field{Center, Center, Nothing}(grid)
+    cs = Field{Center, Center, Nothing}(serial_grid)
+    v  = YFaceField(grid)
+    vs = YFaceField(serial_grid)
+
+    set!(c,  (λ, φ) -> φ + λ / 1000)
+    set!(cs, (λ, φ) -> φ + λ / 1000)
+    set!(v,  (λ, φ, z) -> φ - λ / 1000 + z / 100)
+    set!(vs, (λ, φ, z) -> φ - λ / 1000 + z / 100)
+
+    @test sum(c; dims = (1, 2))[1, 1, 1] ≈ sum(cs; dims = (1, 2))[1, 1, 1]
+    check_field_tags(arch)
+
+    @test Field(Average(c, dims = (1, 2)))[1, 1, 1] ≈ Field(Average(cs, dims = (1, 2)))[1, 1, 1]
+    check_field_tags(arch)
+
+    @test sum(v) ≈ sum(vs)
+    check_field_tags(arch)
+"""
+
+@testset "Test distributed immersed TripolarGrid reductions $fold_topology..." for (fold_topology, pivot) in fold_topologies
+    run_mpi_script(tripolar_immersed_reduction_script(fold_topology, pivot), 4)
+end
+
 tripolar_boundary_conditions_script(fold_topology, pivot) = """
     using MPI
     MPI.Init(threadlevel=:multiple)
@@ -385,4 +432,43 @@ run_large_pencil_distributed_grid(fold_topology, pivot) = """
     @test all(vs .≈ vp)
     @test all(cs .≈ cp)
     @test all(ηs .≈ ηp)
+end
+
+run_active_cells_map_distributed_grid(fold_topology, pivot, Rx, Ry) = """
+    using MPI
+    MPI.Init(threadlevel=:multiple)
+
+    include($(repr(distributed_tests_utils)))
+    arch = Distributed(CPU(), partition = Partition($Rx, $Ry))
+    run_distributed_tripolar_grid(arch, "distributed_$(fold_topology)_$(pivot)_active_cells_map_tripolar.jld2";
+                                  fold_topology = $fold_topology, pivot = $pivot, active_cells_map = true)
+"""
+
+# With an active cells map and asynchronous communication, the interior is split into a halo-independent
+# core and halo-dependent maps. On the fold rank of a `FaceFolded` grid these must also cover the fold row `Ny+1`.
+@testset "Test distributed TripolarGrid simulations with active cells map $fold_topology..." for (fold_topology, pivot) in fold_topologies
+    grid  = TripolarGrid(size = (40, 40, 1), z = (-1000, 0), halo = (5, 5, 5); fold_topology, pivot)
+    grid  = analytical_immersed_tripolar_grid(grid)
+    model = run_distributed_simulation(grid)
+
+    us = interior(model.velocities.u, :, :, 1)
+    vs = interior(model.velocities.v, :, :, 1)
+    cs = interior(model.tracers.c, :, :, 1)
+    ηs = interior(model.free_surface.displacement, :, :, 1)
+
+    for (Rx, Ry) in ((1, 4), (2, 2))
+        run_mpi_script(run_active_cells_map_distributed_grid(fold_topology, pivot, Rx, Ry), 4)
+
+        filename = "distributed_$(fold_topology)_$(pivot)_active_cells_map_tripolar.jld2"
+        up = jldopen(filename)["u"]
+        vp = jldopen(filename)["v"]
+        cp = jldopen(filename)["c"]
+        ηp = jldopen(filename)["η"]
+        rm(filename)
+
+        @test all(us .≈ up)
+        @test all(vs .≈ vp)
+        @test all(cs .≈ cp)
+        @test all(ηs .≈ ηp)
+    end
 end
