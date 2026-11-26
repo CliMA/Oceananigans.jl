@@ -30,8 +30,7 @@ function TimeSteppers.ssp_substep!(model::HydrostaticFreeSurfaceModel, Δt, a, b
     end
 
     compute_free_surface_tendency!(grid, model, free_surface, Δt)
-
-    foreach((ψᵐ⁻¹, ψ) -> ψᵐ⁻¹ .= ψ, timestepper.Ψᵐ⁻¹, free_surface_fields(free_surface))
+    update_stage_free_surface!(free_surface, free_surface_fields(free_surface), timestepper)
     step_free_surface!(free_surface, model, timestepper, Δt)
 
     @apply_regionally begin
@@ -53,6 +52,15 @@ function TimeSteppers.ssp_substep!(model::HydrostaticFreeSurfaceModel, Δt, a, b
         step_boundary_conditions!(model.tracers, model.clock, fields(model), stage_Δt)
     end
 
+    return nothing
+end
+
+update_stage_free_surface!(args...) = nothing
+
+function update_stage_free_surface!(::SplitExplicitFreeSurface, Ψᵐ⁻¹, Ψᵐ)
+    parent(Ψᵐ⁻¹.η) .= parent(Ψᵐ.η)
+    parent(Ψᵐ⁻¹.U) .= parent(Ψᵐ.U)
+    parent(Ψᵐ⁻¹.V) .= parent(Ψᵐ.V)
     return nothing
 end
 

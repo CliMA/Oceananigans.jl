@@ -41,27 +41,15 @@ function SSPRungeKutta3TimeStepper(grid, prognostic_fields, args...;
                                    Ψ⁻ = map(similar, prognostic_fields),
                                    kwargs...)
 
-    coefficients = ((0//1, 1//1), (3//4, 1//4), (1//3, 2//3))
+    FT = eltype(grid)
+    coefficients = map(c -> convert.(FT, c), ((0, 1), (3//4, 1//4), (1//3, 2//3)))
     Ψᵐ⁻¹ = map(similar, haskey(Ψ⁻, :U) ? (; Ψ⁻.η, Ψ⁻.U, Ψ⁻.V) : NamedTuple())
 
     return SSPRungeKutta3TimeStepper(length(coefficients), coefficients, Gⁿ, Ψ⁻, implicit_solver, Ψᵐ⁻¹)
 end
 
-"""
-    ssp_quadrature_weights(coefficients)
-
-Return the weights `βₘ` of the stage tendencies in `Ψⁿ⁺¹ = Ψⁿ + Δt Σₘ βₘ Gᵐ`, that is the product of the `b`
-coefficients of stage `m` and of every later stage: `(1/6, 1/6, 2/3)` for the three-stage scheme.
-"""
 ssp_quadrature_weights(coefficients) = ntuple(m -> prod(last, coefficients[m:end]), length(coefficients))
-
-"""
-    ssp_stage_fractions(coefficients)
-
-Return the fractions `τᵐ` of `Δt` reached by the state after each stage of the Shu-Osher recursion,
-`τᵐ = bᵐ (τᵐ⁻¹ + 1)` with `τ⁰ = 0`: `(1, 1/2, 1)` for the three-stage scheme.
-"""
-ssp_stage_fractions(coefficients) = accumulate((τ, (a, b)) -> b * (τ + 1), coefficients; init = 0)
+ssp_stage_fractions(coefficients)    = accumulate((τ, (a, b)) -> b * (τ + 1), coefficients; init = 0)
 
 Oceananigans.prognostic_state(::SSPRungeKutta3TimeStepper) = nothing
 
