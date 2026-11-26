@@ -3,7 +3,6 @@ module NonhydrostaticModels
 export NonhydrostaticModel, BackgroundField, BackgroundFields
 
 using Adapt: Adapt, adapt
-using DocStringExtensions: MethodSignatures, TYPEDSIGNATURES
 using KernelAbstractions: @index, @kernel
 
 using Oceananigans: Oceananigans, fields, prognostic_fields
@@ -16,12 +15,13 @@ using Oceananigans.Grids: Center, Face, Flat, Periodic, XYZRegularRG, grid, halo
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models: Models
 using Oceananigans.Simulations: Simulations, timestepper
-using Oceananigans.Solvers: ConjugateGradientPoissonSolver, GridWithFFTSolver, GridWithFourierTridiagonalSolver,
+using Oceananigans.Solvers: ConjugateGradientPoissonSolver, FFTBasedPoissonSolver, FourierTridiagonalPoissonSolver,
+                            GridWithFFTSolver, GridWithFourierTridiagonalSolver, HomogeneousZFormulation,
                             InhomogeneousFormulation, ZDirection
 using Oceananigans.TimeSteppers: TimeSteppers, substep_lagrangian_particles!, update_lagrangian_particle_state!,
                                  update_state!
 using Oceananigans.TurbulenceClosures: TurbulenceClosures
-using Oceananigans.Utils: foreach_name, named_tuple, sum_of_velocities
+using Oceananigans.Utils: foreach_name, named_tuple, sum_of_velocities, SIGNATURES, TYPEDSIGNATURES
 
 using ..Models: enforce_net_zero_transport!, initialize_boundary_transport
 
@@ -72,6 +72,11 @@ end
 
 
 nonhydrostatic_pressure_solver(grid, free_surface) = nonhydrostatic_pressure_solver(architecture(grid), grid, free_surface)
+
+const HomogeneousZPreconditioner = Union{FFTBasedPoissonSolver, FourierTridiagonalPoissonSolver{<:Any, <:HomogeneousZFormulation}}
+
+free_surface_preconditioner(preconditioner::HomogeneousZPreconditioner, free_surface) = nonhydrostatic_pressure_solver(preconditioner.grid, free_surface)
+free_surface_preconditioner(preconditioner, free_surface) = preconditioner
 
 #####
 ##### NonhydrostaticModel definition

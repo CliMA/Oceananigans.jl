@@ -244,6 +244,8 @@ end
 BoundaryConditions.regularize_boundary_condition(f::YFTS, grid, loc, dim, args...) =
     BoundaryConditions.xz_reduced_condition(f, Val(dim))
 
+BoundaryConditions.regularize_boundary_condition(f::FTS0, grid, loc, dim, args...) = f
+
 # West - east and south - north boundary conditions, only the last index is valid (the first one is either i or j)
 @inline BoundaryConditions.getbc(f::ZFTS, ::Int, k::Int, grid::AbstractGrid, clock, args...) = @inbounds f[1, 1, k, Time(clock.time)]
 
@@ -468,7 +470,7 @@ function update_field_time_series!(fts::PartlyInMemoryFTS, first_time::Time, las
     Nt = length(fts.times)
 
     min(n₂, Nt) - n₁ < Nm ||
-        throw(ArgumentError("times $(first_time.time) to $(last_time.time) span time indices $n₁ to $n₂, " *
+        throw(ArgumentError("$(summary(fts)): times $(first_time.time) to $(last_time.time) span time indices $n₁ to $n₂, " *
                             "more than the $Nm held in memory; increase `time_indices_in_memory`."))
 
     return update_field_time_series!(fts, n₁, n₂)

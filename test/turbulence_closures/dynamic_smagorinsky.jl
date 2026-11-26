@@ -111,18 +111,18 @@ end
     # The filter-width ratio follows the number of directions that are filtered at each cell
     Nx, Ny, Nz = size(grid)
     @test ᾱ²(2, 2, 2, grid) isa FT
-    @test ᾱ²(2, 2, 2, grid) == 4
-    @test ᾱ²(1, 2, 2, grid) ≈ ᾱ²(Nx, 2, 2, grid) ≈ ᾱ²(2, 1, 2, grid) ≈ ᾱ²(2, Ny, 2, grid) ≈ FT(4)^FT(2/3)
-    @test ᾱ²(2, 2, 1, grid) ≈ ᾱ²(2, 2, Nz, grid) ≈ FT(4)^FT(2/3)
-    @test ᾱ²(1, 1, 2, grid) ≈ ᾱ²(Nx, 2, Nz, grid) ≈ FT(4)^FT(1/3)
+    @test ᾱ²(2, 2, 2, grid) == 6
+    @test ᾱ²(1, 2, 2, grid) ≈ ᾱ²(Nx, 2, 2, grid) ≈ ᾱ²(2, 1, 2, grid) ≈ ᾱ²(2, Ny, 2, grid) ≈ FT(6)^FT(2/3)
+    @test ᾱ²(2, 2, 1, grid) ≈ ᾱ²(2, 2, Nz, grid) ≈ FT(6)^FT(2/3)
+    @test ᾱ²(1, 1, 2, grid) ≈ ᾱ²(Nx, 2, Nz, grid) ≈ FT(6)^FT(1/3)
     @test ᾱ²(1, 1, 1, grid) == ᾱ²(Nx, Ny, Nz, grid) == 1
 
     periodic_grid = RectilinearGrid(arch, FT; size=(4, 5, 6), extent=(1, 1, 1), topology=(Periodic, Periodic, Periodic))
-    @test ᾱ²(1, 1, 1, periodic_grid) == ᾱ²(Nx, Ny, Nz, periodic_grid) == 4
+    @test ᾱ²(1, 1, 1, periodic_grid) == ᾱ²(Nx, Ny, Nz, periodic_grid) == 6
 
     flat_grid = RectilinearGrid(arch, FT; size=(4, 6), extent=(1, 1), topology=(Periodic, Flat, Bounded))
-    @test ᾱ²(1, 1, 2, flat_grid) == 4
-    @test ᾱ²(1, 1, 1, flat_grid) == ᾱ²(1, 1, size(flat_grid, 3), flat_grid) == 2
+    @test ᾱ²(1, 1, 2, flat_grid) == 6
+    @test ᾱ²(1, 1, 1, flat_grid) ≈ ᾱ²(1, 1, size(flat_grid, 3), flat_grid) ≈ √FT(6)
 end
 
 @testset "Dynamic Smagorinsky test filter and grid topology" begin

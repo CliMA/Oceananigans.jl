@@ -82,7 +82,7 @@ mutable struct Simulation{ML, DT, SI, ST, DI, OW, CB, FT, BL, AD}
 end
 
 """
-$(MethodSignatures(; defaults = true))
+$(SIGNATURES)
 
 Construct a `Simulation` for a `model` with time step `Δt`.
 
@@ -236,7 +236,7 @@ Return the current simulation iteration.
 Oceananigans.Solvers.iteration(sim::Simulation) = iteration(sim.model)
 
 """
-$(MethodSignatures(; defaults = true))
+$(SIGNATURES)
 
 Return `sim.model.clock.time` as a prettily formatted string."
 

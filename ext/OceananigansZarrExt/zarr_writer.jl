@@ -270,7 +270,7 @@ Base.@nospecializeinfer function initialize_zarr_store!(@nospecialize(writer::Za
 
     useful_attributes = Dict("Conventions" => "CF-1.13",
                              "date" => "This file was generated on $(now()) local time ($(now(UTC)) UTC).",
-                             "Julia" => "This file was generated using " * versioninfo_with_gpu(),
+                             "Julia" => "This file was generated using " * versioninfo_with_gpu(child_architecture(arch)),
                              "Oceananigans" => "This file was generated using " * oceananigans_versioninfo())
 
     if writer.with_halos

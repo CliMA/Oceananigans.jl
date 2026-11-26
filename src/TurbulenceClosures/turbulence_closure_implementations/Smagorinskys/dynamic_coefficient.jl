@@ -1,11 +1,10 @@
+using Oceananigans: prognostic_state, restore_prognostic_state!
 using Oceananigans.Architectures: architecture
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields: CenterField, Field, XFaceField, YFaceField, ZFaceField, compute!, interpolate, xnode, ynode, znode
 using Oceananigans.Grids: Flat, topology
 using Oceananigans.Utils: KernelParameters
 using Statistics: mean
-
-using Oceananigans: prognostic_state, restore_prognostic_state!
 
 mutable struct DynamicCoefficient{A, FT, S}
     averaging :: A
@@ -23,7 +22,7 @@ const DynamicSmagorinsky = Union{
 }
 
 """
-$(MethodSignatures(; defaults = true))
+$(SIGNATURES)
 
 Returns a `Smagorinsky`-type closure with dynamic computation of the Smagorinsky coefficient
 according to the scale invariant procedure described by [Bou-Zeid et al. (2005)](@cite BouZeid05).
@@ -40,10 +39,11 @@ may be used as a performance optimization for cases where dynamic coefficient co
 Test filter
 ===========
 
-The test filter applies the weights (¼, ½, ¼) along each direction, which makes it twice as wide as the
-grid spacing. It is not applied across the boundaries of the domain: next to a boundary the flow is filtered
-only along the directions parallel to it, and the ratio of the test filter width to the grid filter width is
-reduced accordingly, from 2 to 2^(2/3) next to one boundary of a three-dimensional domain.
+The test filter applies the weights (¼, ½, ¼) along each direction. Its width is that of the box filter with
+the same second moment (Lund, 1997), which is √6 times the grid spacing. It is not applied across the
+boundaries of the domain: next to a boundary the flow is filtered only along the directions parallel to it,
+and the ratio of the test filter width to the grid filter width is reduced accordingly, from √6 to 6^(1/3)
+next to one boundary of a three-dimensional domain.
 
 Multi-stage timestepper compatibility
 =====================================
@@ -108,6 +108,9 @@ References
 
 Bou-Zeid, Elie, Meneveau, Charles, and Parlange, Marc. (2005) A scale-dependent Lagrangian dynamic model for
 large eddy simulation of complex turbulent flows, Physics of Fluids, **17**, 025105.
+
+Lund, Thomas S. (1997) On the use of discrete filters for large eddy simulation, Annual Research Briefs,
+Center for Turbulence Research, 83–95.
 """
 function DynamicSmagorinsky(time_discretization = ExplicitTimeDiscretization(),
                             FT = Oceananigans.defaults.FloatType;
@@ -139,7 +142,7 @@ tupleit(a::Number) = tuple(a)
 tupleit(a::Tuple) = a
 
 """
-$(MethodSignatures(; defaults = true))
+$(SIGNATURES)
 
 When used with `Smagorinsky`, it calculates the Smagorinsky coefficient dynamically from the flow
 according to the scale invariant procedure described by [Bou-Zeid et al. (2005)](@cite BouZeid05).
@@ -290,11 +293,13 @@ end
     @inbounds f̄[i, j, k] = filter(i, j, k, grid, f)
 end
 
-# The dynamic procedure differentiates and interpolates the test-filtered velocities, which reads
-# them one point beyond the interior. They are computed there too, rather than filled as halos,
-# so that they equal the test filter evaluated at those points.
+# The test filter reads Σ one point beyond the interior, and the dynamic procedure differentiates and
+# interpolates the test-filtered velocities there. They are computed there too, rather than filled as
+# halos, so that they equal the expressions evaluated at those points.
 one_point_beyond_interior(N, topo) = 0:N+1
 one_point_beyond_interior(N, ::Type{Flat}) = 1:1
+
+strain_rate_kernel_parameters(grid) = KernelParameters(map(one_point_beyond_interior, size(grid), topology(grid))...)
 
 function compute_test_filtered!(f̄, filter, f)
     grid = f̄.grid
@@ -353,13 +358,10 @@ function compute_coefficient_fields!(closure_fields, closure::DirectionallyAvera
     if cˢ.schedule(model)
         Σ = closure_fields.Σ
         Σ̄ = closure_fields.Σ̄
-        launch!(arch, grid, :xyz, _compute_Σ!, Σ, grid, velocities...)
+        launch!(arch, grid, strain_rate_kernel_parameters(grid), _compute_Σ!, Σ, grid, velocities...)
         compute_test_filtered_velocities!(closure_fields, velocities...)
         ū, v̄, w̄ = closure_fields.ū, closure_fields.v̄, closure_fields.w̄
         launch!(arch, grid, :xyz, _compute_Σ̄!, Σ̄, grid, ū, v̄, w̄)
-
-        # The test filter reads Σ in neighboring cells, including across rank boundaries.
-        fill_halo_regions!(Σ)
 
         LM = closure_fields.LM
         MM = closure_fields.MM
@@ -462,13 +464,10 @@ function TurbulenceClosures.initialize_closure_fields!(closure_fields, closure::
 
     Σ = closure_fields.Σ
     Σ̄ = closure_fields.Σ̄
-    launch!(arch, grid, :xyz, _compute_Σ!, Σ, grid, u, v, w)
+    launch!(arch, grid, strain_rate_kernel_parameters(grid), _compute_Σ!, Σ, grid, u, v, w)
     compute_test_filtered_velocities!(closure_fields, u, v, w)
     ū, v̄, w̄ = closure_fields.ū, closure_fields.v̄, closure_fields.w̄
     launch!(arch, grid, :xyz, _compute_Σ̄!, Σ̄, grid, ū, v̄, w̄)
-
-    # The test filter reads Σ in neighboring cells, including across rank boundaries.
-    fill_halo_regions!(Σ)
 
     𝒥ᴸᴹ  = closure_fields.𝒥ᴸᴹ
     𝒥ᴹᴹ  = closure_fields.𝒥ᴹᴹ
@@ -501,13 +500,10 @@ function TurbulenceClosures.step_closure_prognostics!(closure_fields, closure::L
 
         Σ = closure_fields.Σ
         Σ̄ = closure_fields.Σ̄
-        launch!(arch, grid, :xyz, _compute_Σ!, Σ, grid, u, v, w)
+        launch!(arch, grid, strain_rate_kernel_parameters(grid), _compute_Σ!, Σ, grid, u, v, w)
         compute_test_filtered_velocities!(closure_fields, u, v, w)
         ū, v̄, w̄ = closure_fields.ū, closure_fields.v̄, closure_fields.w̄
         launch!(arch, grid, :xyz, _compute_Σ̄!, Σ̄, grid, ū, v̄, w̄)
-
-        # The test filter reads Σ in neighboring cells, including across rank boundaries.
-        fill_halo_regions!(Σ)
 
         parent(closure_fields.𝒥ᴸᴹ⁻) .= parent(closure_fields.𝒥ᴸᴹ)
         parent(closure_fields.𝒥ᴹᴹ⁻) .= parent(closure_fields.𝒥ᴹᴹ)

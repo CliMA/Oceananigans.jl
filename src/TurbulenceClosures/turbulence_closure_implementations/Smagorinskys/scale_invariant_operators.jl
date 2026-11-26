@@ -1,7 +1,7 @@
-using Oceananigans.TurbulenceClosures: Σ₁₁, Σ₂₂, Σ₃₃, Σ₁₂, Σ₁₃, Σ₂₃
-using Oceananigans.TurbulenceClosures: tr_Σ², Σ₁₂², Σ₁₃², Σ₂₃²
 using Oceananigans.Grids: BoundarySide, BoundaryTopology, Flat, TwoSided, XFlatGrid, YFlatGrid, ZFlatGrid, topology
-using Oceananigans.Operators: identity1, volume, V⁻¹, ∂xᶜᶜᶜ, ∂xᶠᶜᶠ, ∂xᶠᶠᶜ, ∂yᶜᶜᶜ, ∂yᶜᶠᶠ, ∂yᶠᶠᶜ, ∂zᶜᶜᶜ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ
+using Oceananigans.Operators: ℑᵃᵃᵃ, volume, V⁻¹, ∂xᶜᶜᶜ, ∂xᶠᶜᶠ, ∂xᶠᶠᶜ, ∂yᶜᶜᶜ, ∂yᶜᶠᶠ, ∂yᶠᶠᶜ, ∂zᶜᶜᶜ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ
+using Oceananigans.TurbulenceClosures: Σ₁₁, Σ₂₂, Σ₃₃, Σ₁₂, Σ₁₃, Σ₂₃,
+                                       tr_Σ², Σ₁₂², Σ₁₃², Σ₂₃²
 
 #####
 ##### Double dot product of strain on cell edges (currently unused)
@@ -43,8 +43,8 @@ using Oceananigans.Operators: identity1, volume, V⁻¹, ∂xᶜᶜᶜ, ∂xᶠ�
 #####
 
 # The test filter applies the three-point filter (¼, ½, ¼) along each direction. Away from
-# boundaries it is the 27-point stencil ℑxyzᶜᶜᶜ(i, j, k, grid, ℑxyzᶠᶠᶠ, f, args...), the trapezoidal
-# approximation of a box filter that is twice as wide as the grid spacing.
+# boundaries it is the 27-point stencil ℑxyzᶜᶜᶜ(i, j, k, grid, ℑxyzᶠᶠᶠ, f, args...). Along each
+# direction it has the second moment of a box filter √6 times as wide as the grid spacing (Lund 1997).
 #
 # Beyond a `Closed` or `Open` side the halos hold boundary data: `fill_halo_regions!` writes
 # their first layer only, and nothing where two such sides meet. The three-point filter is
@@ -114,10 +114,10 @@ end
 @inline filterᶜᶠᶜ(i, j, k, grid, f::F, args...) where F<:Function = filter_xᶜᵃᵃ(i, j, k, grid, filter_yᵃᶠᵃ, filter_zᵃᵃᶜ, f, args...)
 @inline filterᶜᶜᶠ(i, j, k, grid, f::F, args...) where F<:Function = filter_xᶜᵃᵃ(i, j, k, grid, filter_yᵃᶜᵃ, filter_zᵃᵃᶠ, f, args...)
 
-@inline filterᶜᶜᶜ(i, j, k, grid, c::AbstractArray) = filterᶜᶜᶜ(i, j, k, grid, identity1, c)
-@inline filterᶠᶜᶜ(i, j, k, grid, u::AbstractArray) = filterᶠᶜᶜ(i, j, k, grid, identity1, u)
-@inline filterᶜᶠᶜ(i, j, k, grid, v::AbstractArray) = filterᶜᶠᶜ(i, j, k, grid, identity1, v)
-@inline filterᶜᶜᶠ(i, j, k, grid, w::AbstractArray) = filterᶜᶜᶠ(i, j, k, grid, identity1, w)
+@inline filterᶜᶜᶜ(i, j, k, grid, c::AbstractArray) = filterᶜᶜᶜ(i, j, k, grid, ℑᵃᵃᵃ, c)
+@inline filterᶠᶜᶜ(i, j, k, grid, u::AbstractArray) = filterᶠᶜᶜ(i, j, k, grid, ℑᵃᵃᵃ, u)
+@inline filterᶜᶠᶜ(i, j, k, grid, v::AbstractArray) = filterᶜᶠᶜ(i, j, k, grid, ℑᵃᵃᵃ, v)
+@inline filterᶜᶜᶠ(i, j, k, grid, w::AbstractArray) = filterᶜᶜᶠ(i, j, k, grid, ℑᵃᵃᵃ, w)
 
 #####
 ##### Gradients of the test-filtered velocities
@@ -180,13 +180,13 @@ const AG = AbstractGrid
 ##### Double dot product of strain on cell edges
 #####
 
-"Return the double dot product of strain at `ccc` on a 2δ test grid."
+"Return the double dot product of the test-filtered strain at `ccc`."
 @inline Σ̄ᵢⱼΣ̄ᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w) = (tr_Σ̄²(i, j, k, grid, u, v, w)
                                              + 2 * ℑxyᶜᶜᵃ(i, j, k, grid, Σ̄₁₂², u, v, w)
                                              + 2 * ℑxzᶜᵃᶜ(i, j, k, grid, Σ̄₁₃², u, v, w)
                                              + 2 * ℑyzᵃᶜᶜ(i, j, k, grid, Σ̄₂₃², u, v, w))
 
-# Here the notation ⟨A⟩ is equivalent to Ā: a filter of size 2Δᶠ, where Δᶠ is the grid scale.
+# Here the notation ⟨A⟩ is equivalent to Ā: the test filter, √6 Δᶠ wide away from boundaries, where Δᶠ is the grid scale.
 
 @inline ΣΣ₁₁ᶜᶜᶜ(i, j, k, grid, u, v, w, Σᶜᶜᶜ) = @inbounds Σᶜᶜᶜ[i, j, k] * Σ₁₁(i, j, k, grid, u, v, w)
 @inline ΣΣ₂₂ᶜᶜᶜ(i, j, k, grid, u, v, w, Σᶜᶜᶜ) = @inbounds Σᶜᶜᶜ[i, j, k] * Σ₂₂(i, j, k, grid, u, v, w)
@@ -215,8 +215,8 @@ const AG = AbstractGrid
 const β = 1
 
 # Square of the ratio α of the test-filter width to the grid-filter width Δᶠ. The three-point filter
-# doubles the filter width along the directions it is applied in, so that α = 2^(n/d) where it is
-# applied along n of the d directions that are not `Flat`. Away from boundaries n = d and α = 2.
+# multiplies the filter width by √6 along the directions it is applied in, so that α² = 6^(n/d) where
+# it is applied along n of the d directions that are not `Flat`. Away from boundaries n = d and α² = 6.
 @inline function ᾱ²(i, j, k, grid)
     FT = eltype(grid)
     TX, TY, TZ = topology(grid)
@@ -226,14 +226,14 @@ const β = 1
     filtered_y = test_filteredᶜ(j, TY, grid.Ny)
     filtered_z = test_filteredᶜ(k, TZ, grid.Nz)
 
-    # Each filtered direction contributes a factor 4^(1/d), which is known at compile time
-    directional_ᾱ² = convert(FT, 4)^(one(grid) / directions)
+    # Each filtered direction contributes a factor 6^(1/d), which is known at compile time
+    directional_ᾱ² = convert(FT, 6)^(one(grid) / directions)
 
     partial_ᾱ² = ifelse(filtered_x, directional_ᾱ², one(grid)) *
                  ifelse(filtered_y, directional_ᾱ², one(grid)) *
                  ifelse(filtered_z, directional_ᾱ², one(grid))
 
-    return ifelse(filtered_x + filtered_y + filtered_z == directions, convert(FT, 4), partial_ᾱ²)
+    return ifelse(filtered_x + filtered_y + filtered_z == directions, convert(FT, 6), partial_ᾱ²)
 end
 
 @inline Δᶠ(i, j, k, grid) = ∛volume(i, j, k, grid, Center(), Center(), Center())
