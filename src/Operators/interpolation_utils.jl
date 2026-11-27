@@ -28,9 +28,7 @@ for ξ in ("x", "y", "z")
 end
 
 # The interpolation operator between identical locations
-@inline ℑᵃᵃᵃ(i, j, k, grid, c) = @inbounds c[i, j, k]
-@inline ℑᵃᵃᵃ(i, j, k, grid, a::Number) = a
-@inline ℑᵃᵃᵃ(i, j, k, grid, F::TF, args...) where TF<:Function = F(i, j, k, grid, args...)
+@inline ℑᵃᵃᵃ(i, j, k, grid, q, args...) = getvalue(q, i, j, k, grid, args...)
 
 """
 $(TYPEDSIGNATURES)
