@@ -70,8 +70,15 @@ function write_zarr_array!(group, name, data, dimensions, attributes=Dict())
     attributes["_ARRAY_DIMENSIONS"] = reverse(collect(string.(dimensions)))
 
     if !haskey(group, name)
+        # One chunk per array, except that arrays above 1 GiB are split along their last dimension: Blosc
+        # cannot compress a chunk larger than 2 GiB (global 3D masks of a 1/12° grid are ~5.6 GB).
+        chunks = size(data)
+        if sizeof(data) > 2^30 && ndims(data) > 1
+            layer_bytes = sizeof(data) ÷ size(data, ndims(data))
+            chunks = (size(data)[1:end-1]..., max(1, 2^30 ÷ layer_bytes))
+        end
         variable = Zarr.zcreate(eltype(data), group, name, size(data)...;
-                                chunks=size(data), attrs=attributes)
+                                chunks, attrs=attributes)
         variable .= data
     else
         existing = collect(group[name])

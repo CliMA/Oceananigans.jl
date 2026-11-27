@@ -285,9 +285,12 @@ Base.@nospecializeinfer function initialize_zarr_store!(@nospecialize(writer::Za
     # Compute the "global" grids that we want to serialize. For distributed grids,
     # `reconstruct_global_grid` is a collective — all ranks must call it. For non-
     # distributed grids it's an identity.
+    # The global grid is moved to the CPU: its immersed-boundary masks are full global 3D fields, which do not
+    # fit on one GPU for large grids (1/12° on 4 GPUs needed 6 GB per mask, 8 masks).
     serialize_grids = Tuple(
         grid isa DistributedGrid ?
-            Oceananigans.DistributedComputations.reconstruct_global_grid(grid) : grid
+            Oceananigans.Architectures.on_architecture(Oceananigans.Architectures.CPU(),
+                Oceananigans.DistributedComputations.reconstruct_global_grid(grid)) : grid
         for grid in writer.grids
     )
     if is_root
