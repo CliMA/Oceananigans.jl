@@ -95,7 +95,7 @@ const face_workgroup_size = 256
     end
 end
 
-configure_face_pin(arch, grid, field, index, ::Nothing, direction) = nothing
+configure_face_pin(arch, grid, field, index, ::Nothing,   direction) = nothing
 configure_face_pin(arch, grid, field, index, ::NetInflow, direction) = nothing
 
 # Built once per barotropic step, like the other substep kernels: a single static workgroup and device-converted arguments
