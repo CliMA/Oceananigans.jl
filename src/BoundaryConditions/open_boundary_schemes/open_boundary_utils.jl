@@ -142,9 +142,9 @@ its own Flather profile, and the split of the inflow between the sides is left t
 carrying a `NetInflow` must carry the same one. `transport` is a number, or a `Ref` to one that may change during a
 run (from a callback, say): the pin reads it at the start of every barotropic step.
 
-The shift of each column's transport is proportional to `H^depth_exponent`, with `H` the column depth: `0` shifts the
-transport uniformly per unit length, `1` shifts the velocity uniformly (as NEMO and ROMS do), and `1/2` shifts the
-exterior free surface of the Flather condition uniformly.
+The shift of each column's transport is proportional to `H^depth_exponent`, with `H` the column depth: `0` (the default)
+shifts the transport uniformly per unit length, `1` shifts the velocity uniformly (as NEMO and ROMS do), and `1/2`
+shifts the exterior free surface of the Flather condition uniformly.
 
 ```jldoctest
 using Oceananigans
