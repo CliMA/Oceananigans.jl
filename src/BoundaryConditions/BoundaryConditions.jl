@@ -5,7 +5,7 @@ export
     BoundaryCondition, getbc,
     PeriodicBoundaryCondition, NormalFlowBoundaryCondition, NoFluxBoundaryCondition, MultiRegionCommunicationBoundaryCondition,
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, DistributedCommunicationBoundaryCondition,
-    IMEXTimeDiscretization, IMEXFluxBoundaryCondition,
+    IMEXFluxBoundaryCondition,
     implicit_flux_coefficient, explicit_flux,
     needs_implicit_solver, validate_implicit_explicit_flux_locations, total_boundary_flux,
     PerturbationAdvection, has_target_transport, get_target_transport,
@@ -29,7 +29,7 @@ using Oceananigans.Grids: Grids, AbstractGrid, Center, CenterFolded, CenterFoldC
                           FaceFoldConnected, Flat, LatitudeLongitudeGrid, Open, TwoSided,
                           connected_range, halo_size, node, Pole, λnode, φnode, λnodes, φnodes, topology
 using Oceananigans.Operators: Ax, Ay, Az, V⁻¹, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
-using Oceananigans.Utils: AbstractTimeDiscretization, ExplicitTimeDiscretization, StaticStridesOffsetArray, launch!, named_tuple, SIGNATURES, TYPEDSIGNATURES
+using Oceananigans.Utils: ExplicitTimeDiscretization, IMEXTimeDiscretization, StaticStridesOffsetArray, launch!, named_tuple, SIGNATURES, TYPEDSIGNATURES
 
 # All possible fill_halo! kernels
 struct WestAndEast end

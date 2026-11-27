@@ -3,7 +3,7 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 using Oceananigans.Grids: XDirection, YDirection, ZDirection
 using Oceananigans.Models: BulkDrag, BulkDragFunction, BulkDragBoundaryCondition,
                            QuadraticFormulation, LinearFormulation
-using Oceananigans.BoundaryConditions: FluxBoundaryCondition, FieldBoundaryConditions, IMEXTimeDiscretization
+using Oceananigans.BoundaryConditions: FluxBoundaryCondition, FieldBoundaryConditions
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, ImmersedBoundaryCondition
 
 @testset "BulkDrag" begin

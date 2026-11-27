@@ -33,6 +33,27 @@ struct VerticallyImplicitTimeDiscretization <: AbstractTimeDiscretization end
 
 Base.summary(::VerticallyImplicitTimeDiscretization) = "VerticallyImplicitTimeDiscretization"
 
+"""
+    IMEXTimeDiscretization(implicit_coefficient=nothing)
+
+Time discretization of a term split as `Fₑ + λ φ`, where `Fₑ` is integrated explicitly and `λ φ`
+by the vertical tridiagonal solver.
+
+For a `Flux` boundary condition the split is `J ≈ Fₑ + λ φᵦ`, where `φᵦ` is the boundary-cell value.
+Without `implicit_coefficient`, the condition chooses the split; otherwise the flux is `Fₑ` and
+`λ = implicit_coefficient`. A [`Relaxation`](@ref) always chooses its own split.
+"""
+struct IMEXTimeDiscretization{C} <: AbstractTimeDiscretization
+    implicit_coefficient :: C
+end
+
+IMEXTimeDiscretization() = IMEXTimeDiscretization(nothing)
+
+Base.summary(::IMEXTimeDiscretization) = "IMEXTimeDiscretization"
+
+Adapt.adapt_structure(to, td::IMEXTimeDiscretization) =
+    IMEXTimeDiscretization(Adapt.adapt(to, td.implicit_coefficient))
+
 struct AdaptiveVerticallyImplicitDiscretization{FT, R} <: AbstractTimeDiscretization
     cfl :: FT
     Δt  :: R

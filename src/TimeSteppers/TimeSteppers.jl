@@ -9,6 +9,7 @@ export
     convert_time,
     AbstractTimeDiscretization,
     ExplicitTimeDiscretization,
+    IMEXTimeDiscretization,
     VerticallyImplicitTimeDiscretization,
     AdaptiveVerticallyImplicitDiscretization,
     time_discretization
@@ -25,6 +26,7 @@ using Oceananigans.Utils: @apply_regionally,
                           AbstractTimeDiscretization,
                           AdaptiveVerticallyImplicitDiscretization,
                           ExplicitTimeDiscretization,
+                          IMEXTimeDiscretization,
                           VerticallyImplicitTimeDiscretization,
                           kernel_time_step, SIGNATURES, TYPEDSIGNATURES
 
