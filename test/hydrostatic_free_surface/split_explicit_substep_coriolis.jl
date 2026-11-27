@@ -27,7 +27,55 @@ function substep_coriolis_test_model(arch, timestepper, coriolis, scheme; H = 70
     return model
 end
 
-velocity_norm(model) = sqrt(sum(abs2, Array(interior(model.velocities.u))) +
+using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: barotropic_x_coriolis, barotropic_y_coriolis,
+                                                                                  horizontal_peripheral_node
+using Oceananigans.Grids: static_column_depthᶠᶜᵃ, static_column_depthᶜᶠᵃ
+using Oceananigans.Operators: Azᶠᶜᶜ, Azᶜᶠᶜ
+
+@kernel function _barotropic_coriolis_work!(Wᵘ, Wᵛ, grid, coriolis, U, V, Uʳ, Vʳ)
+    i, j = @index(Global, NTuple)
+    k = grid.Nz + 1
+    Hᶠᶜ = static_column_depthᶠᶜᵃ(i, j, grid)
+    Hᶜᶠ = static_column_depthᶜᶠᵃ(i, j, grid)
+    Cᵁ = barotropic_x_coriolis(i, j, k, grid, coriolis, V, Vʳ, Hᶠᶜ)
+    Cⱽ = barotropic_y_coriolis(i, j, k, grid, coriolis, U, Uʳ, Hᶜᶠ)
+    @inbounds Wᵘ[i, j, 1] = ifelse(Hᶠᶜ > 0, Azᶠᶜᶜ(i, j, k, grid) * U[i, j, 1] * Cᵁ / ifelse(Hᶠᶜ > 0, Hᶠᶜ, one(Hᶠᶜ)), zero(grid))
+    @inbounds Wᵛ[i, j, 1] = ifelse(Hᶜᶠ > 0, Azᶜᶠᶜ(i, j, k, grid) * V[i, j, 1] * Cⱽ / ifelse(Hᶜᶠ > 0, Hᶜᶠ, one(Hᶜᶠ)), zero(grid))
+end
+
+# Zero the transports where the substep Coriolis is inactive, including the east and north walls
+@kernel function _zero_inactive_transports!(U, V, grid)
+    i, j = @index(Global, NTuple)
+    @inbounds U[i, j, 1] *= !horizontal_peripheral_node(i, j, grid, Face(), Center()) & (static_column_depthᶠᶜᵃ(i, j, grid) > 0)
+    @inbounds V[i, j, 1] *= !horizontal_peripheral_node(i, j, grid, Center(), Face()) & (static_column_depthᶜᶠᵃ(i, j, grid) > 0)
+end
+
+# Work of the barotropic Coriolis term on Σ Az (U² / Hᶠᶜ + V² / Hᶜᶠ) / 2, relative to the sum of its magnitudes
+function relative_barotropic_coriolis_work(grid, coriolis; seed = 20261126)
+    rng = Xoshiro(seed)
+    U, Uʳ, Wᵘ = (Field{Face, Center, Nothing}(grid) for _ in 1:3)
+    V, Vʳ, Wᵛ = (Field{Center, Face, Nothing}(grid) for _ in 1:3)
+    set!(U, randn(rng, size(U)))
+    set!(V, randn(rng, size(V)))
+    launch!(architecture(grid), grid, (grid.Nx + 1, grid.Ny + 1), _zero_inactive_transports!, U, V, grid)
+    fill_halo_regions!((U, V))
+    launch!(architecture(grid), grid, :xy, _barotropic_coriolis_work!, Wᵘ, Wᵛ, grid, coriolis, U, V, Uʳ, Vʳ)
+    wᵘ = Array(interior(Wᵘ))
+    wᵛ = Array(interior(Wᵛ))
+    return abs(sum(wᵘ) + sum(wᵛ)) / (sum(abs, wᵘ) + sum(abs, wᵛ))
+end
+
+function random_bathymetry_grid(arch, TX, immersed_boundary_type; seed = 20261126)
+    rng = Xoshiro(seed)
+    Nx, Ny = 16, 12
+    bottom = - 8 .- 3992 .* rand(rng, Nx, Ny)
+    bottom[rand(rng, Nx, Ny) .< 0.15] .= 0
+    underlying_grid = RectilinearGrid(arch; size = (Nx, Ny, 4), x = (0, 4e5), y = (0, 3e5), z = (-4000, 0),
+                                      topology = (TX, Bounded, Bounded))
+    return ImmersedBoundaryGrid(underlying_grid, immersed_boundary_type(on_architecture(arch, bottom)))
+end
+
+velocity_norm(model) =sqrt(sum(abs2, Array(interior(model.velocities.u))) +
                             sum(abs2, Array(interior(model.velocities.v))))
 
 function velocity_growth(model; Δt = 3600, Nwarmup = 30, Nsteps = 100)
@@ -93,6 +141,17 @@ end
                 @info "    $(summary(scheme)): λ = $λ_lagged (lagged), $λ_substep (substep)"
                 @test λ_substep < 1
                 @test λ_substep < λ_lagged + 1e-4
+            end
+        end
+
+        @testset "Energy-neutral barotropic Coriolis over varying depth [$(typeof(arch))]" begin
+            @info "  Testing that EnergyConserving substep Coriolis does no work over random bathymetry [$(typeof(arch))]..."
+            coriolis = BetaPlane(f₀ = 1e-4, β = 1e-11; scheme = EnergyConserving())
+            for TX in (Bounded, Periodic), ib in (GridFittedBottom, PartialCellBottom)
+                grid = random_bathymetry_grid(arch, TX, ib)
+                r = relative_barotropic_coriolis_work(grid, coriolis)
+                @info "    $TX, $ib: relative work = $r"
+                @test r < 1e-12
             end
         end
 

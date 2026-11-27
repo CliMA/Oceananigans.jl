@@ -66,49 +66,71 @@ end
 @inline wet_columnᶜᶠ(i, j, k, grid) = !peripheral_node(i, j, grid.Nz, grid, Center(), Face(), Center())
 @inline wet_columnᶠᶜ(i, j, k, grid) = !peripheral_node(i, j, grid.Nz, grid, Face(), Center(), Center())
 
-@inline x_f_cross_δU(i, j, k, grid, ::Nothing, V, Vʳ) = zero(grid)
-@inline y_f_cross_δU(i, j, k, grid, ::Nothing, U, Uʳ) = zero(grid)
+@inline x_f_cross_δU(i, j, k, grid, ::Nothing, V, Vʳ, H) = zero(grid)
+@inline y_f_cross_δU(i, j, k, grid, ::Nothing, U, Uʳ, H) = zero(grid)
 
-@inline x_f_cross_δU(i, j, k, grid, coriolis::ESC, V, Vʳ) = - ℑyᵃᶜᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) * ℑxyᶠᶜᵃ(i, j, k, grid, Δx_δVᶜᶠᶠ, V, Vʳ) * Δx⁻¹ᶠᶜᶠ(i, j, k, grid)
-@inline y_f_cross_δU(i, j, k, grid, coriolis::ESC, U, Uʳ) = + ℑxᶜᵃᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) * ℑxyᶜᶠᵃ(i, j, k, grid, Δy_δUᶠᶜᶠ, U, Uʳ) * Δy⁻¹ᶜᶠᶠ(i, j, k, grid)
+@inline x_f_cross_δU(i, j, k, grid, coriolis::ESC, V, Vʳ, H) = - ℑyᵃᶜᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) * ℑxyᶠᶜᵃ(i, j, k, grid, Δx_δVᶜᶠᶠ, V, Vʳ) * Δx⁻¹ᶠᶜᶠ(i, j, k, grid)
+@inline y_f_cross_δU(i, j, k, grid, coriolis::ESC, U, Uʳ, H) = + ℑxᶜᵃᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) * ℑxyᶜᶠᵃ(i, j, k, grid, Δy_δUᶠᶜᶠ, U, Uʳ) * Δy⁻¹ᶜᶠᶠ(i, j, k, grid)
 
 @inline f_ℑx_Δx_δVᶠᶠᶠ(i, j, k, grid, coriolis, V, Vʳ) = fᶠᶠᵃ(i, j, k, grid, coriolis) * ℑxᶠᵃᵃ(i, j, k, grid, Δx_δVᶜᶠᶠ, V, Vʳ)
 @inline f_ℑy_Δy_δUᶠᶠᶠ(i, j, k, grid, coriolis, U, Uʳ) = fᶠᶠᵃ(i, j, k, grid, coriolis) * ℑyᵃᶠᵃ(i, j, k, grid, Δy_δUᶠᶜᶠ, U, Uʳ)
 
-@inline x_f_cross_δU(i, j, k, grid, coriolis::ENC, V, Vʳ) = - ℑyᵃᶜᵃ(i, j, k, grid, f_ℑx_Δx_δVᶠᶠᶠ, coriolis, V, Vʳ) * Δx⁻¹ᶠᶜᶠ(i, j, k, grid)
-@inline y_f_cross_δU(i, j, k, grid, coriolis::ENC, U, Uʳ) = + ℑxᶜᵃᵃ(i, j, k, grid, f_ℑy_Δy_δUᶠᶠᶠ, coriolis, U, Uʳ) * Δy⁻¹ᶜᶠᶠ(i, j, k, grid)
+# Mean static depth of the wet columns at the velocity faces meeting at the corner (i, j)
+@inline function corner_column_depthᶠᶠᵃ(i, j, k, grid)
+    a₁ = wet_columnᶠᶜ(i, j,   k, grid)
+    a₂ = wet_columnᶠᶜ(i, j-1, k, grid)
+    a₃ = wet_columnᶜᶠ(i,   j, k, grid)
+    a₄ = wet_columnᶜᶠ(i-1, j, k, grid)
 
-@inline function x_f_cross_δU(i, j, k, grid, coriolis::AESC, V, Vʳ)
+    ΣH = a₁ * static_column_depthᶠᶜᵃ(i, j,   grid) + a₂ * static_column_depthᶠᶜᵃ(i, j-1, grid) +
+         a₃ * static_column_depthᶜᶠᵃ(i,   j, grid) + a₄ * static_column_depthᶜᶠᵃ(i-1, j, grid)
+
+    return ΣH / max(1, a₁ + a₂ + a₃ + a₄)
+end
+
+@inline function corner_barotropic_potential_vorticityᶠᶠᵃ(i, j, k, grid, coriolis)
+    H = corner_column_depthᶠᶠᵃ(i, j, k, grid)
+    return ifelse(H == 0, zero(grid), fᶠᶠᵃ(i, j, k, grid, coriolis) / ifelse(H == 0, one(H), H))
+end
+
+@inline q_ℑx_Δx_δVᶠᶠᶠ(i, j, k, grid, coriolis, V, Vʳ) = corner_barotropic_potential_vorticityᶠᶠᵃ(i, j, k, grid, coriolis) * ℑxᶠᵃᵃ(i, j, k, grid, Δx_δVᶜᶠᶠ, V, Vʳ)
+@inline q_ℑy_Δy_δUᶠᶠᶠ(i, j, k, grid, coriolis, U, Uʳ) = corner_barotropic_potential_vorticityᶠᶠᵃ(i, j, k, grid, coriolis) * ℑyᵃᶠᵃ(i, j, k, grid, Δy_δUᶠᶜᶠ, U, Uʳ)
+
+# Sadourny (1975) flux of corner q = f / H times face H: does no work on Σ Az (U² / Hᶠᶜ + V² / Hᶜᶠ) / 2 for any depth
+@inline x_f_cross_δU(i, j, k, grid, coriolis::ENC, V, Vʳ, H) = - H * ℑyᵃᶜᵃ(i, j, k, grid, q_ℑx_Δx_δVᶠᶠᶠ, coriolis, V, Vʳ) * Δx⁻¹ᶠᶜᶠ(i, j, k, grid)
+@inline y_f_cross_δU(i, j, k, grid, coriolis::ENC, U, Uʳ, H) = + H * ℑxᶜᵃᵃ(i, j, k, grid, q_ℑy_Δy_δUᶠᶠᶠ, coriolis, U, Uʳ) * Δy⁻¹ᶜᶠᶠ(i, j, k, grid)
+
+@inline function x_f_cross_δU(i, j, k, grid, coriolis::AESC, V, Vʳ, H)
     active_columns = ℑxyᶠᶜᵃ(i, j, k, grid, wet_columnᶜᶠ)
     result = - ℑyᵃᶜᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) * ℑxyᶠᶜᵃ(i, j, k, grid, Δx_δVᶜᶠᶠ, V, Vʳ)
     return ifelse(active_columns == 0, zero(grid), result / active_columns) * Δx⁻¹ᶠᶜᶠ(i, j, k, grid)
 end
 
-@inline function y_f_cross_δU(i, j, k, grid, coriolis::AESC, U, Uʳ)
+@inline function y_f_cross_δU(i, j, k, grid, coriolis::AESC, U, Uʳ, H)
     active_columns = ℑxyᶜᶠᵃ(i, j, k, grid, wet_columnᶠᶜ)
     result = ℑxᶜᵃᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) * ℑxyᶜᶠᵃ(i, j, k, grid, Δy_δUᶠᶜᶠ, U, Uʳ)
     return ifelse(active_columns == 0, zero(grid), result / active_columns) * Δy⁻¹ᶜᶠᶠ(i, j, k, grid)
 end
 
-@inline function x_f_cross_δU(i, j, k, grid, coriolis::AENC, V, Vʳ)
+@inline function x_f_cross_δU(i, j, k, grid, coriolis::AENC, V, Vʳ, H)
     active_columns = ℑxyᶠᶜᵃ(i, j, k, grid, wet_columnᶜᶠ)
     result = - ℑyᵃᶜᵃ(i, j, k, grid, f_ℑx_Δx_δVᶠᶠᶠ, coriolis, V, Vʳ) * Δx⁻¹ᶠᶜᶠ(i, j, k, grid)
     return ifelse(active_columns == 0, zero(grid), result / active_columns)
 end
 
-@inline function y_f_cross_δU(i, j, k, grid, coriolis::AENC, U, Uʳ)
+@inline function y_f_cross_δU(i, j, k, grid, coriolis::AENC, U, Uʳ, H)
     active_columns = ℑxyᶜᶠᵃ(i, j, k, grid, wet_columnᶠᶜ)
     result = ℑxᶜᵃᵃ(i, j, k, grid, f_ℑy_Δy_δUᶠᶠᶠ, coriolis, U, Uʳ) * Δy⁻¹ᶜᶠᶠ(i, j, k, grid)
     return ifelse(active_columns == 0, zero(grid), result / active_columns)
 end
 
-@inline x_f_cross_δU(i, j, k, grid, coriolis::TS, V, Vʳ) =
+@inline x_f_cross_δU(i, j, k, grid, coriolis::TS, V, Vʳ, H) =
     - Δx⁻¹ᶠᶜᶠ(i, j, k, grid) / 12 * (𝒯⁺⁺(i-1, j, k, grid, coriolis) * Δx_δVᶜᶠᶠ(i-1, j+1, k, grid, V, Vʳ) +
                                       𝒯⁻⁻(i,   j, k, grid, coriolis) * Δx_δVᶜᶠᶠ(i,   j,   k, grid, V, Vʳ) +
                                       𝒯⁺⁻(i-1, j, k, grid, coriolis) * Δx_δVᶜᶠᶠ(i-1, j,   k, grid, V, Vʳ) +
                                       𝒯⁻⁺(i,   j, k, grid, coriolis) * Δx_δVᶜᶠᶠ(i,   j+1, k, grid, V, Vʳ))
 
-@inline y_f_cross_δU(i, j, k, grid, coriolis::TS, U, Uʳ) =
+@inline y_f_cross_δU(i, j, k, grid, coriolis::TS, U, Uʳ, H) =
     + Δy⁻¹ᶜᶠᶠ(i, j, k, grid) / 12 * (𝒯⁻⁻(i, j,   k, grid, coriolis) * Δy_δUᶠᶜᶠ(i,   j,   k, grid, U, Uʳ) +
                                       𝒯⁺⁺(i, j-1, k, grid, coriolis) * Δy_δUᶠᶜᶠ(i+1, j-1, k, grid, U, Uʳ) +
                                       𝒯⁻⁺(i, j-1, k, grid, coriolis) * Δy_δUᶠᶜᶠ(i,   j-1, k, grid, U, Uʳ) +
@@ -116,12 +138,12 @@ end
 
 @inline function barotropic_x_coriolis(i, j, k, grid, coriolis, V, Vʳ, H)
     active = !horizontal_peripheral_node(i, j, grid, Face(), Center()) & (H > 0)
-    return ifelse(active, x_f_cross_δU(i, j, k, grid, coriolis, V, Vʳ), zero(grid))
+    return ifelse(active, x_f_cross_δU(i, j, k, grid, coriolis, V, Vʳ, H), zero(grid))
 end
 
 @inline function barotropic_y_coriolis(i, j, k, grid, coriolis, U, Uʳ, H)
     active = !horizontal_peripheral_node(i, j, grid, Center(), Face()) & (H > 0)
-    return ifelse(active, y_f_cross_δU(i, j, k, grid, coriolis, U, Uʳ), zero(grid))
+    return ifelse(active, y_f_cross_δU(i, j, k, grid, coriolis, U, Uʳ, H), zero(grid))
 end
 
 #####
