@@ -144,7 +144,7 @@ end
         Δxˢ = abs(sˢ) * wet_face_width(i, 1, grid, Val(:y))
         Δxⁿ = abs(sⁿ) * wet_face_width(i, grid.Ny + 1, grid, Val(:y))
         @inbounds Q += sˢ * V[i, 1, 1] * Δxˢ + sⁿ * V[i, grid.Ny + 1, 1] * Δxⁿ
-        L += Δxˢ * depth_weightᶜᶠᵃ(i, 1, grid, p) + Δxⁿ * depth_weightᶜᶠᵃ(i, grid.Ny + 1, grid, p)
+        L += Δxˢ * column_depthᶜᶠᵃ(i, 1, grid)^p + Δxⁿ * column_depthᶜᶠᵃ(i, grid.Ny + 1, grid)^p
     end
     @inbounds ΣQ[t] = Q
     @inbounds ΣL[t] = L
