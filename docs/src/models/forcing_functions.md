@@ -233,10 +233,10 @@ model.forcing.w
 
 # output
 Relaxation{Float64} at (Center, Center, Face)
-├──    rate: 0.001
+├── rate: 0.001
 ├── relaxed: 1×1×2 Field{Center, Center, Face} on RectilinearGrid on CPU
-├──    mask: 1
-└──  target: 0
+├── mask: 1
+└── target: 0
 ```
 
 The constructor for `Relaxation` accepts the keyword arguments `mask`, and `target`,
@@ -296,10 +296,10 @@ model.forcing.u
 
 # output
 Relaxation{Float64} at (Face, Center, Center)
-├──    rate: 0.01
+├── rate: 0.01
 ├── relaxed: 1×1×1 Field{Face, Center, Center} on RectilinearGrid on CPU
-├──    mask: exp(-(z + 1.0)^2 / (2 * 0.1^2))
-└──  target: 0
+├── mask: exp(-(z + 1.0)^2 / (2 * 0.1^2))
+└── target: 0
 ```
 
 ```jldoctest sponge_layer
@@ -307,10 +307,10 @@ model.forcing.T
 
 # output
 Relaxation{Float64} at (Center, Center, Center)
-├──    rate: 0.01
+├── rate: 0.01
 ├── relaxed: 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
-├──    mask: exp(-(z + 1.0)^2 / (2 * 0.1^2))
-└──  target: 20.0 + 0.001 * z
+├── mask: exp(-(z + 1.0)^2 / (2 * 0.1^2))
+└── target: 20.0 + 0.001 * z
 ```
 
 ### `FieldTimeSeries` target
@@ -384,6 +384,49 @@ A `mask` can be combined with `transform` exactly as with any other target — f
 to confine the relaxation to a sponge layer at the bottom of the domain.
 
 `transform` is not supported with a `FieldTimeSeries` target.
+
+### Implicit relaxation
+
+An explicitly integrated `Relaxation` limits the time step to roughly `1 / rate`. With
+`time_discretization = IMEXTimeDiscretization()` the decay `- rate * mask * field` is instead
+integrated with backward Euler by the vertical tridiagonal solver, which the model builds automatically,
+while `rate * mask * target` stays explicit. Over one step without other tendencies, and with
+``r`` the `rate` and ``\mu`` the `mask`,
+
+```math
+\phi^{n+1} = \frac{\phi^n + \Delta t \, r \mu \, \phi_\star}{1 + \Delta t \, r \mu} ,
+```
+
+which is stable for any ``r \Delta t`` and tends to the target ``\phi_\star`` as ``r \Delta t \to \infty``.
+The same [`IMEXTimeDiscretization`](@ref) splits a flux boundary condition.
+For example, an ideal age tracer that is reset to zero in the top layer of the grid,
+on a time scale much shorter than the time step:
+
+```jldoctest
+using Oceananigans
+
+grid = RectilinearGrid(size=(1, 1, 8), extent=(1, 1, 8), topology=(Periodic, Periodic, Bounded))
+
+top_layer = CenterField(grid)
+interior(top_layer, :, :, grid.Nz) .= 1
+
+aging(x, y, z, t) = 1
+reset = Relaxation(rate=1e3, mask=top_layer, time_discretization=IMEXTimeDiscretization())
+
+model = HydrostaticFreeSurfaceModel(grid; tracers=:age, buoyancy=nothing, forcing=(; age=(aging, reset)))
+
+model.forcing.age[2]
+
+# output
+Relaxation{Float64} at (Center, Center, Center)
+├── rate: 1000.0
+├── relaxed: 1×1×8 Field{Center, Center, Center} on RectilinearGrid on CPU
+├── mask: 1×1×8 Field{Center, Center, Center} on RectilinearGrid on CPU
+├── target: 0
+└── time_discretization: IMEXTimeDiscretization
+```
+
+An implicit `Relaxation` requires a grid that is `Bounded` in `z`, a constant `rate` and no `transform`.
 
 ## `AdvectiveForcing`
 

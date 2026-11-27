@@ -54,7 +54,7 @@ BoundaryConditions.needs_implicit_solver(ibc::ImmersedBoundaryCondition) = needs
 
 function BoundaryConditions.validate_immersed_implicit_explicit_flux(ibc::ImmersedBoundaryCondition)
     for facet in (ibc.west, ibc.east, ibc.south, ibc.north)
-        facet isa IEFBC && error("IMEXFluxTimeDiscretization is supported only on the bottom and top facets of an ImmersedBoundaryCondition")
+        facet isa IEFBC && error("IMEXTimeDiscretization is supported only on the bottom and top facets of an ImmersedBoundaryCondition")
     end
     return nothing
 end

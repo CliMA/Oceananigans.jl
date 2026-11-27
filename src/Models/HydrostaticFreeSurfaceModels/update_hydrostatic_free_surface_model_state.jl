@@ -103,6 +103,10 @@ function mask_immersed_horizontal_velocities!(velocities)
     return nothing
 end
 
+TurbulenceClosures.tracer_advecting_velocities(model::HydrostaticFreeSurfaceModel, val_tracer_name::Val{tracer_name}) where tracer_name =
+    tracer_advecting_velocities(model.transport_velocities, model.biogeochemistry, model.closure,
+                                model.closure_fields, model.forcing[tracer_name], val_tracer_name)
+
 function TurbulenceClosures.step_closure_prognostics!(model::HydrostaticFreeSurfaceModel, Δt::Number)
     step_closure_prognostics!(model.closure_fields, model.closure, model, Δt)
     step_coriolis_prognostics!(model.coriolis, model, Δt)

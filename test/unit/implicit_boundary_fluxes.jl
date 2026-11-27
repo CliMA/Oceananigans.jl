@@ -26,9 +26,9 @@ using Oceananigans.Grids: Center, Face
 
 function drag_bc(implicit, λ, c★; continuous=false)
     if implicit && continuous
-        return FluxBoundaryCondition(continuous_drag_explicit_part; time_discretization=IMEXFluxTimeDiscretization(continuous_drag_coefficient), parameters=(; λ, c★))
+        return FluxBoundaryCondition(continuous_drag_explicit_part; time_discretization=IMEXTimeDiscretization(continuous_drag_coefficient), parameters=(; λ, c★))
     elseif implicit
-        return FluxBoundaryCondition(drag_explicit_part; time_discretization=IMEXFluxTimeDiscretization(drag_coefficient), discrete_form=true, parameters=(; λ, c★))
+        return FluxBoundaryCondition(drag_explicit_part; time_discretization=IMEXTimeDiscretization(drag_coefficient), discrete_form=true, parameters=(; λ, c★))
     else
         return FluxBoundaryCondition(drag_flux; discrete_form=true, parameters=(; λ, c★))
     end

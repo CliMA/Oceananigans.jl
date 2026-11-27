@@ -330,7 +330,7 @@ function build_nonhydrostatic_model(grid, ::Val{tracer_names}, timestepper,
     implicit_solver = implicit_diffusion_solver(time_discretization(closure), grid)
     bc_needs_solver = any(map(field -> needs_implicit_solver(field.boundary_conditions), prognostic_fields))
 
-    if isnothing(implicit_solver) && (needs_implicit_solver(advection) || bc_needs_solver)
+    if isnothing(implicit_solver) && (needs_implicit_solver(advection) || bc_needs_solver || needs_implicit_solver(forcing))
         implicit_solver = implicit_diffusion_solver(VerticallyImplicitTimeDiscretization(), grid)
     end
 

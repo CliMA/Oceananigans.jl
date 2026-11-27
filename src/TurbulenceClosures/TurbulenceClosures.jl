@@ -146,6 +146,7 @@ function dissipation end
 function hydrostatic_turbulent_kinetic_energy_tendency end
 function buoyancy_force end # to be defined by models that want to use TurbulenceClosures
 function buoyancy_tracers end # to be defined by models that want to use TurbulenceClosures
+function tracer_advecting_velocities end # to be defined by models that want to use TurbulenceClosures
 
 #####
 ##### Interface for radiation absorbed below the surface

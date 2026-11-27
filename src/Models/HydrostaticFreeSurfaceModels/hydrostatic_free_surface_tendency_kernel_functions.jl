@@ -5,7 +5,7 @@ using Oceananigans.Biogeochemistry: biogeochemical_drift_velocity,
 using Oceananigans.Forcings: with_advective_forcing
 using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂yᶜᶠᶜ
 using Oceananigans.TurbulenceClosures: closure_auxiliary_velocity, immersed_∂ⱼ_τ₁ⱼ, immersed_∂ⱼ_τ₂ⱼ, immersed_∇_dot_qᶜ,
-                                       ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∇_dot_qᶜ
+                                       tracer_advecting_velocities, ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∇_dot_qᶜ
 using Oceananigans.Utils: sum_of_velocities
 
 """
@@ -100,7 +100,7 @@ $(TYPEDSIGNATURES)
 Return the velocities that advect the tracer `val_tracer_name`: the transport `velocities` plus the
 biogeochemical drift velocity, the closure's auxiliary velocity and any advective forcing.
 """
-@inline function tracer_advecting_velocities(velocities, biogeochemistry, closure, closure_fields, forcing, val_tracer_name)
+@inline function TurbulenceClosures.tracer_advecting_velocities(velocities, biogeochemistry, closure, closure_fields, forcing, val_tracer_name)
     biogeochemical_velocities = biogeochemical_drift_velocity(biogeochemistry, val_tracer_name)
     closure_velocities = closure_auxiliary_velocity(closure, closure_fields, val_tracer_name)
     total_velocities = sum_of_velocities(velocities, biogeochemical_velocities, closure_velocities)
