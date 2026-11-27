@@ -296,11 +296,17 @@ end
 Base.copy(st::SpecifiedTimes) = SpecifiedTimes(copy(st.times), st.previous_actuation)
 
 function Oceananigans.prognostic_state(schedule::SpecifiedTimes)
-    return (; previous_actuation = schedule.previous_actuation)
+    return (; previous_actuation = schedule.previous_actuation, times = schedule.times)
 end
 
 function Oceananigans.restore_prognostic_state!(restored::SpecifiedTimes, from)
     restored.previous_actuation = from.previous_actuation
+
+    if hasproperty(from, :times) && from.previous_actuation > 0
+        last_actuation_time = from.times[from.previous_actuation]
+        restored.previous_actuation = count(≤(last_actuation_time), restored.times)
+    end
+
     return restored
 end
 
