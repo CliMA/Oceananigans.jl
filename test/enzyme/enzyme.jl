@@ -1,6 +1,7 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Enzyme
+using Oceananigans.Operators: Δzᶜᶜᶜ
 using Oceananigans.TimeSteppers: reset!
 
 # Required presently
@@ -376,4 +377,63 @@ end
     tol = 1e-1
     rel_error = abs(dedν[1][1] - ΔeΔν) / abs(ΔeΔν)
     @test rel_error < tol
+end
+
+# Σ Δx² over the latitudes of a latitude-longitude grid, whose Δx is stored in an array
+function sum_of_squared_spacings(grid)
+    total = 0.0
+    for j in 1:size(grid, 2)
+        total += @inbounds grid.Δxᶠᶜᵃ[j]^2
+    end
+    return total
+end
+
+@testset "Enzyme gradient with respect to grid metrics" begin
+    grid = LatitudeLongitudeGrid(size=(4, 4, 1), longitude=(0, 60), latitude=(-30, 30), z=(-1, 0))
+    Ny = size(grid, 2)
+    Δx = grid.Δxᶠᶜᵃ[1:Ny]
+    dgrid = Enzyme.make_zero(grid)
+    autodiff(Reverse, sum_of_squared_spacings, Active, Duplicated(grid, dgrid))
+    @test grid.Δxᶠᶜᵃ[1:Ny] == Δx
+    @test dgrid.Δxᶠᶜᵃ[1:Ny] ≈ 2 .* Δx
+end
+
+# Σ Δz² of a z-star grid after a few time steps from a free-surface bump of the given amplitude
+function zstar_squared_thicknesses(model, amplitude, Δt)
+    reset!(model.clock)
+    fill!(model.velocities.u, 0)
+    fill!(model.velocities.v, 0)
+    ηᵢ(x, y, z) = amplitude * exp(-(x^2 + y^2) / 0.1)
+    set!(model; η=ηᵢ)
+
+    for _ in 1:4
+        time_step!(model, Δt; euler=true)
+    end
+
+    grid = model.grid
+    Nx, Ny, Nz = size(grid)
+    total = 0.0
+    for k in 1:Nz, j in 1:Ny, i in 1:Nx
+        total += Δzᶜᶜᶜ(i, j, k, grid)^2
+    end
+
+    return total::Float64
+end
+
+@testset "Enzyme gradient through z-star grid metrics" begin
+    z = MutableVerticalDiscretization(collect(range(-1, 0, length=3)))
+    grid = RectilinearGrid(; size=(4, 4, 2), x=(-1, 1), y=(-1, 1), z, topology=(Periodic, Periodic, Bounded))
+    model = HydrostaticFreeSurfaceModel(grid; free_surface=ExplicitFreeSurface(gravitational_acceleration=1),
+                                        vertical_coordinate=ZStarCoordinate(), momentum_advection=nothing,
+                                        tracers=(), buoyancy=nothing)
+    Δt = 0.01
+    amplitude, ϵ = 0.1, 1e-4
+    finite_difference = (zstar_squared_thicknesses(model, amplitude + ϵ, Δt) -
+                         zstar_squared_thicknesses(model, amplitude - ϵ, Δt)) / 2ϵ
+
+    dmodel = Enzyme.make_zero(model)
+    derivative = autodiff(set_runtime_activity(Reverse), zstar_squared_thicknesses, Active,
+                          Duplicated(model, dmodel), Active(amplitude), Const(Δt))[1][2]
+
+    @test derivative ≈ finite_difference rtol=1e-6
 end
