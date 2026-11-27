@@ -341,6 +341,17 @@ function Oceananigans.prognostic_state(writer::NonCheckpointingOutputWriters)
             time_derivatives = isempty(derivative_outputs) ? nothing : derivative_outputs)
 end
 
+function sync_writer_schedule!(writer_schedule, average_schedule::AveragedTimeInterval)
+    writer_schedule.first_actuation_time = average_schedule.first_actuation_time
+    writer_schedule.actuations = average_schedule.actuations
+    return nothing
+end
+
+function sync_writer_schedule!(writer_schedule, average_schedule::AveragedSpecifiedTimes)
+    writer_schedule.actuations = average_schedule.specified_times.previous_actuation
+    return nothing
+end
+
 function Oceananigans.restore_prognostic_state!(restored::NonCheckpointingOutputWriters, from)
     restore_prognostic_state!(restored.schedule, from.schedule)
     restored.part = from.part
@@ -368,8 +379,7 @@ function Oceananigans.restore_prognostic_state!(restored::NonCheckpointingOutput
                             if output isa WindowedTimeAverage]
         if !isempty(averaged_outputs)
             first_average = first(averaged_outputs)::WindowedTimeAverage
-            restored.schedule.first_actuation_time = first_average.schedule.first_actuation_time
-            restored.schedule.actuations = first_average.schedule.actuations
+            sync_writer_schedule!(restored.schedule, first_average.schedule)
         end
     end
 
