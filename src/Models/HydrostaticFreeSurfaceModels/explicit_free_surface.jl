@@ -14,21 +14,16 @@ The explicit free surface solver.
 $(TYPEDFIELDS)
 """
 struct ExplicitFreeSurface{E, G} <: AbstractFreeSurface{E, G}
-    "free surface elevation"
     displacement :: E
-    "gravitational accelerations"
     gravitational_acceleration :: G
 end
 
-ExplicitFreeSurface(; gravitational_acceleration=Oceananigans.defaults.gravitational_acceleration) =
-    ExplicitFreeSurface(nothing, gravitational_acceleration)
+ExplicitFreeSurface(; gravitational_acceleration=Oceananigans.defaults.gravitational_acceleration) = ExplicitFreeSurface(nothing, gravitational_acceleration)
 
-Adapt.adapt_structure(to, free_surface::ExplicitFreeSurface) =
-    ExplicitFreeSurface(Adapt.adapt(to, free_surface.displacement), free_surface.gravitational_acceleration)
+Adapt.adapt_structure(to, free_surface::ExplicitFreeSurface) = ExplicitFreeSurface(Adapt.adapt(to, free_surface.displacement), free_surface.gravitational_acceleration)
 
-Architectures.on_architecture(to, free_surface::ExplicitFreeSurface) =
-    ExplicitFreeSurface(on_architecture(to, free_surface.displacement),
-                        on_architecture(to, free_surface.gravitational_acceleration))
+Architectures.on_architecture(to, free_surface::ExplicitFreeSurface) = ExplicitFreeSurface(on_architecture(to, free_surface.displacement),
+                                                                                           on_architecture(to, free_surface.gravitational_acceleration))
 
 # Internal function for HydrostaticFreeSurfaceModel
 function Models.materialize_free_surface(free_surface::ExplicitFreeSurface{Nothing}, velocities, grid, bcs)
@@ -53,29 +48,31 @@ end
 ##### Kernel functions for HydrostaticFreeSurfaceModel
 #####
 
-@inline explicit_barotropic_pressure_x_gradient(i, j, k, grid, free_surface::ExplicitFreeSurface) =
-    free_surface.gravitational_acceleration * ∂xᵣᶠᶜᶠ(i, j, grid.Nz+1, grid, free_surface.displacement)
-
-@inline explicit_barotropic_pressure_y_gradient(i, j, k, grid, free_surface::ExplicitFreeSurface) =
-    free_surface.gravitational_acceleration * ∂yᵣᶜᶠᶠ(i, j, grid.Nz+1, grid, free_surface.displacement)
+@inline explicit_barotropic_pressure_x_gradient(i, j, k, grid, fs::ExplicitFreeSurface) = fs.gravitational_acceleration * ∂xᵣᶠᶜᶠ(i, j, grid.Nz+1, grid, fs.displacement)
+@inline explicit_barotropic_pressure_y_gradient(i, j, k, grid, fs::ExplicitFreeSurface) = fs.gravitational_acceleration * ∂yᵣᶜᶠᶠ(i, j, grid.Nz+1, grid, fs.displacement)
 
 #####
 ##### Time stepping
 #####
 
 # Only the free surface needs to be synchronized
-DistributedComputations.synchronize_communication!(free_surface::ExplicitFreeSurface) =
-    synchronize_communication!(free_surface.displacement)
+DistributedComputations.synchronize_communication!(free_surface::ExplicitFreeSurface) = synchronize_communication!(free_surface.displacement)
 
-function step_free_surface!(free_surface::ExplicitFreeSurface, model, timestepper::QuasiAdamsBashforth2TimeStepper, Δt)
-    @apply_regionally explicit_ab2_step_free_surface!(free_surface, model, Δt)
-    fill_halo_regions!(free_surface.displacement; async=true)
+function step_free_surface!(fs::ExplicitFreeSurface, model, ::QuasiAdamsBashforth2TimeStepper, Δt)
+    @apply_regionally explicit_ab2_step_free_surface!(fs, model, Δt)
+    fill_halo_regions!(fs.displacement; async=true)
     return nothing
 end
 
-function step_free_surface!(free_surface::ExplicitFreeSurface, model, timestepper::SplitRungeKuttaTimeStepper, Δt)
-    @apply_regionally explicit_rk3_step_free_surface!(free_surface, model, Δt)
-    fill_halo_regions!(free_surface.displacement; async=true)
+function step_free_surface!(fs::ExplicitFreeSurface, model, ::SplitRungeKuttaTimeStepper, Δt)
+    @apply_regionally explicit_rk3_step_free_surface!(fs, model, Δt)
+    fill_halo_regions!(fs.displacement; async=true)
+    return nothing
+end
+
+function step_free_surface!(fs::ExplicitFreeSurface, model, ::SSPRungeKutta3TimeStepper, Δt)
+    @apply_regionally explicit_ssprk3_step_free_surface!(fs, model, Δt)
+    fill_halo_regions!(fs.displacement; async=true)
     return nothing
 end
 
@@ -84,6 +81,10 @@ explicit_rk3_step_free_surface!(free_surface, model, Δt) =
             _explicit_rk3_step_free_surface!, free_surface.displacement, Δt,
             model.timestepper.Gⁿ.η, model.timestepper.Ψ⁻.η, size(model.grid, 3))
 
+explicit_ssprk3_step_free_surface!(free_surface, model, Δt) =
+    launch!(model.architecture, model.grid, :xy,
+            _explicit_ssprk3_step_free_surface!, free_surface.displacement, Δt, model.timestepper.coefficients[model.clock.stage],
+            model.timestepper.Gⁿ.η, model.timestepper.Ψ⁻.η, size(model.grid, 3))
 explicit_ab2_step_free_surface!(free_surface, model, Δt) =
     launch!(model.architecture, model.grid, :xy,
             _explicit_ab2_step_free_surface!, free_surface.displacement, Δt, model.timestepper.χ,
@@ -96,6 +97,12 @@ explicit_ab2_step_free_surface!(free_surface, model, Δt) =
 @kernel function _explicit_rk3_step_free_surface!(η, Δt, Gⁿ, η⁻, Nz)
     i, j = @index(Global, NTuple)
     @inbounds η[i, j, Nz+1] = η⁻[i, j, Nz+1] + Δt * Gⁿ[i, j, Nz+1]
+end
+
+@kernel function _explicit_ssprk3_step_free_surface!(η, Δt, β, Gⁿ, ηⁿ, Nz)
+    i, j = @index(Global, NTuple)
+    a, b = β
+    @inbounds η[i, j, Nz+1] = a * ηⁿ[i, j, Nz+1] + b * (η[i, j, Nz+1] + Δt * Gⁿ[i, j, Nz+1])
 end
 
 @kernel function _explicit_ab2_step_free_surface!(η, Δt, χ, Gηⁿ, Gη⁻, Nz)

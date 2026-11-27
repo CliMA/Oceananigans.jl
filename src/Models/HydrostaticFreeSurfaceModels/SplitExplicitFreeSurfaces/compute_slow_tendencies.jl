@@ -17,9 +17,9 @@
     @inbounds Gⱽ[i, j, 1] = δV / Δt
 end
 
-# Note that for AB2, `transport_velocities` holds the value of the prognostic velocities at `tⁿ`
+# The state the step's increment is added to: stashed in `transport_velocities`, or the cached `Ψ⁻` for split Runge-Kutta stages
+@inline baseline_velocities(model, timestepper) = model.transport_velocities
 @inline baseline_velocities(model, ::SplitRungeKuttaTimeStepper) = model.timestepper.Ψ⁻
-@inline baseline_velocities(model, ::QuasiAdamsBashforth2TimeStepper) = model.transport_velocities
 
 function HydrostaticFreeSurfaceModels.compute_free_surface_tendency!(grid, model, free_surface::SplitExplicitFreeSurface, Δt)
     GUⁿ = model.timestepper.Gⁿ.U
