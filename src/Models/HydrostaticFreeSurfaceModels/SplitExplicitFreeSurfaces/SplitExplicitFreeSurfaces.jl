@@ -3,7 +3,7 @@ module SplitExplicitFreeSurfaces
 export SplitExplicitFreeSurface, ForwardBackwardScheme
 export FixedSubstepNumber, FixedTimeStepSize
 
-using KernelAbstractions: @index, @kernel, @localmem, @synchronize, StaticSize
+using KernelAbstractions: @groupsize, @index, @kernel, @localmem, @synchronize, @uniform, StaticSize
 
 using Oceananigans: Oceananigans
 using Oceananigans.Architectures: architecture, convert_to_device, device
