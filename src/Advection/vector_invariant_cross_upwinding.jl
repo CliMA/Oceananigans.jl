@@ -35,15 +35,20 @@ using Oceananigans.Operators: Δrᶜᶜᶜ
 # If the grid is stationary, ∂t_σ evaluates to zero, so this term disappears from the divergence flux.
 @inline Az_Δr_∂t_σ(i, j, k, grid) = Azᶜᶜᶜ(i, j, k, grid) * Δrᶜᶜᶜ(i, j, k, grid) * ∂t_σ(i, j, k, grid)
 
+# δx(Ax u) = ℑx(Ax) δx(u) + ℑx(u) δx(Ax) exactly: the velocity difference is upwinded, the area difference is not
+@inline δᴿᵁⱽ(i, j, k, grid, u, v) = δᴿᵁ(i, j, k, grid, u, v) + δᴿⱽ(i, j, k, grid, u, v)
+@inline δˢᵁⱽ(i, j, k, grid, u, v) = ℑxᶜᵃᵃ(i, j, k, grid, u) * δxᶜᵃᵃ(i, j, k, grid, Axᶠᶜᶜ) +
+                                    ℑyᵃᶜᵃ(i, j, k, grid, v) * δyᵃᶜᵃ(i, j, k, grid, Ayᶜᶠᶜ) + Az_Δr_∂t_σ(i, j, k, grid)
+
 @inline function upwinded_divergence_flux_Uᶠᶜᶜ(i, j, k, grid, scheme::VectorInvariantCrossVerticalUpwinding, u, v)
     @inbounds û = u[i, j, k]
     δ_stencil = scheme.upwinding.divergence_stencil
     cross_scheme = scheme.upwinding.cross_scheme
 
-    δᴿ   =    _biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.divergence_scheme, bias(û), flux_div_xyᶜᶜᶜ, δ_stencil, u, v)
-    ∂t_σ = _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, cross_scheme, Az_Δr_∂t_σ)
+    δᴿ   =    _biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.divergence_scheme, bias(û), δᴿᵁⱽ, δ_stencil, u, v)
+    δˢ   = _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, cross_scheme, δˢᵁⱽ, u, v)
 
-    return û * (δᴿ + ∂t_σ) # For static grids, ∂t_σ == 0
+    return û * (δᴿ + δˢ)
 end
 
 @inline function upwinded_divergence_flux_Vᶜᶠᶜ(i, j, k, grid, scheme::VectorInvariantCrossVerticalUpwinding, u, v)
@@ -51,8 +56,8 @@ end
     δ_stencil = scheme.upwinding.divergence_stencil
     cross_scheme = scheme.upwinding.cross_scheme
 
-    δᴿ   =    _biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.divergence_scheme, bias(v̂), flux_div_xyᶜᶜᶜ, δ_stencil, u, v)
-    ∂t_σ = _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, cross_scheme, Az_Δr_∂t_σ)
+    δᴿ   =    _biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.divergence_scheme, bias(v̂), δᴿᵁⱽ, δ_stencil, u, v)
+    δˢ   = _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, cross_scheme, δˢᵁⱽ, u, v)
 
-    return v̂ * (δᴿ + ∂t_σ) # For static grids, ∂t_σ == 0
+    return v̂ * (δᴿ + δˢ)
 end

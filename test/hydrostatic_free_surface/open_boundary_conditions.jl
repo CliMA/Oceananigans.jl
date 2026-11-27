@@ -772,9 +772,186 @@ function test_gravity_wave_target_transport()
     return pinned && flat && drift && inert && wet_only && rejected
 end
 
+#####
+##### Radiating a steady baroclinic flow
+#####
+
+# A depth-uniform body force balanced by the free-surface slope keeps a two-layer, x-uniform flow steady.
+# The split-explicit predictor carries the force without the balancing pressure gradient, so a radiating
+# boundary that sees the predictor instead of the corrected velocity drifts on its outflow levels only.
+function test_radiating_steady_baroclinic_flow(timestepper)
+    Nx, Ny, Nz = 16, 1, 4
+    Lx, Ly, H = 1000.0, 100.0, 100.0
+    F = 1e-4
+    g = Oceananigans.defaults.gravitational_acceleration
+
+    grid = RectilinearGrid(size = (Nx, Ny, Nz), x = (0, Lx), y = (0, Ly), z = (-H, 0),
+                           topology = (Open, Periodic, Bounded))
+
+    Δx = Lx / Nx
+    ηᵇ(x) = F / g * (x - Lx / 2)
+    uᵇ(z) = ifelse(z > -H / 2, 0.1, -0.1)
+    uᵉˣᵗ(y, z, t) = uᵇ(z)
+
+    u_bcs = FieldBoundaryConditions(west = NormalFlowBoundaryCondition(uᵉˣᵗ; scheme = NormalRadiation()),
+                                    east = NormalFlowBoundaryCondition(uᵉˣᵗ; scheme = NormalRadiation()))
+
+    U_bcs = FieldBoundaryConditions(grid, (Face(), Center(), nothing);
+                                    west = GravityWaveRadiationBoundaryCondition((0.0, ηᵇ(Δx / 2))),
+                                    east = GravityWaveRadiationBoundaryCondition((0.0, ηᵇ(Lx - Δx / 2))))
+
+    model = HydrostaticFreeSurfaceModel(grid; timestepper,
+                                        free_surface = SplitExplicitFreeSurface(grid; substeps = 10),
+                                        boundary_conditions = (u = u_bcs, U = U_bcs),
+                                        forcing = (; u = (x, y, z, t) -> F),
+                                        momentum_advection = nothing,
+                                        buoyancy = nothing,
+                                        tracers = ())
+
+    set!(model, u = (x, y, z) -> uᵇ(z), η = (x, y, z) -> ηᵇ(x))
+
+    # Mirror the boundary-adjacent η into the halo, the state its radiating companion keeps
+    η = model.free_surface.displacement.data
+    view(η, 0:0, :, :)       .= view(η, 1:1, :, :)
+    view(η, Nx+1:Nx+1, :, :) .= view(η, Nx:Nx, :, :)
+
+    uᵢ = XFaceField(grid)
+    set!(uᵢ, (x, y, z) -> uᵇ(z))
+
+    for _ in 1:10
+        time_step!(model, 1.0)
+    end
+
+    return maximum(abs, interior(model.velocities.u) .- interior(uᵢ))
+end
+
+# Radiating boundaries extrapolate each level on its own; the boundary columns must still integrate to U
+function test_radiating_boundary_transport_consistency(timestepper)
+    Nx, Ny, Nz = 16, 1, 4
+    Lx, Ly, H = 1000.0, 100.0, 100.0
+
+    grid = RectilinearGrid(size = (Nx, Ny, Nz), x = (0, Lx), y = (0, Ly), z = (-H, 0),
+                           topology = (Open, Periodic, Bounded))
+
+    u_bcs = FieldBoundaryConditions(west = NormalFlowBoundaryCondition(0; scheme = NormalRadiation()),
+                                    east = NormalFlowBoundaryCondition(0; scheme = NormalRadiation()))
+
+    U_bcs = FieldBoundaryConditions(grid, (Face(), Center(), nothing);
+                                    west = GravityWaveRadiationBoundaryCondition((0.0, 0.0)),
+                                    east = GravityWaveRadiationBoundaryCondition((0.0, 0.0)))
+
+    model = HydrostaticFreeSurfaceModel(grid; timestepper,
+                                        free_surface = SplitExplicitFreeSurface(grid; substeps = 10),
+                                        boundary_conditions = (u = u_bcs, U = U_bcs),
+                                        momentum_advection = nothing,
+                                        buoyancy = nothing,
+                                        tracers = ())
+
+    uᵢ(x, y, z) = 0.1 * sin(π * x / Lx) * ifelse(z > -H / 2, 1, -0.5)
+    ηᵢ(x, y, z) = 0.1 * exp(-(x - Lx / 2)^2 / (Lx / 8)^2)
+    set!(model, u = uᵢ, η = ηᵢ)
+
+    for _ in 1:10
+        time_step!(model, 1.0)
+    end
+
+    u = Array(interior(model.velocities.u))
+    U = Array(interior(model.free_surface.barotropic_velocities.U))
+    Δz = H / Nz
+
+    return maximum(abs(sum(u[i, 1, :]) * Δz - U[i, 1, 1]) for i in (1, Nx + 1))
+end
+
+#####
+##### Test: GravityWaveRadiation sides sharing a NetInflow target
+#####
+# Flather alone lets the exterior transport Q in through the west side; sharing NetInflow(Q′) between the west and
+# east sides lets exactly Q′ in through the two together, so the mean free surface rises by Q′ Δt / A per step.
+
+function test_gravity_wave_net_inflow()
+    Nx, Ny, H = 8, 8, 10.0
+    Lx = Ly = 1e4
+    grid = RectilinearGrid(size = (Nx, Ny, 1), x = (0, Lx), y = (0, Ly), z = (-H, 0),
+                           topology = (Open, Bounded, Bounded))
+    Δy = Ly / Ny
+    Q = 200.0
+    Δt, steps = 30.0, 10
+
+    function run_model(target)
+        west = GravityWaveRadiationBoundaryCondition((Q / Ly, 0); target_transport = target)
+        east = GravityWaveRadiationBoundaryCondition((0, 0); target_transport = target)
+        boundary_conditions = (; U = FieldBoundaryConditions(; west, east), u = zero_normal_flow(:west, :east))
+        model = HydrostaticFreeSurfaceModel(grid; boundary_conditions, free_surface = SplitExplicitFreeSurface(grid; substeps = 4),
+                                            buoyancy = nothing, tracers = ())
+        for _ in 1:steps
+            time_step!(model, Δt)
+        end
+        return model
+    end
+
+    x_transport(F, i) = sum(Array(interior(F, i, :, 1))) * Δy
+    net_inflow(model) = x_transport(model.free_surface.barotropic_velocities.U, 1) - x_transport(model.free_surface.barotropic_velocities.U, Nx + 1)
+    mean_η(model) = sum(Array(interior(model.free_surface.displacement))) / (Nx * Ny)
+
+    closed = run_model(NetInflow(0))
+    U = closed.free_surface.barotropic_velocities.U
+    shared = abs(net_inflow(closed)) < 1e-12 * Q && x_transport(U, 1) > 0 && abs(mean_η(closed)) < 1e-12
+
+    filling = run_model(NetInflow(Q / 2))
+    η_before = mean_η(filling)
+    time_step!(filling, Δt)
+    rising = isapprox(net_inflow(filling), Q / 2; rtol = 1e-12) &&
+             isapprox(mean_η(filling) - η_before, Q / 2 * Δt / (Lx * Ly); rtol = 1e-8)
+
+    # A target held in a `Ref` is read at every step: changing it changes the inflow
+    target = Ref(0.0)
+    changing = run_model(NetInflow(target))
+    target[] = Q / 4
+    time_step!(changing, Δt)
+    following = isapprox(net_inflow(changing), Q / 4; rtol = 1e-12)
+
+    return shared && rising && following
+end
+
+# With the exterior free surface δ above the model's on both sides, Flather lets in √(gH) δ per unit length on every
+# column; a shift ∝ √H cancels it column by column, so a basin at rest stays at rest, while a shift uniform per unit
+# length moves water wherever the depth varies along the sides.
+function test_net_inflow_depth_exponent()
+    Nx, Ny, Nz, H = 8, 8, 4, 40.0
+    Lx = Ly = 1e4
+    underlying_grid = RectilinearGrid(size = (Nx, Ny, Nz), halo = (3, 3, 3), x = (0, Lx), y = (0, Ly), z = (-H, 0),
+                                      topology = (Open, Bounded, Bounded))
+    grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((x, y) -> -H * (1 + 3y / Ly) / 4))
+    δ = 0.03
+
+    function run_model(depth_exponent)
+        target = NetInflow(0; depth_exponent)
+        west = GravityWaveRadiationBoundaryCondition((0, δ); target_transport = target)
+        east = GravityWaveRadiationBoundaryCondition((0, δ); target_transport = target)
+        boundary_conditions = (; U = FieldBoundaryConditions(; west, east), u = zero_normal_flow(:west, :east))
+        model = HydrostaticFreeSurfaceModel(grid; boundary_conditions, free_surface = SplitExplicitFreeSurface(grid; substeps = 4),
+                                            buoyancy = nothing, tracers = ())
+        for _ in 1:5
+            time_step!(model, 30.0)
+        end
+        return maximum(abs, Array(interior(model.free_surface.barotropic_velocities.U)))
+    end
+
+    scale = sqrt(9.81 * H) * δ
+    return run_model(1/2) < 1e-10 * scale && run_model(0) > 1e-3 * scale
+end
+
 @testset "Open Boundary Conditions for HydrostaticFreeSurfaceModel" begin
     @testset "GravityWaveRadiation with target_transport" begin
         @test test_gravity_wave_target_transport()
+    end
+
+    @testset "GravityWaveRadiation sides sharing a NetInflow" begin
+        @test test_gravity_wave_net_inflow()
+    end
+
+    @testset "NetInflow shifted ∝ √H moves no water for a common exterior datum" begin
+        @test test_net_inflow_depth_exponent()
     end
 
     @testset "Barotropic gravity wave radiation" begin
@@ -831,5 +1008,17 @@ end
 
     @testset "TracerReservoir recovers exported water" begin
         @test test_tracer_reservoir_recovers_exported_water()
+    end
+
+    @testset "Radiating a steady baroclinic flow [$timestepper]" for timestepper in (:SplitRungeKutta3, :QuasiAdamsBashforth2)
+        δu = test_radiating_steady_baroclinic_flow(timestepper)
+        @info "  max|u - uᵢ| of a radiated steady baroclinic flow [$timestepper]: $δu"
+        @test δu < 1e-12
+    end
+
+    @testset "Radiating boundary columns integrate to the barotropic transport [$timestepper]" for timestepper in (:SplitRungeKutta3, :QuasiAdamsBashforth2)
+        δU = test_radiating_boundary_transport_consistency(timestepper)
+        @info "  max|∫u dz - U| on radiating boundaries [$timestepper]: $δU"
+        @test δU < 1e-12
     end
 end

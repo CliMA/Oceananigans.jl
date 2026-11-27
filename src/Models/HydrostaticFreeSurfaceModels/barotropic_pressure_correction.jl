@@ -1,4 +1,4 @@
-using .SplitExplicitFreeSurfaces: barotropic_split_explicit_corrector!
+using .SplitExplicitFreeSurfaces: barotropic_split_explicit_corrector!, radiating_boundary_split_explicit_corrector!
 
 #####
 ##### Barotropic pressure correction for models with a free surface
@@ -20,6 +20,10 @@ correct_barotropic_mode!(model::HydrostaticFreeSurfaceModel, Δt; kwargs...) =
 # Fallback for ExplicitFreeSurface and Nothing free surfaces
 correct_barotropic_mode!(model, ::Nothing, Δt; kwargs...) = nothing
 correct_barotropic_mode!(model, ::ExplicitFreeSurface, Δt; kwargs...) = nothing
+
+# Only the split-explicit free surface steps radiating boundaries after its correction
+correct_radiating_boundary_columns!(model, free_surface) = nothing
+correct_radiating_boundary_columns!(model, free_surface::SplitExplicitFreeSurface) = radiating_boundary_split_explicit_corrector!(model.velocities.u, model.velocities.v, free_surface)
 
 #####
 ##### Barotropic pressure correction for models with an Implicit free surface

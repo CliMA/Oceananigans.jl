@@ -7,10 +7,12 @@ using Oceananigans.Operators: δxᶜᶜᶜ, δxᶠᶠᶜ, δyᶜᶜᶜ, δyᶠ�
 @inline δx_U(i, j, k, grid, u, v) = δxᶜᶜᶜ(i, j, k, grid, Ax_qᶠᶜᶜ, u)
 @inline δy_V(i, j, k, grid, u, v) = δyᶜᶜᶜ(i, j, k, grid, Ay_qᶜᶠᶜ, v)
 
-# For moving grids, we include the time-derivative of the grid scaling in the divergence flux.
-# If the grid is stationary, `Az_Δr_∂t_σ` evaluates to zero.
-@inline δx_U_plus_∂t_σ(i, j, k, grid, u, v) = δxᶜᶜᶜ(i, j, k, grid, Ax_qᶠᶜᶜ, u) + Az_Δr_∂t_σ(i, j, k, grid)
-@inline δy_V_plus_∂t_σ(i, j, k, grid, u, v) = δyᶜᶜᶜ(i, j, k, grid, Ay_qᶜᶠᶜ, v) + Az_Δr_∂t_σ(i, j, k, grid)
+# Interpolate symmetrically the transport velocity, and upwind the transported divergence
+@inline δᴿᵁ(i, j, k, grid, u, v) = ℑxᶜᵃᵃ(i, j, k, grid, Axᶠᶜᶜ) * δxᶜᵃᵃ(i, j, k, grid, u)
+@inline δᴿⱽ(i, j, k, grid, u, v) = ℑyᵃᶜᵃ(i, j, k, grid, Ayᶜᶠᶜ) * δyᵃᶜᵃ(i, j, k, grid, v)
+
+@inline δˢᵁ(i, j, k, grid, u, v) = δyᶜᶜᶜ(i, j, k, grid, Ay_qᶜᶠᶜ, v) + ℑxᶜᵃᵃ(i, j, k, grid, u) * δxᶜᵃᵃ(i, j, k, grid, Axᶠᶜᶜ) + Az_Δr_∂t_σ(i, j, k, grid)
+@inline δˢⱽ(i, j, k, grid, u, v) = δxᶜᶜᶜ(i, j, k, grid, Ax_qᶠᶜᶜ, u) + ℑyᵃᶜᵃ(i, j, k, grid, v) * δyᵃᶜᵃ(i, j, k, grid, Ayᶜᶠᶜ) + Az_Δr_∂t_σ(i, j, k, grid)
 
 # Velocity smoothness for divergence upwinding
 @inline U_smoothness(i, j, k, grid, u, v) = ℑxᶜᵃᵃ(i, j, k, grid, Ax_qᶠᶜᶜ, u)
@@ -25,10 +27,10 @@ using Oceananigans.Operators: δxᶜᶜᶜ, δxᶠᶠᶜ, δyᶜᶜᶜ, δyᶠ�
     cross_scheme = scheme.upwinding.cross_scheme
 
     @inbounds û = u[i, j, k]
-    δvˢ = _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, cross_scheme, δy_V_plus_∂t_σ, u, v)
-    δuᴿ =    _biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.divergence_scheme, bias(û), δx_U, δU_stencil, u, v)
+    δˢ = _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, cross_scheme, δˢᵁ, u, v)
+    δᴿ =    _biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.divergence_scheme, bias(û), δᴿᵁ, δU_stencil, u, v)
 
-    return û * (δvˢ + δuᴿ)
+    return û * (δˢ + δᴿ)
 end
 
 @inline function upwinded_divergence_flux_Vᶜᶠᶜ(i, j, k, grid, scheme::VectorInvariantSelfVerticalUpwinding, u, v)
@@ -37,10 +39,10 @@ end
     cross_scheme = scheme.upwinding.cross_scheme
 
     @inbounds v̂ = v[i, j, k]
-    δuˢ = _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, cross_scheme, δx_U_plus_∂t_σ, u, v)
-    δvᴿ =    _biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.divergence_scheme, bias(v̂), δy_V, δV_stencil, u, v)
+    δˢ = _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, cross_scheme, δˢⱽ, u, v)
+    δᴿ =    _biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.divergence_scheme, bias(v̂), δᴿⱽ, δV_stencil, u, v)
 
-    return v̂ * (δuˢ + δvᴿ)
+    return v̂ * (δˢ + δᴿ)
 end
 
 #####
