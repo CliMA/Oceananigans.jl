@@ -44,7 +44,7 @@ side_target(target::NetInflow, grid) = target
 ##### Pinning a face: one pre-configured launch per targeted side and substep
 #####
 
-const FACE_WORKGROUP_SIZE = 256
+const face_workgroup_size = 256
 
 @inline face_length(grid, ::Val{:x}) = grid.Ny
 @inline face_length(grid, ::Val{:y}) = grid.Nx
@@ -61,12 +61,12 @@ const FACE_WORKGROUP_SIZE = 256
 # same amount, which lands the face integral exactly on the target.
 @kernel function _pin_barotropic_face!(U, grid, index, target, direction)
     t = @index(Local, Linear)
-    Σ∫U = @localmem eltype(grid) (FACE_WORKGROUP_SIZE,)
-    ΣL  = @localmem eltype(grid) (FACE_WORKGROUP_SIZE,)
+    Σ∫U = @localmem eltype(grid) (face_workgroup_size,)
+    ΣL  = @localmem eltype(grid) (face_workgroup_size,)
 
     ∫U = zero(grid)
     L  = zero(grid)
-    for n in t:FACE_WORKGROUP_SIZE:face_length(grid, direction)
+    for n in t:face_workgroup_size:face_length(grid, direction)
         i, j = face_column(n, index, direction)
         Δl = wet_face_width(i, j, grid, direction)
         @inbounds ∫U += U[i, j, 1] * Δl
@@ -79,7 +79,7 @@ const FACE_WORKGROUP_SIZE = 256
     if t == 1
         ∫U = zero(grid)
         L  = zero(grid)
-        for m in 1:FACE_WORKGROUP_SIZE
+        for m in 1:face_workgroup_size
             @inbounds ∫U += Σ∫U[m]
             @inbounds L  += ΣL[m]
         end
@@ -88,7 +88,7 @@ const FACE_WORKGROUP_SIZE = 256
     @synchronize
 
     @inbounds shift = Σ∫U[1]
-    for n in t:FACE_WORKGROUP_SIZE:face_length(grid, direction)
+    for n in t:face_workgroup_size:face_length(grid, direction)
         i, j = face_column(n, index, direction)
         wet = wet_face_width(i, j, grid, direction) > 0
         @inbounds U[i, j, 1] -= ifelse(wet, shift, zero(shift))
@@ -100,7 +100,7 @@ configure_face_pin(arch, grid, field, index, ::NetInflow, direction) = nothing
 
 # Built once per barotropic step, like the other substep kernels: a single static workgroup and device-converted arguments
 function configure_face_pin(arch, grid, field, index, target, direction)
-    workgroup = StaticSize((FACE_WORKGROUP_SIZE,))
+    workgroup = StaticSize((face_workgroup_size,))
     kernel! = _pin_barotropic_face!(device(arch), workgroup, workgroup)
     args = convert_to_device(arch, (field, grid, index, target, direction))
     return (; kernel!, args)
@@ -111,49 +111,52 @@ end
 #####
 
 # Inflow sign of each side (west, east, south, north), zero for the sides that do not share the net inflow
-pooled(target::NetInflow, sign) = sign
-pooled(target, sign) = 0
-net_inflow_weights(targets) = map(pooled, (targets.west, targets.east, targets.south, targets.north), (1, -1, 1, -1))
+net_inflow_sign(target::NetInflow, sign) = sign
+net_inflow_sign(target, sign) = 0
+net_inflow_signs(targets) = map(net_inflow_sign, (targets.west, targets.east, targets.south, targets.north), (1, -1, 1, -1))
 
 function net_inflow_target(targets, grid)
     target = first(target for target in values(targets) if target isa NetInflow)
     return convert(eltype(grid), net_inflow_value(target.transport)), convert(eltype(grid), target.depth_exponent)
 end
 
-@inline face_depth(i, j, grid, ::Val{:x}) = column_depthᶠᶜᵃ(i, j, grid)
-@inline face_depth(i, j, grid, ::Val{:y}) = column_depthᶜᶠᵃ(i, j, grid)
+# Weight Hᵖ of a boundary column in the net-inflow correction, zero where the column is dry
+@inline depth_weightᶠᶜᵃ(i, j, grid, p) = ifelse(column_depthᶠᶜᵃ(i, j, grid) > 0, column_depthᶠᶜᵃ(i, j, grid)^p, zero(grid))
+@inline depth_weightᶜᶠᵃ(i, j, grid, p) = ifelse(column_depthᶜᶠᵃ(i, j, grid) > 0, column_depthᶜᶠᵃ(i, j, grid)^p, zero(grid))
 
-# As `_pin_barotropic_face!`, over every pooled face at once: with sₙ = ±1 the inflow sign of side n and wᵢ = Hᵢᵖ,
-# Q = Σₙ sₙ ∮ U dl and L = Σₙ ∮ w dl over the wet columns, every wet column of side n is shifted by -sₙ wᵢ (Q - target) / L.
-# As in `_pin_barotropic_face!`, no local variable is carried across `@synchronize`: on the CPU, KernelAbstractions
-# splits the kernel there, and locals assigned before it are undefined after it.
-@kernel function _pin_net_barotropic_inflow!(U, V, grid, target, p, weights)
+@kernel function _pin_net_barotropic_inflow!(U, V, grid, target, p, sʷ, sᵉ, sˢ, sⁿ)
     t = @index(Local, Linear)
-    ΣQ = @localmem eltype(grid) (FACE_WORKGROUP_SIZE,)
-    ΣL = @localmem eltype(grid) (FACE_WORKGROUP_SIZE,)
+    ΣQ = @localmem eltype(grid) (face_workgroup_size,)
+    ΣL = @localmem eltype(grid) (face_workgroup_size,)
 
+    # Partial sums of the net inflow Q = Σ s ∫ U dl and of L = Σ ∫ Hᵖ dl, first over the west and east sides...
     Q = zero(grid)
     L = zero(grid)
-    for n in t:FACE_WORKGROUP_SIZE:grid.Ny
-        Δlʷ = abs(weights[1]) * wet_face_width(1, n, grid, Val(:x))
-        Δlᵉ = abs(weights[2]) * wet_face_width(grid.Nx + 1, n, grid, Val(:x))
-        @inbounds Q += weights[1] * U[1, n, 1] * Δlʷ + weights[2] * U[grid.Nx + 1, n, 1] * Δlᵉ
-        L += Δlʷ * face_depth(1, n, grid, Val(:x))^p + Δlᵉ * face_depth(grid.Nx + 1, n, grid, Val(:x))^p
+    for j in t:face_workgroup_size:grid.Ny
+        Δyʷ = abs(sʷ) * wet_face_width(1, j, grid, Val(:x))
+        Δyᵉ = abs(sᵉ) * wet_face_width(grid.Nx + 1, j, grid, Val(:x))
+        @inbounds Q += sʷ * U[1, j, 1] * Δyʷ + sᵉ * U[grid.Nx + 1, j, 1] * Δyᵉ
+        L += Δyʷ * depth_weightᶠᶜᵃ(1, j, grid, p) + Δyᵉ * depth_weightᶠᶜᵃ(grid.Nx + 1, j, grid, p)
     end
-    for n in t:FACE_WORKGROUP_SIZE:grid.Nx
-        Δlˢ = abs(weights[3]) * wet_face_width(n, 1, grid, Val(:y))
-        Δlⁿ = abs(weights[4]) * wet_face_width(n, grid.Ny + 1, grid, Val(:y))
-        @inbounds Q += weights[3] * V[n, 1, 1] * Δlˢ + weights[4] * V[n, grid.Ny + 1, 1] * Δlⁿ
-        L += Δlˢ * face_depth(n, 1, grid, Val(:y))^p + Δlⁿ * face_depth(n, grid.Ny + 1, grid, Val(:y))^p
+
+    # ...then over the south and north sides
+    for i in t:face_workgroup_size:grid.Nx
+        Δxˢ = abs(sˢ) * wet_face_width(i, 1, grid, Val(:y))
+        Δxⁿ = abs(sⁿ) * wet_face_width(i, grid.Ny + 1, grid, Val(:y))
+        @inbounds Q += sˢ * V[i, 1, 1] * Δxˢ + sⁿ * V[i, grid.Ny + 1, 1] * Δxⁿ
+        L += Δxˢ * depth_weightᶜᶠᵃ(i, 1, grid, p) + Δxⁿ * depth_weightᶜᶠᵃ(i, grid.Ny + 1, grid, p)
     end
     @inbounds ΣQ[t] = Q
     @inbounds ΣL[t] = L
+
+    # Locals do not survive `@synchronize` on the CPU (KernelAbstractions splits the kernel there): pass through ΣQ
     @synchronize
 
+    # Work item 1 adds the partial sums in a fixed order, so the shift per unit weight (Q - target) / L is deterministic
     if t == 1
         Q = zero(grid)
         L = zero(grid)
-        for m in 1:FACE_WORKGROUP_SIZE
+        for m in 1:face_workgroup_size
             @inbounds Q += ΣQ[m]
             @inbounds L += ΣL[m]
         end
@@ -161,23 +164,24 @@ end
     end
     @synchronize
 
+    # Each wet column of a side with inflow sign s moves by -s Hᵖ (Q - target) / L, which lands Q on the target
     @inbounds shift = ΣQ[1]
-    for n in t:FACE_WORKGROUP_SIZE:grid.Ny
-        @inbounds U[1, n, 1]      -= ifelse(wet_face_width(1, n, grid, Val(:x)) > 0, weights[1] * shift * face_depth(1, n, grid, Val(:x))^p, zero(shift))
-        @inbounds U[grid.Nx + 1, n, 1] -= ifelse(wet_face_width(grid.Nx + 1, n, grid, Val(:x)) > 0, weights[2] * shift * face_depth(grid.Nx + 1, n, grid, Val(:x))^p, zero(shift))
+    for j in t:face_workgroup_size:grid.Ny
+        @inbounds U[1, j, 1]           -= sʷ * shift * depth_weightᶠᶜᵃ(1, j, grid, p)
+        @inbounds U[grid.Nx + 1, j, 1] -= sᵉ * shift * depth_weightᶠᶜᵃ(grid.Nx + 1, j, grid, p)
     end
-    for n in t:FACE_WORKGROUP_SIZE:grid.Nx
-        @inbounds V[n, 1, 1]      -= ifelse(wet_face_width(n, 1, grid, Val(:y)) > 0, weights[3] * shift * face_depth(n, 1, grid, Val(:y))^p, zero(shift))
-        @inbounds V[n, grid.Ny + 1, 1] -= ifelse(wet_face_width(n, grid.Ny + 1, grid, Val(:y)) > 0, weights[4] * shift * face_depth(n, grid.Ny + 1, grid, Val(:y))^p, zero(shift))
+    for i in t:face_workgroup_size:grid.Nx
+        @inbounds V[i, 1, 1]           -= sˢ * shift * depth_weightᶜᶠᵃ(i, 1, grid, p)
+        @inbounds V[i, grid.Ny + 1, 1] -= sⁿ * shift * depth_weightᶜᶠᵃ(i, grid.Ny + 1, grid, p)
     end
 end
 
 function configure_net_inflow_pin(arch, grid, U, V, targets)
-    weights = net_inflow_weights(targets)
-    all(iszero, weights) && return nothing
-    workgroup = StaticSize((FACE_WORKGROUP_SIZE,))
+    signs = net_inflow_signs(targets)
+    all(iszero, signs) && return nothing
+    workgroup = StaticSize((face_workgroup_size,))
     kernel! = _pin_net_barotropic_inflow!(device(arch), workgroup, workgroup)
-    args = convert_to_device(arch, (U, V, grid, net_inflow_target(targets, grid)..., weights))
+    args = convert_to_device(arch, (U, V, grid, net_inflow_target(targets, grid)..., signs...))
     return (; kernel!, args)
 end
 
