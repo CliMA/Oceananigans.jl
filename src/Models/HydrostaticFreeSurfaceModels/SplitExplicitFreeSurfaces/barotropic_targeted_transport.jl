@@ -136,7 +136,7 @@ end
         Δyʷ = abs(sʷ) * wet_face_width(1, j, grid, Val(:x))
         Δyᵉ = abs(sᵉ) * wet_face_width(grid.Nx + 1, j, grid, Val(:x))
         @inbounds Q += sʷ * U[1, j, 1] * Δyʷ + sᵉ * U[grid.Nx + 1, j, 1] * Δyᵉ
-        L += Δyʷ * depth_weightᶠᶜᵃ(1, j, grid, p) + Δyᵉ * depth_weightᶠᶜᵃ(grid.Nx + 1, j, grid, p)
+        L += Δyʷ * column_depthᶠᶜᵃ(1, j, grid)^p + Δyᵉ * column_depthᶠᶜᵃ(grid.Nx + 1, j, grid)^p
     end
 
     # ...then over the south and north sides
