@@ -218,14 +218,24 @@ function global_field_size(field::AbstractField)
     return map(sum, per_axis_locals)
 end
 
-# GCD of per-rank local extents along each axis. Used as the default chunk shape
-# for distributed writers; ensures every rank's slab is chunk-aligned.
+# Default chunk shape for distributed writers. Along each axis, the chunk length is the GCD of
+# the global offsets at which ranks 2, 3, ... start their slabs. Every chunk boundary then falls
+# on a rank boundary, so no two ranks ever write into the same chunk.
+#
+# Using offsets rather than local extents matters when extents differ. For a Face field in a
+# Bounded (or tripolar-folded) direction, the last rank holds one extra point: for example 1081
+# vs 1080 rows. gcd(1080, 1081) = 1 gives one chunk per row, whereas the offset (1080) gives
+# 1080-long chunks, with the last rank also owning the final partial chunk. The offset GCD is
+# always a multiple of the extent GCD, so it never yields smaller chunks.
 function distributed_gcd_chunks(field::AbstractField)
     arch = architecture(field.grid)
     arch isa Distributed || return size(field)
     local_sz = size(field)
     per_axis_locals = concatenate_local_sizes(local_sz, arch)
-    return map(t -> Int(gcd(t...)), per_axis_locals)
+    return map(per_axis_locals) do local_sizes
+        offsets = cumsum(collect(local_sizes))[1:end-1]
+        isempty(offsets) ? Int(sum(local_sizes)) : Int(gcd(offsets...))
+    end
 end
 
 """
