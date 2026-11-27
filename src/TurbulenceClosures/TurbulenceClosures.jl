@@ -19,6 +19,9 @@ export
     ConvectiveAdjustmentVerticalDiffusivity,
     RiBasedVerticalDiffusivity,
     IsopycnalSkewSymmetricDiffusivity,
+    MixedLayerEddyRestratification,
+    DeformationFrontalLength,
+    ArrestedFrontalLength,
     CATKEVerticalDiffusivity,
     TKEDissipationVerticalDiffusivity,
     FluxTapering,
@@ -262,6 +265,7 @@ include("turbulence_closure_implementations/ri_based_vertical_diffusivity.jl")
 # TODO: introduce abstract typing for these
 include("turbulence_closure_implementations/isopycnal_skew_symmetric_diffusivity.jl")
 include("turbulence_closure_implementations/advective_skew_diffusion.jl")
+include("turbulence_closure_implementations/mixed_layer_eddy_restratification.jl")
 include("turbulence_closure_implementations/leith_enstrophy_diffusivity.jl")
 
 using .TKEBasedVerticalDiffusivities: CATKEVerticalDiffusivity, TKEDissipationVerticalDiffusivity
