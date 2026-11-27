@@ -44,7 +44,6 @@ side_target(target::NetInflow, grid) = target
 ##### Pinning a face: one pre-configured launch per targeted side and substep
 #####
 
-const face_workgroup_size = 256
 
 @inline face_length(grid, ::Val{:x}) = size(grid, 2)
 @inline face_length(grid, ::Val{:y}) = size(grid, 1)
