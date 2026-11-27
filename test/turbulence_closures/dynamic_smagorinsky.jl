@@ -4,7 +4,7 @@ using Oceananigans.Grids: Closed, Connected, Open, TwoSided
 using Oceananigans.Operators: ℑxyzᶜᶜᶜ, ℑxyzᶠᶠᶠ
 using Oceananigans.TurbulenceClosures: DynamicSmagorinsky, LagrangianAveraging
 using Oceananigans.TurbulenceClosures.Smagorinskys: filterᶜᶜᶜ, filterᶠᶜᶜ, filterᶜᶠᶜ, filterᶜᶜᶠ,
-                                                    test_filteredᶜ, test_filteredᶠ, ᾱ²,
+                                                    test_filteredᶜ, test_filteredᶠ, ᾱ², compute_test_filtered!,
                                                     ΣᵢⱼΣᵢⱼᶜᶜᶜ, Σ̄ᵢⱼΣ̄ᵢⱼᶜᶜᶜ
 
 Random.seed!(1234)
@@ -165,7 +165,12 @@ end
     fill_halo_regions!((u, v, w))
 
     @test all(evaluate(ΣᵢⱼΣᵢⱼᶜᶜᶜ, ccc, grid, u, v, w) .≈ γ^2 / 2)
-    @test all(evaluate(Σ̄ᵢⱼΣ̄ᵢⱼᶜᶜᶜ, ccc, grid, u, v, w) .≈ γ^2 / 2)
+
+    ū, v̄, w̄ = XFaceField(grid), YFaceField(grid), ZFaceField(grid)
+    compute_test_filtered!(ū, filterᶠᶜᶜ, u)
+    compute_test_filtered!(v̄, filterᶜᶠᶜ, v)
+    compute_test_filtered!(w̄, filterᶜᶜᶠ, w)
+    @test all(evaluate(Σ̄ᵢⱼΣ̄ᵢⱼᶜᶜᶜ, ccc, grid, ū, v̄, w̄) .≈ γ^2 / 2)
 end
 
 @testset "Dynamic Smagorinsky in a closed domain [$(typeof(arch)), $name averaging]" for arch in archs,
@@ -182,6 +187,13 @@ end
 
     for model in (reference_model, poisoned_model)
         set!(model; initial_velocities...)
+    end
+
+    # The stored test-filtered velocities are the test filter of the velocities
+    closure_fields = reference_model.closure_fields
+    filtered_velocities = (closure_fields.ū, closure_fields.v̄, closure_fields.w̄)
+    for (f̄, (located_filter, loc, _), velocity) in zip(filtered_velocities, located_filters[2:4], reference_model.velocities)
+        @test Array(interior(f̄)) == evaluate(located_filter, loc, grid, velocity)
     end
 
     foreach(poison_unfilled_halos!, poisoned_model.velocities)
