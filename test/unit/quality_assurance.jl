@@ -74,13 +74,11 @@ end
 # Loaded only after the Aqua tests, which would otherwise report ambiguities between these packages and Oceananigans
 using AMDGPU: AMDGPU
 using CairoMakie: CairoMakie
-using ConservativeRegridding: ConservativeRegridding
 using CUDA: CUDA
 using Enzyme: Enzyme
 using Metal: Metal
 using NCCL: NCCL
 using oneAPI: oneAPI
-using Reactant: Reactant
 
 extension_names = Pkg.TOML.parsefile(joinpath(pkgdir(Oceananigans), "Project.toml"))["extensions"] |> keys |> collect |> sort
 
