@@ -87,7 +87,7 @@ if you credit Oceananigans by name.
 The community has published a number of articles describing the development of Oceananigans,
 including a recent [preprint submitted to the Journal of Advances in Modeling Earth Systems](https://doi.org/10.48550/arXiv.2502.14148) that presents an overview of all the things that make Oceananigans unique:
 
-> "High-level, high-resolution ocean modeling at all scales with Oceananigans"
+> "High-level, efficient ocean modeling at all scales with Oceananigans"
 >
 > by Gregory L. Wagner, Simone Silvestri, Navid C. Constantinou, Ali Ramadhan, Jean-Michel Campin,
 > Chris Hill, Tomas Chor, Jago Strong-Wright, Xin Kai Lee, Francis Poulin, Andre Souza, Keaton J. Burns,
@@ -137,9 +137,23 @@ the features they describe! Also, if you have developed a new feature in Oceanan
 
 If you have work using Oceananigans that you would like to have listed here, please open a pull request to add it or let us know!
 
+1. Zhou, X., Taylor, J. R., and Caulfield, C. P. (2026). [Lagrangian inference of turbulent diffusivity in stratified shear flows](https://doi.org/10.1017/jfm.2026.12115), _Journal of Fluid Mechanics_, **1047**, A29. DOI: [10.1017/jfm.2026.12115](https://doi.org/10.1017/jfm.2026.12115)
+
+1. Liu, J. and Taylor, J. R. (2026). [Towards an improved anisotropic minimum-dissipation model: applications for large-eddy simulations of convection- and wind-driven mixing in the oceanic surface boundary layer](https://doi.org/10.31223/X5HN78), _EarthArXiv preprint_. DOI: [10.31223/X5HN78](https://doi.org/10.31223/X5HN78)
+
 1. Whitley, V., Wenegrat, J. O., and Thomas, L. N. (2026). [Submesoscale dynamics of dense overflows. Part II: Near-inertial wave trapping and reflection](https://doi.org/10.31223/X5BC09), _EarthArXiv preprint_. DOI: [10.31223/X5BC09](https://doi.org/10.31223/X5BC09)
 
 1. Whitley, V., Wenegrat, J. O., and Thomas, L. N. (2026). [Submesoscale dynamics of dense overflows. Part I: Potential vorticity fluxes and symmetric instability](https://doi.org/10.31223/X5G527), _EarthArXiv preprint_. DOI: [10.31223/X5G527](https://doi.org/10.31223/X5G527)
+
+1. Ma, Y., Holland, P. R., Zhao, K. X., Nash, J. D., Dutrieux, P., Schmidt, C., and Taylor, J. R. (2026). [Transition from buoyancy-driven to shear-driven melting in a buoyant plume at a vertical ice face](https://doi.org/10.31223/X5BJ82), _EarthArXiv preprint_. DOI: [10.31223/X5BJ82](https://doi.org/10.31223/X5BJ82)
+
+1. Haine, T. W. N. (2026). [On robust diagnostic planetary geostrophy](https://doi.org/10.22541/essoar.15011616/v1), _ESS Open Archive_. DOI: [10.22541/essoar.15011616/v1](https://doi.org/10.22541/essoar.15011616/v1)
+
+1. Kang, W. and Zhang, Y. (2026). [Subsurface ocean salinity and dissipation rate inferred from Enceladus ice shell morphology](https://doi.org/10.1029/2026JE009809), _Journal of Geophysical Research: Planets_, **131(11)**, e2026JE009809. DOI: [10.1029/2026JE009809](https://doi.org/10.1029/2026JE009809)
+
+1. Liu, C.-L. and Yang, A. J. K. (2026). [Settling-driven Rayleigh–Taylor instability in a pre-existing turbulent field](https://doi.org/10.31223/X5JJ8X), _EarthArXiv preprint_. DOI: [10.31223/X5JJ8X](https://doi.org/10.31223/X5JJ8X)
+
+1. Kalathoor, S. P. (2026). [Sampling limits on recovering finite-depth double-diffusive interface structure from hydrographic profiles](https://doi.org/10.21203/rs.3.rs-11118018/v1), preprint (Version 1), available at Research Square. DOI: [10.21203/rs.3.rs-11118018/v1](https://doi.org/10.21203/rs.3.rs-11118018/v1)
 
 1. Zheng, Z., Wenegrat, J. O., Fox-Kemper, B., Chor, T., and Brett, G. J. (2026). [Submesoscale frontogenesis drives strong finescale tracer subduction](https://doi.org/10.1029/2026JC024594), _Journal of Geophysical Research: Oceans_, **131(10)**, e2026JC024594. DOI: [10.1029/2026JC024594](https://doi.org/10.1029/2026JC024594)
 
@@ -187,6 +201,8 @@ If you have work using Oceananigans that you would like to have listed here, ple
 
 1. Moses, W. S., Cheng, G., Churavy, V., Gelbrecht, M., Klöwer, M., Kump, J., Morlighem, M., Williamson, S., Apte, D., Berg, P., Giordano, M., Hill, C., Loose, N., Montoison, A., Narayanan, S. H. K., Pal, A., Schanen, M., Silvestri, S., Wagner, G. L., Heimbach, P. (2026) [DJ4Earth: Differentiable, and performance-portable Earth system modeling via program transformations](https://doi.org/10.1029/2025MS005615), _Journal of Advances in Modeling Earth Systems_, **18(5)**, e2025MS005615. DOI: [10.1029/2025MS005615](https://doi.org/10.1029/2025MS005615)
 
+1. Taghipour Anvari, S., Samaroo, J., Raayai Ardakani, M., and Kaeli, D. R. (2026). [DaggerFFT: A distributed FFT framework using task scheduling in Julia](https://doi.org/10.1109/IPDPS65963.2026.00094), _2026 IEEE International Parallel and Distributed Processing Symposium (IPDPS)_, 1120–1133. DOI: [10.1109/IPDPS65963.2026.00094](https://doi.org/10.1109/IPDPS65963.2026.00094)
+
 1. Wenegrat, J. O., Chor, T., and Barkan, R. (2026). [Coarse-grained local available potential energy](https://doi.org/10.48550/arXiv.2605.15879), _arXiv preprint_, arXiv:2605.15879. DOI: [10.48550/arXiv.2605.15879](https://doi.org/10.48550/arXiv.2605.15879)
 
 1. Chor, T., Wenegrat, J., and Wagner, G. L. (2026). [Turbulent mixing and dissipation around rough seamounts](https://doi.org/10.1029/2025GL121312), _Geophysical Research Letters_, **53(8)**, e2025GL121312. DOI: [10.1029/2025GL121312](https://doi.org/10.1029/2025GL121312)
@@ -198,8 +214,6 @@ If you have work using Oceananigans that you would like to have listed here, ple
 1. Zhao, K. X., Chor., T., Skyllingstad, E., Nash, J., Rosevear, M. G., McConnochie, C. (2026). [Direct numerical simulations of ice-ocean boundary turbulence](https://doi.org/10.48550/arXiv.2603.19542), _arXiv preprint_, arXiv:2603.19542. DOI: [10.48550/arXiv.2603.19542](https://doi.org/10.48550/arXiv.2603.19542)
 
 1. Wang, S., Kang, W., and Li, C. (2026). [A tug-of-war between baroclinic eddies and convection: implications for icy moon oceans](https://doi.org/10.48550/arXiv.2603.17185), _arXiv preprint_, arXiv:2603.17185. DOI: [10.48550/arXiv.2603.17185](https://doi.org/10.48550/arXiv.2603.17185)
-
-1. Kang, W. and Zhang, Y. (2026). [Subsurface ocean salinity and dissipation rate inferred from Enceladus ice shell morphology](https://doi.org/10.48550/arXiv.2603.22602), _arXiv preprint_, arXiv:2603.22602. DOI: [10.48550/arXiv.2603.22602](https://doi.org/10.48550/arXiv.2603.22602)
 
 1. De Abreu, S. and Timmermans, M.-L. (2026). [Mixed-layer deepening and internal wave generation under sea ice in free drift](https://doi.org/10.1175/JPO-D-25-0165.1), _Journal of Physical Oceanography_, **56(4)**, 823-837. DOI: [10.1175/JPO-D-25-0165.1](https://doi.org/10.1175/JPO-D-25-0165.1)
 

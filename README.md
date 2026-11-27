@@ -146,7 +146,7 @@ if you credit Oceananigans by name.
 The community has published a number of articles describing the development of Oceananigans,
 including a recent [preprint submitted to the Journal of Advances in Modeling Earth Systems](https://doi.org/10.48550/arXiv.2502.14148) that presents an overview of all the things that make Oceananigans unique:
 
-> "High-level, high-resolution ocean modeling at all scales with Oceananigans"
+> "High-level, efficient ocean modeling at all scales with Oceananigans"
 >
 > by Gregory L. Wagner, Simone Silvestri, Navid C. Constantinou, Ali Ramadhan, Jean-Michel Campin,
 > Chris Hill, Tomas Chor, Jago Strong-Wright, Xin Kai Lee, Francis Poulin, Andre Souza, Keaton J. Burns,
@@ -156,7 +156,7 @@ including a recent [preprint submitted to the Journal of Advances in Modeling Ea
 
 <details><summary>bibtex</summary>
   <pre><code>@article{Oceananigans-overview-paper-2025,
-  title = {{High-level, high-resolution ocean modeling at all scales with Oceananigans}},
+  title = {{High-level, efficient ocean modeling at all scales with Oceananigans}},
   author = {G. L. Wagner and S. Silvestri and N. C. Constantinou and A. Ramadhan and J.-M. Campin and C. Hill and T. Chor and J. Strong-Wright and X. K. Lee and F. Poulin and A. Souza and K. J. Burns and S. Bishnu and J. Marshall and R. Ferrari},
   journal = {arXiv preprint},
   year = {2025},
