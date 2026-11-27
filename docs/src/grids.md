@@ -1016,6 +1016,14 @@ Setting the global default is a good approach for building pure Float32
 simulations, because this will change _all_ default constructor
 float types to Float32.
 
+Metal GPUs have no `Float64`, so set the global default to `Float32` on Metal.
+`Float64` numbers that are passed in afterwards, such as `parameters = (; τ=1e-4)`
+or `Relaxation(rate=1/10days)`, are converted to `Float32` when kernels are launched on Metal.
+Numbers inside a user-defined struct are converted only if the struct has an `Adapt.adapt_structure` method,
+so prefer a `NamedTuple` for `parameters`.
+Literals inside user-defined functions are not converted: `2π * t` promotes to `Float64`,
+which fails to compile on Metal, whereas `2f0 * π * t` or a parameter `p.ω * t` stays `Float32`.
+
 !!! warn "Using single precision"
     Single precision should be used with care.
     Users interested in performing single-precision simulations should get in touch via
