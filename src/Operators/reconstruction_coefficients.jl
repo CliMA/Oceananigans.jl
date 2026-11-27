@@ -95,6 +95,8 @@ The first argument is the `buffer`, not the `order`!
 - `order = 2 * buffer` for Centered reconstruction
 - `order = 2 * buffer - 1` for Upwind reconstruction
 
+`dir` is `:x`, `:y` or `:z`, or `:stencil` to read the `2buffer` nodes of a stencil tuple `S`.
+
 Examples
 ========
 
@@ -132,7 +134,9 @@ julia> calc_reconstruction_stencil(Float32, 3, :left, :x)
     for (idx, n) in enumerate(rng)
         c = n - buffer - 1
         C = coeff[order - idx + 1]
-        if func
+        if dir == :stencil
+            stencil_full[idx] = :($C * S[$n])
+        elseif func
             stencil_full[idx] = dir == :x ?
                                 :($C * ψ(i + $c, j, k, grid, args...)) :
                                 dir == :y ?

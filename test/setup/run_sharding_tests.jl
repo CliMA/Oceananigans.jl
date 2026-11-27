@@ -5,11 +5,12 @@ function time_step_sharded_model(arch)
     model = sharding_test_model(arch)
     Δt = model.clock.last_Δt
 
+    # transpose_propagate=:down avoids an XLA SPMD partitioner abort on slice updates of transposed arrays
     @info "Compiling first_time_step..."
-    r_first_time_step! = @compile sync=true raise=true first_time_step!(model, Δt)
+    r_first_time_step! = @compile sync=true raise=true transpose_propagate=:down first_time_step!(model, Δt)
 
     @info "Compiling time_step..."
-    r_time_step! = @compile sync=true raise=true time_step!(model, Δt)
+    r_time_step! = @compile sync=true raise=true transpose_propagate=:down time_step!(model, Δt)
 
     @info "Running first time step..."
     r_first_time_step!(model, Δt)
