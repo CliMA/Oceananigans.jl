@@ -319,6 +319,10 @@ function build_nonhydrostatic_model(grid, ::Val{tracer_names}, timestepper,
                             top_bc = top_bc)
     end
 
+    if !isnothing(free_surface)
+        pressure_solver = immersed_top_free_surface_solver(pressure_solver, grid)
+    end
+
     # Materialize background fields
     background_fields = BackgroundFields(background_fields, tracer_names, grid, clock)
     model_fields = merge(velocities, tracers, auxiliary_fields)

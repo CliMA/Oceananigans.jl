@@ -69,18 +69,24 @@ end
 
 add_inhomogeneous_boundary_terms!(rhs, ::Nothing, grid, Ũ, Δt; area_weighted=true) = nothing
 
+# The free surface sits on top of cell `free_surface_index`, a distance `free_surface_spacing / 2` above its center
+@inline free_surface_index(i, j, grid) = grid.Nz
+@inline free_surface_spacing(i, j, k, grid) = Δzᵃᵃᶠ(i, j, grid.Nz+1, grid)
+@inline free_surface_inverse_spacing(i, j, k, grid) = Δz⁻¹ᵃᵃᶠ(i, j, grid.Nz+1, grid)
+
 @kernel function _add_inhomogeneous_boundary_terms!(rhs, grid, w̃, Δt, g, η, area_weighted)
     i, j = @index(Global, NTuple)
     Nz = grid.Nz
-    active = !inactive_cell(i, j, Nz, grid)
-    Δzᶠ = Δzᵃᵃᶠ(i, j, Nz+1, grid)
-    Az = Azᶜᶜᶠ(i, j, Nz+1, grid)
+    k = free_surface_index(i, j, grid)
+    active = !inactive_cell(i, j, k, grid)
+    Δzᶠ = free_surface_spacing(i, j, k, grid)
+    Az = Azᶜᶜᶠ(i, j, k+1, grid)
     weight = ifelse(area_weighted, Az, one(Az))
 
     @inbounds begin
-        num = η[i, j, Nz+1] + Δt * w̃[i, j, Nz+1]
+        num = η[i, j, Nz+1] + Δt * w̃[i, j, k+1]
         den = Δt^2 + Δzᶠ / 2g
-        rhs[i, j, Nz] -= active * weight * Δt * (num / den)
+        rhs[i, j, k] -= active * weight * Δt * (num / den)
     end
 end
 

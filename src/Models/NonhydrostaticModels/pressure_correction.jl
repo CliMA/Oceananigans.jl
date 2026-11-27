@@ -49,13 +49,15 @@ end
     @inbounds bc_rhs[i, j, 1] = ifelse(active, η[i, j, Nz+1] / Δt + w̃[i, j, Nz+1], zero(Δt))
 
     # Compute ηⁿ⁺¹
-    Δz⁻¹ᶠ = Δz⁻¹ᵃᵃᶠ(i, j, Nz+1, grid)
+    k = free_surface_index(i, j, grid)
+    wet = !inactive_cell(i, j, k, grid)
+    Δz⁻¹ᶠ = free_surface_inverse_spacing(i, j, k, grid)
     a = Δz⁻¹ᶠ - 1 / (2g * Δt^2)
     b = Δz⁻¹ᶠ + 1 / (2g * Δt^2)
     @inbounds begin
-        η★ = η[i, j, Nz+1] + Δt * w̃[i, j, Nz+1]
-        η_new = (p_Δt[i, j, Nz] / Δt + (p_Δt[i, j, Nz] * a / (b * Δt) + η★ / (b * Δt^2))) / 2g
-        η[i, j, Nz+1] = ifelse(active, η_new, η[i, j, Nz+1])
+        η★ = η[i, j, Nz+1] + Δt * w̃[i, j, k+1]
+        η_new = (p_Δt[i, j, k] / Δt + (p_Δt[i, j, k] * a / (b * Δt) + η★ / (b * Δt^2))) / 2g
+        η[i, j, Nz+1] = ifelse(wet, η_new, η[i, j, Nz+1])
     end
 end
 
@@ -82,6 +84,12 @@ end
     @inbounds w[i, j, k] -= ∂zᶜᶜᶠ(i, j, k, grid, pNHSΔt)
 end
 
+function correct_surface_vertical_velocity!(solver, free_surface, w, pNHSΔt, Δt)
+    grid = w.grid
+    launch!(architecture(grid), grid, :xy, _compute_surface_vertical_velocity!, w, grid, pNHSΔt)
+    return nothing
+end
+
 "Update the solution variables (velocities and tracers)."
 function make_pressure_correction!(model::NonhydrostaticModel, Δt)
 
@@ -95,11 +103,7 @@ function make_pressure_correction!(model::NonhydrostaticModel, Δt)
             model.pressures.pNHS)
 
     if !isnothing(model.free_surface)
-        launch!(arch, grid, :xy,
-                _compute_surface_vertical_velocity!,
-                model.velocities.w,
-                model.grid,
-                model.pressures.pNHS)
+        correct_surface_vertical_velocity!(model.pressure_solver, model.free_surface, model.velocities.w, model.pressures.pNHS, Δt)
     end
 
     ϵ = eps(eltype(model.pressures.pNHS))
