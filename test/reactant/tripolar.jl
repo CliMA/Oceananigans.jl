@@ -115,9 +115,13 @@ fold_configurations = ((CenterFolded, UPivot), (FaceFolded, FPivot))
         compiled_loss = @compile raise=true raise_first=true sync=true free_surface_loss(reactant_model, η₀, Δt, Nt)
         compiled_gradient = @compile raise=true raise_first=true sync=true free_surface_gradient(reactant_model, dmodel, η₀, dη₀, Δt, Nt)
 
+        loss_at(η) = (set!(η₀, η); Float64(compiled_loss(reactant_model, η₀, Δt, Nt)))
+        loss_before_gradient = loss_at(ηᵢ)
+
         compiled_gradient(reactant_model, dmodel, η₀, dη₀, Δt, Nt)
         G = Array(interior(dη₀))
         @test !any(isnan, G)
+        @test isapprox(loss_at(ηᵢ), loss_before_gradient; rtol=1e-12)
 
         bottom_height = model.grid.immersed_boundary.bottom_height
         Nx, Ny, Nz = size(model.grid)
@@ -125,7 +129,6 @@ fold_configurations = ((CenterFolded, UPivot), (FaceFolded, FPivot))
         δ = randn(size(ηᵢ)...) .* wet
         ϵ = 1e-4
 
-        loss_at(η) = (set!(η₀, η); Float64(compiled_loss(reactant_model, η₀, Δt, Nt)))
         finite_difference = (loss_at(ηᵢ .+ ϵ .* δ) - loss_at(ηᵢ .- ϵ .* δ)) / 2ϵ
         @test isapprox(sum(G .* δ), finite_difference; rtol=1e-8)
     end
