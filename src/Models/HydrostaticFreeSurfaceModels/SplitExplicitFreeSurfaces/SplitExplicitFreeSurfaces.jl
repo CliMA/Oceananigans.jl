@@ -7,7 +7,7 @@ using KernelAbstractions: @index, @kernel, @localmem, @synchronize, StaticSize
 
 using Oceananigans: Oceananigans
 using Oceananigans.Architectures: architecture, convert_to_device, device
-using Oceananigans.BoundaryConditions: FieldBoundaryConditions, SurfaceWaveRadiationBoundaryCondition,
+using Oceananigans.BoundaryConditions: East, FieldBoundaryConditions, North, RNFBC, South, SurfaceWaveRadiationBoundaryCondition, West,
                                        cache_boundary_conditions!, fill_halo_regions!, gravity_wave_boundary_condition,
                                        regularize_field_boundary_conditions, step_boundary_conditions!
 using Oceananigans.DistributedComputations: DistributedComputations, @root, DistributedGrid, all_reduce
@@ -15,14 +15,14 @@ using Oceananigans.Fields: Field, instantiated_location
 using Oceananigans.Grids: Center, Connected, Face, Open, Periodic, TwoSided, column_depthᶜᶠᵃ, column_depthᶠᶜᵃ, static_column_depthᶜᶠᵃ, static_column_depthᶠᶜᵃ, topology
 using Oceananigans.Coriolis: fᶠᶠᵃ
 using Oceananigans.Operators: ℑxyᶠᶜᵃ, ℑxyᶜᶠᵃ, ℑxᶜᵃᵃ, ℑyᵃᶜᵃ, Δxᶜᶠᶠ, Δyᶠᶜᶠ, Δx⁻¹ᶠᶜᶠ, Δy⁻¹ᶜᶠᶠ
-using Oceananigans.ImmersedBoundaries: column_depthTᶜᶠᵃ, column_depthTᶠᶜᵃ, column_depthᶜᶠᵃ, column_depthᶠᶜᵃ,
-                                       mask_immersed_field!
+using Oceananigans.ImmersedBoundaries: IBG, column_depthTᶜᶠᵃ, column_depthTᶠᶜᵃ, column_depthᶜᶠᵃ, column_depthᶠᶜᵃ,
+                                       conditional_uᶠᶜᶜ, conditional_vᶜᶠᶜ, inactive_node, mask_immersed_field!
 using Oceananigans.Models: update_model_field_time_series!
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModels,
                                                         AbstractFreeSurface,
                                                         free_surface_displacement_field,
                                                         update_vertical_velocities!
-using Oceananigans.Operators: Az⁻¹ᶜᶜᶠ, Δx_qᶜᶠᶠ, Δxᶜᶠᵃ, Δy_qᶠᶜᶠ, Δyᶠᶜᵃ, Δzᶜᶠᶜ, Δzᶠᶜᶜ, δxTᶜᵃᵃ, δxᶜᶜᶜ, δyTᵃᶜᵃ, δyᶜᶜᶜ,
+using Oceananigans.Operators: Az⁻¹ᶜᶜᶠ, Δx_qᶜᶠᶠ, Δxᶜᶠᵃ, Δy_qᶠᶜᶠ, Δyᶠᶜᵃ, Δzᶜᶠᶜ, Δzᶠᶜᶜ, δxTᶜᵃᵃ, δxᶜᵃᵃ, δyTᵃᶜᵃ, δyᵃᶜᵃ,
                               ∂xᵣTᶠᶜᶠ, ∂xᵣᶠᶜᶠ, ∂yᵣTᶜᶠᶠ, ∂yᵣᶜᶠᶠ
 using Oceananigans.Units: Time
 using Oceananigans.Utils: Utils, @apply_regionally, KernelParameters, add_time_interval, configure_kernel, launch!, SIGNATURES, TYPEDSIGNATURES

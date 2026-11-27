@@ -2,8 +2,8 @@ using Oceananigans.Architectures: architecture
 using Oceananigans.DistributedComputations: DistributedGrid
 using Oceananigans.Grids: halo_size, isrectilinear
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Operators: Azᶜᶜᶜ, Azᶜᶜᶠ, Δx_qᶜᶠᶜ, Δxᶜᶠᵃ, Δx⁻¹ᶠᶜᶠ, Δy_qᶠᶜᶜ, Δyᶠᶜᵃ, Δy⁻¹ᶜᶠᶠ, δxᶜᵃᵃ, δxᶜᶜᶜ, δxᶠᶜᶠ,
-                              δyᵃᶜᵃ, δyᶜᶜᶜ, δyᶜᶠᶠ
+using Oceananigans.Operators: Azᶜᶜᶜ, Azᶜᶜᶠ, Δx_qᶜᶠᶜ, Δxᶜᶠᵃ, Δx⁻¹ᶠᶜᶠ, Δy_qᶠᶜᶜ, Δyᶠᶜᵃ, Δy⁻¹ᶜᶠᶠ, δxᶜᵃᵃ, δxᶠᶜᶠ,
+                              δyᵃᶜᵃ, δyᶜᶠᶠ
 using Oceananigans.Solvers: Solvers, ConjugateGradientSolver, solve!
 
 """
@@ -105,10 +105,10 @@ end
     i, j = @index(Global, NTuple)
     kᴺ   = grid.Nz
     Az   = Azᶜᶜᶠ(i, j, kᴺ, grid)
-    δx_U = δxᶜᶜᶜ(i, j, kᴺ, grid, Δy_qᶠᶜᶜ, barotropic_U, nothing, U.u)
-    δy_V = δyᶜᶜᶜ(i, j, kᴺ, grid, Δx_qᶜᶠᶜ, barotropic_V, nothing, U.v)
+    δU = δxᶜᵃᵃ(i, j, kᴺ, grid, Δy_qᶠᶜᶜ, barotropic_U, nothing, U.u)
+    δV = δyᵃᶜᵃ(i, j, kᴺ, grid, Δx_qᶜᶠᶜ, barotropic_V, nothing, U.v)
     fη   = Fη(i, j, kᴺ+1, grid, clock, fields)
-    @inbounds rhs[i, j, kᴺ+1] = (δx_U + δy_V - Az * fη - Az * η[i, j, kᴺ+1] / Δt) / (g * Δt)
+    @inbounds rhs[i, j, kᴺ+1] = (δU + δV - Az * fη - Az * η[i, j, kᴺ+1] / Δt) / (g * Δt)
 end
 
 """
@@ -266,7 +266,7 @@ function diagonally_dominant_inverse_precondition!(P_r, r, ∫ᶻ_Axᶠᶜᶜ, �
     launch!(arch, grid, :xy, _diagonally_dominant_inverse_precondition!,
             P_r, grid, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
 
-    return nothing
+    return P_r
 end
 
 # Kernels that calculate coefficients for the preconditioner
@@ -282,7 +282,7 @@ end
                                           Azᶜᶜᶜ(i, j, 1, grid) / (g * Δt^2)
 
 @inline heuristic_inverse_times_residuals(i, j, r, grid, g, Δt, ax, ay) =
-    @inbounds 1 / Ac(i, j, grid, g, Δt, ax, ay) * (r[i, j, 1] - 2 * Ax⁻(i, j, grid, ax) / (Ac(i-1, j, grid, g, Δt, ax, ay) + Ac(i, j, grid, g, Δt, ax, ay)) * r[i-1, j, grid.Nz+1] -
+    @inbounds 1 / Ac(i, j, grid, g, Δt, ax, ay) * (r[i, j, grid.Nz+1] - 2 * Ax⁻(i, j, grid, ax) / (Ac(i-1, j, grid, g, Δt, ax, ay) + Ac(i, j, grid, g, Δt, ax, ay)) * r[i-1, j, grid.Nz+1] -
                                                                 2 * Ax⁺(i, j, grid, ax) / (Ac(i+1, j, grid, g, Δt, ax, ay) + Ac(i, j, grid, g, Δt, ax, ay)) * r[i+1, j, grid.Nz+1] -
                                                                 2 * Ay⁻(i, j, grid, ay) / (Ac(i, j-1, grid, g, Δt, ax, ay) + Ac(i, j, grid, g, Δt, ax, ay)) * r[i, j-1, grid.Nz+1] -
                                                                 2 * Ay⁺(i, j, grid, ay) / (Ac(i, j+1, grid, g, Δt, ax, ay) + Ac(i, j, grid, g, Δt, ax, ay)) * r[i, j+1, grid.Nz+1])
