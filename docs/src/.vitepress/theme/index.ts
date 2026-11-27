@@ -1,6 +1,7 @@
 // .vitepress/theme/index.ts
-import { h } from 'vue'
+import { h, nextTick, onMounted, watch } from 'vue'
 import DefaultTheme from 'vitepress/theme'
+import { useRoute } from 'vitepress'
 import type { Theme as ThemeConfig } from 'vitepress'
 import 'virtual:mathjax-styles.css';
 
@@ -35,6 +36,18 @@ export const Theme: ThemeConfig = {
     app.component('VersionPicker', VersionPicker);
     app.component('AuthorBadge', AuthorBadge)
     app.component('Authors', Authors)
+  },
+  setup() {
+    // Markdown cannot express a reversed ordered list, so we number the
+    // publications list on the home page in descending order here:
+    // the newest paper gets the highest number and the oldest is 1.
+    const route = useRoute()
+    const reversePublicationsList = () => {
+      const list = document.querySelector<HTMLOListElement>('#Publications-using-Oceananigans ~ ol')
+      if (list) list.reversed = true
+    }
+    onMounted(reversePublicationsList)
+    watch(() => route.path, () => nextTick(reversePublicationsList))
   }
 }
 export default Theme
