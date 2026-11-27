@@ -1,7 +1,7 @@
 #####
 ##### MPI worker script — exercised by `test/distributed/zarr_writer.jl` via mpiexec.
 #####
-##### Args: --partition x|y|xy  --output <path.zarr>
+##### Args: --partition x|y|xy|ybounded  --output <path.zarr>
 #####
 
 using MPI
@@ -31,6 +31,9 @@ if partition == "x"
     arch = Distributed(CPU(); partition=Partition(nranks, 1, 1))
 elseif partition == "y"
     arch = Distributed(CPU(); partition=Partition(1, nranks, 1))
+elseif partition == "ybounded"
+    # y is Bounded, so v (at y faces) has 5 points on the last rank and 4 on the first.
+    arch = Distributed(CPU(); partition=Partition(1, nranks, 1))
 elseif partition == "xy"
     @assert nranks == 4
     arch = Distributed(CPU(); partition=Partition(2, 2, 1))
@@ -38,20 +41,23 @@ else
     error("Unknown partition: $partition")
 end
 
+topology = partition == "ybounded" ? (Periodic, Bounded, Periodic) : (Periodic, Periodic, Periodic)
+
 grid = RectilinearGrid(arch,
                        size     = (8, 8, 4),
                        extent   = (1, 1, 1),
-                       topology = (Periodic, Periodic, Periodic))
+                       topology)
 
 model = NonhydrostaticModel(grid; tracers=:c)
 # Seed every grid point with x-coordinate to make per-rank slabs distinguishable.
 set!(model, u=(x, y, z) -> 10*x + y,
+            v=(x, y, z) -> 1 + y,
             c=(x, y, z) -> 100*x + y + z)
 
 # NOTE: avoid the Simulation/run! harness for now — its update_state! interacts with
 # distributed halos in a way that is independent of the writer. The writer's MPI
 # behavior is the thing under test, so we drive initialize! + write_output! directly.
-writer = ZarrWriter(model, (u=model.velocities.u, c=model.tracers.c);
+writer = ZarrWriter(model, (u=model.velocities.u, v=model.velocities.v, c=model.tracers.c);
                     filename = out_path,
                     dir = ".",
                     schedule = IterationInterval(1),

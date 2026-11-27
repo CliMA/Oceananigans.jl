@@ -58,6 +58,26 @@ end
         rm(path; recursive=true, force=true)
     end
 
+    @testset "Partition(y=2), Bounded y: uneven Face-y slabs" begin
+        # v at y faces has 9 points: 4 on the first rank and 5 on the second. The default chunk
+        # length in y must follow the rank offset (4), not gcd(4, 5) = 1 (one chunk per row).
+        path = abspath("test_dist_zarr_ybounded.zarr")
+        log = run_zarr_mpi(2, "ybounded", path)
+        @test occursin("DISTRIBUTED_ZARR_OK", log)
+
+        g = Zarr.zopen(path)
+        v_arr = g["v"]
+        @test size(v_arr) == (8, 9, 4, 3)
+        @test v_arr.metadata.chunks == (8, 4, 4, 1)
+
+        # Interior faces hold v = 1 + y, written by whichever rank owns them
+        yᶠ = (0:8) ./ 8
+        v1 = v_arr[:, :, :, 1]
+        @test all(v1[:, j, :] ≈ fill(1 + yᶠ[j], 8, 4) for j in 2:8)
+
+        rm(path; recursive=true, force=true)
+    end
+
     @testset "Partition(x=2, y=2)" begin
         path = abspath("test_dist_zarr_xy.zarr")
         log = run_zarr_mpi(4, "xy", path)
