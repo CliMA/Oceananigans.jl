@@ -2,6 +2,7 @@ using Oceananigans: prognostic_state, restore_prognostic_state!
 using Oceananigans.Architectures: architecture
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields: CenterField, Field, compute!, interpolate, xnode, ynode, znode
+using Oceananigans.Utils: KernelParameters
 using Statistics: mean
 
 mutable struct DynamicCoefficient{A, FT, S}
@@ -33,6 +34,15 @@ For example, `averaging = (1, 2)` invokes averaging in the ``x, y`` directions.
 The coefficient is updated according to `schedule`. Less frequent updates than `IterationInterval(1)`
 may be used as a performance optimization for cases where dynamic coefficient computation is relatively expensive.
 `minimum_numerator` defines the minimum value that is acceptable in the denominator of the final calculation.
+
+Test filter
+===========
+
+The test filter applies the weights (¼, ½, ¼) along each direction. Its width is that of the box filter with
+the same second moment (Lund, 1997), which is √6 times the grid spacing. It is not applied across the
+boundaries of the domain: next to a boundary the flow is filtered only along the directions parallel to it,
+and the ratio of the test filter width to the grid filter width is reduced accordingly, from √6 to 6^(1/3)
+next to one boundary of a three-dimensional domain.
 
 Multi-stage timestepper compatibility
 =====================================
@@ -97,6 +107,9 @@ References
 
 Bou-Zeid, Elie, Meneveau, Charles, and Parlange, Marc. (2005) A scale-dependent Lagrangian dynamic model for
 large eddy simulation of complex turbulent flows, Physics of Fluids, **17**, 025105.
+
+Lund, Thomas S. (1997) On the use of discrete filters for large eddy simulation, Annual Research Briefs,
+Center for Turbulence Research, 83–95.
 """
 function DynamicSmagorinsky(time_discretization = ExplicitTimeDiscretization(),
                             FT = Oceananigans.defaults.FloatType;
@@ -265,6 +278,17 @@ end
     end
 end
 
+function strain_rate_kernel_parameters(grid)
+    Nx, Ny, Nz = size(grid)
+    Tx, Ty, Tz = topology(grid)
+
+    ii = ifelse(Tx == Flat, 1:Nx, 0:Nx+1)
+    jj = ifelse(Ty == Flat, 1:Ny, 0:Ny+1)
+    kk = ifelse(Tz == Flat, 1:Nz, 0:Nz+1)
+
+    return KernelParameters(ii, jj, kk)
+end
+
 @kernel function _compute_Σ̄!(Σ̄, grid, u, v, w)
     i, j, k = @index(Global, NTuple)
 
@@ -317,13 +341,8 @@ function compute_coefficient_fields!(closure_fields, closure::DirectionallyAvera
     if cˢ.schedule(model)
         Σ = closure_fields.Σ
         Σ̄ = closure_fields.Σ̄
-        launch!(arch, grid, :xyz, _compute_Σ!, Σ, grid, velocities...)
+        launch!(arch, grid, strain_rate_kernel_parameters(grid), _compute_Σ!, Σ, grid, velocities...)
         launch!(arch, grid, :xyz, _compute_Σ̄!, Σ̄, grid, velocities...)
-
-        # Fill Σ, Σ̄ halos because the M tensor computation uses `filter`
-        # which reads from neighboring cells (including halo cells).
-        fill_halo_regions!(Σ; only_local_halos=true)
-        fill_halo_regions!(Σ̄; only_local_halos=true)
 
         LM = closure_fields.LM
         MM = closure_fields.MM
@@ -417,15 +436,13 @@ function TurbulenceClosures.initialize_closure_fields!(closure_fields, closure::
     cˢ = closure.coefficient
     u, v, w = model.velocities
 
+    # `set!` calls this after the pressure correction, before `update_state!` refills the velocity halos.
+    fill_halo_regions!(model.velocities, clock, Oceananigans.fields(model))
+
     Σ = closure_fields.Σ
     Σ̄ = closure_fields.Σ̄
-    launch!(arch, grid, :xyz, _compute_Σ!, Σ, grid, u, v, w)
+    launch!(arch, grid, strain_rate_kernel_parameters(grid), _compute_Σ!, Σ, grid, u, v, w)
     launch!(arch, grid, :xyz, _compute_Σ̄!, Σ̄, grid, u, v, w)
-
-    # Fill Σ, Σ̄ halos because the M tensor computation uses `filter`
-    # which reads from neighboring cells (including halo cells).
-    fill_halo_regions!(Σ; only_local_halos=true)
-    fill_halo_regions!(Σ̄; only_local_halos=true)
 
     𝒥ᴸᴹ  = closure_fields.𝒥ᴸᴹ
     𝒥ᴹᴹ  = closure_fields.𝒥ᴹᴹ
@@ -458,13 +475,8 @@ function TurbulenceClosures.step_closure_prognostics!(closure_fields, closure::L
 
         Σ = closure_fields.Σ
         Σ̄ = closure_fields.Σ̄
-        launch!(arch, grid, :xyz, _compute_Σ!, Σ, grid, u, v, w)
+        launch!(arch, grid, strain_rate_kernel_parameters(grid), _compute_Σ!, Σ, grid, u, v, w)
         launch!(arch, grid, :xyz, _compute_Σ̄!, Σ̄, grid, u, v, w)
-
-        # Fill Σ, Σ̄ halos because the M tensor computation uses `filter`
-        # which reads from neighboring cells (including halo cells).
-        fill_halo_regions!(Σ; only_local_halos=true)
-        fill_halo_regions!(Σ̄; only_local_halos=true)
 
         parent(closure_fields.𝒥ᴸᴹ⁻) .= parent(closure_fields.𝒥ᴸᴹ)
         parent(closure_fields.𝒥ᴹᴹ⁻) .= parent(closure_fields.𝒥ᴹᴹ)
