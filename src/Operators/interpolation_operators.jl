@@ -115,13 +115,9 @@ using Oceananigans.Grids: Flat, XFlatGrid, YFlatGrid, ZFlatGrid, peripheral_node
 
 @inline not_peripheral_node(args...) = !peripheral_node(args...)
 
-# mirrors the raw-field-vs-function dispatch that `ℑxᶜᵃᵃ`/`ℑyᵃᶜᵃ` already use above
-@inline interpolation_operand(i, j, k, grid, q, args...) = @inbounds q[i, j, k]
-@inline interpolation_operand(i, j, k, grid, q::F, args...) where {F<:Function} = q(i, j, k, grid, args...)
-
 # zero at peripheral nodes so the numerator can't disagree with `active_nodes` on which count
 @inline function active_masked_operand(i, j, k, grid, loc, q, args...)
-    return ifelse(peripheral_node(i, j, k, grid, loc...), zero(grid), interpolation_operand(i, j, k, grid, q, args...))
+    return ifelse(peripheral_node(i, j, k, grid, loc...), zero(grid), getvalue(q, i, j, k, grid, args...))
 end
 
 @inline function active_weighted_ℑxyᶜᶠᶜ(i, j, k, grid, q, args...)
