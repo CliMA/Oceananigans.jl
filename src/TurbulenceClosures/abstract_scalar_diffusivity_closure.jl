@@ -1,5 +1,5 @@
 using Oceananigans.Grids: node
-using Oceananigans.Operators: ℑxyᶠᶠᵃ, ℑxzᶠᵃᶠ, ℑyzᵃᶠᶠ, horizontal_divergenceᶜᶜᶜ, thinnest_face_thicknessᶜᶜᶜ
+using Oceananigans.Operators: ℑxyᶠᶠᵃ, ℑxzᶠᵃᶠ, ℑyzᵃᶠᶠ, horizontal_divergenceᶜᶜᶜ, min_face_Δzᶜᶜᶜ
 
 """
     abstract type AbstractScalarDiffusivity <: AbstractTurbulenceClosure end
@@ -227,7 +227,7 @@ const C = Center
 # The divergence stress carries the thickness of the cell's thinnest face, which keeps the viscous operator negative
 # semi-definite in the volume-weighted inner product where Δz varies laterally (partial cells, z-star)
 @inline νh_δᶜᶜᶜ(i, j, k, grid, closure, K, clock, fields, u, v) =
-    νhᶜᶜᶜ(i, j, k, grid, closure, K, clock, fields) * thinnest_face_thicknessᶜᶜᶜ(i, j, k, grid) * Δz⁻¹ᶜᶜᶜ(i, j, k, grid) * horizontal_divergenceᶜᶜᶜ(i, j, k, grid, u, v)
+    νhᶜᶜᶜ(i, j, k, grid, closure, K, clock, fields) * min_face_Δzᶜᶜᶜ(i, j, k, grid) * Δz⁻¹ᶜᶜᶜ(i, j, k, grid) * horizontal_divergenceᶜᶜᶜ(i, j, k, grid, u, v)
 
 @inline νh_ζᶠᶠᶜ(i, j, k, grid, closure, K, clock, fields, u, v) = νhᶠᶠᶜ(i, j, k, grid, closure, K, clock, fields) * ζ₃ᶠᶠᶜ(i, j, k, grid, u, v)
 @inline νh_σᶠᶜᶠ(i, j, k, grid, closure, K, clock, fields, σᶠᶜᶠ, args...) = νhᶠᶜᶠ(i, j, k, grid, closure, K, clock, fields) * σᶠᶜᶠ(i, j, k, grid, args...)
