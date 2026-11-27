@@ -1,6 +1,6 @@
 module SplitExplicitFreeSurfaces
 
-export SplitExplicitFreeSurface, ForwardBackwardScheme
+export SplitExplicitFreeSurface, ForwardBackwardScheme, CoriolisForwardBackwardScheme
 export FixedSubstepNumber, FixedTimeStepSize
 
 using KernelAbstractions: @index, @kernel, @localmem, @synchronize, StaticSize
@@ -12,7 +12,9 @@ using Oceananigans.BoundaryConditions: East, FieldBoundaryConditions, North, RNF
                                        regularize_field_boundary_conditions, step_boundary_conditions!
 using Oceananigans.DistributedComputations: DistributedComputations, @root, DistributedGrid, all_reduce
 using Oceananigans.Fields: Field, instantiated_location
-using Oceananigans.Grids: Center, Connected, Face, Open, TwoSided, column_depthᶜᶠᵃ, column_depthᶠᶜᵃ, topology
+using Oceananigans.Grids: Center, Connected, Face, Open, Periodic, TwoSided, column_depthᶜᶠᵃ, column_depthᶠᶜᵃ, static_column_depthᶜᶠᵃ, static_column_depthᶠᶜᵃ, topology
+using Oceananigans.Coriolis: fᶠᶠᵃ
+using Oceananigans.Operators: ℑxyᶠᶜᵃ, ℑxyᶜᶠᵃ, ℑxᶜᵃᵃ, ℑyᵃᶜᵃ, Δxᶜᶠᶠ, Δyᶠᶜᶠ, Δx⁻¹ᶠᶜᶠ, Δy⁻¹ᶜᶠᶠ
 using Oceananigans.ImmersedBoundaries: IBG, column_depthTᶜᶠᵃ, column_depthTᶠᶜᵃ, column_depthᶜᶠᵃ, column_depthᶠᶜᵃ,
                                        conditional_uᶠᶜᶜ, conditional_vᶜᶠᶜ, inactive_node, mask_immersed_field!
 using Oceananigans.Models: update_model_field_time_series!
@@ -32,6 +34,7 @@ include("initialize_split_explicit_substepping.jl")
 include("compute_slow_tendencies.jl")
 include("barotropic_targeted_transport.jl")
 include("step_split_explicit_free_surface.jl")
+include("substep_coriolis.jl")
 include("barotropic_split_explicit_corrector.jl")
 
 # extend
