@@ -115,7 +115,6 @@ using Oceananigans.Grids: Flat, XFlatGrid, YFlatGrid, ZFlatGrid, peripheral_node
 
 @inline not_peripheral_node(args...) = !peripheral_node(args...)
 
-# zero at peripheral nodes so the numerator can't disagree with `active_nodes` on which count
 @inline function active_masked_operand(i, j, k, grid, loc, q, args...)
     return ifelse(peripheral_node(i, j, k, grid, loc...), zero(grid), getvalue(q, i, j, k, grid, args...))
 end
