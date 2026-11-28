@@ -1,5 +1,5 @@
-using Oceananigans.BoundaryConditions: GWNFBC, TransportTimeSeries, get_target_transport, has_target_transport
-using Oceananigans.DistributedComputations: all_reduce, all_reduce!, synchronize_communication!
+using Oceananigans.BoundaryConditions: GWNFBC, NetInflow, get_target_transport, has_target_transport, net_inflow_value
+using Oceananigans.DistributedComputations: Distributed, all_reduce, all_reduce!, synchronize_communication!
 
 #####
 ##### Targeted barotropic transports through GravityWaveRadiation boundaries
@@ -16,23 +16,35 @@ has_targeted_barotropic_sides(U_bcs, V_bcs) =
     targeted_side(side_condition(U_bcs, :west))  || targeted_side(side_condition(U_bcs, :east)) ||
     targeted_side(side_condition(V_bcs, :south)) || targeted_side(side_condition(V_bcs, :north))
 
-# The target of each side (or `nothing`); the same targets pin `(U, V)` during the substeps and `(Ũ, Ṽ)` after them.
+"""
+$(TYPEDEF)
+
+The `target_transport` of each side (`nothing` on the sides without one, and on distributed grids on the sides that are
+not a physical boundary of this rank), and a device buffer for the face integrals and weights of the four sides
+(`sums[1:8]`) and of the sides that share a `NetInflow` (`sums[9:10]`), summed over all ranks on distributed grids.
+
+$(TYPEDFIELDS)
+"""
+struct BarotropicTargets{T, S}
+    targets :: T
+    sums    :: S
+end
+
+Adapt.adapt_structure(to, ::BarotropicTargets) = nothing
+
+# The same targets pin `(U, V)` during the substeps and `(Ũ, Ṽ)` after them.
 function materialize_barotropic_boundary_transport(U, V, grid)
     targets = (west  = side_transport(side_condition(U.boundary_conditions, :west),  grid),
                east  = side_transport(side_condition(U.boundary_conditions, :east),  grid),
                south = side_transport(side_condition(V.boundary_conditions, :south), grid),
                north = side_transport(side_condition(V.boundary_conditions, :north), grid))
-    return materialize_barotropic_boundary_transport(targets, grid)
-end
 
-materialize_barotropic_boundary_transport(targets, grid) = all(isnothing, targets) ? nothing : targets
+    # Only the ranks on a physical boundary hold its target, but every rank joins the reductions of a targeted side
+    targeted = all_reduce(+, count(!isnothing, targets), architecture(grid))
+    targeted == 0 && return nothing
+    sums = on_architecture(architecture(grid), zeros(eltype(grid), 10))
 
-# Only the ranks on a physical boundary hold its target, but every rank joins the reductions of a targeted side.
-function materialize_barotropic_boundary_transport(targets, grid::DistributedGrid)
-    targeted = all_reduce(+, [Int(!isnothing(target)) for target in targets], architecture(grid))
-    all(iszero, targeted) && return nothing
-    sums = on_architecture(architecture(grid), zeros(eltype(grid), 8))
-    return DistributedBarotropicTargets(targets, sums)
+    return BarotropicTargets(targets, sums)
 end
 
 side_transport(bc, grid) = nothing
@@ -44,92 +56,46 @@ materialize_target(FT, target) = target
 
 current_target(FT, ::Nothing, time) = nothing
 current_target(FT, target::Number, time) = convert(FT, target)
-current_target(FT, target::TransportTimeSeries, time) = convert(FT, target(time))
+current_target(FT, target::NetInflow, time) = target
 current_target(FT, target, time) = convert(FT, target(time)) # any other target is a callable of the model time
 
-"""
-$(TYPEDEF)
-
-Targets of a distributed grid: the local `targets` (`nothing` on sides that are not a physical boundary of this rank)
-and a device buffer for the face integrals and wet lengths of the four sides, summed over all ranks every pin.
-
-$(TYPEDFIELDS)
-"""
-struct DistributedBarotropicTargets{T, S}
-    targets :: T
-    sums    :: S
-end
-
-Adapt.adapt_structure(to, ::DistributedBarotropicTargets) = nothing
-
 #####
-##### Pinning a face: one pre-configured launch per targeted side and substep
+##### Pinning a face: the face integral of each targeted side, one sum over the ranks, then a shift of its columns
 #####
 
-const FACE_WORKGROUP_SIZE = 256
-
-@inline face_length(grid, ::Val{:x}) = grid.Ny
-@inline face_length(grid, ::Val{:y}) = grid.Nx
+@inline face_length(grid, ::Val{:x}) = size(grid, 2)
+@inline face_length(grid, ::Val{:y}) = size(grid, 1)
 
 @inline face_column(n, index, ::Val{:x}) = (index, n)
 @inline face_column(n, index, ::Val{:y}) = (n, index)
 
+@inline face_depth(i, j, grid, ::Val{:x}) = column_depthᶠᶜᵃ(i, j, grid)
+@inline face_depth(i, j, grid, ::Val{:y}) = column_depthᶜᶠᵃ(i, j, grid)
+
 # Width of a column along the face, zero where the column is dry
-@inline wet_face_width(i, j, grid, ::Val{:x}) = ifelse(column_depthᶠᶜᵃ(i, j, grid) > 0, Δyᶠᶜᵃ(i, j, 1, grid), zero(grid))
-@inline wet_face_width(i, j, grid, ::Val{:y}) = ifelse(column_depthᶜᶠᵃ(i, j, grid) > 0, Δxᶜᶠᵃ(i, j, 1, grid), zero(grid))
+@inline wet_face_width(i, j, grid, ::Val{:x}) = ifelse(face_depth(i, j, grid, Val(:x)) > 0, Δyᶠᶜᵃ(i, j, 1, grid), zero(grid))
+@inline wet_face_width(i, j, grid, ::Val{:y}) = ifelse(face_depth(i, j, grid, Val(:y)) > 0, Δxᶜᶠᵃ(i, j, 1, grid), zero(grid))
 
-# A single workgroup strides along the face: the partial sums of the transport and of the wet length go through local
-# memory, work item 1 adds them in a fixed order (so the shift is deterministic) and every wet column is shifted by the
-# same amount, which lands the face integral exactly on the target.
-@kernel function _pin_barotropic_face!(U, grid, index, target, direction)
+# Weight Hᵖ of a column in the shift, zero where the column is dry
+@inline depth_weight(i, j, grid, p, direction) =
+    ifelse(face_depth(i, j, grid, direction) > 0, face_depth(i, j, grid, direction)^p, zero(grid))
+
+# A single workgroup strides along one side of the local grid and adds the inflow sign s times the face integral of U,
+# and the integral of Hᵖ, into `sums[n:n+1]`: work item 1 adds the partial sums in a fixed order, so the shift is
+# deterministic.
+@kernel function _integrate_barotropic_face!(sums, n, U, grid, index, direction, s, p)
     t = @index(Local, Linear)
-    Σ∫U = @localmem eltype(grid) (FACE_WORKGROUP_SIZE,)
-    ΣL  = @localmem eltype(grid) (FACE_WORKGROUP_SIZE,)
+    workgroup_size = @uniform prod(@groupsize())
+    Σ∫U = @localmem eltype(grid) (workgroup_size,)
+    ΣL  = @localmem eltype(grid) (workgroup_size,)
 
     ∫U = zero(grid)
     L  = zero(grid)
-    for n in t:FACE_WORKGROUP_SIZE:face_length(grid, direction)
-        i, j = face_column(n, index, direction)
-        Δl = wet_face_width(i, j, grid, direction)
-        @inbounds ∫U += U[i, j, 1] * Δl
-        L += Δl
-    end
-    @inbounds Σ∫U[t] = ∫U
-    @inbounds ΣL[t]  = L
-    @synchronize
-
-    if t == 1
-        ∫U = zero(grid)
-        L  = zero(grid)
-        for m in 1:FACE_WORKGROUP_SIZE
-            @inbounds ∫U += Σ∫U[m]
-            @inbounds L  += ΣL[m]
-        end
-        @inbounds Σ∫U[1] = ifelse(L > 0, (∫U - target) / L, zero(grid))
-    end
-    @synchronize
-
-    @inbounds shift = Σ∫U[1]
-    for n in t:FACE_WORKGROUP_SIZE:face_length(grid, direction)
-        i, j = face_column(n, index, direction)
-        wet = wet_face_width(i, j, grid, direction) > 0
-        @inbounds U[i, j, 1] -= ifelse(wet, shift, zero(shift))
-    end
-end
-
-# The face integral and wet length of one side of the local grid, from a single workgroup, into `sums[n:n+1]`
-@kernel function _integrate_barotropic_face!(sums, n, U, grid, index, direction)
-    t = @index(Local, Linear)
-    Σ∫U = @localmem eltype(grid) (FACE_WORKGROUP_SIZE,)
-    ΣL  = @localmem eltype(grid) (FACE_WORKGROUP_SIZE,)
-
-    ∫U = zero(grid)
-    L  = zero(grid)
-    for m in t:FACE_WORKGROUP_SIZE:face_length(grid, direction)
+    for m in t:workgroup_size:face_length(grid, direction)
         i, j = face_column(m, index, direction)
         Δl = wet_face_width(i, j, grid, direction)
-        @inbounds ∫U += U[i, j, 1] * Δl
-        L += Δl
+        @inbounds ∫U += s * U[i, j, 1] * Δl
+        L += Δl * depth_weight(i, j, grid, p, direction)
     end
     @inbounds Σ∫U[t] = ∫U
     @inbounds ΣL[t]  = L
@@ -138,123 +104,98 @@ end
     if t == 1
         ∫U = zero(grid)
         L  = zero(grid)
-        for m in 1:FACE_WORKGROUP_SIZE
+        for m in 1:workgroup_size
             @inbounds ∫U += Σ∫U[m]
             @inbounds L  += ΣL[m]
         end
-        @inbounds sums[n]     = ∫U
-        @inbounds sums[n + 1] = L
+        @inbounds sums[n]     += ∫U
+        @inbounds sums[n + 1] += L
     end
 end
 
-# Shifts the face columns `first:last` along the face, which include the halo columns shared with neighbouring ranks,
-# by the shift of the globally summed integral and wet length in `sums[n:n+1]`
-@kernel function _shift_barotropic_face!(U, grid, index, sums, n, target, direction, first, last)
+# Each wet column `first:last` along the face, which include the halo columns shared with neighbouring ranks, moves by
+# -s Hᵖ (∫U - target) / L, which lands the summed face integral ∫U in `sums[n]` on the target
+@kernel function _shift_barotropic_face!(U, grid, index, sums, n, target, direction, s, p, first, last)
     t = @index(Local, Linear)
+    workgroup_size = @uniform prod(@groupsize())
     @inbounds ∫U = sums[n]
     @inbounds L  = sums[n + 1]
     shift = ifelse(L > 0, (∫U - target) / L, zero(grid))
-    for m in first+t-1:FACE_WORKGROUP_SIZE:last
+    for m in first+t-1:workgroup_size:last
         i, j = face_column(m, index, direction)
-        wet = wet_face_width(i, j, grid, direction) > 0
-        @inbounds U[i, j, 1] -= ifelse(wet, shift, zero(shift))
+        @inbounds U[i, j, 1] -= s * shift * depth_weight(i, j, grid, p, direction)
     end
 end
 
-configure_face_pin(arch, grid, field, index, ::Nothing, direction) = nothing
-
-# Built once per barotropic step, like the other substep kernels: a single static workgroup and device-converted arguments
-function configure_face_pin(arch, grid, field, index, target, direction)
-    workgroup = StaticSize((FACE_WORKGROUP_SIZE,))
-    kernel! = _pin_barotropic_face!(device(arch), workgroup, workgroup)
-    args = convert_to_device(arch, (field, grid, index, target, direction))
-    return (; kernel!, args)
-end
-
-configure_face_pins(arch, grid, U, V, ::Nothing, time) = nothing
-
-function configure_face_pins(arch, grid, U, V, targets, time)
-    FT = eltype(grid)
-    return (west  = configure_face_pin(arch, grid, U, 1,           current_target(FT, targets.west,  time), Val(:x)),
-            east  = configure_face_pin(arch, grid, U, grid.Nx + 1, current_target(FT, targets.east,  time), Val(:x)),
-            south = configure_face_pin(arch, grid, V, 1,           current_target(FT, targets.south, time), Val(:y)),
-            north = configure_face_pin(arch, grid, V, grid.Ny + 1, current_target(FT, targets.north, time), Val(:y)))
-end
-
-@inline pin_barotropic_face!(::Nothing) = nothing
-@inline pin_barotropic_face!(pin) = pin.kernel!(pin.args...)
-
-@inline pin_barotropic_faces!(::Nothing) = nothing
-
-@inline function pin_barotropic_faces!(pins)
-    pin_barotropic_face!(pins.west)
-    pin_barotropic_face!(pins.east)
-    pin_barotropic_face!(pins.south)
-    pin_barotropic_face!(pins.north)
-    return nothing
-end
-
-#####
-##### Distributed grids: local face integrals, one all-reduce, then a uniform shift on the ranks that own the side
-#####
-
-struct DistributedFacePins{A, I, S, T, D}
+struct BarotropicFacePins{A, I, S, P, D}
     architecture :: A
     integrate!   :: I
     shift!       :: S
-    sides        :: T # per side: (device-converted field, grid, index, direction, target), or `nothing`
+    sides        :: P # per side: device-converted (field, grid, index), direction, sign, exponent, slot, target and range
     sums         :: D
 end
 
-distributed_side(arch, grid, field, index, ::Nothing, direction) = nothing
-distributed_side(arch, grid, field, index, target, direction) =
-    (args = convert_to_device(arch, (field, grid, index)), direction, target, range = shifted_range(arch, grid, direction))
+# A side pins its own transport into `sums[n:n+1]`; the sides that share a `NetInflow` pin their summed inflow into
+# `sums[9:10]`, each with its inflow sign s
+face_pin(arch, grid, field, index, ::Nothing, direction, s, n) = nothing
+face_pin(arch, grid, field, index, target, direction, s, n) = face_pin(arch, grid, field, index, direction, 1, 0, n, target)
+
+face_pin(arch, grid, field, index, target::NetInflow, direction, s, n) =
+    face_pin(arch, grid, field, index, direction, s, convert(eltype(grid), target.depth_exponent), 9,
+             convert(eltype(grid), net_inflow_value(target.transport)))
+
+face_pin(arch, grid, field, index, direction, sign, p, slot, target) =
+    (args = convert_to_device(arch, (field, grid, index)), direction, sign, p, slot, target,
+     range = shifted_range(arch, grid, direction))
+
+shifted_range(arch, grid, direction) = (1, face_length(grid, direction))
 
 # The neighbouring ranks along the face hold the same global shift, so the halo columns they share are shifted too
-function shifted_range(arch, grid, ::Val{:x})
+function shifted_range(arch::Distributed, grid, ::Val{:x})
     first = isnothing(arch.connectivity.south) ? 1 : 1 - grid.Hy
     last  = isnothing(arch.connectivity.north) ? grid.Ny : grid.Ny + grid.Hy
     return (first, last)
 end
 
-function shifted_range(arch, grid, ::Val{:y})
+function shifted_range(arch::Distributed, grid, ::Val{:y})
     first = isnothing(arch.connectivity.west) ? 1 : 1 - grid.Hx
     last  = isnothing(arch.connectivity.east) ? grid.Nx : grid.Nx + grid.Hx
     return (first, last)
 end
 
-function configure_face_pins(arch, grid, U, V, targets::DistributedBarotropicTargets, time)
+configure_face_pins(arch, grid, U, V, ::Nothing, time) = nothing
+
+# Built once per barotropic step, like the other substep kernels: a single static workgroup of 256 work items, which the
+# kernels read with `@groupsize`, and device-converted arguments
+function configure_face_pins(arch, grid, U, V, targets::BarotropicTargets, time)
     FT = eltype(grid)
     local_targets = targets.targets
-    workgroup = StaticSize((FACE_WORKGROUP_SIZE,))
+    workgroup = StaticSize((256,))
     integrate! = _integrate_barotropic_face!(device(arch), workgroup, workgroup)
     shift!     = _shift_barotropic_face!(device(arch), workgroup, workgroup)
 
-    sides = (west  = distributed_side(arch, grid, U, 1,           current_target(FT, local_targets.west,  time), Val(:x)),
-             east  = distributed_side(arch, grid, U, grid.Nx + 1, current_target(FT, local_targets.east,  time), Val(:x)),
-             south = distributed_side(arch, grid, V, 1,           current_target(FT, local_targets.south, time), Val(:y)),
-             north = distributed_side(arch, grid, V, grid.Ny + 1, current_target(FT, local_targets.north, time), Val(:y)))
+    sides = (west  = face_pin(arch, grid, U, 1,                 current_target(FT, local_targets.west,  time), Val(:x),  1, 1),
+             east  = face_pin(arch, grid, U, size(grid, 1) + 1, current_target(FT, local_targets.east,  time), Val(:x), -1, 3),
+             south = face_pin(arch, grid, V, 1,                 current_target(FT, local_targets.south, time), Val(:y),  1, 5),
+             north = face_pin(arch, grid, V, size(grid, 2) + 1, current_target(FT, local_targets.north, time), Val(:y), -1, 7))
 
-    return DistributedFacePins(arch, integrate!, shift!, sides, targets.sums)
+    return BarotropicFacePins(arch, integrate!, shift!, sides, targets.sums)
 end
 
-integrate_face!(pins, ::Nothing, n) = nothing
-integrate_face!(pins, side, n) = pins.integrate!(pins.sums, n, side.args..., side.direction)
+integrate_face!(pins, ::Nothing) = nothing
+integrate_face!(pins, side) = pins.integrate!(pins.sums, side.slot, side.args..., side.direction, side.sign, side.p)
 
-shift_face!(pins, ::Nothing, n) = nothing
-shift_face!(pins, side, n) = pins.shift!(side.args..., pins.sums, n, side.target, side.direction, side.range...)
+shift_face!(pins, ::Nothing) = nothing
+shift_face!(pins, side) =
+    pins.shift!(side.args..., pins.sums, side.slot, side.target, side.direction, side.sign, side.p, side.range...)
 
-function pin_barotropic_faces!(pins::DistributedFacePins)
+pin_barotropic_faces!(::Nothing) = nothing
+
+function pin_barotropic_faces!(pins::BarotropicFacePins)
     fill!(pins.sums, 0)
-    integrate_face!(pins, pins.sides.west,  1)
-    integrate_face!(pins, pins.sides.east,  3)
-    integrate_face!(pins, pins.sides.south, 5)
-    integrate_face!(pins, pins.sides.north, 7)
+    foreach(side -> integrate_face!(pins, side), pins.sides)
     all_reduce!(+, pins.sums, pins.architecture)
-    shift_face!(pins, pins.sides.west,  1)
-    shift_face!(pins, pins.sides.east,  3)
-    shift_face!(pins, pins.sides.south, 5)
-    shift_face!(pins, pins.sides.north, 7)
+    foreach(side -> shift_face!(pins, side), pins.sides)
     return nothing
 end
 

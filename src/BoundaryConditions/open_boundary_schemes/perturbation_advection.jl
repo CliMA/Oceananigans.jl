@@ -165,6 +165,7 @@ get_target_transport(scheme, grid) = get_target_transport(scheme)  # 1-arg fallb
 
 _eval_tt(x::Number, grid) = x
 _eval_tt(s::TransportTimeSeries, grid) = s
+_eval_tt(x::NetInflow, grid) = x
 _eval_tt(f, grid) = f(grid)
 
 # Helper to convert between density-weighted and intensive fields.

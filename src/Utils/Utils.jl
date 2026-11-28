@@ -78,5 +78,6 @@ include("f32_safe_cbrt.jl")
 include("interpolation.jl")
 include("tabulated_function.jl")
 include("static_strides_offset_array.jl")
+include("getvalue.jl")
 
 end # module

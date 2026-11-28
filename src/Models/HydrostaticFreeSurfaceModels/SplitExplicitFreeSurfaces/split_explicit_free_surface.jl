@@ -103,9 +103,9 @@ When materialized (see [`materialize_free_surface`](@ref)), a `SplitExplicitFree
 - `timestepper`: Time stepping scheme for barotropic advancement. Only `ForwardBackwardScheme()` is implemented (which
   contains no auxiliary fields).
 
-- `boundary_transport`: `nothing`, or a `NamedTuple` `(; west, east, south, north)` holding the `target_transport` of each
-  side whose `GravityWaveRadiation` boundary condition carries one (`nothing` on the other sides). After every substep each
-  targeted face is integrated over its wet columns and shifted uniformly by a single kernel so its transport equals the target.
+- `boundary_transport`: `nothing`, or the `target_transport` of each side whose `GravityWaveRadiation` boundary condition
+  carries one. After every substep each targeted face, or the sides that share a `NetInflow`, is integrated over its wet
+  columns (and over all ranks) and shifted so its transport equals the target.
 
 Keyword Arguments
 =================

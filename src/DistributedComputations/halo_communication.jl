@@ -272,7 +272,7 @@ for side in sides
     @eval begin
         function $send_side_halo(grid, arch, local_rank, rank_to_send_to, buffers)
             send_buffer = buffers.$side.send
-            send_tag = $side_send_tag(arch, grid, buffers.state.tag)
+            send_tag = $side_send_tag(arch, grid, field_tag!(arch, buffers.state))
 
             @debug "Sending " * $side_str * " halo: local_rank=$local_rank, rank_to_send_to=$rank_to_send_to, send_tag=$send_tag"
             isend!(buffers.state, send_buffer, rank_to_send_to, send_tag, arch.communicator, buffers.state.requests.$side)
@@ -282,7 +282,7 @@ for side in sides
 
         function $recv_side_halo!(grid, arch, local_rank, rank_to_recv_from, buffers)
             recv_buffer = buffers.$side.recv
-            recv_tag = $side_recv_tag(arch, grid, buffers.state.tag)
+            recv_tag = $side_recv_tag(arch, grid, field_tag!(arch, buffers.state))
 
             @debug "Receiving " * $side_str * " halo: local_rank=$local_rank, rank_to_recv_from=$rank_to_recv_from, recv_tag=$recv_tag"
             irecv!(buffers.state, recv_buffer, rank_to_recv_from, recv_tag, arch.communicator, buffers.state.requests.$side)
