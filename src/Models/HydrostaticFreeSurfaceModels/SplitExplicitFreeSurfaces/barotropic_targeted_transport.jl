@@ -1,4 +1,5 @@
 using Oceananigans.BoundaryConditions: GWNFBC, NetInflow, get_target_transport, has_target_transport, net_inflow_value
+using Oceananigans.DistributedComputations: Distributed, all_reduce, all_reduce!, synchronize_communication!
 
 #####
 ##### Targeted barotropic transports through GravityWaveRadiation boundaries
@@ -15,33 +16,51 @@ has_targeted_barotropic_sides(U_bcs, V_bcs) =
     targeted_side(side_condition(U_bcs, :west))  || targeted_side(side_condition(U_bcs, :east)) ||
     targeted_side(side_condition(V_bcs, :south)) || targeted_side(side_condition(V_bcs, :north))
 
-# TODO: add support for distributed grids
-function HydrostaticFreeSurfaceModels.validate_free_surface_boundary_conditions(::SplitExplicitFreeSurface, boundary_conditions, grid)
-    targeted = has_targeted_barotropic_sides(get(boundary_conditions, :U, nothing), get(boundary_conditions, :V, nothing))
-    if targeted && grid isa DistributedGrid
-        throw(ArgumentError("`target_transport` on `GravityWaveRadiation` boundary conditions is not supported on distributed grids."))
-    end
-    return nothing
+"""
+$(TYPEDEF)
+
+The `target_transport` of each side (`nothing` on the sides without one, and on distributed grids on the sides that are
+not a physical boundary of this rank), and a device buffer for the face integrals and weights of the four sides
+(`sums[1:8]`) and of the sides that share a `NetInflow` (`sums[9:10]`), summed over all ranks on distributed grids.
+
+$(TYPEDFIELDS)
+"""
+struct BarotropicTargets{T, S}
+    targets :: T
+    sums    :: S
 end
 
-# The target of each side (or `nothing`); the same targets pin `(U, V)` during the substeps and `(Ũ, Ṽ)` after them.
+Adapt.adapt_structure(to, ::BarotropicTargets) = nothing
+
+# The same targets pin `(U, V)` during the substeps and `(Ũ, Ṽ)` after them.
 function materialize_barotropic_boundary_transport(U, V, grid)
-    has_targeted_barotropic_sides(U.boundary_conditions, V.boundary_conditions) || return nothing
-    return (west  = side_transport(side_condition(U.boundary_conditions, :west),  grid),
-            east  = side_transport(side_condition(U.boundary_conditions, :east),  grid),
-            south = side_transport(side_condition(V.boundary_conditions, :south), grid),
-            north = side_transport(side_condition(V.boundary_conditions, :north), grid))
+    targets = (west  = side_transport(side_condition(U.boundary_conditions, :west),  grid),
+               east  = side_transport(side_condition(U.boundary_conditions, :east),  grid),
+               south = side_transport(side_condition(V.boundary_conditions, :south), grid),
+               north = side_transport(side_condition(V.boundary_conditions, :north), grid))
+
+    # Only the ranks on a physical boundary hold its target, but every rank joins the reductions of a targeted side
+    targeted = all_reduce(+, count(!isnothing, targets), architecture(grid))
+    targeted == 0 && return nothing
+    sums = on_architecture(architecture(grid), zeros(eltype(grid), 10))
+
+    return BarotropicTargets(targets, sums)
 end
 
 side_transport(bc, grid) = nothing
 side_transport(bc::GWNFBC, grid) =
-    has_target_transport(bc.classification.scheme) ? side_target(get_target_transport(bc.classification.scheme, grid), grid) : nothing
+    has_target_transport(bc.classification.scheme) ? materialize_target(eltype(grid), get_target_transport(bc.classification.scheme, grid)) : nothing
 
-side_target(target, grid) = convert(eltype(grid), target)
-side_target(target::NetInflow, grid) = target
+materialize_target(FT, target::Number) = convert(FT, target)
+materialize_target(FT, target) = target
+
+current_target(FT, ::Nothing, time) = nothing
+current_target(FT, target::Number, time) = convert(FT, target)
+current_target(FT, target::NetInflow, time) = target
+current_target(FT, target, time) = convert(FT, target(time)) # any other target is a callable of the model time
 
 #####
-##### Pinning a face: one pre-configured launch per targeted side and substep
+##### Pinning a face: the face integral of each targeted side, one sum over the ranks, then a shift of its columns
 #####
 
 @inline face_length(grid, ::Val{:x}) = size(grid, 2)
@@ -50,14 +69,21 @@ side_target(target::NetInflow, grid) = target
 @inline face_column(n, index, ::Val{:x}) = (index, n)
 @inline face_column(n, index, ::Val{:y}) = (n, index)
 
-# Width of a column along the face, zero where the column is dry
-@inline wet_face_width(i, j, grid, ::Val{:x}) = ifelse(column_depthᶠᶜᵃ(i, j, grid) > 0, Δyᶠᶜᵃ(i, j, 1, grid), zero(grid))
-@inline wet_face_width(i, j, grid, ::Val{:y}) = ifelse(column_depthᶜᶠᵃ(i, j, grid) > 0, Δxᶜᶠᵃ(i, j, 1, grid), zero(grid))
+@inline face_depth(i, j, grid, ::Val{:x}) = column_depthᶠᶜᵃ(i, j, grid)
+@inline face_depth(i, j, grid, ::Val{:y}) = column_depthᶜᶠᵃ(i, j, grid)
 
-# A single workgroup strides along the face: the partial sums of the transport and of the wet length go through local
-# memory, work item 1 adds them in a fixed order (so the shift is deterministic) and every wet column is shifted by the
-# same amount, which lands the face integral exactly on the target.
-@kernel function _pin_barotropic_face!(U, grid, index, target, direction)
+# Width of a column along the face, zero where the column is dry
+@inline wet_face_width(i, j, grid, ::Val{:x}) = ifelse(face_depth(i, j, grid, Val(:x)) > 0, Δyᶠᶜᵃ(i, j, 1, grid), zero(grid))
+@inline wet_face_width(i, j, grid, ::Val{:y}) = ifelse(face_depth(i, j, grid, Val(:y)) > 0, Δxᶜᶠᵃ(i, j, 1, grid), zero(grid))
+
+# Weight Hᵖ of a column in the shift, zero where the column is dry
+@inline depth_weight(i, j, grid, p, direction) =
+    ifelse(face_depth(i, j, grid, direction) > 0, face_depth(i, j, grid, direction)^p, zero(grid))
+
+# A single workgroup strides along one side of the local grid and adds the inflow sign s times the face integral of U,
+# and the integral of Hᵖ, into `sums[n:n+1]`: work item 1 adds the partial sums in a fixed order, so the shift is
+# deterministic.
+@kernel function _integrate_barotropic_face!(sums, n, U, grid, index, direction, s, p)
     t = @index(Local, Linear)
     workgroup_size = @uniform prod(@groupsize())
     Σ∫U = @localmem eltype(grid) (workgroup_size,)
@@ -65,11 +91,11 @@ side_target(target::NetInflow, grid) = target
 
     ∫U = zero(grid)
     L  = zero(grid)
-    for n in t:workgroup_size:face_length(grid, direction)
-        i, j = face_column(n, index, direction)
+    for m in t:workgroup_size:face_length(grid, direction)
+        i, j = face_column(m, index, direction)
         Δl = wet_face_width(i, j, grid, direction)
-        @inbounds ∫U += U[i, j, 1] * Δl
-        L += Δl
+        @inbounds ∫U += s * U[i, j, 1] * Δl
+        L += Δl * depth_weight(i, j, grid, p, direction)
     end
     @inbounds Σ∫U[t] = ∫U
     @inbounds ΣL[t]  = L
@@ -82,130 +108,102 @@ side_target(target::NetInflow, grid) = target
             @inbounds ∫U += Σ∫U[m]
             @inbounds L  += ΣL[m]
         end
-        @inbounds Σ∫U[1] = ifelse(L > 0, (∫U - target) / L, zero(grid))
-    end
-    @synchronize
-
-    @inbounds shift = Σ∫U[1]
-    for n in t:workgroup_size:face_length(grid, direction)
-        i, j = face_column(n, index, direction)
-        wet = wet_face_width(i, j, grid, direction) > 0
-        @inbounds U[i, j, 1] -= ifelse(wet, shift, zero(shift))
+        @inbounds sums[n]     += ∫U
+        @inbounds sums[n + 1] += L
     end
 end
 
-configure_face_pin(arch, grid, field, index, ::Nothing,   direction) = nothing
-configure_face_pin(arch, grid, field, index, ::NetInflow, direction) = nothing
+# Each wet column `first:last` along the face, which include the halo columns shared with neighbouring ranks, moves by
+# -s Hᵖ (∫U - target) / L, which lands the summed face integral ∫U in `sums[n]` on the target
+@kernel function _shift_barotropic_face!(U, grid, index, sums, n, target, direction, s, p, first, last)
+    t = @index(Local, Linear)
+    workgroup_size = @uniform prod(@groupsize())
+    @inbounds ∫U = sums[n]
+    @inbounds L  = sums[n + 1]
+    shift = ifelse(L > 0, (∫U - target) / L, zero(grid))
+    for m in first+t-1:workgroup_size:last
+        i, j = face_column(m, index, direction)
+        @inbounds U[i, j, 1] -= s * shift * depth_weight(i, j, grid, p, direction)
+    end
+end
+
+struct BarotropicFacePins{A, I, S, P, D}
+    architecture :: A
+    integrate!   :: I
+    shift!       :: S
+    sides        :: P # per side: device-converted (field, grid, index), direction, sign, exponent, slot, target and range
+    sums         :: D
+end
+
+# A side pins its own transport into `sums[n:n+1]`; the sides that share a `NetInflow` pin their summed inflow into
+# `sums[9:10]`, each with its inflow sign s
+face_pin(arch, grid, field, index, ::Nothing, direction, s, n) = nothing
+face_pin(arch, grid, field, index, target, direction, s, n) = face_pin(arch, grid, field, index, direction, 1, 0, n, target)
+
+face_pin(arch, grid, field, index, target::NetInflow, direction, s, n) =
+    face_pin(arch, grid, field, index, direction, s, convert(eltype(grid), target.depth_exponent), 9,
+             convert(eltype(grid), net_inflow_value(target.transport)))
+
+face_pin(arch, grid, field, index, direction, sign, p, slot, target) =
+    (args = convert_to_device(arch, (field, grid, index)), direction, sign, p, slot, target,
+     range = shifted_range(arch, grid, direction))
+
+shifted_range(arch, grid, direction) = (1, face_length(grid, direction))
+
+# The neighbouring ranks along the face hold the same global shift, so the halo columns they share are shifted too
+function shifted_range(arch::Distributed, grid, ::Val{:x})
+    first = isnothing(arch.connectivity.south) ? 1 : 1 - grid.Hy
+    last  = isnothing(arch.connectivity.north) ? grid.Ny : grid.Ny + grid.Hy
+    return (first, last)
+end
+
+function shifted_range(arch::Distributed, grid, ::Val{:y})
+    first = isnothing(arch.connectivity.west) ? 1 : 1 - grid.Hx
+    last  = isnothing(arch.connectivity.east) ? grid.Nx : grid.Nx + grid.Hx
+    return (first, last)
+end
+
+configure_face_pins(arch, grid, U, V, ::Nothing, time) = nothing
 
 # Built once per barotropic step, like the other substep kernels: a single static workgroup of 256 work items, which the
 # kernels read with `@groupsize`, and device-converted arguments
-function configure_face_pin(arch, grid, field, index, target, direction)
+function configure_face_pins(arch, grid, U, V, targets::BarotropicTargets, time)
+    FT = eltype(grid)
+    local_targets = targets.targets
     workgroup = StaticSize((256,))
-    kernel! = _pin_barotropic_face!(device(arch), workgroup, workgroup)
-    args = convert_to_device(arch, (field, grid, index, target, direction))
-    return (; kernel!, args)
+    integrate! = _integrate_barotropic_face!(device(arch), workgroup, workgroup)
+    shift!     = _shift_barotropic_face!(device(arch), workgroup, workgroup)
+
+    sides = (west  = face_pin(arch, grid, U, 1,                 current_target(FT, local_targets.west,  time), Val(:x),  1, 1),
+             east  = face_pin(arch, grid, U, size(grid, 1) + 1, current_target(FT, local_targets.east,  time), Val(:x), -1, 3),
+             south = face_pin(arch, grid, V, 1,                 current_target(FT, local_targets.south, time), Val(:y),  1, 5),
+             north = face_pin(arch, grid, V, size(grid, 2) + 1, current_target(FT, local_targets.north, time), Val(:y), -1, 7))
+
+    return BarotropicFacePins(arch, integrate!, shift!, sides, targets.sums)
 end
 
-#####
-##### Pinning the net inflow of the sides that share a `NetInflow`
-#####
+integrate_face!(pins, ::Nothing) = nothing
+integrate_face!(pins, side) = pins.integrate!(pins.sums, side.slot, side.args..., side.direction, side.sign, side.p)
 
-# Inflow sign of each side (west, east, south, north), zero for the sides that do not share the net inflow
-net_inflow_sign(target::NetInflow, sign) = sign
-net_inflow_sign(target, sign) = 0
-net_inflow_signs(targets) = map(net_inflow_sign, (targets.west, targets.east, targets.south, targets.north), (1, -1, 1, -1))
+shift_face!(pins, ::Nothing) = nothing
+shift_face!(pins, side) =
+    pins.shift!(side.args..., pins.sums, side.slot, side.target, side.direction, side.sign, side.p, side.range...)
 
-function net_inflow_target(targets, grid)
-    target = first(target for target in values(targets) if target isa NetInflow)
-    return convert(eltype(grid), net_inflow_value(target.transport)), convert(eltype(grid), target.depth_exponent)
-end
+pin_barotropic_faces!(::Nothing) = nothing
 
-# Weight Hᵖ of a boundary column in the net-inflow correction, zero where the column is dry
-@inline depth_weightᶠᶜᵃ(i, j, grid, p) = ifelse(column_depthᶠᶜᵃ(i, j, grid) > 0, column_depthᶠᶜᵃ(i, j, grid)^p, zero(grid))
-@inline depth_weightᶜᶠᵃ(i, j, grid, p) = ifelse(column_depthᶜᶠᵃ(i, j, grid) > 0, column_depthᶜᶠᵃ(i, j, grid)^p, zero(grid))
-
-@kernel function _pin_net_barotropic_inflow!(U, V, grid, target, p, sʷ, sᵉ, sˢ, sⁿ)
-    t = @index(Local, Linear)
-    workgroup_size = @uniform prod(@groupsize())
-    ΣQ = @localmem eltype(grid) (workgroup_size,)
-    ΣL = @localmem eltype(grid) (workgroup_size,)
-
-    # Partial sums of the net inflow Q = Σ s ∫ U dl and of L = Σ ∫ Hᵖ dl, first over the west and east sides...
-    Q = zero(grid)
-    L = zero(grid)
-    for j in t:workgroup_size:size(grid, 2)
-        Δyʷ = abs(sʷ) * wet_face_width(1, j, grid, Val(:x))
-        Δyᵉ = abs(sᵉ) * wet_face_width(size(grid, 1) + 1, j, grid, Val(:x))
-        @inbounds Q += sʷ * U[1, j, 1] * Δyʷ + sᵉ * U[size(grid, 1) + 1, j, 1] * Δyᵉ
-        L += Δyʷ * column_depthᶠᶜᵃ(1, j, grid)^p + Δyᵉ * column_depthᶠᶜᵃ(size(grid, 1) + 1, j, grid)^p
-    end
-
-    # ...then over the south and north sides
-    for i in t:workgroup_size:size(grid, 1)
-        Δxˢ = abs(sˢ) * wet_face_width(i, 1, grid, Val(:y))
-        Δxⁿ = abs(sⁿ) * wet_face_width(i, size(grid, 2) + 1, grid, Val(:y))
-        @inbounds Q += sˢ * V[i, 1, 1] * Δxˢ + sⁿ * V[i, size(grid, 2) + 1, 1] * Δxⁿ
-        L += Δxˢ * column_depthᶜᶠᵃ(i, 1, grid)^p + Δxⁿ * column_depthᶜᶠᵃ(i, size(grid, 2) + 1, grid)^p
-    end
-    @inbounds ΣQ[t] = Q
-    @inbounds ΣL[t] = L
-
-    # Locals do not survive `@synchronize` on the CPU (KernelAbstractions splits the kernel there): pass through ΣQ
-    @synchronize
-
-    # Work item 1 adds the partial sums in a fixed order, so the shift per unit weight (Q - target) / L is deterministic
-    if t == 1
-        Q = zero(grid)
-        L = zero(grid)
-        for m in 1:workgroup_size
-            @inbounds Q += ΣQ[m]
-            @inbounds L += ΣL[m]
-        end
-        @inbounds ΣQ[1] = ifelse(L > 0, (Q - target) / L, zero(grid))
-    end
-    @synchronize
-
-    # Each wet column of a side with inflow sign s moves by -s Hᵖ (Q - target) / L, which lands Q on the target
-    @inbounds shift = ΣQ[1]
-    for j in t:workgroup_size:size(grid, 2)
-        @inbounds U[1, j, 1]                 -= sʷ * shift * depth_weightᶠᶜᵃ(1, j, grid, p)
-        @inbounds U[size(grid, 1) + 1, j, 1] -= sᵉ * shift * depth_weightᶠᶜᵃ(size(grid, 1) + 1, j, grid, p)
-    end
-    for i in t:workgroup_size:size(grid, 1)
-        @inbounds V[i, 1, 1]                 -= sˢ * shift * depth_weightᶜᶠᵃ(i, 1, grid, p)
-        @inbounds V[i, size(grid, 2) + 1, 1] -= sⁿ * shift * depth_weightᶜᶠᵃ(i, size(grid, 2) + 1, grid, p)
-    end
-end
-
-function configure_net_inflow_pin(arch, grid, U, V, targets)
-    signs = net_inflow_signs(targets)
-    all(iszero, signs) && return nothing
-    workgroup = StaticSize((256,))
-    kernel! = _pin_net_barotropic_inflow!(device(arch), workgroup, workgroup)
-    args = convert_to_device(arch, (U, V, grid, net_inflow_target(targets, grid)..., signs...))
-    return (; kernel!, args)
-end
-
-configure_face_pins(arch, grid, U, V, ::Nothing) = nothing
-configure_face_pins(arch, grid, U, V, targets) =
-    (west  = configure_face_pin(arch, grid, U, 1,           targets.west,  Val(:x)),
-     east  = configure_face_pin(arch, grid, U, size(grid, 1) + 1, targets.east,  Val(:x)),
-     south = configure_face_pin(arch, grid, V, 1,           targets.south, Val(:y)),
-     north = configure_face_pin(arch, grid, V, size(grid, 2) + 1, targets.north, Val(:y)),
-     net   = configure_net_inflow_pin(arch, grid, U, V, targets))
-
-@inline pin_barotropic_face!(::Nothing) = nothing
-@inline pin_barotropic_face!(pin) = pin.kernel!(pin.args...)
-
-@inline pin_barotropic_faces!(::Nothing) = nothing
-
-@inline function pin_barotropic_faces!(pins)
-    pin_barotropic_face!(pins.west)
-    pin_barotropic_face!(pins.east)
-    pin_barotropic_face!(pins.south)
-    pin_barotropic_face!(pins.north)
-    pin_barotropic_face!(pins.net)
+function pin_barotropic_faces!(pins::BarotropicFacePins)
+    fill!(pins.sums, 0)
+    foreach(side -> integrate_face!(pins, side), pins.sides)
+    all_reduce!(+, pins.sums, pins.architecture)
+    foreach(side -> shift_face!(pins, side), pins.sides)
     return nothing
 end
 
-enforce_barotropic_transport_targets!(arch, grid, U, V, targets) = pin_barotropic_faces!(configure_face_pins(arch, grid, U, V, targets))
+enforce_barotropic_transport_targets!(arch, grid, U, V, ::Nothing, time) = nothing
+
+function enforce_barotropic_transport_targets!(arch, grid, U, V, targets, time)
+    # A pending asynchronous exchange would overwrite the shifted halo columns along the face
+    synchronize_communication!((U, V))
+    pin_barotropic_faces!(configure_face_pins(arch, grid, U, V, targets, time))
+    return nothing
+end
